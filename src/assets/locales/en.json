@@ -1,0 +1,299 @@
+{
+  "common": {
+    "research": "Fast Intel",
+    "analyze": "Smart Signal",
+    "execute": "Max Gains",
+    "terminal": "Terminal",
+    "explore": "Features",
+    "start_research": "Start Hunting",
+    "no_signup": "No sign up. Just open terminal and send it.",
+    "open_terminal": "Explore Market Signals",
+    "soon": "Soon",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "filter_assets": "Filter assets...",
+    "search": "Search",
+    "refresh": "Refresh",
+    "cancel": "Cancel",
+    "favorite": "Favorites",
+    "calendar": "Calendar",
+    "pricing": "Pricing",
+    "view_plans": "View Tiers",
+    "all": "All",
+    "signals": {
+      "all": "All Signals",
+      "long": "Buy / Long",
+      "short": "Sell / Short",
+      "neutral": "Neutral"
+    },
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "asset_types": {
+      "all": "All Assets",
+      "crypto": "Crypto",
+      "us-stock": "U.S Stocks",
+      "id-stock": "ID Stocks",
+      "commodity": "Commodities",
+      "forex": "Forex",
+      "favorite": "Favorites"
+    }
+  },
+  "pricing": {
+    "title": "Choose Your Tier",
+    "subtitle": "Veteran level tools to navigate the market faster, catch momentum, and find opportunities without blindly entering trades and getting wrecked.",
+    "monthly": "monthly",
+    "yearly": "yearly",
+    "billed_annually": "billed annually",
+    "most_popular": "Best seller",
+    "get_started": "Get Access",
+    "get_started_free": "Start Now",
+    "contact_sales": "Contact Team",
+    "plans": {
+      "basic": {
+        "name": "Citizen",
+        "price": "$0",
+        "description": "For those just taste testing the market. Standard features to avoid FOMO.",
+        "features": [
+          "Real time Screener (Limit 20 assets)",
+          "Daily Economic Calendar",
+          "Standard Indicators",
+          "Community Support"
+        ]
+      },
+      "professional": {
+        "name": "Veteran",
+        "price": "$17",
+        "description": "Serious mode for those ready to go full throttle. Accurate signals, solid gains.",
+        "features": [
+          "Unlimited Asset Screener",
+          "Advanced Signal Engine (Tier A/B)",
+          "Full Economic Analysis",
+          "Priority Email Support",
+          "Custom Favorites"
+        ]
+      },
+      "ultimate": {
+        "name": "Lord",
+        "price": "Custom",
+        "description": "The highest tier for whales. Heavyweight data, lightning fast support.",
+        "features": [
+          "Full API Access",
+          "Custom Proprietary Indicators",
+          "Dedicated Account Manager",
+          "SSO & Advanced Security",
+          "Team Collaboration Tools"
+        ]
+      }
+    }
+  },
+  "payment": {
+    "title": "Multiple Ways to Fuel Your Hustle",
+    "subtitle": "Pick the payment method that works best. We have streamlined everything so you can focus on making moves.",
+    "activation_notice": "Manual review. Activation within 24 hours after verification.",
+    "methods": {
+      "bank_transfer": {
+        "name": "Bank Transfer",
+        "desc": "BCA, Mandiri, BNI, BRI"
+      },
+      "e_wallet": {
+        "name": "E-Wallet",
+        "desc": "GoPay, OVO, Dana, LinkAja"
+      },
+      "qris": {
+        "name": "QRIS",
+        "desc": "Scan & Pay instantly"
+      },
+      "usdt": {
+        "name": "USDT (Crypto)",
+        "desc": "TRC20, ERC20, BEP20 Network"
+      }
+    }
+  },
+  "faq": {
+    "title": "Curious? We Got You",
+    "subtitle": "Everything you need to kickstart your journey and stop the guesswork.",
+    "questions": [
+      {
+        "q": "What is RabaLaba?",
+        "a": "RabaLaba is a professional financial research terminal designed for multi asset analysis, featuring rule based signals and real time data."
+      },
+      {
+        "q": "Is the terminal free to use?",
+        "a": "RabaLaba offers the '$t(pricing.plans.basic.name)' tier is free for basic research. For advanced features, the '$t(pricing.plans.professional.name)' tier and the '$t(pricing.plans.ultimate.name)' tier for professional."
+      },
+      {
+        "q": "Is the data reliable?",
+        "a": "We source our data from institutional grade providers like Yahoo Finance and other trusted giants. It is realtime and realible."
+      },
+      {
+        "q": "Do I need to sign up for an account?",
+        "a": "No tedious sign ups here. Just open the terminal and start hunting for gains immediately. Time is money."
+      }
+    ]
+  },
+  "hero": {
+    "badge": "Top Tier Research Terminal",
+    "subtitle": "The top tier class of market analysis for Indonesia Stocks, US Stocks, Crypto, Commodities, and Forex. Accurate signals, zero noise, infinite money glitch."
+  },
+  "features": {
+    "title": "Main Features",
+    "subtitle": "The Ultimate Kit to",
+    "highlight": "Make Decisions",
+    "description": "High impact research terminal built for those who value data over FOMO.",
+    "multi_asset": {
+      "title": "Multi Asset Research",
+      "description": "Monitor Indonesia stocks, US stocks, crypto, commodities, and forex in one screen. Instant execution."
+    },
+    "sentiment": {
+      "title": "Long/Short Sentiment",
+      "description": "Analyze rule-based buy and sell signals with transparent confidence scores. Let the data speak for itself."
+    },
+    "trading_plan": {
+      "title": "Trading Plan Setup",
+      "description": "Get auto generated entry, stop loss, and take profit levels with precision. Master plan and execute trades with ease."
+    },
+    "volume": {
+      "title": "Volume Analysis",
+      "description": "Detect whale movements through significant spikes in trading volume. Confirm market trends with real-time data instead of just vibes."
+    },
+    "calendar": {
+      "title": "Economic Calendar",
+      "description": "Track major global economic events that trigger market volatility. Stay updated on CPI, FOMC, and high-impact news to keep edge."
+    },
+    "fear_greed": {
+      "title": "Fear & Greed Monitor",
+      "description": "Track market psychology with our Fear & Greed Index. Find buying opportunities when others are fearful, and sell when they get greedy."
+    }
+  },
+  "market": {
+    "pulse": "Market Sentiment",
+    "live_connection": "Live Connection",
+    "ticker_title": "Real Time Price Action"
+  },
+  "terminal": {
+    "title": "Research Terminal",
+    "subtitle": "Multi asset analysis with real time data & rule based signals",
+    "screener": "Asset Screener",
+    "filters": "Filters",
+    "search_placeholder": "Filter assets by name or symbol...",
+    "assets_found": "Assets",
+    "auto_refresh": "Auto Refresh 1m",
+    "favorite_tab": "Favorites",
+    "add_ticker_placeholder": "Add symbol (e.g. AAPL, BBCA.JK, BTC-USD)",
+    "add_ticker_btn": "Add Ticker",
+    "already_exists": "Symbol is already in your favorites",
+    "ticker_not_found": "Symbol {{symbol}} not found",
+    "favorite_empty": "Your favorites list is empty.",
+    "favorite_empty_desc": "Add tickers using the button above or star symbols in other categories.",
+    "add_ticker_dialog_title": "Add Ticker to Favorites",
+    "add_ticker_dialog_desc": "Enter a valid market symbol (e.g. AAPL, BBCA.JK, BTC-USD).",
+    "access_dialog_title": "Unlock Premium Access",
+    "access_dialog_desc": "This feature requires premium access. Please enter your access code below to unlock.",
+    "access_dialog_placeholder": "Enter access code (e.g. 1453)...",
+    "access_dialog_no_access": "Don't have an access code?",
+    "access_dialog_no_access_link": "Get access",
+    "access_dialog_invalid_code": "Invalid access code! Please try again.",
+    "access_dialog_success": "Access granted! Premium features are now unlocked.",
+    "access_dialog_unlock_btn": "Unlock Access",
+    "access_dialog_code_required": "Access code is required",
+    "access_config_missing": "Premium access is currently unavailable. Please contact support.",
+    "access_error_decryption": "Premium access verification failed. Please enter your access code again.",
+    "favorite_added": "Added {{symbol}} to favorites",
+    "favorite_removed": "Removed {{symbol}} from favorites",
+    "ticker_not_found_suggestion": "Ticker not found"
+  },
+  "calendar": {
+    "title": "Economic Calendar",
+    "subtitle": "Worldwide weekly schedule of market moving economic events",
+    "upcoming": "upcoming events",
+    "no_events": "No events match your filters",
+    "filters": "Filters",
+    "about": "About",
+    "affects": "Affects",
+    "source": "Source",
+    "time_until": "Time Until Event",
+    "status": "Status",
+    "event_passed": "Event has passed",
+    "volatility_warning": "High Volatility",
+    "select_event": "Select an event to view details",
+    "events_found": "Events",
+    "scheduled_event": "Scheduled Event",
+    "days": {
+      "su": "S",
+      "mo": "M",
+      "tu": "T",
+      "we": "W",
+      "th": "T",
+      "fr": "F",
+      "sa": "S"
+    },
+    "detail": {
+      "date": "Date",
+      "time": "Time",
+      "actual": "Actual",
+      "forecast": "Forecast",
+      "previous": "Previous",
+      "market_context": "Market Context",
+      "asset_correlation": "Asset Correlation",
+      "volatility_projection": "Volatility Projection",
+      "impact_desc": "{{impact}} impact"
+    }
+  },
+  "table": {
+    "symbol": "Symbol",
+    "type": "Type",
+    "price": "Price",
+    "change": "Change",
+    "volume": "Volume",
+    "trend": "Trend",
+    "signal": "Signal",
+    "confidence": "Confidence",
+    "tier": "Tier",
+    "risk": "Risk",
+    "page": "Page",
+    "of": "of"
+  },
+  "footer": {
+    "description": "Professional financial research terminal for multi asset analysis. Rule based signals with institutional grade data.",
+    "platform": "Platform",
+    "assets": "Assets",
+    "connect": "Connect",
+    "rights": "© 2026 Nailul Firdaus. All rights reserved.",
+    "status": "SYSTEM STATUS: NORMAL",
+    "links": {
+      "id_stocks": "ID Stocks",
+      "us_stocks": "US Markets",
+      "crypto": "Crypto Assets",
+      "commodities": "Commodities",
+      "indices": "Global Indices",
+      "currencies": "Currencies"
+    }
+  },
+  "dialog": {
+    "title_suffix": "Trading Plan & Analysis",
+    "not_enough_data": "Not enough data to compute signal. Try a different asset.",
+    "loading": "Loading chart data for signal computation...",
+    "trading_plan": "Trading Plan",
+    "analysis": "Analysis",
+    "indicators": "Technical Indicators",
+    "signal_result": "Signal Result",
+    "trend": "Trend",
+    "volume": "Volume",
+    "momentum": "Momentum",
+    "sentiment": "Sentiment"
+  },
+  "disclaimer": {
+    "title": "Know The Risks",
+    "description": "The RabaLaba Research Terminal provides high octane intel, but please note these essential rules:",
+    "points": [
+      "Not financial advice, just pure data and research. Always do your own due diligence.",
+      "You are the pilot, we are the radar. All trading decisions and risks are yours alone.",
+      "Use cold capital only. Never trade with essential funds like rent or daily needs.",
+      "Market volatility is real. Stay disciplined and keep your emotions in check."
+    ],
+    "confirm": "I have read and understood the risk disclosure",
+    "agree": "Understand & Proceed",
+    "toast_success": "Disclaimer accepted. Welcome to the Terminal!"
+  }
+}

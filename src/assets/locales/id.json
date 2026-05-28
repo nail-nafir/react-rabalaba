@@ -1,0 +1,299 @@
+{
+  "common": {
+    "research": "Riset Gacor",
+    "analyze": "Sinyal Jitu",
+    "execute": "Panen Cuan",
+    "terminal": "Terminal",
+    "explore": "Fitur",
+    "start_research": "Mulai Riset",
+    "no_signup": "Gak pake ribet. Buka terminal langsung gas.",
+    "open_terminal": "Cek Sinyal Market",
+    "soon": "Segera",
+    "collapse": "Sembunyikan",
+    "expand": "Tampilkan",
+    "filter_assets": "Cari aset...",
+    "search": "Cari",
+    "refresh": "Segarkan",
+    "cancel": "Batal",
+    "favorite": "Favorit",
+    "calendar": "Kalender",
+    "pricing": "Harga",
+    "view_plans": "Cek Kasta",
+    "all": "Semua",
+    "signals": {
+      "all": "Semua Sinyal",
+      "long": "Beli / Long",
+      "short": "Jual / Short",
+      "neutral": "Netral"
+    },
+    "high": "Tinggi",
+    "medium": "Sedang",
+    "low": "Rendah",
+    "asset_types": {
+      "all": "Semua Aset",
+      "crypto": "Kripto",
+      "us-stock": "Saham AS",
+      "id-stock": "Saham ID",
+      "commodity": "Komoditas",
+      "forex": "Forex",
+      "favorite": "Favorit"
+    }
+  },
+  "pricing": {
+    "title": "Pilih Kasta Riset",
+    "subtitle": "Amunisi level sepuh buat navigasi market lebih gacor, baca momentum, dan cari cuan tanpa asal masuk biar gak gampang rungkad.",
+    "monthly": "per bulan",
+    "yearly": "per tahun",
+    "billed_annually": "ditagih tahunan",
+    "most_popular": "Paling Laku",
+    "get_started": "Ambil Akses",
+    "get_started_free": "Mulai Sekarang",
+    "contact_sales": "Hubungi Tim",
+    "plans": {
+      "basic": {
+        "name": "Warga",
+        "price": "Rp0",
+        "description": "Buat yang baru mau nyicip market. Fitur standar biar gak FOMO.",
+        "features": [
+          "Penyaring Langsung (Batas 20 aset)",
+          "Kalender Ekonomi Harian",
+          "Indikator Standar",
+          "Dukungan Komunitas"
+        ]
+      },
+      "professional": {
+        "name": "Sepuh",
+        "price": "Rp250rb",
+        "description": "Mode serius buat yang mau gaspol. Sinyal akurat, cuan makin mantap.",
+        "features": [
+          "Penyaring Aset Tanpa Batas",
+          "Engine Sinyal Canggih (Tier A/B)",
+          "Analisis Ekonomi Lengkap",
+          "Dukungan Email Prioritas",
+          "Daftar Favorit Kustom"
+        ]
+      },
+      "ultimate": {
+        "name": "Raja",
+        "price": "Kustom",
+        "description": "Kasta tertinggi buat para bandar. Data kelas berat, bantuan gacor.",
+        "features": [
+          "Akses API Lengkap",
+          "Indikator Proprietary Kustom",
+          "Manajer Akun Khusus",
+          "SSO & Keamanan Tingkat Lanjut",
+          "Alat Kolaborasi Team"
+        ]
+      }
+    }
+  },
+  "payment": {
+    "title": "Banyak Jalan Menuju Cuan Melimpah",
+    "subtitle": "Pilih cara bayar yang paling pas. Kita dukung berbagai metode biar prosesnya makin gacor gak pake lama.",
+    "activation_notice": "Tinjauan manual. Aktivasi dalam waktu 24 jam setelah verifikasi.",
+    "methods": {
+      "bank_transfer": {
+        "name": "Transfer Bank",
+        "desc": "BCA, Mandiri, BNI, BRI"
+      },
+      "e_wallet": {
+        "name": "E-Wallet",
+        "desc": "GoPay, OVO, Dana, LinkAja"
+      },
+      "qris": {
+        "name": "QRIS",
+        "desc": "Scan & Bayar instan"
+      },
+      "usdt": {
+        "name": "USDT (Kripto)",
+        "desc": "Jaringan TRC20, ERC20, BEP20"
+      }
+    }
+  },
+  "faq": {
+    "title": "Bingung? Kasih Paham",
+    "subtitle": "Kumpulan jawaban buat pertanyaan yang sering sliweran. Biar makin paham.",
+    "questions": [
+      {
+        "q": "Apa itu RabaLaba?",
+        "a": "RabaLaba adalah terminal riset keuangan profesional dirancang untuk analisis multi aset, fitur sinyal berbasis aturan dan data langsung."
+      },
+      {
+        "q": "Terminal ini gratis gak?",
+        "a": "RabaLaba ada kasta '$t(pricing.plans.basic.name)' gratis buat riset dasar. Untuk fitur lebih canggih, ada kasta '$t(pricing.plans.professional.name)' dan '$t(pricing.plans.ultimate.name)' buat profesional."
+      },
+      {
+        "q": "Datanya terpercaya gak nih?",
+        "a": "Kita ambil data dari sumber level institusi kayak Yahoo Finance dan provider tepercaya lainnya. Datanya gacor dan terpercaya kok."
+      },
+      {
+        "q": "Harus bikin akun dulu gak nih?",
+        "a": "Gak perlu ribet daftar. Langsung buka terminal, gas riset. Kita hargain waktu yang berharga buat nyari cuan."
+      }
+    ]
+  },
+  "hero": {
+    "badge": "Terminal Riset Kasta Tertinggi",
+    "subtitle": "Level kasta tertinggi riset pasar buat Saham Indonesia, Saham AS, Kripto, Komoditas, dan Forex. Sinyal akurat, dikit gangguan, anti rungkad parah."
+  },
+  "features": {
+    "title": "Fitur Unggulan",
+    "subtitle": "Alat Lengkap Buat",
+    "highlight": "Ambil Keputusan",
+    "description": "Terminal riset paling gacor buat riset beneran, bukan cuma FOMO.",
+    "multi_asset": {
+      "title": "Riset Multi Aset",
+      "description": "Pantau Saham Indonesia, Saham AS, Kripto, Komoditas, dan Forex dalam satu layar. Gak pake ribet deh."
+    },
+    "sentiment": {
+      "title": "Sinyal Long/Short",
+      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kepercayaan transparan. Biarkan data bicara."
+    },
+    "trading_plan": {
+      "title": "Susun Rencana Perdagangan",
+      "description": "Dapetin titik masuk, batas rugi, dan target cuan otomatis secara akurat. Susun rencana matang biar eksekusi makin tenang."
+    },
+    "volume": {
+      "title": "Analisis Volume",
+      "description": "Deteksi pergerakan bandar lewat lonjakan volume transaksi. Konfirmasi tren market pake data asli, bukan cuma perasaan."
+    },
+    "calendar": {
+      "title": "Kalender Ekonomi",
+      "description": "Pantau rilis data ekonomi dunia yang bikin market bergejolak. Tetap ikutin FOMC, CPI, dan berita penting biar strategi gak goyang."
+    },
+    "fear_greed": {
+      "title": "Monitor Fear & Greed",
+      "description": "Pantau psikologi pasar lewat Indeks Fear & Greed. Ambil peluang beli pas yang lain takut, dan jual pas yang lain mulai serakah."
+    }
+  },
+  "market": {
+    "pulse": "Sentimen Pasar",
+    "live_connection": "Koneksi Langsung",
+    "ticker_title": "Pantauan Harga Gacor"
+  },
+  "terminal": {
+    "title": "Terminal Riset",
+    "subtitle": "Analisis multi aset dengan data langsung & sinyal berbasis aturan",
+    "screener": "Penyaring Aset",
+    "filters": "Filter",
+    "search_placeholder": "Cari aset berdasarkan nama atau simbol...",
+    "assets_found": "Aset",
+    "auto_refresh": "Auto Refresh 1m",
+    "favorite_tab": "Favorit",
+    "add_ticker_placeholder": "Tambah simbol (cth. AAPL, BBCA.JK, BTC-USD)",
+    "add_ticker_btn": "Tambah",
+    "already_exists": "Simbol sudah ada di daftar favorit",
+    "ticker_not_found": "Simbol {{symbol}} tidak ditemukan",
+    "favorite_empty": "Daftar favorit Anda kosong.",
+    "favorite_empty_desc": "Tambahkan ticker menggunakan tombol di atas atau berikan bintang pada aset di kategori lain.",
+    "add_ticker_dialog_title": "Tambah Ticker ke Favorit",
+    "add_ticker_dialog_desc": "Masukkan simbol pasar yang valid (cth. AAPL, BBCA.JK, BTC-USD).",
+    "access_dialog_title": "Buka Akses Premium",
+    "access_dialog_desc": "Fitur ini memerlukan akses premium. Silakan masukkan kode akses Anda di bawah untuk membukanya.",
+    "access_dialog_placeholder": "Masukkan kode akses (cth. 1453)...",
+    "access_dialog_no_access": "Belum punya kode akses?",
+    "access_dialog_no_access_link": "Dapatkan akses",
+    "access_dialog_invalid_code": "Kode akses salah! Silakan coba lagi.",
+    "access_dialog_success": "Akses diberikan! Fitur premium sekarang terbuka.",
+    "access_dialog_unlock_btn": "Buka Akses",
+    "access_dialog_code_required": "Kode akses wajib diisi",
+    "access_config_missing": "Akses premium tidak tersedia saat ini. Silakan hubungi admin.",
+    "access_error_decryption": "Verifikasi akses premium gagal. Silakan masukkan kode akses Anda kembali.",
+    "favorite_added": "{{symbol}} berhasil ditambahkan ke favorit",
+    "favorite_removed": "{{symbol}} berhasil dihapus dari favorit",
+    "ticker_not_found_suggestion": "Ticker tidak ditemukan"
+  },
+  "calendar": {
+    "title": "Kalender Ekonomi",
+    "subtitle": "Jadwal mingguan peristiwa ekonomi penggerak pasar di seluruh dunia",
+    "upcoming": "acara mendatang",
+    "no_events": "Tidak ada acara yang sesuai dengan filter Anda",
+    "filters": "Filter",
+    "about": "Tentang",
+    "affects": "Mempengaruhi",
+    "source": "Sumber",
+    "time_until": "Waktu Menuju Acara",
+    "status": "Status",
+    "event_passed": "Acara telah berlalu",
+    "volatility_warning": "Volatilitas Tinggi",
+    "select_event": "Pilih acara untuk melihat detail",
+    "events_found": "Acara",
+    "scheduled_event": "Acara Terjadwal",
+    "days": {
+      "su": "M",
+      "mo": "S",
+      "tu": "S",
+      "we": "R",
+      "th": "K",
+      "fr": "J",
+      "sa": "S"
+    },
+    "detail": {
+      "date": "Tanggal",
+      "time": "Waktu",
+      "actual": "Aktual",
+      "forecast": "Prediksi",
+      "previous": "Sebelumnya",
+      "market_context": "Konteks Pasar",
+      "asset_correlation": "Korelasi Aset",
+      "volatility_projection": "Proyeksi Volatilitas",
+      "impact_desc": "Dampak {{impact}}"
+    }
+  },
+  "table": {
+    "symbol": "Simbol",
+    "type": "Tipe",
+    "price": "Harga",
+    "change": "Perubahan",
+    "volume": "Volume",
+    "trend": "Tren",
+    "signal": "Sinyal",
+    "confidence": "Kepercayaan",
+    "tier": "Tier",
+    "risk": "Risiko",
+    "page": "Halaman",
+    "of": "dari"
+  },
+  "footer": {
+    "description": "Terminal riset keuangan profesional untuk analisis multi aset. Sinyal berbasis aturan dengan data tingkat institusi.",
+    "platform": "Platform",
+    "assets": "Aset",
+    "connect": "Hubungkan",
+    "rights": "© 2026 Nailul Firdaus. Hak cipta dilindungi.",
+    "status": "STATUS SISTEM: NORMAL",
+    "links": {
+      "id_stocks": "Saham Indonesia",
+      "us_stocks": "Saham AS",
+      "crypto": "Aset Kripto",
+      "commodities": "Komoditas",
+      "indices": "Indeks Global",
+      "currencies": "Mata Uang"
+    }
+  },
+  "dialog": {
+    "title_suffix": "Rencana Perdagangan & Analisis",
+    "not_enough_data": "Data tidak cukup untuk menghitung sinyal. Coba aset lain.",
+    "loading": "Memuat data chart untuk perhitungan sinyal...",
+    "trading_plan": "Rencana Perdagangan",
+    "analysis": "Analisis",
+    "indicators": "Indikator Teknikal",
+    "signal_result": "Hasil Sinyal",
+    "trend": "Tren",
+    "volume": "Volume",
+    "momentum": "Momentum",
+    "sentiment": "Sentimen"
+  },
+  "disclaimer": {
+    "title": "Pahami Resikonya",
+    "description": "RabaLaba Terminal Riset menyediakan data gacor, tapi tetep pahami beberapa poin ini:",
+    "points": [
+      "Bukan saran finansial, cuma data riset biar gak terjebak Fomo. Mandiri itu wajib.",
+      "Keputusan ada di tangan pengguna, risiko ditanggung sendiri. Kita cuma penyedia radar.",
+      "Gunakan uang dingin, jangan pake uang dapur apalagi hasil pinjaman online.",
+      "Market punya volatilitas tinggi, tetep disiplin dan jangan sampe kena mental."
+    ],
+    "confirm": "Saya telah membaca dan memahami risiko investasi",
+    "agree": "Paham & Lanjutkan",
+    "toast_success": "Penafian disetujui. Selamat datang di Terminal!"
+  }
+}

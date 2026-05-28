@@ -1,0 +1,693 @@
+import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Info,
+  Star,
+  Plus,
+  Sparkles,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { TrendIndicator } from "@/components/shared/trend-indicator";
+import { PercentageChange } from "@/components/shared/percentage-change";
+import { ConfidenceMeter } from "@/components/shared/confidence-meter";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SkeletonTableRow } from "@/components/shared/skeleton-card";
+import { MiniSparkline } from "@/components/charts/mini-sparkline";
+import { FilterBar } from "./filter-bar";
+import { TIER_COLORS, SIGNAL_COLORS } from "@/constants/signals";
+import { useUIStore } from "@/store/ui-store";
+import { useFilterStore } from "@/store/filter-store";
+import { useFavoriteStore } from "@/store/favorite-store";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useMarketData } from "@/services/queries/use-yahoo-data";
+import type { UnifiedAsset } from "@/types/asset";
+import {
+  DEFAULT_COMMODITY_TICKERS,
+  DEFAULT_CRYPTO_TICKERS,
+  DEFAULT_ID_STOCK_TICKERS,
+  DEFAULT_US_STOCK_TICKERS,
+  DEFAULT_FOREX_TICKERS,
+  TOP_CRYPTO_TICKERS,
+  TOP_ID_STOCK_TICKERS,
+  TOP_US_STOCK_TICKERS,
+} from "@/constants/assets";
+import { Button } from "@/components/ui/button";
+import { PremiumAccessDialog } from "@/features/screener/components/premium-access-dialog";
+import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { formatPrice, formatVolume } from "@/lib/formatters";
+import type { Column } from "@tanstack/react-table";
+import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
+import { AddTickerDialog } from "./add-ticker-dialog";
+
+type PendingAction =
+  | { type: "ANALYZE"; symbol: string }
+  | { type: "FAVORITE" }
+  | { type: "ADD_TICKER" }
+  | null;
+
+function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
+  const isSorted = column.getIsSorted();
+  if (isSorted === "asc")
+    return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
+  if (isSorted === "desc")
+    return <ArrowDown className="h-3.5 w-3.5 text-primary" />;
+  return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
+}
+
+export function AssetTable() {
+  "use no memo";
+  const { t } = useTranslation();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const { openDetailDialog } = useUIStore();
+  const { assetType, setAssetType, searchQuery, setSearchQuery, signalFilter } =
+    useFilterStore();
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const { hasAccess } = usePremiumAccess();
+
+  // Access Pending Action
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+
+  // Favorite integration
+  const { favoriteSymbols, removeSymbol } = useFavoriteStore();
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  // Access Dialog States
+  const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
+
+  const { data: cryptoAssets, isFetching: cryptoFetching } = useMarketData(
+    hasAccess ? TOP_CRYPTO_TICKERS : DEFAULT_CRYPTO_TICKERS,
+  );
+  const { data: usStocks, isFetching: usFetching } = useMarketData(
+    hasAccess ? TOP_US_STOCK_TICKERS : DEFAULT_US_STOCK_TICKERS,
+  );
+  const { data: idStocks, isFetching: idFetching } = useMarketData(
+    hasAccess ? TOP_ID_STOCK_TICKERS : DEFAULT_ID_STOCK_TICKERS,
+  );
+  const { data: commodities, isFetching: comFetching } = useMarketData(
+    DEFAULT_COMMODITY_TICKERS,
+  );
+  const { data: forexAssets, isFetching: forexFetching } = useMarketData(
+    DEFAULT_FOREX_TICKERS,
+  );
+
+  // Fetch favorite data
+  const { data: favoriteAssets, isFetching: favoriteFetching } =
+    useMarketData(favoriteSymbols);
+
+  const isFetching =
+    cryptoFetching ||
+    usFetching ||
+    idFetching ||
+    comFetching ||
+    forexFetching ||
+    favoriteFetching;
+
+  // Monitor for symbols in favorites that failed to fetch
+  useEffect(() => {
+    if (!favoriteFetching && favoriteAssets && favoriteSymbols.length > 0) {
+      favoriteSymbols.forEach((sym) => {
+        if (!favoriteAssets.some((asset) => asset.symbol === sym)) {
+          toast.error(t("terminal.ticker_not_found", { symbol: sym }));
+          removeSymbol(sym);
+        }
+      });
+    }
+  }, [favoriteAssets, favoriteSymbols, favoriteFetching, removeSymbol, t]);
+
+  const allAssets = useMemo<UnifiedAsset[]>(() => {
+    const combined = [
+      ...(cryptoAssets ?? []),
+      ...(usStocks ?? []),
+      ...(idStocks ?? []),
+      ...(commodities ?? []),
+      ...(forexAssets ?? []),
+      ...(favoriteAssets ?? []),
+    ];
+
+    // De-duplicate by symbol
+    const seen = new Set();
+    return combined.filter((asset) => {
+      if (seen.has(asset.symbol)) return false;
+      seen.add(asset.symbol);
+      return true;
+    });
+  }, [
+    cryptoAssets,
+    usStocks,
+    idStocks,
+    commodities,
+    forexAssets,
+    favoriteAssets,
+  ]);
+
+  const isLoading = isFetching && allAssets.length === 0;
+
+  const filteredData = useMemo(() => {
+    let data = [...allAssets];
+    if (assetType === "favorite") {
+      data = data.filter((a) => favoriteSymbols.includes(a.symbol));
+    } else if (assetType !== "all") {
+      data = data.filter((a) => a.assetType === assetType);
+    }
+
+    if (signalFilter !== "all") {
+      data = data.filter((a) => a.outlook?.signal === signalFilter);
+    }
+
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      data = data.filter(
+        (a) =>
+          a.symbol.toLowerCase().includes(q) ||
+          a.name.toLowerCase().includes(q),
+      );
+    }
+    return data;
+  }, [allAssets, assetType, favoriteSymbols, debouncedSearch, signalFilter]);
+
+  const columns = useMemo<ColumnDef<UnifiedAsset>[]>(
+    () => [
+      {
+        id: "actions",
+        header: () => null,
+        cell: ({ row }) => {
+          return (
+            <Button
+              variant="link"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+              onClick={() => {
+                if (hasAccess) {
+                  openDetailDialog(row.original.symbol);
+                } else {
+                  setPendingAction({
+                    type: "ANALYZE",
+                    symbol: row.original.symbol,
+                  });
+                  setIsAccessDialogOpen(true);
+                }
+              }}
+              title={t("common.analyze")}
+            >
+              <Info className="h-4 w-4" />
+            </Button>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "symbol",
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.symbol")} <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          return (
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground flex items-center gap-2">
+                {row.original.symbol}
+              </div>
+              <div className="text-xs truncate max-w-44 text-muted-foreground">
+                {row.original.name}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "assetType",
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.type")}
+          </span>
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {t(`common.asset_types.${row.original.assetType}`)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "price",
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.price")} <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          return (
+            <span className="text-sm font-semibold text-mono-data">
+              {formatPrice(row.original.price, row.original.assetType)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "changePercent",
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.change")} <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          return <PercentageChange value={row.original.changePercent} />;
+        },
+      },
+      {
+        accessorKey: "volume",
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.volume")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          return (
+            <span className="text-xs text-mono-data text-muted-foreground">
+              {formatVolume(row.original.volume)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "trend",
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.trend")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          return row.original.outlook ? (
+            <TrendIndicator trend={row.original.outlook.trend} />
+          ) : (
+            "-"
+          );
+        },
+      },
+      {
+        accessorKey: "confidence",
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.confidence")} <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          return row.original.outlook ? (
+            <ConfidenceMeter
+              value={row.original.outlook.confidence}
+              size="sm"
+            />
+          ) : (
+            "-"
+          );
+        },
+      },
+      {
+        accessorKey: "tier",
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.tier")} <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          if (!row.original.outlook) return "-";
+          const tier = row.original.outlook.tier;
+          const colors = TIER_COLORS[tier];
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] font-bold rounded-md",
+                colors.border,
+                colors.bg,
+                colors.text,
+              )}
+            >
+              {tier}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "signal",
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.signal")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          if (!row.original.outlook) return "-";
+          const signal = row.original.outlook.signal;
+          const colors = SIGNAL_COLORS[signal];
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-bold tracking-wider uppercase text-[10px] rounded-md",
+                colors.bg,
+                colors.text,
+                colors.border,
+              )}
+            >
+              {signal}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "sparkline",
+        header: "",
+        cell: ({ row }) => {
+          const sparklineData = row.original.quoteIndicators?.close
+            ?.filter((p): p is number => p !== null)
+            .slice(-30);
+
+          return sparklineData && sparklineData.length > 1 ? (
+            <div className="flex justify-end pr-4">
+              <MiniSparkline data={sparklineData} width={60} height={20} />
+            </div>
+          ) : null;
+        },
+        enableSorting: false,
+      },
+    ],
+    [hasAccess, openDetailDialog, t],
+  );
+
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            {t("terminal.screener")}
+          </h2>
+          {hasAccess && (
+            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px] font-bold animate-shimmer rounded-md">
+              <Sparkles className="h-2.5 w-2.5 fill-emerald-400/50" />
+              PREMIUM
+            </Badge>
+          )}
+          {isLoading && (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary opacity-50" />
+          )}
+        </div>
+      </div>
+
+      {/* Control bar section */}
+      <div className="flex flex-col gap-4">
+        {/* Filters Header at the top */}
+        <div className="flex items-center justify-between border-b pb-4 mb-2 gap-2">
+          <div className="flex items-center gap-3.5 flex-wrap">
+            <FilterBar />
+          </div>
+
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+            {isLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <span>
+                {filteredData.length} {t("terminal.assets_found")}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Search and Actions Group below */}
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input
+              type="text"
+              placeholder={t("terminal.search_placeholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-sm bg-background border-input focus:ring-primary/20 transition-all shadow-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant={assetType === "favorite" ? "default" : "secondary"}
+              onClick={() => {
+                if (assetType === "favorite") {
+                  setAssetType("all");
+                  return;
+                }
+
+                if (hasAccess) {
+                  setAssetType("favorite");
+                } else {
+                  setPendingAction({ type: "FAVORITE" });
+                  setIsAccessDialogOpen(true);
+                }
+              }}
+              className={cn(
+                "h-9 px-3 gap-2 transition-all cursor-pointer",
+                assetType === "favorite"
+                  ? "bg-amber-500/10 border-amber-500/50 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:border-amber-500"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Star
+                className={cn(
+                  "h-3.5 w-3.5 transition-all",
+                  assetType === "favorite"
+                    ? "fill-amber-500 text-amber-500 scale-110"
+                    : "text-muted-foreground/60",
+                )}
+              />
+              <span className="hidden sm:inline text-xs font-bold tracking-tight">
+                {t("common.favorite")}
+              </span>
+              {favoriteSymbols.length > 0 && (
+                <Badge
+                  className={cn(
+                    "text-xs rounded-md font-black leading-none transition-colors",
+                    assetType === "favorite"
+                      ? "bg-amber-500 text-background"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {favoriteSymbols.length}
+                </Badge>
+              )}
+            </Button>
+
+            <Button
+              onClick={() => {
+                if (hasAccess) {
+                  setIsAddDialogOpen(true);
+                } else {
+                  setPendingAction({ type: "ADD_TICKER" });
+                  setIsAccessDialogOpen(true);
+                }
+              }}
+              className="h-9 px-3 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 tracking-tight hover:bg-primary/90 shadow-sm active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">
+                {t("terminal.add_ticker_btn")}
+              </span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-md border overflow-hidden shadow-sm">
+        <Table>
+          <TableHeader className="bg-muted">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {isLoading && allAssets.length === 0 ? (
+              Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <SkeletonTableRow />
+                </TableRow>
+              ))
+            ) : table.getRowModel().rows.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-64 text-center"
+                >
+                  {assetType === "favorite" && favoriteSymbols.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-8 max-w-sm mx-auto space-y-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-md bg-amber-500/10 text-amber-500 animate-pulse">
+                        <Star className="h-6 w-6 fill-amber-500/20" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-semibold text-foreground text-sm">
+                          {t("terminal.favorite_empty")}
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {t("terminal.favorite_empty_desc")}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="No assets found"
+                      description="Try adjusting your filters."
+                    />
+                  )}
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-muted-foreground">
+          {t("table.page")}{" "}
+          <span className="font-medium text-foreground">
+            {table.getState().pagination.pageIndex + 1}
+          </span>{" "}
+          {t("table.of")}{" "}
+          <span className="font-medium text-foreground">
+            {table.getPageCount()}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="h-8 w-8 cursor-pointer"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="h-8 w-8 cursor-pointer"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Detail dialog */}
+      <AssetDetailDialog />
+
+      {/* Add Ticker Dialog Popup */}
+      <AddTickerDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
+
+      {/* Access Premium Dialog Popup */}
+      <PremiumAccessDialog
+        open={isAccessDialogOpen}
+        onOpenChange={setIsAccessDialogOpen}
+        onSuccess={() => {
+          if (!pendingAction) return;
+
+          switch (pendingAction.type) {
+            case "ANALYZE":
+              openDetailDialog(pendingAction.symbol);
+              break;
+            case "FAVORITE":
+              setAssetType("favorite");
+              break;
+            case "ADD_TICKER":
+              setIsAddDialogOpen(true);
+              break;
+          }
+          setPendingAction(null);
+        }}
+      />
+    </div>
+  );
+}
