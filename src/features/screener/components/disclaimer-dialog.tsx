@@ -67,7 +67,7 @@ export function DisclaimerDialog() {
                   key={i}
                   className="flex items-start gap-3 text-xs text-muted-foreground leading-snug group/item"
                 >
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                   <span className="transition-colors group-hover/item:text-foreground">
                     {point}
                   </span>
@@ -83,7 +83,7 @@ export function DisclaimerDialog() {
                   type="checkbox"
                   checked={hasConfirmed}
                   onChange={(e) => setHasConfirmed(e.target.checked)}
-                  className="peer h-5 w-5 appearance-none rounded-md border border-border/50 bg-background transition-all checked:bg-amber-500 checked:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none"
+                  className="peer h-5 w-5 appearance-none rounded-md border border-border/50 bg-background transition-all checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                 />
                 <svg
                   className="absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
@@ -108,7 +108,7 @@ export function DisclaimerDialog() {
         <DialogFooter className="px-6 py-4 flex flex-col sm:flex-row gap-3 m-0 rounded-none">
           <Button
             disabled={!hasConfirmed}
-            className="w-full font-bold h-9 text-xs transition-all duration-300 disabled:opacity-50 disabled:grayscale-[0.5] bg-amber-500 hover:bg-amber-600 text-primary-foreground border-none cursor-pointer"
+            className="w-full font-bold h-9 text-xs transition-all duration-300 disabled:opacity-50 disabled:grayscale-[0.5] bg-primary hover:bg-primary/90 text-primary-foreground border-none cursor-pointer"
             onClick={handleAgreeDisclaimer}
           >
             {t("disclaimer.agree")}

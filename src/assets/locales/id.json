@@ -67,7 +67,7 @@
         "description": "Mode serius buat yang mau gaspol. Sinyal akurat, cuan makin mantap.",
         "features": [
           "Penyaring Aset Tanpa Batas",
-          "Engine Sinyal Canggih (Tier A/B)",
+          "Mesin Sinyal Canggih (Tier A/B)",
           "Analisis Ekonomi Lengkap",
           "Dukungan Email Prioritas",
           "Daftar Favorit Kustom"
@@ -184,7 +184,7 @@
     "add_ticker_btn": "Tambah",
     "already_exists": "Simbol sudah ada di daftar favorit",
     "ticker_not_found": "Simbol {{symbol}} tidak ditemukan",
-    "favorite_empty": "Daftar favorit Anda kosong.",
+    "favorite_empty": "Daftar favorit kosong.",
     "favorite_empty_desc": "Tambahkan ticker menggunakan tombol di atas atau berikan bintang pada aset di kategori lain.",
     "add_ticker_dialog_title": "Tambah Ticker ke Favorit",
     "add_ticker_dialog_desc": "Masukkan simbol pasar yang valid (cth. AAPL, BBCA.JK, BTC-USD).",
@@ -287,13 +287,13 @@
     "title": "Pahami Resikonya",
     "description": "RabaLaba Terminal Riset menyediakan data gacor, tapi tetep pahami beberapa poin ini:",
     "points": [
-      "Bukan saran finansial, cuma data riset biar gak terjebak Fomo. Mandiri itu wajib.",
+      "Bukan saran finansial, cuma data riset biar gak terjebak FOMO. Mandiri itu wajib.",
       "Keputusan ada di tangan pengguna, risiko ditanggung sendiri. Kita cuma penyedia radar.",
       "Gunakan uang dingin, jangan pake uang dapur apalagi hasil pinjaman online.",
       "Market punya volatilitas tinggi, tetep disiplin dan jangan sampe kena mental."
     ],
     "confirm": "Saya telah membaca dan memahami risiko investasi",
     "agree": "Paham & Lanjutkan",
-    "toast_success": "Penafian disetujui. Selamat datang di Terminal!"
+    "toast_success": "Sip, radar aktif. Selamat datang di pusat cuan!"
   }
 }

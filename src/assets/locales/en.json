@@ -184,7 +184,7 @@
     "add_ticker_btn": "Add Ticker",
     "already_exists": "Symbol is already in your favorites",
     "ticker_not_found": "Symbol {{symbol}} not found",
-    "favorite_empty": "Your favorites list is empty.",
+    "favorite_empty": "Favorites list is empty.",
     "favorite_empty_desc": "Add tickers using the button above or star symbols in other categories.",
     "add_ticker_dialog_title": "Add Ticker to Favorites",
     "add_ticker_dialog_desc": "Enter a valid market symbol (e.g. AAPL, BBCA.JK, BTC-USD).",
@@ -294,6 +294,6 @@
     ],
     "confirm": "I have read and understood the risk disclosure",
     "agree": "Understand & Proceed",
-    "toast_success": "Disclaimer accepted. Welcome to the Terminal!"
+    "toast_success": "System locked in. Welcome to the Command Center!"
   }
 }

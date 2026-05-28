@@ -22,6 +22,7 @@ import {
   Star,
   Plus,
   Sparkles,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -482,8 +483,17 @@ export function AssetTable() {
               placeholder={t("terminal.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 text-sm bg-background border-input focus:ring-primary/20 transition-all shadow-sm"
+              className="pl-9 pr-9 h-9 text-sm focus:ring-primary/20 transition-all shadow-sm"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">

@@ -14,7 +14,7 @@ export const useFavoriteStore = create<FavoriteState>()(
   persist(
     (set, get) => ({
       // Starting default favorite symbols
-      favoriteSymbols: ["BTC-USD", "AAPL", "BBCA.JK"],
+      favoriteSymbols: [],
       error: null,
 
       addSymbol: (symbol: string) => {

@@ -9,7 +9,7 @@ export function ThemeToggle() {
     <Button
       variant="secondary"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="flex justify-center"
+      className="flex justify-center border border-border"
       aria-label="Toggle theme"
     >
       {theme === "dark" ? (
