@@ -189,9 +189,7 @@ export default function CalendarPage() {
                     {events.map((event) => (
                       <Card
                         key={event.id}
-                        className={cn(
-                          "border border-border bg-muted hover:bg-muted/80 transition-colors cursor-pointer",
-                        )}
+                        className="border border-border bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
                         onClick={() => handleEventClick(event)}
                       >
                         <CardContent className="flex items-center gap-3 sm:gap-4">

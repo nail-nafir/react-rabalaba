@@ -1,8 +1,11 @@
 import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 import { formatPrice } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { useFavoriteStore } from "@/store/favorite-store";
 import { toast } from "sonner";
+import { runBacktest } from "@/features/signals/engine/backtest";
+import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 
 import {
   Dialog,
@@ -11,16 +14,27 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardFooter,
+} from "@/components/ui/card";
 import { useUIStore } from "@/store/ui-store";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
-import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { ConfidenceMeter } from "@/components/shared/confidence-meter";
+import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { TIER_COLORS, RISK_COLORS, SIGNAL_COLORS } from "@/constants/signals";
+import {
+  RISK_COLORS,
+  SIGNAL_COLORS,
+  SIGNAL_LABELS,
+  REGIME_COLORS,
+} from "@/constants/signals";
 import { cn } from "@/lib/utils";
 import { CandlestickTradingPlan } from "./candlestick-trading-plan";
 import {
@@ -51,6 +65,21 @@ export function AssetDetailDialog() {
 
   const outlook = asset?.outlook;
   const tradingPlan = asset?.tradingPlan;
+
+  // Historical performance (decision-support context shown SEPARATELY from
+  // signal strength). Walk-forward, no-lookahead backtest over fetched candles.
+  const backtest = useMemo(() => {
+    if (!asset?.quoteIndicators) return null;
+    const candles = normalizeYahooCandles(
+      asset.quoteIndicators,
+      asset.timestamps,
+    );
+    if (candles.length < 150) return null;
+    return runBacktest(candles, {
+      assetType: asset.assetType,
+      timeframe: "swing",
+    }).metrics;
+  }, [asset]);
 
   // Current price and change percent
   const currentPrice = asset?.price ?? 0;
@@ -122,7 +151,7 @@ export function AssetDetailDialog() {
                   SIGNAL_COLORS[outlook.signal].border,
                 )}
               >
-                {outlook.signal}
+                {SIGNAL_LABELS[outlook.signal]}
               </Badge>
             ) : (
               <Skeleton className="h-7 w-16 rounded" />
@@ -152,34 +181,36 @@ export function AssetDetailDialog() {
           {/* Meta badges */}
           {outlook ? (
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <TrendIndicator trend={outlook.trend} />
               <Badge
-                className={cn(
-                  "font-bold uppercase tracking-wider text-[10px] rounded-md",
-                  TIER_COLORS[outlook.tier].bg,
-                  TIER_COLORS[outlook.tier].text,
-                )}
-              >
-                {outlook.tier}
-              </Badge>
-              <Badge
+                variant="outline"
                 className={cn(
                   "font-bold uppercase tracking-wider text-[10px] rounded-md",
                   RISK_COLORS[outlook.risk].bg,
                   RISK_COLORS[outlook.risk].text,
+                  RISK_COLORS[outlook.risk].border,
                 )}
               >
-                {outlook.risk}
+                {outlook.risk} Risk
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "font-semibold uppercase tracking-wider text-[10px] rounded-md",
+                  REGIME_COLORS[outlook.regime].bg,
+                  REGIME_COLORS[outlook.regime].text,
+                  REGIME_COLORS[outlook.regime].border,
+                )}
+              >
+                {t(`dialog.regime_${outlook.regime}`)} Market
               </Badge>
               <div className="flex-1 min-w-25">
-                <ConfidenceMeter value={outlook.confidence} size="md" />
+                <SignalStrengthMeter value={outlook.strength} size="md" />
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 mt-3">
+              <Skeleton className="h-5 w-16 rounded" />
               <Skeleton className="h-5 w-20 rounded" />
-              <Skeleton className="h-5 w-12 rounded" />
-              <Skeleton className="h-5 w-12 rounded" />
               <Skeleton className="h-3 w-24 rounded flex-1" />
             </div>
           )}
@@ -194,9 +225,8 @@ export function AssetDetailDialog() {
           </div>
         ) : outlook ? (
           <>
-            {/* Trading Plan — always show candlestick when signal is actionable */}
-            {outlook.signal !== "neutral" && (
-              <>
+            <>
+              {/* Trading Plan */}
                 <div className="px-6 py-5 space-y-4">
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-primary" />
@@ -206,11 +236,17 @@ export function AssetDetailDialog() {
                   </div>
 
                   {/* Advanced SVG Candlestick Visual Trading Setup */}
-                  <CandlestickTradingPlan
-                    asset={asset}
-                    tradingPlan={tradingPlan}
-                    signal={outlook.signal}
-                  />
+                  {outlook.signal === "neutral" ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("dialog.no_setup")}
+                    </p>
+                  ) : (
+                    <CandlestickTradingPlan
+                      asset={asset}
+                      tradingPlan={tradingPlan}
+                      signal={outlook.signal}
+                    />
+                  )}
 
                   {tradingPlan ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -225,7 +261,7 @@ export function AssetDetailDialog() {
                           tradingPlan.stopLoss,
                           asset?.assetType,
                         )}
-                        color="text-red-400 font-bold"
+                        color="text-rose-400 font-bold"
                       />
                       <PlanItem
                         label="Risk/Reward Ratio"
@@ -261,150 +297,300 @@ export function AssetDetailDialog() {
                 </div>
 
                 <Separator className="bg-border" />
+
+                {/* Decision support: alignment breakdown + historical context */}
+                <div className="px-6 py-5 space-y-5">
+                  <div className="flex items-center gap-2">
+                    <Gauge className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">
+                      {t("dialog.decision_support")}
+                    </h3>
+                  </div>
+
+                  {/* Per-category alignment as center-zero diverging bars */}
+                  <div className="space-y-2.5">
+                    {(
+                      [
+                        ["cat_trend", outlook.categoryScores.trend],
+                        ["cat_momentum", outlook.categoryScores.momentum],
+                        ["cat_volatility", outlook.categoryScores.volatility],
+                        ["cat_volume", outlook.categoryScores.volume],
+                      ] as const
+                    ).map(([key, val]) => {
+                      const pct = Math.round(val * 100);
+                      const isPos = val > 0.05;
+                      const isNeg = val < -0.05;
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <span className="w-20 shrink-0 text-[11px] text-muted-foreground">
+                            {t(`dialog.${key}`)}
+                          </span>
+                          <div className="relative h-1.5 flex-1 rounded-full bg-muted/40">
+                            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
+                            <div
+                              className={cn(
+                                "absolute top-0 h-full rounded-full",
+                                isPos
+                                  ? "bg-emerald-400"
+                                  : isNeg
+                                    ? "bg-rose-400"
+                                    : "bg-zinc-500",
+                              )}
+                              style={
+                                val >= 0
+                                  ? {
+                                      left: "50%",
+                                      width: `${Math.abs(pct) / 2}%`,
+                                    }
+                                  : {
+                                      right: "50%",
+                                      width: `${Math.abs(pct) / 2}%`,
+                                    }
+                              }
+                            />
+                          </div>
+                          <span
+                            className={cn(
+                              "w-9 shrink-0 text-right text-[11px] font-semibold text-mono-data",
+                              isPos
+                                ? "text-emerald-400"
+                                : isNeg
+                                  ? "text-rose-400"
+                                  : "text-muted-foreground",
+                            )}
+                          >
+                            {pct > 0 ? "+" : ""}
+                            {pct}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Historical performance (separate from the live strength) */}
+                  {backtest && backtest.trades > 0 && (
+                    <Card className="border border-border">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-xs font-semibold">
+                          {t("dialog.historical")}
+                        </CardTitle>
+                        <CardAction className="self-center text-[10px] text-muted-foreground">
+                          {backtest.trades} {t("dialog.bt_trades")}
+                        </CardAction>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-4 divide-x divide-border">
+                          <HistoricalItem
+                            label={t("dialog.bt_win_rate")}
+                            value={`${Math.round(backtest.winRate * 100)}%`}
+                            color={
+                              backtest.winRate >= 0.5
+                                ? "text-emerald-400"
+                                : "text-rose-400"
+                            }
+                          />
+                          <HistoricalItem
+                            label={t("dialog.bt_expectancy")}
+                            value={`${backtest.expectancy.toFixed(2)}R`}
+                            color={
+                              backtest.expectancy > 0
+                                ? "text-emerald-400"
+                                : backtest.expectancy < 0
+                                  ? "text-rose-400"
+                                  : undefined
+                            }
+                          />
+                          <HistoricalItem
+                            label={t("dialog.bt_profit_factor")}
+                            value={
+                              Number.isFinite(backtest.profitFactor)
+                                ? backtest.profitFactor.toFixed(2)
+                                : "∞"
+                            }
+                            color={
+                              backtest.profitFactor >= 1
+                                ? "text-emerald-400"
+                                : "text-rose-400"
+                            }
+                          />
+                          <HistoricalItem
+                            label={t("dialog.bt_max_dd")}
+                            value={`${backtest.maxDrawdownR.toFixed(2)}R`}
+                          />
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <p className="w-full text-center text-[10px] leading-relaxed">
+                          {t("dialog.bt_note")}
+                        </p>
+                      </CardFooter>
+                    </Card>
+                  )}
+                </div>
+
+                <Separator className="bg-border" />
+
+                {/* Technical Indicators */}
+                <div className="px-6 py-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">
+                      {t("dialog.indicators")}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <IndicatorItem
+                      label="RSI (14)"
+                      value={outlook.indicators.rsi.toFixed(1)}
+                      status={
+                        outlook.indicators.rsi > 70
+                          ? "overbought"
+                          : outlook.indicators.rsi < 30
+                            ? "oversold"
+                            : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="EMA 20"
+                      value={formatPrice(
+                        outlook.indicators.ema20,
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="EMA 50"
+                      value={formatPrice(
+                        outlook.indicators.ema50,
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="MACD"
+                      value={outlook.indicators.macd.histogram.toFixed(2)}
+                      status={
+                        outlook.indicators.macd.histogram > 0
+                          ? "bullish"
+                          : "bearish"
+                      }
+                    />
+                    <IndicatorItem
+                      label="ADX"
+                      value={outlook.indicators.adx.toFixed(1)}
+                      status={
+                        outlook.indicators.adx > 25
+                          ? "bullish"
+                          : outlook.indicators.adx < 20
+                            ? "bearish"
+                            : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="ATR"
+                      value={formatPrice(
+                        outlook.indicators.atr,
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="StochRSI"
+                      value={outlook.indicators.stochRSI.toFixed(1)}
+                      status={
+                        outlook.indicators.stochRSI > 80
+                          ? "overbought"
+                          : outlook.indicators.stochRSI < 20
+                            ? "oversold"
+                            : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="BB %B"
+                      value={`${(outlook.indicators.bollingerBands.percentB * 100).toFixed(0)}%`}
+                      status={
+                        outlook.indicators.bollingerBands.percentB > 0.8
+                          ? "overbought"
+                          : outlook.indicators.bollingerBands.percentB < 0.2
+                            ? "oversold"
+                            : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="Support"
+                      value={formatPrice(
+                        outlook.indicators.support,
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="Resistance"
+                      value={formatPrice(
+                        outlook.indicators.resistance,
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="OBV Trend"
+                      value={
+                        outlook.indicators.obvTrend.charAt(0).toUpperCase() +
+                        outlook.indicators.obvTrend.slice(1)
+                      }
+                      status={
+                        outlook.indicators.obvTrend === "rising"
+                          ? "bullish"
+                          : outlook.indicators.obvTrend === "falling"
+                            ? "bearish"
+                            : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="Vol. Spike"
+                      value={outlook.indicators.volumeSpike ? "Yes" : "No"}
+                      status={
+                        outlook.indicators.volumeSpike ? "bullish" : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="RSI Diverg."
+                      value={
+                        outlook.indicators.rsiDivergence === "none"
+                          ? "None"
+                          : outlook.indicators.rsiDivergence === "bullish"
+                            ? "Bullish"
+                            : "Bearish"
+                      }
+                      status={
+                        outlook.indicators.rsiDivergence === "bullish"
+                          ? "bullish"
+                          : outlook.indicators.rsiDivergence === "bearish"
+                            ? "bearish"
+                            : "normal"
+                      }
+                    />
+                    <IndicatorItem
+                      label="Fib 0.618"
+                      value={formatPrice(
+                        outlook.indicators.fibLevels[0.618],
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="Swing High"
+                      value={formatPrice(
+                        outlook.indicators.recentSwingHigh,
+                        asset?.assetType,
+                      )}
+                    />
+                    <IndicatorItem
+                      label="Swing Low"
+                      value={formatPrice(
+                        outlook.indicators.recentSwingLow,
+                        asset?.assetType,
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="bg-border" />
               </>
-            )}
-
-            {/* Technical Indicators */}
-            <div className="px-6 py-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">
-                  {t("dialog.indicators")}
-                </h3>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <IndicatorItem
-                  label="RSI (14)"
-                  value={outlook.indicators.rsi.toFixed(1)}
-                  status={
-                    outlook.indicators.rsi > 70
-                      ? "overbought"
-                      : outlook.indicators.rsi < 30
-                        ? "oversold"
-                        : "normal"
-                  }
-                />
-                <IndicatorItem
-                  label="EMA 20"
-                  value={formatPrice(
-                    outlook.indicators.ema20,
-                    asset?.assetType,
-                  )}
-                />
-                <IndicatorItem
-                  label="EMA 50"
-                  value={formatPrice(
-                    outlook.indicators.ema50,
-                    asset?.assetType,
-                  )}
-                />
-                <IndicatorItem
-                  label="MACD"
-                  value={outlook.indicators.macd.histogram.toFixed(2)}
-                  status={
-                    outlook.indicators.macd.histogram > 0
-                      ? "bullish"
-                      : "bearish"
-                  }
-                />
-                <IndicatorItem
-                  label="ADX"
-                  value={outlook.indicators.adx.toFixed(1)}
-                  status={
-                    outlook.indicators.adx > 25
-                      ? "bullish"
-                      : outlook.indicators.adx < 20
-                        ? "bearish"
-                        : "normal"
-                  }
-                />
-                <IndicatorItem
-                  label="ATR"
-                  value={formatPrice(outlook.indicators.atr, asset?.assetType)}
-                />
-                <IndicatorItem
-                  label="StochRSI"
-                  value={outlook.indicators.stochRSI.toFixed(1)}
-                  status={
-                    outlook.indicators.stochRSI > 80
-                      ? "overbought"
-                      : outlook.indicators.stochRSI < 20
-                        ? "oversold"
-                        : "normal"
-                  }
-                />
-                <IndicatorItem
-                  label="BB %B"
-                  value={`${(outlook.indicators.bollingerBands.percentB * 100).toFixed(0)}%`}
-                  status={
-                    outlook.indicators.bollingerBands.percentB > 0.8
-                      ? "overbought"
-                      : outlook.indicators.bollingerBands.percentB < 0.2
-                        ? "oversold"
-                        : "normal"
-                  }
-                />
-                <IndicatorItem
-                  label="Support"
-                  value={formatPrice(
-                    outlook.indicators.support,
-                    asset?.assetType,
-                  )}
-                />
-                <IndicatorItem
-                  label="Resistance"
-                  value={formatPrice(
-                    outlook.indicators.resistance,
-                    asset?.assetType,
-                  )}
-                />
-                <IndicatorItem
-                  label="OBV Trend"
-                  value={
-                    outlook.indicators.obvTrend.charAt(0).toUpperCase() +
-                    outlook.indicators.obvTrend.slice(1)
-                  }
-                  status={
-                    outlook.indicators.obvTrend === "rising"
-                      ? "bullish"
-                      : outlook.indicators.obvTrend === "falling"
-                        ? "bearish"
-                        : "normal"
-                  }
-                />
-                <IndicatorItem
-                  label="Vol. Spike"
-                  value={outlook.indicators.volumeSpike ? "Yes" : "No"}
-                  status={outlook.indicators.volumeSpike ? "bullish" : "normal"}
-                />
-                <IndicatorItem
-                  label="RSI Diverg."
-                  value={
-                    outlook.indicators.rsiDivergence === "none"
-                      ? "None"
-                      : outlook.indicators.rsiDivergence === "bullish"
-                        ? "Bullish"
-                        : "Bearish"
-                  }
-                  status={
-                    outlook.indicators.rsiDivergence === "bullish"
-                      ? "bullish"
-                      : outlook.indicators.rsiDivergence === "bearish"
-                        ? "bearish"
-                        : "normal"
-                  }
-                />
-                <IndicatorItem
-                  label="Fib 0.618"
-                  value={formatPrice(
-                    outlook.indicators.fibLevels[0.618],
-                    asset?.assetType,
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator className="bg-border" />
 
             {/* Analysis */}
             <div className="px-6 py-5">
@@ -469,6 +655,27 @@ function PlanItem({
   );
 }
 
+function HistoricalItem({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center px-1 text-center">
+      <span className={cn("text-base font-bold text-mono-data", color)}>
+        {value}
+      </span>
+      <span className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function AnalysisItem({
   icon: Icon,
   title,
@@ -502,8 +709,8 @@ function IndicatorItem({
 }) {
   const statusColors: Record<string, string> = {
     bullish: "text-emerald-400",
-    bearish: "text-red-400",
-    overbought: "text-red-400",
+    bearish: "text-rose-400",
+    overbought: "text-rose-400",
     oversold: "text-emerald-400",
     normal: "text-foreground",
   };

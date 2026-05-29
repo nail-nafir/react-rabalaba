@@ -13,7 +13,7 @@ export function PercentageChange({ value, className }: PercentageChangeProps) {
     <span
       className={cn(
         'text-mono-data font-medium tabular-nums',
-        isPositive ? 'text-emerald-500' : isNeutral ? 'text-zinc-400' : 'text-rose-500',
+        isPositive ? 'text-emerald-400' : isNeutral ? 'text-zinc-400' : 'text-rose-400',
         className
       )}
     >

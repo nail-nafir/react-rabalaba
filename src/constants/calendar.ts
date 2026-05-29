@@ -11,13 +11,13 @@ export const IMPACT_LEVELS: Record<
   },
   high: {
     label: "High Impact",
-    color: "bg-red-500",
-    badge: "bg-red-500/10 text-red-500 border-red-500/20",
+    color: "bg-rose-500",
+    badge: "bg-rose-500/10 text-rose-500 border-rose-500/20",
   },
   medium: {
     label: "Medium Impact",
-    color: "bg-yellow-500",
-    badge: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+    color: "bg-amber-500",
+    badge: "bg-amber-500/10 text-amber-500 border-amber-500/20",
   },
   low: {
     label: "Low Impact",

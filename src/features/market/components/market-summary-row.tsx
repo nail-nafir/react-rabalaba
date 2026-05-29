@@ -83,9 +83,9 @@ export function MarketSummaryRow() {
                     className={cn(
                       "text-[10px] mt-6 font-bold text-mono-data uppercase tracking-tight",
                       fearGreed.change > 0
-                        ? "text-emerald-500"
+                        ? "text-emerald-400"
                         : fearGreed.change < 0
-                          ? "text-red-500"
+                          ? "text-rose-400"
                           : "text-muted-foreground",
                     )}
                   >
@@ -113,7 +113,7 @@ export function MarketSummaryRow() {
                       ? "bullish"
                       : idx.changePercent < -0.5
                         ? "bearish"
-                        : "neutral";
+                        : "sideways";
                   const formattedValue =
                     typeof idx.price === "number"
                       ? idx.price >= 1000

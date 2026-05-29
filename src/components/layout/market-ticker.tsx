@@ -120,7 +120,7 @@ export function MarketTicker({ showTitle = false }: { showTitle?: boolean }) {
                   item.change > 0
                     ? "text-emerald-400"
                     : item.change < 0
-                      ? "text-red-400"
+                      ? "text-rose-400"
                       : "text-zinc-400",
                 )}
               >

@@ -37,12 +37,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { ConfidenceMeter } from "@/components/shared/confidence-meter";
+import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SkeletonTableRow } from "@/components/shared/skeleton-card";
 import { MiniSparkline } from "@/components/charts/mini-sparkline";
 import { FilterBar } from "./filter-bar";
-import { TIER_COLORS, SIGNAL_COLORS } from "@/constants/signals";
+import { TIER_COLORS, SIGNAL_COLORS, SIGNAL_LABELS } from "@/constants/signals";
 import { useUIStore } from "@/store/ui-store";
 import { useFilterStore } from "@/store/filter-store";
 import { useFavoriteStore } from "@/store/favorite-store";
@@ -326,20 +326,20 @@ export function AssetTable() {
         },
       },
       {
-        accessorKey: "confidence",
+        accessorKey: "strength",
         header: ({ column }) => (
           <Button
             variant="link"
             onClick={() => column.toggleSorting()}
             className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
           >
-            {t("table.confidence")} <SortIcon column={column} />
+            {t("table.strength")} <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => {
           return row.original.outlook ? (
-            <ConfidenceMeter
-              value={row.original.outlook.confidence}
+            <SignalStrengthMeter
+              value={row.original.outlook.strength}
               size="sm"
             />
           ) : (
@@ -398,7 +398,7 @@ export function AssetTable() {
                 colors.border,
               )}
             >
-              {signal}
+              {SIGNAL_LABELS[signal]}
             </Badge>
           );
         },
@@ -443,8 +443,8 @@ export function AssetTable() {
             {t("terminal.screener")}
           </h2>
           {hasAccess && (
-            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px] font-bold animate-shimmer rounded-md">
-              <Sparkles className="h-2.5 w-2.5 fill-emerald-400/50" />
+            <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] font-bold animate-shimmer rounded-md">
+              <Sparkles className="h-2.5 w-2.5 fill-primary/50" />
               PREMIUM
             </Badge>
           )}

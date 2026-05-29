@@ -7,6 +7,9 @@ export interface SignalProfile {
   longThreshold: number;
   /** Weighted score must drop below this to emit a SHORT signal. */
   shortThreshold: number;
+  /** Regime-weighted directionScore (|value| in 0..1) required to emit a
+   *  directional signal. Replaces the legacy flat-score thresholds. */
+  directionThreshold: number;
 }
 
 export interface TimeframePreset {
@@ -31,6 +34,7 @@ export const TIMEFRAME_PRESETS = {
       minCandles: 120,
       longThreshold: 3.75,
       shortThreshold: -3.75,
+      directionThreshold: 0.4,
     },
   },
   /** Swing trading (DEFAULT) — 1-hour candles give decent trend resolution.
@@ -45,6 +49,7 @@ export const TIMEFRAME_PRESETS = {
       minCandles: 120,
       longThreshold: 3.25,
       shortThreshold: -3.25,
+      directionThreshold: 0.3,
     },
   },
   /** Position trading — daily candles are smoother but each bar represents
@@ -59,6 +64,7 @@ export const TIMEFRAME_PRESETS = {
       minCandles: 120,
       longThreshold: 3.25,
       shortThreshold: -3.25,
+      directionThreshold: 0.3,
     },
   },
 } as const satisfies Record<string, TimeframePreset>;

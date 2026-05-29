@@ -136,7 +136,7 @@ export function AddTickerDialog({ open, onOpenChange }: AddTickerDialogProps) {
                       className={cn(
                         "h-10 text-sm bg-background border-input focus:ring-primary/20 focus:border-primary transition-all shadow-sm uppercase pr-10",
                         fieldState.invalid &&
-                          "border-red-500 focus:ring-red-500/20 focus:border-red-500",
+                          "border-rose-500 focus:ring-rose-500/20 focus:border-rose-500",
                       )}
                       autoFocus
                       autoComplete="off"

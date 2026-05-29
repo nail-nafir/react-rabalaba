@@ -7,11 +7,22 @@ import type {
 import { computeSignal, createUnavailableSignal } from "@/features/signals/engine/signal-engine";
 import type { Outlook } from "@/features/signals/engine/signal-engine";
 import { resolveTimeframePreset } from "@/constants/timeframes";
+import type { TimeframePresetKey } from "@/constants/timeframes";
 import { computeTradingPlan } from "@/features/signals/engine/trading-plan";
 import {
   buildSignalSeriesFromCandles,
   normalizeYahooCandles,
+  resampleCandles,
+  deriveCandleTrend,
 } from "./yahoo-candles";
+
+/** Higher-timeframe resample factor per active timeframe (no extra fetch):
+ *  scalp 5m→1h (×12), swing 1h→4h (×4), position 1d→~1w (×5 trading days). */
+const HTF_RESAMPLE_FACTOR: Record<TimeframePresetKey, number> = {
+  scalp: 12,
+  swing: 4,
+  position: 5,
+};
 
 function detectAssetType(symbol: string, instrumentType?: string): AssetType {
   const sym = symbol.toUpperCase();
@@ -68,14 +79,26 @@ export function adaptYahooChart(
 
   if (candles.length > 0) {
     const signalSeries = buildSignalSeriesFromCandles(candles);
+    const timeframeKey = resolveTimeframePreset(
+      meta.range,
+      meta.dataGranularity,
+    );
+
+    // Multi-timeframe confirmation: derive the higher-timeframe trend by
+    // resampling the already-fetched candles (no extra network request).
+    const htfFactor = HTF_RESAMPLE_FACTOR[timeframeKey];
+    const higherTimeframeTrend = deriveCandleTrend(
+      resampleCandles(candles, htfFactor),
+    );
 
     // Compute signal from complete, index-aligned candles. The engine itself
     // decides whether the sample is deep enough for an actionable LONG/SHORT.
     outlook = computeSignal({
       ...signalSeries,
       assetType,
-      timeframe: resolveTimeframePreset(meta.range, meta.dataGranularity),
+      timeframe: timeframeKey,
       fearGreedValue,
+      higherTimeframeTrend,
     });
 
     if (outlook.signal !== "neutral") {

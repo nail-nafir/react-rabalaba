@@ -147,7 +147,7 @@
     },
     "sentiment": {
       "title": "Long/Short Sentiment",
-      "description": "Analyze rule-based buy and sell signals with transparent confidence scores. Let the data speak for itself."
+      "description": "Analyze rule-based buy and sell signals with transparent signal-strength scores — decision support, not predictions. Let the data speak for itself."
     },
     "trading_plan": {
       "title": "Trading Plan Setup",
@@ -189,7 +189,7 @@
     "add_ticker_dialog_title": "Add Ticker to Favorites",
     "add_ticker_dialog_desc": "Enter a valid market symbol (e.g. AAPL, BBCA.JK, BTC-USD).",
     "access_dialog_title": "Unlock Premium Access",
-    "access_dialog_desc": "This feature requires premium access. Please enter your access code below to unlock.",
+    "access_dialog_desc": "This feature is for premium members only. Drop the access code below to unlock it.",
     "access_dialog_placeholder": "Enter access code (e.g. 1453)...",
     "access_dialog_no_access": "Don't have an access code?",
     "access_dialog_no_access_link": "Get access",
@@ -248,7 +248,7 @@
     "volume": "Volume",
     "trend": "Trend",
     "signal": "Signal",
-    "confidence": "Confidence",
+    "strength": "Strength",
     "tier": "Tier",
     "risk": "Risk",
     "page": "Page",
@@ -275,13 +275,30 @@
     "not_enough_data": "Not enough data to compute signal. Try a different asset.",
     "loading": "Loading chart data for signal computation...",
     "trading_plan": "Trading Plan",
+    "no_setup": "No actionable trade setup right now, signal is neutral.",
     "analysis": "Analysis",
     "indicators": "Technical Indicators",
     "signal_result": "Signal Result",
     "trend": "Trend",
     "volume": "Volume",
     "momentum": "Momentum",
-    "sentiment": "Sentiment"
+    "sentiment": "Sentiment",
+    "decision_support": "Supporting Evidence",
+    "regime_trending": "Trending",
+    "regime_ranging": "Ranging",
+    "regime_high_volatility": "High Volatility",
+    "regime_low_volatility": "Low Vol / Squeeze",
+    "cat_trend": "Trend",
+    "cat_momentum": "Momentum",
+    "cat_volatility": "Volatility",
+    "cat_volume": "Volume",
+    "historical": "Historical Performance",
+    "bt_trades": "Trades",
+    "bt_win_rate": "Win Rate",
+    "bt_expectancy": "Expectancy (avg R)",
+    "bt_profit_factor": "Profit Factor",
+    "bt_max_dd": "Max Drawdown (R)",
+    "bt_note": "Walk-forward simulation on past candles only. Past performance does not guarantee future results."
   },
   "disclaimer": {
     "title": "Know The Risks",

@@ -553,3 +553,85 @@ export function calculateFibLevels(high: number, low: number): {
   };
 }
 
+/**
+ * Market regime classification (Layer 1).
+ *
+ * Distinguishes the four behavioral states so the engine can weight indicator
+ * categories appropriately and avoid trading chop:
+ * - low_volatility  → compression/squeeze (weak ADX + tight Bollinger bands)
+ * - trending        → strong directional move (ADX >= strong-trend threshold)
+ * - high_volatility → non-directional volatility expansion (ATR% elevated)
+ * - ranging         → default: weak trend, normal volatility
+ *
+ * Trending takes priority over high_volatility so a clean strong trend is not
+ * mislabeled; squeeze takes priority over everything because it is a no-trade
+ * pre-breakout state.
+ */
+export function classifyRegime(params: {
+  adx: number;
+  atrPercent: number;
+  bbBandwidthPercent: number;
+  strongAdx: number;
+  highVolAtrPercent: number;
+  squeezeBandwidthPercent: number;
+  squeezeMaxAdx: number;
+}): "trending" | "ranging" | "high_volatility" | "low_volatility" {
+  const {
+    adx,
+    atrPercent,
+    bbBandwidthPercent,
+    strongAdx,
+    highVolAtrPercent,
+    squeezeBandwidthPercent,
+    squeezeMaxAdx,
+  } = params;
+
+  const isSqueeze =
+    bbBandwidthPercent > 0 &&
+    bbBandwidthPercent < squeezeBandwidthPercent &&
+    adx < squeezeMaxAdx;
+  if (isSqueeze) return "low_volatility";
+
+  if (adx >= strongAdx) return "trending";
+  if (atrPercent >= highVolAtrPercent) return "high_volatility";
+  return "ranging";
+}
+
+/**
+ * Detect the most recent structural swing high/low via 3-bar fractal pivots
+ * within a lookback window. Structure-based levels are more meaningful for
+ * stop/target placement than a textbook pivot, especially for crypto. Falls
+ * back to the window extremes when no fractal pivot is found.
+ */
+export function detectSwingLevels(
+  highs: number[],
+  lows: number[],
+  lookback = 50,
+): { swingHigh: number; swingLow: number } {
+  const n = Math.min(highs.length, lows.length);
+  if (n === 0) return { swingHigh: 0, swingLow: 0 };
+  if (n < 5) return { swingHigh: highs[n - 1], swingLow: lows[n - 1] };
+
+  const start = Math.max(1, n - lookback);
+  let swingHigh = 0;
+  let swingLow = 0;
+  let foundHigh = false;
+  let foundLow = false;
+
+  // Walk forward keeping the most recent pivot (later pivots overwrite earlier).
+  for (let i = start; i < n - 1; i++) {
+    if (highs[i] >= highs[i - 1] && highs[i] >= highs[i + 1]) {
+      swingHigh = highs[i];
+      foundHigh = true;
+    }
+    if (lows[i] <= lows[i - 1] && lows[i] <= lows[i + 1]) {
+      swingLow = lows[i];
+      foundLow = true;
+    }
+  }
+
+  if (!foundHigh) swingHigh = Math.max(...highs.slice(start));
+  if (!foundLow) swingLow = Math.min(...lows.slice(start));
+  return { swingHigh, swingLow };
+}
+

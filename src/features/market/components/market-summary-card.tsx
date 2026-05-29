@@ -4,7 +4,6 @@ import { PercentageChange } from "@/components/shared/percentage-change";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import type { TrendDirection } from "@/types/market";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface MarketSummaryCardProps {
   name: string;
@@ -14,12 +13,6 @@ interface MarketSummaryCardProps {
   sparkline?: number[];
   className?: string;
 }
-
-const TREND_STYLES: Record<TrendDirection, string> = {
-  bullish: "bg-emerald-500/10 text-emerald-400",
-  bearish: "bg-red-500/10 text-red-400",
-  neutral: "bg-zinc-500/10 text-zinc-400",
-};
 
 export function MarketSummaryCard({
   name,
@@ -40,15 +33,7 @@ export function MarketSummaryCard({
         <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           {name}
         </CardTitle>
-        <Badge
-          variant="outline"
-          className={cn(
-            "font-bold uppercase tracking-wider text-[10px] border-transparent rounded-md",
-            TREND_STYLES[trend],
-          )}
-        >
-          {trend}
-        </Badge>
+        <TrendIndicator trend={trend} />
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col">
@@ -57,13 +42,7 @@ export function MarketSummaryCard({
         </div>
 
         <div className="flex items-center justify-between mt-auto pt-2">
-          <div className="flex items-center gap-2">
-            <TrendIndicator trend={trend} showLabel={false} />
-            <PercentageChange
-              value={change}
-              className="text-xs font-semibold"
-            />
-          </div>
+          <PercentageChange value={change} className="text-xs font-semibold" />
           {sparkline && sparkline.length > 1 && (
             <MiniSparkline data={sparkline} width={60} height={20} />
           )}

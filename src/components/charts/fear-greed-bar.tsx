@@ -10,11 +10,11 @@ export function FearGreedBar({ value, label, className }: FearGreedBarProps) {
   const clampedValue = Math.min(100, Math.max(0, value));
 
   const getColor = () => {
-    if (clampedValue <= 20) return "#ef4444"; // Extreme Fear
+    if (clampedValue <= 20) return "#f43f5e"; // Extreme Fear (rose-500)
     if (clampedValue <= 40) return "#f97316"; // Fear
-    if (clampedValue <= 60) return "#eab308"; // Neutral
+    if (clampedValue <= 60) return "#f59e0b"; // Neutral (amber-500)
     if (clampedValue <= 80) return "#84cc16"; // Greed
-    return "#22c55e"; // Extreme Greed
+    return "#10b981"; // Extreme Greed (emerald-500)
   };
 
   const getLabel = () => {
@@ -45,7 +45,7 @@ export function FearGreedBar({ value, label, className }: FearGreedBarProps) {
 
       <div className="relative h-2.5 w-full rounded-md bg-muted/20 overflow-hidden border border-border">
         {/* Gradient Background */}
-        <div className="absolute inset-0 bg-linear-to-r from-red-500 via-yellow-500 to-emerald-500 opacity-30" />
+        <div className="absolute inset-0 bg-linear-to-r from-rose-500 via-amber-500 to-emerald-500 opacity-30" />
 
         {/* Indicator Line */}
         <div

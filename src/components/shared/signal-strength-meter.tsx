@@ -1,30 +1,30 @@
 import { cn } from "@/lib/utils";
 
-interface ConfidenceMeterProps {
-  value: number; // 0-100
+interface SignalStrengthMeterProps {
+  value: number; // 0-100 technical alignment, NOT a probability of profit
   size?: "sm" | "md" | "lg";
   showLabel?: boolean;
   className?: string;
 }
 
-export function ConfidenceMeter({
+export function SignalStrengthMeter({
   value,
   size = "md",
   showLabel = true,
   className,
-}: ConfidenceMeterProps) {
+}: SignalStrengthMeterProps) {
   const clampedValue = Math.min(100, Math.max(0, value));
 
   const getColor = () => {
     if (clampedValue >= 80) return "text-emerald-400";
-    if (clampedValue >= 60) return "text-yellow-400";
-    return "text-red-400";
+    if (clampedValue >= 60) return "text-amber-400";
+    return "text-rose-400";
   };
 
   const getBarColor = () => {
     if (clampedValue >= 80) return "bg-emerald-400";
-    if (clampedValue >= 60) return "bg-yellow-400";
-    return "bg-red-400";
+    if (clampedValue >= 60) return "bg-amber-400";
+    return "bg-rose-400";
   };
 
   const sizeClasses = {

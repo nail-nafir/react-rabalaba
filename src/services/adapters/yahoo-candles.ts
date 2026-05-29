@@ -1,4 +1,7 @@
 import type { YahooQuoteIndicators } from "@/types/asset";
+import type { TrendDirection } from "@/types/market";
+import { calculateEMA, calculateDMI } from "@/features/signals/engine/indicators";
+import { SIGNAL_THRESHOLDS } from "@/constants/signals";
 
 export interface NormalizedYahooCandle {
   open: number;
@@ -94,4 +97,59 @@ export function buildSignalSeriesFromCandles(
         ? Math.min(...recentCandles.map((candle) => candle.low))
         : 0,
   };
+}
+
+/**
+ * Resample candles into a higher timeframe by bucketing `factor` consecutive
+ * candles into one (open=first, high=max, low=min, close=last, volume=sum).
+ * Used for multi-timeframe confirmation without an extra network fetch.
+ * A trailing partial bucket is included so the latest HTF state is reflected.
+ */
+export function resampleCandles(
+  candles: NormalizedYahooCandle[],
+  factor: number,
+): NormalizedYahooCandle[] {
+  if (factor <= 1 || candles.length === 0) return candles;
+
+  const result: NormalizedYahooCandle[] = [];
+  for (let i = 0; i < candles.length; i += factor) {
+    const bucket = candles.slice(i, i + factor);
+    result.push({
+      open: bucket[0].open,
+      high: Math.max(...bucket.map((c) => c.high)),
+      low: Math.min(...bucket.map((c) => c.low)),
+      close: bucket[bucket.length - 1].close,
+      volume: bucket.reduce((sum, c) => sum + c.volume, 0),
+      timestamp: bucket[bucket.length - 1].timestamp,
+    });
+  }
+  return result;
+}
+
+/**
+ * Derive a coarse trend direction from a candle series using EMA alignment and
+ * DMI sign — the same logic the engine uses for its own trend, applied to a
+ * higher timeframe for multi-timeframe confirmation.
+ */
+export function deriveCandleTrend(
+  candles: NormalizedYahooCandle[],
+): TrendDirection {
+  if (candles.length < 50) return "sideways";
+
+  const closes = candles.map((c) => c.close);
+  const highs = candles.map((c) => c.high);
+  const lows = candles.map((c) => c.low);
+  const close = closes[closes.length - 1];
+  const ema20 = calculateEMA(closes, 20);
+  const ema50 = calculateEMA(closes, 50);
+  const dmi = calculateDMI(highs, lows, closes);
+
+  if (dmi.adx < SIGNAL_THRESHOLDS.ADX_WEAK_TREND) return "sideways";
+  if (close > ema20 && ema20 > ema50 && dmi.plusDI > dmi.minusDI) {
+    return "bullish";
+  }
+  if (close < ema20 && ema20 < ema50 && dmi.minusDI > dmi.plusDI) {
+    return "bearish";
+  }
+  return "sideways";
 }

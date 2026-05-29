@@ -12,6 +12,8 @@ import {
   calculateRSISeries,
   detectRSIDivergence,
   calculateFibLevels,
+  classifyRegime,
+  detectSwingLevels,
 } from "./indicators";
 import type {
   AssetType,
@@ -19,17 +21,21 @@ import type {
   SignalTier,
   RiskLevel,
 } from "@/types/asset";
-import type { TrendDirection } from "@/types/market";
+import type { TrendDirection, MarketRegime } from "@/types/market";
 import {
   SIGNAL_THRESHOLDS,
   SIGNAL_WEIGHTS,
   TIER_THRESHOLDS,
   RISK_RULES,
+  REGIME_THRESHOLDS,
+  CATEGORY_MAX_SCORE,
+  CATEGORY_BASE_WEIGHTS,
+  REGIME_WEIGHT_MULTIPLIERS,
+  DIRECTION_OVERRIDE_SCORE,
 } from "@/constants/signals";
 import {
   TIMEFRAME_PRESETS,
   type TimeframePresetKey,
-  type SignalProfile,
 } from "@/constants/timeframes";
 
 export interface SignalInput {
@@ -42,6 +48,10 @@ export interface SignalInput {
   fearGreedValue?: number; // 0-100
   assetType?: AssetType; // used for conservative volatility/risk thresholds
   timeframe?: TimeframePresetKey; // active signal profile; default is "swing"
+  /** Higher-timeframe trend for multi-timeframe confirmation (Layer 2). When
+   *  it agrees with the setup, conviction is boosted; when it conflicts, the
+   *  direction score is downgraded to reduce whipsaw. */
+  higherTimeframeTrend?: TrendDirection;
 }
 
 export interface SignalReasons {
@@ -54,16 +64,33 @@ export interface SignalDataQuality {
   candleCount: number;
   ready: boolean;
   missingVolume: boolean;
+  /** False when too many recent candles have zero/missing volume. When false,
+   *  OBV and volume-spike confirmation are disabled to avoid noise. */
+  volumeReliable: boolean;
 }
 
 export interface Outlook {
   signal: SignalDirection;
-  confidence: number;
+  /** Technical alignment strength 0-100. NOT a probability of profit. */
+  strength: number;
+  /** Qualitative label for strength. */
+  technicalAlignment: "strong" | "moderate" | "weak";
   tier: SignalTier;
   risk: RiskLevel;
   trend: TrendDirection;
-  score: number;
-  maxScore: number;
+  regime: MarketRegime;
+  /** Higher-timeframe trend used for confirmation (Layer 2). */
+  higherTimeframeTrend: TrendDirection;
+  /** Net regime-weighted alignment in [-1..1]. Sign = direction, magnitude =
+   *  conviction. NOT a probability of profit. */
+  directionScore: number;
+  /** Per-category alignment in [-1..1] (de-correlated indicator groups). */
+  categoryScores: {
+    trend: number;
+    momentum: number;
+    volatility: number;
+    volume: number;
+  };
   reasons: SignalReasons;
   dataQuality: SignalDataQuality;
   indicators: {
@@ -75,6 +102,8 @@ export interface Outlook {
     volumeSpike: boolean;
     support: number;
     resistance: number;
+    recentSwingHigh: number;
+    recentSwingLow: number;
     bollingerBands: {
       upper: number;
       middle: number;
@@ -101,29 +130,32 @@ const EMPTY_BOLLINGER = { upper: 0, middle: 0, lower: 0, percentB: 0.5 };
 const EMPTY_FIB_LEVELS = { 0.382: 0, 0.5: 0, 0.618: 0 };
 
 /**
- * Enhanced rule-based signal engine with weighted scoring.
+ * Rule-based decision-support engine — a 5-layer pipeline, not a flat indicator
+ * vote. Correlated indicators are grouped into categories so trend is not
+ * counted multiple times across EMA/MACD/ADX.
  *
- * Scoring system (weighted):
- * - EMA alignment:    ±1.5 (primary trend — most reliable)
- * - MACD crossover:   ±1.0 (momentum confirmation)
- * - RSI extremes:     ±1.0 (overbought/oversold zones)
- * - ADX trend:        ±1.0 (confirms trend exists vs ranging)
- * - Volume spike:     ±0.75 (participation confirmation)
- * - Bollinger Bands:  ±0.75 (volatility context)
- * - Stochastic RSI:   ±0.5 (fine-grained momentum)
- * - OBV direction:    ±0.5 (volume-price agreement)
- * - RSI Divergence:   ±1.0 (reversal "edge")
- * - Fibonacci 0.618:  ±1.0 (Golden Pocket bounce)
+ * Pipeline:
+ * - Volume gate     → disable OBV/spike when volume data is unreliable
+ * - Layer 1 Regime  → trending / ranging / high_volatility / low_volatility
+ * - Chop filter     → force NEUTRAL in a low-volatility squeeze
+ * - Layer 2 Bias    → EMA + DMI direction
+ * - Layer 3 Momentum→ MACD / RSI / StochRSI / OBV / divergence
+ * - Layer 4 Risk    → ATR / volatility context
+ * - Layer 5 Score   → category scores [-1..1] × regime weights → directionScore
  *
- * MAX_SCORE = 9.0
- * Conservative default:
- * - Total ≥ 3.25 → LONG, Total ≤ -3.25 → SHORT, else NEUTRAL
- * - Confidence = signal conviction, not probability of profit
+ * Categories (each normalized to [-1..1]):
+ * - TREND      = EMA + MACD + ADX
+ * - MOMENTUM   = RSI + StochRSI + RSI divergence
+ * - VOLATILITY = Bollinger + Fibonacci
+ * - VOLUME     = OBV + volume spike (dropped when unreliable; weights renormalize)
  *
- * Important trading note:
- * The engine is a technical screener, not an execution system. It stays
- * neutral when data quality is poor because a false sense of precision is more
- * dangerous than a missed setup.
+ * directionScore ∈ [-1..1]; |directionScore| ≥ profile.directionThreshold emits
+ * LONG/SHORT. strength = round(|directionScore| × 100) — pure technical
+ * alignment, NOT a probability of profit (historical win-rate is reported
+ * separately by the backtester).
+ *
+ * The engine is a screener, not an execution system. It stays neutral when data
+ * quality is poor because false precision is more dangerous than a missed setup.
  */
 export function computeSignal(input: SignalInput): Outlook {
   const {
@@ -136,6 +168,7 @@ export function computeSignal(input: SignalInput): Outlook {
     fearGreedValue,
     assetType,
     timeframe = "swing",
+    higherTimeframeTrend = "sideways",
   } = input;
 
   const close = prices[prices.length - 1];
@@ -150,10 +183,25 @@ export function computeSignal(input: SignalInput): Outlook {
     lowPrices.length,
   );
   const hasVolumeData = volumes.some((v) => v > 0);
+
+  // Volume reliability: crypto feeds often return volume:0, which fakes spikes
+  // and corrupts OBV. Measure the zero-volume share over a recent window and
+  // disable volume confirmation when it is too high.
+  const volumeWindow = volumes.slice(
+    -Math.min(volumes.length, SIGNAL_THRESHOLDS.VOLUME_RELIABILITY_WINDOW),
+  );
+  const zeroVolumeRatio =
+    volumeWindow.length > 0
+      ? volumeWindow.filter((v) => !(v > 0)).length / volumeWindow.length
+      : 1;
+  const volumeReliable =
+    hasVolumeData && zeroVolumeRatio <= SIGNAL_THRESHOLDS.ZERO_VOLUME_MAX_RATIO;
+
   const dataQuality: SignalDataQuality = {
     candleCount,
     ready: candleCount >= profile.minCandles,
     missingVolume: !hasVolumeData,
+    volumeReliable,
   };
 
   const reasons: SignalReasons = {
@@ -171,6 +219,10 @@ export function computeSignal(input: SignalInput): Outlook {
     reasons.warnings.push(
       "Volume data unavailable; volume confirmation and OBV are disabled.",
     );
+  } else if (!volumeReliable) {
+    reasons.warnings.push(
+      `Volume data unreliable (${Math.round(zeroVolumeRatio * 100)}% of recent candles report zero volume); OBV and volume-spike confirmation are disabled.`,
+    );
   }
 
   // ─── Calculate core indicators ───────────────────────────
@@ -179,11 +231,11 @@ export function computeSignal(input: SignalInput): Outlook {
   const ema50 = calculateEMA(prices, 50);
   const macd = calculateMACD(prices);
 
-  // Volume analysis (skip if no volume data available)
-  const volumeMA = hasVolumeData ? calculateSMA(volumes, 20) : 0;
+  // Volume analysis (skip when volume data is missing or unreliable)
+  const volumeMA = volumeReliable ? calculateSMA(volumes, 20) : 0;
   const currentVolume = volumes[volumes.length - 1] ?? 0;
   const volumeSpike =
-    hasVolumeData &&
+    volumeReliable &&
     volumeMA > 0 &&
     currentVolume > volumeMA * SIGNAL_THRESHOLDS.VOLUME_SPIKE_MULTIPLIER;
 
@@ -199,6 +251,10 @@ export function computeSignal(input: SignalInput): Outlook {
     close,
   );
 
+  // Structure-based swing levels (fractal pivots) for adaptive SL/TP.
+  const { swingHigh: recentSwingHigh, swingLow: recentSwingLow } =
+    detectSwingLevels(highPrices, lowPrices);
+
   // ─── Calculate pro indicators ────────────────────────────
   const bollingerBands = calculateBollingerBands(
     prices,
@@ -211,12 +267,29 @@ export function computeSignal(input: SignalInput): Outlook {
   const dmi = calculateDMI(highPrices, lowPrices, prices);
   const adx = dmi.adx;
   const atr = calculateATR(highPrices, lowPrices, prices);
-  const obvTrend = hasVolumeData
+  const obvTrend = volumeReliable
     ? calculateOBVTrend(prices, volumes)
     : ("flat" as const);
 
   const rsiSeries = calculateRSISeries(prices);
   const rsiDivergence = detectRSIDivergence(prices, rsiSeries);
+
+  // ─── Layer 1: Market regime ──────────────────────────────
+  const atrPercent = close > 0 ? (atr / close) * 100 : 0;
+  const bbBandwidthPercent =
+    bollingerBands.middle > 0
+      ? ((bollingerBands.upper - bollingerBands.lower) / bollingerBands.middle) *
+        100
+      : 0;
+  const regime = classifyRegime({
+    adx,
+    atrPercent,
+    bbBandwidthPercent,
+    strongAdx: SIGNAL_THRESHOLDS.ADX_STRONG_TREND,
+    highVolAtrPercent: getAtrRiskThresholds(assetType).high,
+    squeezeBandwidthPercent: REGIME_THRESHOLDS.SQUEEZE_BANDWIDTH_PERCENT,
+    squeezeMaxAdx: REGIME_THRESHOLDS.SQUEEZE_MAX_ADX,
+  });
 
   // Fibonacci Retracement (using a 50-period window for key swing points)
   const fibWindow = prices.slice(-50);
@@ -231,13 +304,13 @@ export function computeSignal(input: SignalInput): Outlook {
 
   let trend: TrendDirection;
   if (adx < SIGNAL_THRESHOLDS.ADX_WEAK_TREND) {
-    trend = "neutral";
+    trend = "sideways";
   } else if (emaBullish && dmiBullish) {
     trend = "bullish";
   } else if (emaBearish && dmiBearish) {
     trend = "bearish";
   } else {
-    trend = "neutral";
+    trend = "sideways";
     if (adx > SIGNAL_THRESHOLDS.ADX_STRONG_TREND) {
       reasons.warnings.push(
         `ADX is strong at ${adx.toFixed(1)}, but EMA and DMI direction do not agree.`,
@@ -252,34 +325,40 @@ export function computeSignal(input: SignalInput): Outlook {
     fibDirection,
   );
 
-  // ─── Weighted score calculation ──────────────────────────
-  let score = 0;
+  // ─── Category score accumulation (raw, signed) ───────────
+  // Each indicator contributes to exactly ONE category. Correlated indicators
+  // (EMA/MACD/ADX all measure trend) therefore cannot inflate conviction by
+  // being counted multiple times — they are normalized within their category.
+  let trendRaw = 0;
+  let momentumRaw = 0;
+  let volatilityRaw = 0;
+  let volumeRaw = 0;
 
   // 1. EMA Alignment (weight: 1.5)
   if (emaBullish) {
-    score += SIGNAL_WEIGHTS.EMA_ALIGNMENT;
+    trendRaw += SIGNAL_WEIGHTS.EMA_ALIGNMENT;
     reasons.bullish.push(
       "Price above EMA20 > EMA50 (strong bullish alignment)",
     );
   } else if (emaBearish) {
-    score -= SIGNAL_WEIGHTS.EMA_ALIGNMENT;
+    trendRaw -= SIGNAL_WEIGHTS.EMA_ALIGNMENT;
     reasons.bearish.push(
       "Price below EMA20 < EMA50 (strong bearish alignment)",
     );
   } else if (close > ema20 && ema20 < ema50) {
-    score += SIGNAL_WEIGHTS.EMA_ALIGNMENT * 0.33;
+    trendRaw += SIGNAL_WEIGHTS.EMA_ALIGNMENT * 0.33;
     reasons.bullish.push("Price above EMA20 but below EMA50 (early recovery)");
   } else if (close < ema20 && ema20 > ema50) {
-    score -= SIGNAL_WEIGHTS.EMA_ALIGNMENT * 0.33;
+    trendRaw -= SIGNAL_WEIGHTS.EMA_ALIGNMENT * 0.33;
     reasons.bearish.push("Price below EMA20 but above EMA50 (early weakness)");
   }
 
   // 2. MACD (weight: 1.0)
   if (macd.histogram > 0 && macd.macdLine > macd.signalLine) {
-    score += SIGNAL_WEIGHTS.MACD;
+    trendRaw += SIGNAL_WEIGHTS.MACD;
     reasons.bullish.push("MACD bullish (histogram positive, MACD > signal)");
   } else if (macd.histogram < 0 && macd.macdLine < macd.signalLine) {
-    score -= SIGNAL_WEIGHTS.MACD;
+    trendRaw -= SIGNAL_WEIGHTS.MACD;
     reasons.bearish.push("MACD bearish (histogram negative, MACD < signal)");
   }
 
@@ -288,24 +367,24 @@ export function computeSignal(input: SignalInput): Outlook {
   // signal by itself, and oversold in a strong downtrend is not a blind buy.
   if (rsi < SIGNAL_THRESHOLDS.RSI_OVERSOLD) {
     if (emaBearish && adx > SIGNAL_THRESHOLDS.ADX_STRONG_TREND) {
-      score -= SIGNAL_WEIGHTS.RSI * 0.5;
+      momentumRaw -= SIGNAL_WEIGHTS.RSI * 0.5;
       reasons.bearish.push(
         `RSI oversold at ${rsi.toFixed(1)} in strong downtrend — bearish continuation risk`,
       );
     } else {
-      score += SIGNAL_WEIGHTS.RSI;
+      momentumRaw += SIGNAL_WEIGHTS.RSI;
       reasons.bullish.push(
         `RSI oversold at ${rsi.toFixed(1)} — potential reversal zone`,
       );
     }
   } else if (rsi > SIGNAL_THRESHOLDS.RSI_OVERBOUGHT) {
     if (emaBullish && adx > SIGNAL_THRESHOLDS.ADX_STRONG_TREND) {
-      score += SIGNAL_WEIGHTS.RSI * 0.25;
+      momentumRaw += SIGNAL_WEIGHTS.RSI * 0.25;
       reasons.bullish.push(
         `RSI elevated at ${rsi.toFixed(1)} in strong uptrend — momentum can stay extended`,
       );
     } else {
-      score -= SIGNAL_WEIGHTS.RSI;
+      momentumRaw -= SIGNAL_WEIGHTS.RSI;
       reasons.bearish.push(
         `RSI overbought at ${rsi.toFixed(1)} — overextended`,
       );
@@ -315,12 +394,12 @@ export function computeSignal(input: SignalInput): Outlook {
   // 4. ADX Trend Strength (weight: 1.0)
   if (adx > SIGNAL_THRESHOLDS.ADX_STRONG_TREND) {
     if (trend === "bullish") {
-      score += SIGNAL_WEIGHTS.ADX_TREND;
+      trendRaw += SIGNAL_WEIGHTS.ADX_TREND;
       reasons.bullish.push(
         `ADX at ${adx.toFixed(1)} with +DI above -DI confirms strong bullish trend`,
       );
     } else if (trend === "bearish") {
-      score -= SIGNAL_WEIGHTS.ADX_TREND;
+      trendRaw -= SIGNAL_WEIGHTS.ADX_TREND;
       reasons.bearish.push(
         `ADX at ${adx.toFixed(1)} with -DI above +DI confirms strong bearish trend`,
       );
@@ -330,17 +409,17 @@ export function computeSignal(input: SignalInput): Outlook {
   // 5. Volume Spike (weight: 0.75)
   // Volume spike follows the latest candle direction instead of blindly
   // amplifying whatever the current score already says.
-  if (hasVolumeData && volumeSpike) {
+  if (volumeReliable && volumeSpike) {
     const previousClose = prices[prices.length - 2] ?? close;
     const volumeRatio = currentVolume / volumeMA;
 
     if (close > previousClose) {
-      score += SIGNAL_WEIGHTS.VOLUME_SPIKE;
+      volumeRaw += SIGNAL_WEIGHTS.VOLUME_SPIKE;
       reasons.bullish.push(
         `Volume spike (${volumeRatio.toFixed(1)}x avg) confirms buying pressure`,
       );
     } else if (close < previousClose) {
-      score -= SIGNAL_WEIGHTS.VOLUME_SPIKE;
+      volumeRaw -= SIGNAL_WEIGHTS.VOLUME_SPIKE;
       reasons.bearish.push(
         `Volume spike (${volumeRatio.toFixed(1)}x avg) confirms sell pressure`,
       );
@@ -354,34 +433,34 @@ export function computeSignal(input: SignalInput): Outlook {
   // 6. Bollinger Bands (weight: 0.75)
   if (trend === "bullish" || trend === "bearish") {
     if (bollingerBands.percentB > 0.8 && trend === "bullish") {
-      score += SIGNAL_WEIGHTS.BOLLINGER * 0.5;
+      volatilityRaw += SIGNAL_WEIGHTS.BOLLINGER * 0.5;
       reasons.bullish.push(
         `Price riding upper Bollinger Band in strong trend (%B: ${(bollingerBands.percentB * 100).toFixed(0)}%) — trend strength`,
       );
     } else if (bollingerBands.percentB < 0.2 && trend === "bearish") {
-      score -= SIGNAL_WEIGHTS.BOLLINGER * 0.5;
+      volatilityRaw -= SIGNAL_WEIGHTS.BOLLINGER * 0.5;
       reasons.bearish.push(
         `Price riding lower Bollinger Band in strong trend (%B: ${(bollingerBands.percentB * 100).toFixed(0)}%) — trend strength`,
       );
     }
   } else {
     if (bollingerBands.percentB < 0) {
-      score += SIGNAL_WEIGHTS.BOLLINGER;
+      volatilityRaw += SIGNAL_WEIGHTS.BOLLINGER;
       reasons.bullish.push(
         `Price below lower Bollinger Band (%B: ${(bollingerBands.percentB * 100).toFixed(0)}%) — oversold in range`,
       );
     } else if (bollingerBands.percentB > 1) {
-      score -= SIGNAL_WEIGHTS.BOLLINGER;
+      volatilityRaw -= SIGNAL_WEIGHTS.BOLLINGER;
       reasons.bearish.push(
         `Price above upper Bollinger Band (%B: ${(bollingerBands.percentB * 100).toFixed(0)}%) — overbought in range`,
       );
     } else if (bollingerBands.percentB < 0.2) {
-      score += SIGNAL_WEIGHTS.BOLLINGER * 0.5;
+      volatilityRaw += SIGNAL_WEIGHTS.BOLLINGER * 0.5;
       reasons.bullish.push(
         `Price near lower Bollinger Band (%B: ${(bollingerBands.percentB * 100).toFixed(0)}%)`,
       );
     } else if (bollingerBands.percentB > 0.8) {
-      score -= SIGNAL_WEIGHTS.BOLLINGER * 0.5;
+      volatilityRaw -= SIGNAL_WEIGHTS.BOLLINGER * 0.5;
       reasons.bearish.push(
         `Price near upper Bollinger Band (%B: ${(bollingerBands.percentB * 100).toFixed(0)}%)`,
       );
@@ -391,24 +470,24 @@ export function computeSignal(input: SignalInput): Outlook {
   // 7. Stochastic RSI (weight: 0.5)
   if (stochRSI < SIGNAL_THRESHOLDS.STOCH_RSI_OVERSOLD) {
     if (trend === "bearish") {
-      score -= SIGNAL_WEIGHTS.STOCH_RSI * 0.5;
+      momentumRaw -= SIGNAL_WEIGHTS.STOCH_RSI * 0.5;
       reasons.bearish.push(
         `StochRSI oversold at ${stochRSI.toFixed(1)} inside bearish trend — avoid early bottom-picking`,
       );
     } else {
-      score += SIGNAL_WEIGHTS.STOCH_RSI;
+      momentumRaw += SIGNAL_WEIGHTS.STOCH_RSI;
       reasons.bullish.push(
         `StochRSI oversold at ${stochRSI.toFixed(1)} — momentum reversal zone`,
       );
     }
   } else if (stochRSI > SIGNAL_THRESHOLDS.STOCH_RSI_OVERBOUGHT) {
     if (trend === "bullish") {
-      score += SIGNAL_WEIGHTS.STOCH_RSI * 0.5;
+      momentumRaw += SIGNAL_WEIGHTS.STOCH_RSI * 0.5;
       reasons.bullish.push(
         `StochRSI overbought at ${stochRSI.toFixed(1)} inside bullish trend — momentum remains extended`,
       );
     } else {
-      score -= SIGNAL_WEIGHTS.STOCH_RSI;
+      momentumRaw -= SIGNAL_WEIGHTS.STOCH_RSI;
       reasons.bearish.push(
         `StochRSI overbought at ${stochRSI.toFixed(1)} — momentum exhaustion`,
       );
@@ -418,27 +497,27 @@ export function computeSignal(input: SignalInput): Outlook {
   // 8. OBV Direction (weight: 0.5)
   // Score OBV independently from accumulated score to avoid circular
   // confirmation bias. Use candle direction + EMA context instead.
-  if (hasVolumeData) {
+  if (volumeReliable) {
     const latestCandleUp = close > (prices[prices.length - 2] ?? close);
     const latestCandleDown = close < (prices[prices.length - 2] ?? close);
 
     if (obvTrend === "rising" && (latestCandleUp || emaBullish)) {
-      score += SIGNAL_WEIGHTS.OBV_DIRECTION;
+      volumeRaw += SIGNAL_WEIGHTS.OBV_DIRECTION;
       reasons.bullish.push(
         "OBV rising — volume confirms upward price movement",
       );
     } else if (obvTrend === "falling" && (latestCandleDown || emaBearish)) {
-      score -= SIGNAL_WEIGHTS.OBV_DIRECTION;
+      volumeRaw -= SIGNAL_WEIGHTS.OBV_DIRECTION;
       reasons.bearish.push(
         "OBV falling — volume confirms downward price movement",
       );
     } else if (obvTrend === "rising" && (latestCandleDown || emaBearish)) {
-      score += SIGNAL_WEIGHTS.OBV_DIRECTION * 0.5;
+      volumeRaw += SIGNAL_WEIGHTS.OBV_DIRECTION * 0.5;
       reasons.bullish.push(
         "OBV divergence — volume rising against price decline (potential reversal)",
       );
     } else if (obvTrend === "falling" && (latestCandleUp || emaBullish)) {
-      score -= SIGNAL_WEIGHTS.OBV_DIRECTION * 0.5;
+      volumeRaw -= SIGNAL_WEIGHTS.OBV_DIRECTION * 0.5;
       reasons.bearish.push(
         "OBV divergence — volume declining against price rise (weakening conviction)",
       );
@@ -454,7 +533,7 @@ export function computeSignal(input: SignalInput): Outlook {
       trend === "bullish"
         ? SIGNAL_WEIGHTS.RSI_DIVERGENCE * 0.75
         : SIGNAL_WEIGHTS.RSI_DIVERGENCE;
-    score += weight;
+    momentumRaw += weight;
     reasons.bullish.push(
       "Bullish RSI Divergence detected — reversal signal, but still requires risk control",
     );
@@ -463,7 +542,7 @@ export function computeSignal(input: SignalInput): Outlook {
       trend === "bearish"
         ? SIGNAL_WEIGHTS.RSI_DIVERGENCE * 0.75
         : SIGNAL_WEIGHTS.RSI_DIVERGENCE;
-    score -= weight;
+    momentumRaw -= weight;
     reasons.bearish.push(
       "Bearish RSI Divergence detected — exhaustion signal, but still requires confirmation",
     );
@@ -479,27 +558,55 @@ export function computeSignal(input: SignalInput): Outlook {
 
   if (isNearGoldenPocket) {
     if (trend === "bullish") {
-      score += SIGNAL_WEIGHTS.FIBONACCI_BOUNCE;
+      volatilityRaw += SIGNAL_WEIGHTS.FIBONACCI_BOUNCE;
       reasons.bullish.push(
         `Price holding directional 0.618 Fibonacci Golden Pocket ($${fibLevels[0.618].toFixed(2)})`,
       );
     } else if (trend === "bearish") {
-      score -= SIGNAL_WEIGHTS.FIBONACCI_BOUNCE;
+      volatilityRaw -= SIGNAL_WEIGHTS.FIBONACCI_BOUNCE;
       reasons.bearish.push(
         `Price rejected at directional 0.618 Fibonacci level ($${fibLevels[0.618].toFixed(2)})`,
       );
     }
   }
 
+  // ─── Layer 5: Category scores → regime-weighted direction ─
+  const categoryScores = {
+    trend: clampUnit(trendRaw / CATEGORY_MAX_SCORE.trend),
+    momentum: clampUnit(momentumRaw / CATEGORY_MAX_SCORE.momentum),
+    volatility: clampUnit(volatilityRaw / CATEGORY_MAX_SCORE.volatility),
+    volume: clampUnit(volumeRaw / CATEGORY_MAX_SCORE.volume),
+  };
+  let directionScore = combineDirectionScore(
+    categoryScores,
+    regime,
+    dataQuality.volumeReliable,
+  );
+
+  // ─── Layer 2: Higher-timeframe confirmation ──────────────
+  // Professional entries rarely fight the higher timeframe. Boost conviction
+  // when HTF agrees, downgrade (halve) when it conflicts to cut whipsaw.
+  if (higherTimeframeTrend !== "sideways" && directionScore !== 0) {
+    const htfSign = higherTimeframeTrend === "bullish" ? 1 : -1;
+    const agrees = Math.sign(directionScore) === htfSign;
+    if (agrees) {
+      (directionScore > 0 ? reasons.bullish : reasons.bearish).push(
+        `Higher-timeframe trend is ${higherTimeframeTrend} and aligns with this setup — conviction boosted.`,
+      );
+      directionScore = clampUnit(directionScore * 1.15);
+    } else {
+      reasons.warnings.push(
+        `Higher-timeframe trend is ${higherTimeframeTrend}, conflicting with the lower-timeframe setup — conviction downgraded.`,
+      );
+      directionScore = directionScore * 0.5;
+    }
+  }
+
   // 11. Bollinger Band Squeeze Detection (warning only, no scoring)
   // Bandwidth contraction often precedes a significant price move.
-  const bandwidth = bollingerBands.upper - bollingerBands.lower;
-  const bandwidthPercent =
-    bollingerBands.middle > 0 ? (bandwidth / bollingerBands.middle) * 100 : 0;
-
-  if (bandwidthPercent < 3 && bandwidthPercent > 0) {
+  if (bbBandwidthPercent < 3 && bbBandwidthPercent > 0) {
     reasons.warnings.push(
-      `Bollinger Band Squeeze (bandwidth ${bandwidthPercent.toFixed(1)}%) — volatility contraction, big move likely incoming.`,
+      `Bollinger Band Squeeze (bandwidth ${bbBandwidthPercent.toFixed(1)}%) — volatility contraction, big move likely incoming.`,
     );
   }
 
@@ -507,11 +614,11 @@ export function computeSignal(input: SignalInput): Outlook {
   // Not scored because the index is lagging and crypto-heavy, but extreme
   // readings are surfaced so users have the context for risk management.
   if (fearGreedValue !== undefined && fearGreedValue !== null) {
-    if (fearGreedValue <= 20 && score < 0) {
+    if (fearGreedValue <= 20 && directionScore < 0) {
       reasons.warnings.push(
         `Extreme Fear (F&G: ${fearGreedValue}) — oversold sentiment may limit further downside`,
       );
-    } else if (fearGreedValue >= 80 && score > 0) {
+    } else if (fearGreedValue >= 80 && directionScore > 0) {
       reasons.warnings.push(
         `Extreme Greed (F&G: ${fearGreedValue}) — elevated risk of mean reversion pullback`,
       );
@@ -520,24 +627,25 @@ export function computeSignal(input: SignalInput): Outlook {
 
   // ─── Determine signal ────────────────────────────────────
   let signal: SignalDirection;
-  if (dataQuality.ready && score >= profile.longThreshold) {
+  if (dataQuality.ready && directionScore >= profile.directionThreshold) {
     signal = "long";
-  } else if (dataQuality.ready && score <= profile.shortThreshold) {
+  } else if (dataQuality.ready && directionScore <= -profile.directionThreshold) {
     signal = "short";
   } else {
     signal = "neutral";
   }
 
   // Countertrend trades are allowed when a real divergence override exists
-  // OR when the raw score is exceptionally strong (≥ 5.0), indicating that
-  // multiple independent indicators agree on the reversal.
+  // OR when the regime-weighted direction score is exceptionally strong,
+  // indicating multiple independent categories agree on the reversal.
   const isCounterTrend =
     (signal === "long" && trend === "bearish") ||
     (signal === "short" && trend === "bullish");
   const hasDivergenceOverride =
     (signal === "long" && rsiDivergence === "bullish") ||
     (signal === "short" && rsiDivergence === "bearish");
-  const hasStrongScoreOverride = Math.abs(score) >= 5.0;
+  const hasStrongScoreOverride =
+    Math.abs(directionScore) >= DIRECTION_OVERRIDE_SCORE;
 
   if (isCounterTrend && !hasDivergenceOverride && !hasStrongScoreOverride) {
     reasons.warnings.push(
@@ -546,36 +654,52 @@ export function computeSignal(input: SignalInput): Outlook {
     signal = "neutral";
   }
 
-  // ─── Confidence (signal conviction, not probability of profit) ────────
-  const baseConfidence =
-    signal === "neutral"
-      ? calculateNeutralConfidence(score, profile)
-      : Math.round((Math.abs(score) / SIGNAL_THRESHOLDS.MAX_SCORE) * 100);
+  // ─── Chop / no-trade filter ──────────────────────────────
+  // Low-volatility squeeze (weak ADX + tight Bollinger bands) is a pre-breakout
+  // state with no edge. Professional trading is mostly NOT trading — suppress
+  // directional signals here to avoid whipsaw, the main retail killer.
+  if (regime === "low_volatility") {
+    if (signal !== "neutral") {
+      reasons.warnings.push(
+        "Chop/no-trade filter: low-volatility squeeze (weak ADX, tight Bollinger bands) — directional signal suppressed to NEUTRAL.",
+      );
+      signal = "neutral";
+    } else {
+      reasons.warnings.push(
+        "Chop/no-trade filter active: low-volatility squeeze — staying flat until volatility expands.",
+      );
+    }
+  }
 
-  const adxBonus =
-    signal !== "neutral" && adx > SIGNAL_THRESHOLDS.ADX_STRONG_TREND ? 8 : 0;
-
-  const volumeBonus =
-    hasVolumeData && volumeSpike && signal !== "neutral" ? 4 : 0;
-
+  // ─── Signal strength = pure technical alignment (0-100) ───
+  // This is NOT a probability of profit. It only measures how strongly the
+  // regime-weighted indicator categories agree on a direction. Historical
+  // win-rate is reported separately by the backtester.
+  const rawStrength = Math.round(Math.abs(directionScore) * 100);
   const dataPenalty = dataQuality.ready ? 0 : 20;
-  const confidence = Math.min(
+  const strength = Math.min(
     dataQuality.ready ? 100 : 25,
-    Math.max(0, baseConfidence + adxBonus + volumeBonus - dataPenalty),
+    Math.max(0, rawStrength - dataPenalty),
   );
+  const technicalAlignment: "strong" | "moderate" | "weak" =
+    strength >= TIER_THRESHOLDS.A
+      ? "strong"
+      : strength >= TIER_THRESHOLDS.B
+        ? "moderate"
+        : "weak";
 
   // ─── Tier ────────────────────────────────────────────────
   let tier: SignalTier;
-  if (confidence >= TIER_THRESHOLDS.A) tier = "A";
-  else if (confidence >= TIER_THRESHOLDS.B) tier = "B";
+  if (strength >= TIER_THRESHOLDS.A) tier = "A";
+  else if (strength >= TIER_THRESHOLDS.B) tier = "B";
   else tier = "C";
 
   // ─── Risk ────────────────────────────────────────────────
   const risk = calculateRisk({
     signal,
-    confidence,
+    confidence: strength,
     volumeSpike,
-    hasVolumeData,
+    hasVolumeData: volumeReliable,
     dataReady: dataQuality.ready,
     atr,
     close,
@@ -600,6 +724,7 @@ export function computeSignal(input: SignalInput): Outlook {
       volumeMA,
       volumeSpike,
       obvTrend,
+      volumeReliable,
     ),
     momentum: generateMomentumAnalysis(
       rsi,
@@ -613,12 +738,15 @@ export function computeSignal(input: SignalInput): Outlook {
 
   return {
     signal,
-    confidence,
+    strength,
+    technicalAlignment,
     tier,
     risk,
     trend,
-    score,
-    maxScore: SIGNAL_THRESHOLDS.MAX_SCORE,
+    regime,
+    higherTimeframeTrend,
+    directionScore,
+    categoryScores,
     reasons,
     dataQuality,
     indicators: {
@@ -630,6 +758,8 @@ export function computeSignal(input: SignalInput): Outlook {
       volumeSpike,
       support,
       resistance,
+      recentSwingHigh,
+      recentSwingLow,
       bollingerBands,
       stochRSI,
       adx,
@@ -651,14 +781,17 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
 
   return {
     signal: "neutral",
-    confidence: 0,
+    strength: 0,
+    technicalAlignment: "weak",
     tier: "C",
     risk: "high",
-    trend: "neutral",
-    score: 0,
-    maxScore: SIGNAL_THRESHOLDS.MAX_SCORE,
+    trend: "sideways",
+    regime: "ranging",
+    higherTimeframeTrend: "sideways",
+    directionScore: 0,
+    categoryScores: { trend: 0, momentum: 0, volatility: 0, volume: 0 },
     reasons,
-    dataQuality: { candleCount: 0, ready: false, missingVolume: true },
+    dataQuality: { candleCount: 0, ready: false, missingVolume: true, volumeReliable: false },
     indicators: {
       rsi: 50,
       ema20: 0,
@@ -668,6 +801,8 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
       volumeSpike: false,
       support: 0,
       resistance: 0,
+      recentSwingHigh: 0,
+      recentSwingLow: 0,
       bollingerBands: EMPTY_BOLLINGER,
       stochRSI: 50,
       adx: 0,
@@ -718,17 +853,44 @@ function isNearLevel(price: number, level: number, tolerance: number): boolean {
   return level > 0 && Math.abs(price - level) / level < tolerance;
 }
 
-function calculateNeutralConfidence(
-  score: number,
-  profile: SignalProfile,
-): number {
-  const nearestThreshold =
-    score >= 0 ? profile.longThreshold : Math.abs(profile.shortThreshold);
-  const thresholdProgress = Math.min(Math.abs(score) / nearestThreshold, 1);
+/** Clamp a normalized value into the [-1, 1] unit range. */
+function clampUnit(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-1, Math.min(1, value));
+}
 
-  // Neutral confidence is intentionally capped low. It means "no trade-grade
-  // conviction", not "high confidence that doing nothing is profitable".
-  return Math.round(15 + thresholdProgress * 20);
+/**
+ * Combine per-category alignment into a single regime-weighted direction score
+ * in [-1, 1]. When volume is unreliable its weight is dropped and the remaining
+ * categories are renormalized (the divisor is the sum of active weights).
+ */
+function combineDirectionScore(
+  categoryScores: {
+    trend: number;
+    momentum: number;
+    volatility: number;
+    volume: number;
+  },
+  regime: MarketRegime,
+  volumeReliable: boolean,
+): number {
+  const mult = REGIME_WEIGHT_MULTIPLIERS[regime];
+  const weights = {
+    trend: CATEGORY_BASE_WEIGHTS.trend * mult.trend,
+    momentum: CATEGORY_BASE_WEIGHTS.momentum * mult.momentum,
+    volatility: CATEGORY_BASE_WEIGHTS.volatility * mult.volatility,
+    volume: volumeReliable ? CATEGORY_BASE_WEIGHTS.volume * mult.volume : 0,
+  };
+  const totalWeight =
+    weights.trend + weights.momentum + weights.volatility + weights.volume;
+  if (totalWeight === 0) return 0;
+
+  const weighted =
+    categoryScores.trend * weights.trend +
+    categoryScores.momentum * weights.momentum +
+    categoryScores.volatility * weights.volatility +
+    categoryScores.volume * weights.volume;
+  return clampUnit(weighted / totalWeight);
 }
 
 function calculateRisk({
@@ -816,7 +978,11 @@ function generateVolumeAnalysis(
   ma: number,
   spike: boolean,
   obvTrend: "rising" | "falling" | "flat",
+  volumeReliable: boolean,
 ): string {
+  if (!volumeReliable) {
+    return "Volume data is missing or unreliable for this asset (frequent zero-volume candles). Volume spike and OBV confirmation are disabled; signal is based on price action and momentum only.";
+  }
   if (current === 0 && ma === 0) {
     return "Volume data not available for this asset. Signal based on price action and momentum only.";
   }

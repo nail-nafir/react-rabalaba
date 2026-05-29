@@ -147,7 +147,7 @@
     },
     "sentiment": {
       "title": "Sinyal Long/Short",
-      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kepercayaan transparan. Biarkan data bicara."
+      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kekuatan sinyal yang transparan — alat bantu keputusan, bukan prediksi. Biarkan data bicara."
     },
     "trading_plan": {
       "title": "Susun Rencana Perdagangan",
@@ -189,7 +189,7 @@
     "add_ticker_dialog_title": "Tambah Ticker ke Favorit",
     "add_ticker_dialog_desc": "Masukkan simbol pasar yang valid (cth. AAPL, BBCA.JK, BTC-USD).",
     "access_dialog_title": "Buka Akses Premium",
-    "access_dialog_desc": "Fitur ini memerlukan akses premium. Silakan masukkan kode akses Anda di bawah untuk membukanya.",
+    "access_dialog_desc": "Fitur ini khusus buat member premium. Masukin kode akses di bawah buat langsung kebuka.",
     "access_dialog_placeholder": "Masukkan kode akses (cth. 1453)...",
     "access_dialog_no_access": "Belum punya kode akses?",
     "access_dialog_no_access_link": "Dapatkan akses",
@@ -248,7 +248,7 @@
     "volume": "Volume",
     "trend": "Tren",
     "signal": "Sinyal",
-    "confidence": "Kepercayaan",
+    "strength": "Kekuatan",
     "tier": "Tier",
     "risk": "Risiko",
     "page": "Halaman",
@@ -275,13 +275,30 @@
     "not_enough_data": "Data tidak cukup untuk menghitung sinyal. Coba aset lain.",
     "loading": "Memuat data chart untuk perhitungan sinyal...",
     "trading_plan": "Rencana Perdagangan",
+    "no_setup": "Belum ada rencana perdagangan saat ini, sinyal masih netral.",
     "analysis": "Analisis",
     "indicators": "Indikator Teknikal",
     "signal_result": "Hasil Sinyal",
     "trend": "Tren",
     "volume": "Volume",
     "momentum": "Momentum",
-    "sentiment": "Sentimen"
+    "sentiment": "Sentimen",
+    "decision_support": "Bukti Pendukung",
+    "regime_trending": "Trending",
+    "regime_ranging": "Ranging",
+    "regime_high_volatility": "Volatilitas Tinggi",
+    "regime_low_volatility": "Volatilitas Rendah / Squeeze",
+    "cat_trend": "Tren",
+    "cat_momentum": "Momentum",
+    "cat_volatility": "Volatilitas",
+    "cat_volume": "Volume",
+    "historical": "Riwayat Performa",
+    "bt_trades": "Transaksi",
+    "bt_win_rate": "Win Rate",
+    "bt_expectancy": "Ekspektasi (rata-rata R)",
+    "bt_profit_factor": "Profit Factor",
+    "bt_max_dd": "Max Drawdown (R)",
+    "bt_note": "Simulasi walk-forward hanya pada candle masa lalu. Kinerja masa lalu tidak menjamin hasil di masa depan."
   },
   "disclaimer": {
     "title": "Pahami Resikonya",
