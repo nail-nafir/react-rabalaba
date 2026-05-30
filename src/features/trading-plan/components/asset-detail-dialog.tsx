@@ -1,11 +1,20 @@
 import { useTranslation } from "react-i18next";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatPrice } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { useFavoriteStore } from "@/store/favorite-store";
 import { toast } from "sonner";
 import { runBacktest } from "@/features/signals/engine/backtest";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
+import { TradeSetupChart } from "./trade-setup-chart";
+import { buildSignalText } from "../lib/signal-text";
+import { buildTradeSetupModel } from "../lib/trade-setup-model";
+import {
+  buildShareCardSvg,
+  svgToPngBlob,
+  shareOrDownloadPng,
+  SHARE_CARD_SIZE,
+} from "../lib/share-card";
 
 import {
   Dialog,
@@ -14,14 +23,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardAction,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useUIStore } from "@/store/ui-store";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -29,14 +31,8 @@ import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import {
-  RISK_COLORS,
-  SIGNAL_COLORS,
-  SIGNAL_LABELS,
-  REGIME_COLORS,
-} from "@/constants/signals";
+import { RISK_COLORS, REGIME_COLORS } from "@/constants/signals";
 import { cn } from "@/lib/utils";
-import { CandlestickTradingPlan } from "./candlestick-trading-plan";
 import {
   Target,
   ShieldAlert,
@@ -46,6 +42,8 @@ import {
   Activity,
   Loader2,
   Star,
+  Copy,
+  Share2,
 } from "lucide-react";
 
 export function AssetDetailDialog() {
@@ -66,24 +64,86 @@ export function AssetDetailDialog() {
   const outlook = asset?.outlook;
   const tradingPlan = asset?.tradingPlan;
 
+  // Normalized OHLC candles (shared by the chart, backtest and share card).
+  const candles = useMemo(
+    () =>
+      asset?.quoteIndicators
+        ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps)
+        : [],
+    [asset],
+  );
+
   // Historical performance (decision-support context shown SEPARATELY from
   // signal strength). Walk-forward, no-lookahead backtest over fetched candles.
   const backtest = useMemo(() => {
-    if (!asset?.quoteIndicators) return null;
-    const candles = normalizeYahooCandles(
-      asset.quoteIndicators,
-      asset.timestamps,
-    );
-    if (candles.length < 150) return null;
+    if (!asset || candles.length < 150) return null;
     return runBacktest(candles, {
       assetType: asset.assetType,
       timeframe: "swing",
     }).metrics;
-  }, [asset]);
+  }, [candles, asset]);
 
   // Current price and change percent
   const currentPrice = asset?.price ?? 0;
   const changePercent = asset?.changePercent ?? 0;
+
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleCopy = async () => {
+    if (!outlook || !tradingPlan || !selectedAssetSymbol) return;
+    try {
+      await navigator.clipboard.writeText(
+        buildSignalText(
+          selectedAssetSymbol,
+          outlook,
+          tradingPlan,
+          asset?.assetType ?? "crypto",
+        ),
+      );
+      toast.success(t("dialog.copied"));
+    } catch {
+      /* clipboard unavailable (e.g. insecure context) */
+    }
+  };
+
+  const handleShare = async () => {
+    if (!outlook || !tradingPlan || !asset || !selectedAssetSymbol) return;
+    setIsSharing(true);
+    try {
+      const model = buildTradeSetupModel(
+        candles,
+        tradingPlan,
+        outlook.signal,
+        currentPrice,
+      );
+      const svg = buildShareCardSvg(model, {
+        symbol: selectedAssetSymbol,
+        name: asset.name,
+        strength: outlook.strength,
+        currentPrice,
+        assetType: asset.assetType,
+        candles,
+      });
+      const blob = await svgToPngBlob(
+        svg,
+        SHARE_CARD_SIZE.width,
+        SHARE_CARD_SIZE.height,
+      );
+      const result = await shareOrDownloadPng(
+        blob,
+        `${selectedAssetSymbol}-setup.png`,
+      );
+      toast.success(
+        t(result === "shared" ? "dialog.shared" : "dialog.downloaded"),
+      );
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        toast.error(t("dialog.share_failed"));
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   if (!selectedAssetSymbol) return null;
 
@@ -142,20 +202,6 @@ export function AssetDetailDialog() {
                 {t("dialog.title_suffix")}
               </DialogDescription>
             </div>
-            {outlook ? (
-              <Badge
-                className={cn(
-                  "font-bold uppercase tracking-wider rounded-md",
-                  SIGNAL_COLORS[outlook.signal].bg,
-                  SIGNAL_COLORS[outlook.signal].text,
-                  SIGNAL_COLORS[outlook.signal].border,
-                )}
-              >
-                {SIGNAL_LABELS[outlook.signal]}
-              </Badge>
-            ) : (
-              <Skeleton className="h-7 w-16 rounded" />
-            )}
           </div>
 
           {/* Price row */}
@@ -201,7 +247,7 @@ export function AssetDetailDialog() {
                   REGIME_COLORS[outlook.regime].border,
                 )}
               >
-                {t(`dialog.regime_${outlook.regime}`)} Market
+                {t(`dialog.regime_${outlook.regime}`)}
               </Badge>
               <div className="flex-1 min-w-25">
                 <SignalStrengthMeter value={outlook.strength} size="md" />
@@ -225,372 +271,337 @@ export function AssetDetailDialog() {
           </div>
         ) : outlook ? (
           <>
-            <>
-              {/* Trading Plan */}
-                <div className="px-6 py-5 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">
-                      {t("dialog.trading_plan")}
-                    </h3>
+            {/* Trading Plan */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">
+                    {t("dialog.trading_plan")}
+                  </h3>
+                </div>
+                {tradingPlan && outlook.signal !== "neutral" && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={handleCopy}
+                      title={t("dialog.copy")}
+                      aria-label={t("dialog.copy")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={handleShare}
+                      disabled={isSharing}
+                      title={t("dialog.share")}
+                      aria-label={t("dialog.share")}
+                    >
+                      {isSharing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Share2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
+                )}
+              </div>
 
-                  {/* Advanced SVG Candlestick Visual Trading Setup */}
-                  {outlook.signal === "neutral" ? (
-                    <p className="text-sm text-muted-foreground">
-                      {t("dialog.no_setup")}
-                    </p>
-                  ) : (
-                    <CandlestickTradingPlan
-                      asset={asset}
-                      tradingPlan={tradingPlan}
-                      signal={outlook.signal}
-                    />
-                  )}
+              {/* Custom SVG candlestick visual trade setup */}
+              {outlook.signal === "neutral" || !tradingPlan || !asset ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("dialog.no_setup")}
+                </p>
+              ) : (
+                <TradeSetupChart
+                  candles={candles}
+                  plan={tradingPlan}
+                  signal={outlook.signal}
+                  assetType={asset.assetType}
+                  currentPrice={currentPrice}
+                />
+              )}
+            </div>
 
-                  {tradingPlan ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <PlanItem
-                        label="Trigger Entry"
-                        value={formatPrice(tradingPlan.entry, asset?.assetType)}
-                        color="text-sky-400 font-bold"
-                      />
-                      <PlanItem
-                        label="Stop Loss"
-                        value={formatPrice(
-                          tradingPlan.stopLoss,
-                          asset?.assetType,
-                        )}
-                        color="text-rose-400 font-bold"
-                      />
-                      <PlanItem
-                        label="Risk/Reward Ratio"
-                        value={`1:${tradingPlan.riskRewardRatio.toFixed(1)}`}
-                        color="text-amber-400 font-bold"
-                      />
-                      <PlanItem
-                        label="Take Profit 1 (1.5R)"
-                        value={formatPrice(
-                          tradingPlan.takeProfit1,
-                          asset?.assetType,
-                        )}
-                        color="text-emerald-400"
-                      />
-                      <PlanItem
-                        label="Take Profit 2 (2.5R)"
-                        value={formatPrice(
-                          tradingPlan.takeProfit2,
-                          asset?.assetType,
-                        )}
-                        color="text-emerald-400"
-                      />
-                      <PlanItem
-                        label="Take Profit 3 (3.5R)"
-                        value={formatPrice(
-                          tradingPlan.takeProfit3 ?? 0,
-                          asset?.assetType,
-                        )}
-                        color="text-emerald-400"
+            <Separator className="bg-border" />
+
+            {/* Supporting evidence: historical backtest context */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">
+                  {t("dialog.decision_support")}
+                </h3>
+              </div>
+
+              {/* Per-category alignment — bars with signed score (-100..+100) */}
+              <Card className="border border-border">
+                <CardContent className="space-y-3">
+                  {(
+                    [
+                      ["cat_trend", outlook.categoryScores.trend],
+                      ["cat_momentum", outlook.categoryScores.momentum],
+                      ["cat_volatility", outlook.categoryScores.volatility],
+                      ["cat_volume", outlook.categoryScores.volume],
+                    ] as const
+                  ).map(([key, val]) => {
+                    const pct = Math.round(val * 100);
+                    const isPos = val > 0.05;
+                    const isNeg = val < -0.05;
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        <span className="w-20 shrink-0 text-[11px] text-muted-foreground">
+                          {t(`dialog.${key}`)}
+                        </span>
+                        <div className="relative h-2 flex-1 rounded-full bg-muted/40">
+                          <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
+                          <div
+                            className={cn(
+                              "absolute top-0 h-full rounded-full",
+                              isPos
+                                ? "bg-emerald-400"
+                                : isNeg
+                                  ? "bg-rose-400"
+                                  : "bg-zinc-500",
+                            )}
+                            style={
+                              val >= 0
+                                ? {
+                                    left: "50%",
+                                    width: `${Math.abs(pct) / 2}%`,
+                                  }
+                                : {
+                                    right: "50%",
+                                    width: `${Math.abs(pct) / 2}%`,
+                                  }
+                            }
+                          />
+                        </div>
+                        <span
+                          className={cn(
+                            "w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-mono-data",
+                            isPos
+                              ? "text-emerald-400"
+                              : isNeg
+                                ? "text-rose-400"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {pct > 0 ? `+${pct}` : pct}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {backtest && backtest.trades > 0 ? (
+                <Card className="border border-border">
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-center">
+                      <WinRateRing
+                        value={backtest.winRate}
+                        label={`${backtest.trades} ${t("dialog.bt_trades").toLowerCase()}`}
                       />
                     </div>
-                  ) : null}
-                </div>
+                    <div className="grid grid-cols-3 divide-x divide-border border-t border-border pt-3">
+                      <MetricRow
+                        label={t("dialog.bt_expectancy")}
+                        value={`${backtest.expectancy.toFixed(2)}R`}
+                        color={
+                          backtest.expectancy > 0
+                            ? "text-emerald-400"
+                            : backtest.expectancy < 0
+                              ? "text-rose-400"
+                              : undefined
+                        }
+                      />
+                      <MetricRow
+                        label={t("dialog.bt_profit_factor")}
+                        value={
+                          Number.isFinite(backtest.profitFactor)
+                            ? backtest.profitFactor.toFixed(2)
+                            : "∞"
+                        }
+                        color={
+                          backtest.profitFactor >= 1
+                            ? "text-emerald-400"
+                            : "text-rose-400"
+                        }
+                      />
+                      <MetricRow
+                        label={t("dialog.bt_max_dd")}
+                        value={`${backtest.maxDrawdownR.toFixed(2)}R`}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("dialog.bt_insufficient")}
+                </p>
+              )}
+            </div>
 
-                <Separator className="bg-border" />
+            <Separator className="bg-border" />
 
-                {/* Decision support: alignment breakdown + historical context */}
-                <div className="px-6 py-5 space-y-5">
-                  <div className="flex items-center gap-2">
-                    <Gauge className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">
-                      {t("dialog.decision_support")}
-                    </h3>
-                  </div>
-
-                  {/* Per-category alignment as center-zero diverging bars */}
-                  <div className="space-y-2.5">
-                    {(
-                      [
-                        ["cat_trend", outlook.categoryScores.trend],
-                        ["cat_momentum", outlook.categoryScores.momentum],
-                        ["cat_volatility", outlook.categoryScores.volatility],
-                        ["cat_volume", outlook.categoryScores.volume],
-                      ] as const
-                    ).map(([key, val]) => {
-                      const pct = Math.round(val * 100);
-                      const isPos = val > 0.05;
-                      const isNeg = val < -0.05;
-                      return (
-                        <div key={key} className="flex items-center gap-3">
-                          <span className="w-20 shrink-0 text-[11px] text-muted-foreground">
-                            {t(`dialog.${key}`)}
-                          </span>
-                          <div className="relative h-1.5 flex-1 rounded-full bg-muted/40">
-                            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
-                            <div
-                              className={cn(
-                                "absolute top-0 h-full rounded-full",
-                                isPos
-                                  ? "bg-emerald-400"
-                                  : isNeg
-                                    ? "bg-rose-400"
-                                    : "bg-zinc-500",
-                              )}
-                              style={
-                                val >= 0
-                                  ? {
-                                      left: "50%",
-                                      width: `${Math.abs(pct) / 2}%`,
-                                    }
-                                  : {
-                                      right: "50%",
-                                      width: `${Math.abs(pct) / 2}%`,
-                                    }
-                              }
-                            />
-                          </div>
-                          <span
-                            className={cn(
-                              "w-9 shrink-0 text-right text-[11px] font-semibold text-mono-data",
-                              isPos
-                                ? "text-emerald-400"
-                                : isNeg
-                                  ? "text-rose-400"
-                                  : "text-muted-foreground",
-                            )}
-                          >
-                            {pct > 0 ? "+" : ""}
-                            {pct}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Historical performance (separate from the live strength) */}
-                  {backtest && backtest.trades > 0 && (
-                    <Card className="border border-border">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-xs font-semibold">
-                          {t("dialog.historical")}
-                        </CardTitle>
-                        <CardAction className="self-center text-[10px] text-muted-foreground">
-                          {backtest.trades} {t("dialog.bt_trades")}
-                        </CardAction>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-4 divide-x divide-border">
-                          <HistoricalItem
-                            label={t("dialog.bt_win_rate")}
-                            value={`${Math.round(backtest.winRate * 100)}%`}
-                            color={
-                              backtest.winRate >= 0.5
-                                ? "text-emerald-400"
-                                : "text-rose-400"
-                            }
-                          />
-                          <HistoricalItem
-                            label={t("dialog.bt_expectancy")}
-                            value={`${backtest.expectancy.toFixed(2)}R`}
-                            color={
-                              backtest.expectancy > 0
-                                ? "text-emerald-400"
-                                : backtest.expectancy < 0
-                                  ? "text-rose-400"
-                                  : undefined
-                            }
-                          />
-                          <HistoricalItem
-                            label={t("dialog.bt_profit_factor")}
-                            value={
-                              Number.isFinite(backtest.profitFactor)
-                                ? backtest.profitFactor.toFixed(2)
-                                : "∞"
-                            }
-                            color={
-                              backtest.profitFactor >= 1
-                                ? "text-emerald-400"
-                                : "text-rose-400"
-                            }
-                          />
-                          <HistoricalItem
-                            label={t("dialog.bt_max_dd")}
-                            value={`${backtest.maxDrawdownR.toFixed(2)}R`}
-                          />
-                        </div>
-                      </CardContent>
-                      <CardFooter>
-                        <p className="w-full text-center text-[10px] leading-relaxed">
-                          {t("dialog.bt_note")}
-                        </p>
-                      </CardFooter>
-                    </Card>
+            {/* Technical Indicators */}
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">
+                  {t("dialog.indicators")}
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <IndicatorItem
+                  label="RSI (14)"
+                  value={outlook.indicators.rsi.toFixed(1)}
+                  status={
+                    outlook.indicators.rsi > 70
+                      ? "overbought"
+                      : outlook.indicators.rsi < 30
+                        ? "oversold"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="EMA 20"
+                  value={formatPrice(
+                    outlook.indicators.ema20,
+                    asset?.assetType,
                   )}
-                </div>
+                />
+                <IndicatorItem
+                  label="EMA 50"
+                  value={formatPrice(
+                    outlook.indicators.ema50,
+                    asset?.assetType,
+                  )}
+                />
+                <IndicatorItem
+                  label="MACD"
+                  value={outlook.indicators.macd.histogram.toFixed(2)}
+                  status={
+                    outlook.indicators.macd.histogram > 0
+                      ? "bullish"
+                      : "bearish"
+                  }
+                />
+                <IndicatorItem
+                  label="ADX"
+                  value={outlook.indicators.adx.toFixed(1)}
+                  status={
+                    outlook.indicators.adx > 25
+                      ? "bullish"
+                      : outlook.indicators.adx < 20
+                        ? "bearish"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="ATR"
+                  value={formatPrice(outlook.indicators.atr, asset?.assetType)}
+                />
+                <IndicatorItem
+                  label="StochRSI"
+                  value={outlook.indicators.stochRSI.toFixed(1)}
+                  status={
+                    outlook.indicators.stochRSI > 80
+                      ? "overbought"
+                      : outlook.indicators.stochRSI < 20
+                        ? "oversold"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="BB %B"
+                  value={`${(outlook.indicators.bollingerBands.percentB * 100).toFixed(0)}%`}
+                  status={
+                    outlook.indicators.bollingerBands.percentB > 0.8
+                      ? "overbought"
+                      : outlook.indicators.bollingerBands.percentB < 0.2
+                        ? "oversold"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="Support"
+                  value={formatPrice(
+                    outlook.indicators.support,
+                    asset?.assetType,
+                  )}
+                />
+                <IndicatorItem
+                  label="Resistance"
+                  value={formatPrice(
+                    outlook.indicators.resistance,
+                    asset?.assetType,
+                  )}
+                />
+                <IndicatorItem
+                  label="OBV Trend"
+                  value={
+                    outlook.indicators.obvTrend.charAt(0).toUpperCase() +
+                    outlook.indicators.obvTrend.slice(1)
+                  }
+                  status={
+                    outlook.indicators.obvTrend === "rising"
+                      ? "bullish"
+                      : outlook.indicators.obvTrend === "falling"
+                        ? "bearish"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="Vol. Spike"
+                  value={outlook.indicators.volumeSpike ? "Yes" : "No"}
+                  status={outlook.indicators.volumeSpike ? "bullish" : "normal"}
+                />
+                <IndicatorItem
+                  label="RSI Diverg."
+                  value={
+                    outlook.indicators.rsiDivergence === "none"
+                      ? "None"
+                      : outlook.indicators.rsiDivergence === "bullish"
+                        ? "Bullish"
+                        : "Bearish"
+                  }
+                  status={
+                    outlook.indicators.rsiDivergence === "bullish"
+                      ? "bullish"
+                      : outlook.indicators.rsiDivergence === "bearish"
+                        ? "bearish"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="Fib 0.618"
+                  value={formatPrice(
+                    outlook.indicators.fibLevels[0.618],
+                    asset?.assetType,
+                  )}
+                />
+                <IndicatorItem
+                  label="Swing High"
+                  value={formatPrice(
+                    outlook.indicators.recentSwingHigh,
+                    asset?.assetType,
+                  )}
+                />
+                <IndicatorItem
+                  label="Swing Low"
+                  value={formatPrice(
+                    outlook.indicators.recentSwingLow,
+                    asset?.assetType,
+                  )}
+                />
+              </div>
+            </div>
 
-                <Separator className="bg-border" />
-
-                {/* Technical Indicators */}
-                <div className="px-6 py-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Activity className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">
-                      {t("dialog.indicators")}
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <IndicatorItem
-                      label="RSI (14)"
-                      value={outlook.indicators.rsi.toFixed(1)}
-                      status={
-                        outlook.indicators.rsi > 70
-                          ? "overbought"
-                          : outlook.indicators.rsi < 30
-                            ? "oversold"
-                            : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="EMA 20"
-                      value={formatPrice(
-                        outlook.indicators.ema20,
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="EMA 50"
-                      value={formatPrice(
-                        outlook.indicators.ema50,
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="MACD"
-                      value={outlook.indicators.macd.histogram.toFixed(2)}
-                      status={
-                        outlook.indicators.macd.histogram > 0
-                          ? "bullish"
-                          : "bearish"
-                      }
-                    />
-                    <IndicatorItem
-                      label="ADX"
-                      value={outlook.indicators.adx.toFixed(1)}
-                      status={
-                        outlook.indicators.adx > 25
-                          ? "bullish"
-                          : outlook.indicators.adx < 20
-                            ? "bearish"
-                            : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="ATR"
-                      value={formatPrice(
-                        outlook.indicators.atr,
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="StochRSI"
-                      value={outlook.indicators.stochRSI.toFixed(1)}
-                      status={
-                        outlook.indicators.stochRSI > 80
-                          ? "overbought"
-                          : outlook.indicators.stochRSI < 20
-                            ? "oversold"
-                            : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="BB %B"
-                      value={`${(outlook.indicators.bollingerBands.percentB * 100).toFixed(0)}%`}
-                      status={
-                        outlook.indicators.bollingerBands.percentB > 0.8
-                          ? "overbought"
-                          : outlook.indicators.bollingerBands.percentB < 0.2
-                            ? "oversold"
-                            : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="Support"
-                      value={formatPrice(
-                        outlook.indicators.support,
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="Resistance"
-                      value={formatPrice(
-                        outlook.indicators.resistance,
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="OBV Trend"
-                      value={
-                        outlook.indicators.obvTrend.charAt(0).toUpperCase() +
-                        outlook.indicators.obvTrend.slice(1)
-                      }
-                      status={
-                        outlook.indicators.obvTrend === "rising"
-                          ? "bullish"
-                          : outlook.indicators.obvTrend === "falling"
-                            ? "bearish"
-                            : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="Vol. Spike"
-                      value={outlook.indicators.volumeSpike ? "Yes" : "No"}
-                      status={
-                        outlook.indicators.volumeSpike ? "bullish" : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="RSI Diverg."
-                      value={
-                        outlook.indicators.rsiDivergence === "none"
-                          ? "None"
-                          : outlook.indicators.rsiDivergence === "bullish"
-                            ? "Bullish"
-                            : "Bearish"
-                      }
-                      status={
-                        outlook.indicators.rsiDivergence === "bullish"
-                          ? "bullish"
-                          : outlook.indicators.rsiDivergence === "bearish"
-                            ? "bearish"
-                            : "normal"
-                      }
-                    />
-                    <IndicatorItem
-                      label="Fib 0.618"
-                      value={formatPrice(
-                        outlook.indicators.fibLevels[0.618],
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="Swing High"
-                      value={formatPrice(
-                        outlook.indicators.recentSwingHigh,
-                        asset?.assetType,
-                      )}
-                    />
-                    <IndicatorItem
-                      label="Swing Low"
-                      value={formatPrice(
-                        outlook.indicators.recentSwingLow,
-                        asset?.assetType,
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <Separator className="bg-border" />
-              </>
+            <Separator className="bg-border" />
 
             {/* Analysis */}
             <div className="px-6 py-5">
@@ -634,28 +645,52 @@ export function AssetDetailDialog() {
   );
 }
 
-function PlanItem({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: string;
-}) {
+function WinRateRing({ value, label }: { value: number; label: string }) {
+  const { t } = useTranslation();
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  const pct = Math.min(1, Math.max(0, value));
+  const positive = value >= 0.5;
   return (
-    <Card className="border border-border overflow-hidden">
-      <CardContent>
-        <div className="text-[11px] text-muted-foreground mb-1">{label}</div>
-        <div className={cn("text-sm font-semibold text-mono-data", color)}>
-          {value}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="relative flex h-28 w-28 shrink-0 items-center justify-center">
+      <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90">
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          strokeWidth="9"
+          className="fill-none stroke-muted/40"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          strokeWidth="9"
+          strokeLinecap="round"
+          className={cn(
+            "fill-none",
+            positive ? "stroke-emerald-400" : "stroke-rose-400",
+          )}
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - pct)}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-[9px] font-semibold tracking-wide text-muted-foreground">
+          {t("dialog.bt_success_rate")}
+        </span>
+        <span className="text-xl font-bold text-mono-data">
+          {Math.round(value * 100)}%
+        </span>
+        <span className="px-2 text-center text-[9px] leading-tight text-muted-foreground">
+          {label}
+        </span>
+      </div>
+    </div>
   );
 }
 
-function HistoricalItem({
+function MetricRow({
   label,
   value,
   color,
@@ -666,10 +701,10 @@ function HistoricalItem({
 }) {
   return (
     <div className="flex flex-col items-center px-1 text-center">
-      <span className={cn("text-base font-bold text-mono-data", color)}>
+      <span className={cn("text-sm font-bold text-mono-data", color)}>
         {value}
       </span>
-      <span className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+      <span className="mt-1 text-[9px] uppercase leading-tight tracking-wider text-muted-foreground">
         {label}
       </span>
     </div>

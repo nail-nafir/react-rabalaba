@@ -22,6 +22,14 @@ export function formatPrice(price: number, assetType?: string): string {
 }
 
 /**
+ * Formats a risk:reward style ratio, dropping trailing zeros (2.00 -> "2",
+ * 1.75 -> "1.75", 2.50 -> "2.5").
+ */
+export function formatRatio(value: number): string {
+  return parseFloat(value.toFixed(2)).toString();
+}
+
+/**
  * Formats transaction volume into a clean, human-readable abbreviation (K, M, B, T).
  */
 export function formatVolume(vol: number): string {
