@@ -326,7 +326,8 @@ export function AssetTable() {
         },
       },
       {
-        accessorKey: "strength",
+        id: "strength",
+        accessorFn: (row) => row.outlook?.strength,
         header: ({ column }) => (
           <Button
             variant="link"
@@ -348,7 +349,8 @@ export function AssetTable() {
         },
       },
       {
-        accessorKey: "tier",
+        id: "tier",
+        accessorFn: (row) => row.outlook?.tier,
         header: ({ column }) => (
           <Button
             variant="link"

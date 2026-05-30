@@ -104,9 +104,9 @@ export const SIGNAL_COLORS = {
     border: "border-rose-500/30",
   },
   neutral: {
-    bg: "bg-amber-500/15",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
+    bg: "bg-muted-foreground/15",
+    text: "text-muted-foreground",
+    border: "border-muted-foreground/30",
   },
 };
 
@@ -120,7 +120,7 @@ export const SIGNAL_LABELS = {
 export const TREND_DISPLAY = {
   bullish: { label: "Bullish", text: "text-emerald-400" },
   bearish: { label: "Bearish", text: "text-rose-400" },
-  sideways: { label: "Sideways", text: "text-amber-400" },
+  sideways: { label: "Sideways", text: "text-muted-foreground" },
 };
 
 export const TIER_COLORS = {
