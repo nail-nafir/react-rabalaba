@@ -97,6 +97,7 @@ export interface Outlook {
     rsi: number;
     ema20: number;
     ema50: number;
+    ema200: number;
     macd: { macdLine: number; signalLine: number; histogram: number };
     volumeMA: number;
     volumeSpike: boolean;
@@ -112,6 +113,8 @@ export interface Outlook {
     };
     stochRSI: number;
     adx: number;
+    plusDI: number;
+    minusDI: number;
     atr: number;
     obvTrend: "rising" | "falling" | "flat";
     rsiDivergence: "bullish" | "bearish" | "none";
@@ -229,6 +232,7 @@ export function computeSignal(input: SignalInput): Outlook {
   const rsi = calculateRSI(prices);
   const ema20 = calculateEMA(prices, 20);
   const ema50 = calculateEMA(prices, 50);
+  const ema200 = calculateEMA(prices, 200);
   const macd = calculateMACD(prices);
 
   // Volume analysis (skip when volume data is missing or unreliable)
@@ -753,6 +757,7 @@ export function computeSignal(input: SignalInput): Outlook {
       rsi,
       ema20,
       ema50,
+      ema200,
       macd,
       volumeMA,
       volumeSpike,
@@ -763,6 +768,8 @@ export function computeSignal(input: SignalInput): Outlook {
       bollingerBands,
       stochRSI,
       adx,
+      plusDI: dmi.plusDI,
+      minusDI: dmi.minusDI,
       atr,
       obvTrend,
       rsiDivergence,
@@ -796,6 +803,7 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
       rsi: 50,
       ema20: 0,
       ema50: 0,
+      ema200: 0,
       macd: EMPTY_MACD,
       volumeMA: 0,
       volumeSpike: false,
@@ -806,6 +814,8 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
       bollingerBands: EMPTY_BOLLINGER,
       stochRSI: 50,
       adx: 0,
+      plusDI: 0,
+      minusDI: 0,
       atr: 0,
       obvTrend: "flat",
       rsiDivergence: "none",

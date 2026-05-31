@@ -455,7 +455,7 @@ export function AssetDetailDialog() {
                   {t("dialog.indicators")}
                 </h3>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <IndicatorItem
                   label="RSI (14)"
                   value={outlook.indicators.rsi.toFixed(1)}
@@ -482,6 +482,13 @@ export function AssetDetailDialog() {
                   )}
                 />
                 <IndicatorItem
+                  label="EMA 200"
+                  value={formatPrice(
+                    outlook.indicators.ema200,
+                    asset?.assetType,
+                  )}
+                />
+                <IndicatorItem
                   label="MACD"
                   value={outlook.indicators.macd.histogram.toFixed(2)}
                   status={
@@ -497,6 +504,17 @@ export function AssetDetailDialog() {
                     outlook.indicators.adx > 25
                       ? "bullish"
                       : outlook.indicators.adx < 20
+                        ? "bearish"
+                        : "normal"
+                  }
+                />
+                <IndicatorItem
+                  label="DMI +DI/-DI"
+                  value={`${outlook.indicators.plusDI.toFixed(1)} / ${outlook.indicators.minusDI.toFixed(1)}`}
+                  status={
+                    outlook.indicators.plusDI > outlook.indicators.minusDI
+                      ? "bullish"
+                      : outlook.indicators.plusDI < outlook.indicators.minusDI
                         ? "bearish"
                         : "normal"
                   }
@@ -704,7 +722,7 @@ function MetricRow({
       <span className={cn("text-sm font-bold text-mono-data", color)}>
         {value}
       </span>
-      <span className="mt-1 text-[9px] uppercase leading-tight tracking-wider text-muted-foreground">
+      <span className="mt-1 text-[10px] leading-tight tracking-wider text-muted-foreground">
         {label}
       </span>
     </div>

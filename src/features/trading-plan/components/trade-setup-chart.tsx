@@ -3,17 +3,20 @@ import { useTranslation } from "react-i18next";
 import { formatPrice, formatDateTime, formatRatio } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
   buildTradeSetupModel,
   priceToRatio,
+  MAX_CANDLES,
+  PROJ_X_RATIO,
   type LevelKey,
   type LevelKind,
 } from "../lib/trade-setup-model";
 
 const VB_W = 760;
-const VB_H = 300;
+const VB_H = 380;
 const PAD_T = 24;
 const PAD_B = 18;
 const PAD_X = 8;
@@ -22,8 +25,7 @@ const CHART_H = VB_H - PAD_T - PAD_B;
 const CHART_LEFT = PAD_X;
 const CHART_RIGHT = VB_W - PAD_X;
 const CHART_W = CHART_RIGHT - CHART_LEFT;
-const PROJ_X = CHART_LEFT + CHART_W * 0.78; // start of the (narrow) projection zone
-const MAX_CANDLES = 120;
+const PROJ_X = CHART_LEFT + CHART_W * PROJ_X_RATIO; // start of the (narrow) projection zone
 
 /** color language: entry = neutral, risk(SL) = rose, profit(TP) = emerald */
 const LEVEL_COLOR: Record<LevelKind, string> = {
@@ -326,11 +328,11 @@ export function TradeSetupChart({
         )}
       </div>
 
-      {/* numeric panel: row1 = R:R · Entry · Stop Loss, row2 = TP1 · TP2 · TP3 */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* numeric panel: R:R · Entry · SL · TP1 · TP2 · TP3 */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Card className="overflow-hidden border border-border transition-colors hover:border-primary/50">
           <CardContent className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground">
               {t("dialog.risk_reward")}
             </span>
             <span className="text-base font-bold leading-none text-mono-data">
@@ -350,39 +352,36 @@ export function TradeSetupChart({
           >
             <CardContent className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between gap-1">
-                <span
-                  className={cn(
-                    "text-[10px] font-bold uppercase tracking-wider",
-                    LEVEL_COLOR[lvl.kind],
-                  )}
-                >
+                <span className={cn("text-[10px]", LEVEL_COLOR[lvl.kind])}>
                   {lvl.kind === "profit"
                     ? `${t("dialog.take_profit")} ${lvl.key.slice(2)}`
                     : t(`dialog.${lvl.labelKey}`)}
                 </span>
                 {lvl.kind === "entry" ? (
-                  <span
+                  <Badge
+                    variant="outline"
                     className={cn(
-                      "shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase",
+                      "rounded-md text-[10px] font-semibold uppercase tracking-wider",
                       model.signal === "short"
-                        ? "bg-rose-400/15 text-rose-400"
-                        : "bg-emerald-400/15 text-emerald-400",
+                        ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                        : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
                     )}
                   >
                     {model.signal}
-                  </span>
+                  </Badge>
                 ) : (
-                  <span
+                  <Badge
+                    variant="outline"
                     className={cn(
-                      "shrink-0 rounded px-1 py-px text-[9px] font-bold",
+                      "rounded-md text-[10px] font-semibold uppercase tracking-wider",
                       lvl.kind === "risk"
-                        ? "bg-rose-400/15 text-rose-400"
-                        : "bg-emerald-400/15 text-emerald-400",
+                        ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                        : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
                     )}
                   >
                     {lvl.kind === "risk" ? "-" : "+"}
                     {lvl.rMultiple.toFixed(1)}R
-                  </span>
+                  </Badge>
                 )}
               </div>
               <span className="text-base font-bold leading-none text-mono-data">

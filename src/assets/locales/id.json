@@ -150,7 +150,7 @@
       "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kekuatan sinyal yang transparan — alat bantu keputusan, bukan prediksi. Biarkan data bicara."
     },
     "trading_plan": {
-      "title": "Susun Rencana Perdagangan",
+      "title": "Susun Rencana Dagang",
       "description": "Dapetin titik masuk, batas rugi, dan target cuan otomatis secara akurat. Susun rencana matang biar eksekusi makin tenang."
     },
     "volume": {
@@ -271,11 +271,11 @@
     }
   },
   "dialog": {
-    "title_suffix": "Rencana Perdagangan & Analisis",
+    "title_suffix": "Rencana Dagang & Analisis",
     "not_enough_data": "Data tidak cukup untuk menghitung sinyal. Coba aset lain.",
     "loading": "Memuat data chart untuk perhitungan sinyal...",
-    "trading_plan": "Rencana Perdagangan",
-    "no_setup": "Belum ada rencana perdagangan saat ini, sinyal masih netral.",
+    "trading_plan": "Rencana Dagang",
+    "no_setup": "Belum ada rencana dagang saat ini, sinyal masih netral.",
     "analysis": "Analisis",
     "indicators": "Indikator Teknikal",
     "signal_result": "Hasil Sinyal",

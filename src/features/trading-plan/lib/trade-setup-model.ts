@@ -1,8 +1,20 @@
 import type { TradingPlan, SignalDirection } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 
-/** Recent candle count used to scale the chart (older candles don't drag it). */
-const SCALE_WINDOW = 45;
+/**
+ * Single source of truth for candle window size used by the trade setup chart.
+ * Controls both how many recent candles are rendered and how the price scale
+ * is computed (so old, far-away candles don't drag the scale and clip the
+ * recent action).
+ */
+export const MAX_CANDLES = 120;
+
+/**
+ * Horizontal split between the candle area (left) and the level-badge / price
+ * pill area (right). 0..1 ratio of the chart's drawable width. Higher = more
+ * room for candles, narrower badge column.
+ */
+export const PROJ_X_RATIO = 0.85;
 
 export type LevelKind = "entry" | "risk" | "profit";
 export type LevelKey = "entry" | "sl" | "tp1" | "tp2" | "tp3";
@@ -95,9 +107,9 @@ export function buildTradeSetupModel(
 
   // Scale to the recent price action + the plan levels only. Using a recent
   // window (not the full history) stops old, far-away candles from dragging the
-  // scale and opening a large empty band below the action. Candles that fall
-  // outside this range are dropped by the chart; priceToRatio clamps the rest.
-  const recent = candles.slice(-SCALE_WINDOW);
+  // scale and opening a large empty band below the action. Must match the
+  // window used by the chart renderer so on-screen candles aren't clipped.
+  const recent = candles.slice(-MAX_CANDLES);
   const highs = [...levelPrices, ref, ...recent.map((c) => c.high)];
   const lows = [...levelPrices, ref, ...recent.map((c) => c.low)];
   let max = Math.max(...highs);
