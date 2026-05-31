@@ -34,6 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -60,7 +61,7 @@ import {
   TOP_US_STOCK_TICKERS,
 } from "@/constants/assets";
 import { Button } from "@/components/ui/button";
-import { PremiumAccessDialog } from "@/features/screener/components/premium-access-dialog";
+import { PremiumAccessDialog } from "./premium-access-dialog";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
@@ -82,7 +83,7 @@ function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
   return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
 }
 
-export function AssetTable() {
+export function AssetSignalTable() {
   "use no memo";
   const { t } = useTranslation();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -136,7 +137,7 @@ export function AssetTable() {
     if (!favoriteFetching && favoriteAssets && favoriteSymbols.length > 0) {
       favoriteSymbols.forEach((sym) => {
         if (!favoriteAssets.some((asset) => asset.symbol === sym)) {
-          toast.error(t("terminal.ticker_not_found", { symbol: sym }));
+          toast.error(t("market.ticker_not_found", { symbol: sym }));
           removeSymbol(sym);
         }
       });
@@ -357,7 +358,7 @@ export function AssetTable() {
             onClick={() => column.toggleSorting()}
             className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
           >
-            {t("table.tier")} <SortIcon column={column} />
+            {t("table.grade")} <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => {
@@ -437,12 +438,12 @@ export function AssetTable() {
   });
 
   return (
-    <div className="space-y-6">
+    <>
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-            {t("terminal.screener")}
+            {t("market.screener")}
           </h2>
           {hasAccess && (
             <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] font-bold animate-shimmer rounded-md">
@@ -457,9 +458,9 @@ export function AssetTable() {
       </div>
 
       {/* Control bar section */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {/* Filters Header at the top */}
-        <div className="flex items-center justify-between border-b pb-4 mb-2 gap-2">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3.5 flex-wrap">
             <FilterBar />
           </div>
@@ -469,7 +470,7 @@ export function AssetTable() {
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
               <span>
-                {filteredData.length} {t("terminal.assets_found")}
+                {filteredData.length} {t("market.assets_found")}
               </span>
             )}
           </div>
@@ -482,7 +483,7 @@ export function AssetTable() {
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input
               type="text"
-              placeholder={t("terminal.search_placeholder")}
+              placeholder={t("market.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-9 h-9 text-sm focus:ring-primary/20 transition-all shadow-sm"
@@ -497,6 +498,8 @@ export function AssetTable() {
               </button>
             )}
           </div>
+
+          <Separator orientation="vertical" className="mx-2" />
 
           <div className="flex items-center gap-2 shrink-0">
             <Button
@@ -559,7 +562,7 @@ export function AssetTable() {
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">
-                {t("terminal.add_ticker_btn")}
+                {t("market.add_ticker_btn")}
               </span>
             </Button>
           </div>
@@ -604,10 +607,10 @@ export function AssetTable() {
                       </div>
                       <div className="space-y-1">
                         <h3 className="font-semibold text-foreground text-sm">
-                          {t("terminal.favorite_empty")}
+                          {t("market.favorite_empty")}
                         </h3>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          {t("terminal.favorite_empty_desc")}
+                          {t("market.favorite_empty_desc")}
                         </p>
                       </div>
                     </div>
@@ -700,6 +703,6 @@ export function AssetTable() {
           setPendingAction(null);
         }}
       />
-    </div>
+    </>
   );
 }

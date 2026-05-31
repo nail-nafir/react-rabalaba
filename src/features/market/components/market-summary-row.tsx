@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { MARKET_INDICES } from "@/constants/assets";
-import { Loader2, Activity, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { FearGreedBar } from "@/components/charts/fear-greed-bar";
@@ -31,10 +31,9 @@ export function MarketSummaryRow() {
     (indicesError || (!indices?.length && !indicesLoading));
 
   return (
-    <div className="space-y-4">
+    <>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("market.pulse")}
           </h2>
@@ -53,7 +52,7 @@ export function MarketSummaryRow() {
         </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pt-1 px-1 pb-4 scrollbar-none min-h-50">
+      <div className="flex gap-4 overflow-x-auto scrollbar-none min-h-50">
         {showEmptyState ? (
           <div className="w-full flex items-center justify-center border rounded-xl py-8 border-dashed">
             <EmptyState
@@ -141,6 +140,6 @@ export function MarketSummaryRow() {
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }

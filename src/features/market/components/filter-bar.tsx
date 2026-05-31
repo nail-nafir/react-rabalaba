@@ -3,6 +3,7 @@ import { useFilterStore, type SignalFilterType } from "@/store/filter-store";
 import { ASSET_TYPE_OPTIONS } from "@/constants/assets";
 import { SIGNAL_FILTER_OPTIONS } from "@/constants/signals";
 import { FilterGroup } from "@/components/shared/filter-group";
+import { Separator } from "@/components/ui/separator";
 import type { AssetFilterType } from "@/types/asset";
 
 export function FilterBar() {
@@ -28,7 +29,10 @@ export function FilterBar() {
         onChange={(v) => setAssetType(v as AssetFilterType)}
       />
 
-      <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
+      <Separator
+        orientation="vertical"
+        className="mx-2"
+      />
 
       <FilterGroup
         value={signalFilter}

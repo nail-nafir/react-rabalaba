@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { runBacktest } from "@/features/signals/engine/backtest";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import { TradeSetupChart } from "./trade-setup-chart";
+import { FollowSignalButton } from "@/components/shared/follow-signal-button";
 import { buildSignalText } from "../lib/signal-text";
 import { buildTradeSetupModel } from "../lib/trade-setup-model";
 import {
@@ -170,14 +171,14 @@ export function AssetDetailDialog() {
                     if (isStarred) {
                       removeSymbol(selectedAssetSymbol);
                       toast.success(
-                        t("terminal.favorite_removed", {
+                        t("market.favorite_removed", {
                           symbol: selectedAssetSymbol,
                         }),
                       );
                     } else {
                       addSymbol(selectedAssetSymbol);
                       toast.success(
-                        t("terminal.favorite_added", {
+                        t("market.favorite_added", {
                           symbol: selectedAssetSymbol,
                         }),
                       );
@@ -262,7 +263,7 @@ export function AssetDetailDialog() {
           )}
         </DialogHeader>
 
-        <Separator className="bg-border" />
+        <Separator />
 
         {chartLoading ? (
           <div className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground">
@@ -282,6 +283,7 @@ export function AssetDetailDialog() {
                 </div>
                 {tradingPlan && outlook.signal !== "neutral" && (
                   <div className="flex items-center gap-1">
+                    {asset && <FollowSignalButton asset={asset} />}
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -325,7 +327,7 @@ export function AssetDetailDialog() {
               )}
             </div>
 
-            <Separator className="bg-border" />
+            <Separator />
 
             {/* Supporting evidence: historical backtest context */}
             <div className="px-6 py-5 space-y-4">
@@ -445,7 +447,7 @@ export function AssetDetailDialog() {
               )}
             </div>
 
-            <Separator className="bg-border" />
+            <Separator />
 
             {/* Technical Indicators */}
             <div className="px-6 py-5">
@@ -619,7 +621,7 @@ export function AssetDetailDialog() {
               </div>
             </div>
 
-            <Separator className="bg-border" />
+            <Separator />
 
             {/* Analysis */}
             <div className="px-6 py-5">

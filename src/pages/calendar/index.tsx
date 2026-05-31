@@ -103,7 +103,7 @@ export default function CalendarPage() {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
               {t("calendar.title")}
             </h1>
             <p className="text-sm text-muted-foreground">

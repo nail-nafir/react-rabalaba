@@ -7,6 +7,10 @@ interface UIState {
   openDetailDialog: (symbol: string) => void;
   closeDetailDialog: () => void;
 
+  // Terminal active view (market | journal)
+  terminalView: "market" | "journal";
+  setTerminalView: (view: "market" | "journal") => void;
+
   // Search
   isSearchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
@@ -25,6 +29,10 @@ export const useUIStore = create<UIState>((set) => ({
     set({ selectedAssetSymbol: symbol, isDetailDialogOpen: true }),
   closeDetailDialog: () =>
     set({ isDetailDialogOpen: false, selectedAssetSymbol: null }),
+
+  // Terminal active view
+  terminalView: "market",
+  setTerminalView: (terminalView) => set({ terminalView }),
 
   // Search
   isSearchOpen: false,
