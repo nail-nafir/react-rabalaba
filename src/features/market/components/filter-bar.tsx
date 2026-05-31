@@ -22,22 +22,21 @@ export function FilterBar() {
   }));
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex items-center gap-2 min-w-0 flex-1">
       <FilterGroup
         value={assetType}
         options={translatedAssetOptions}
         onChange={(v) => setAssetType(v as AssetFilterType)}
+        className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
       />
 
-      <Separator
-        orientation="vertical"
-        className="mx-2"
-      />
+      <Separator orientation="vertical" className="mx-1" />
 
       <FilterGroup
         value={signalFilter}
         options={translatedSignalOptions}
         onChange={(v) => setSignalFilter(v as SignalFilterType)}
+        className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
       />
     </div>
   );

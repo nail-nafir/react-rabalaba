@@ -129,6 +129,7 @@ export default function CalendarPage() {
           <div className="flex-1 min-w-0 space-y-8">
             <div className="flex flex-row items-center justify-between gap-4 border-b pb-4 mb-2 overflow-hidden">
               <FilterGroup
+                className="shrink-0 min-w-0 sm:w-fit"
                 value={impactFilter}
                 options={IMPACT_OPTIONS}
                 onChange={(v) => setImpactFilter(v as ImpactFilter)}

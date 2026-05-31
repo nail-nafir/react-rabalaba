@@ -460,10 +460,8 @@ export function AssetSignalTable() {
       {/* Control bar section */}
       <div className="flex flex-col gap-3">
         {/* Filters Header at the top */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3.5 flex-wrap">
-            <FilterBar />
-          </div>
+        <div className="flex items-center gap-2">
+          <FilterBar />
 
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
             {isLoading ? (

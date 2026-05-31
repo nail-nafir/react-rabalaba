@@ -340,14 +340,14 @@ export function FollowHistoryTable() {
             value={dirFilter}
             options={dirOptions}
             onChange={setDirFilter}
-            className="flex-1 min-w-0 md:flex-none"
+            className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
           />
           <Separator orientation="vertical" className="mx-1" />
           <FilterGroup
             value={statusFilter}
             options={statusOptions}
             onChange={setStatusFilter}
-            className="flex-1 min-w-0 md:flex-none"
+            className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
           />
         </div>
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest shrink-0">
