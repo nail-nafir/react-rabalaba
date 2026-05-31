@@ -19,8 +19,9 @@ export interface ShareCardMeta {
 
 const W = 1200;
 // Tall enough that the chart aspect (~2.1:1) matches the web renderer in
-// `trade-setup-chart.tsx` while leaving comfortable room for header & footer.
-const H = 920;
+// `trade-setup-chart.tsx` while leaving symmetric ~48px breathing room at
+// both the top (above the brand block) and the bottom (below the footer).
+const H = 1040;
 
 const FONT =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
@@ -115,10 +116,7 @@ function getPalette(): Palette {
 }
 
 function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 const n = (v: number) => v.toFixed(1);
@@ -152,12 +150,7 @@ function formatGeneratedAt(d: Date): string {
  * arcs with a center dot). Rendered as inline SVG so the share card can be
  * fully self-contained.
  */
-function brandMark(
-  x: number,
-  y: number,
-  size: number,
-  color: string,
-): string {
+function brandMark(x: number, y: number, size: number, color: string): string {
   // Native viewBox is 24x24. Pad ~18% so the icon doesn't touch the box edge.
   const padding = 0.18;
   const inner = size * (1 - padding * 2);
@@ -182,8 +175,8 @@ export function buildShareCardSvg(
   // renderer in `trade-setup-chart.tsx` (shared via `trade-setup-model.ts`).
   const px0 = 56;
   const px1 = W - 56;
-  const top = 274;
-  const bottom = 786;
+  const top = 293;
+  const bottom = 805;
   const left = px0 + 16;
   const right = px1 - 16;
   const projX = left + (right - left) * PROJ_X_RATIO;
@@ -257,21 +250,25 @@ export function buildShareCardSvg(
 
   // ── Symbol row ─────────────────────────────────────────────────────────
   const symbolY = 198;
-  const pillW = isShort ? 96 : 88;
+  // Bumped a bit to make room for the directional arrow prefix on the pill.
+  const pillW = isShort ? 124 : 116;
   const pillX = 56;
   const pillY = 212;
   const pillH = 28;
   const namePillGap = 12;
   const generatedAt = formatGeneratedAt(new Date());
+  const signalArrow = isShort ? "\u25BC" : "\u25B2"; // ▼ / ▲
 
   // ── Stats row ──────────────────────────────────────────────────────────
   // Three columns: R:R aligned to left, RISK centered, REWARD aligned to right.
-  const statsLabelY = 840;
-  const statsValueY = 878;
+  const statsLabelY = 869;
+  const statsValueY = 913;
   const reward = model.risk * model.riskReward;
 
   // ── Footer ─────────────────────────────────────────────────────────────
-  const footerY = 908;
+  // Baseline placed so the gap from the bottom purple separator (y=948) to
+  // the footer's text top mirrors the kop surat ↔ top separator gap (~28px).
+  const footerY = 989;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -279,13 +276,18 @@ export function buildShareCardSvg(
     <stop offset="0%" stop-color="${C.primary}"/>
     <stop offset="100%" stop-color="${C.primary}" stop-opacity="0.65"/>
   </linearGradient>
+  <radialGradient id="logoHalo" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0%" stop-color="${C.primary}" stop-opacity="0.5"/>
+    <stop offset="60%" stop-color="${C.primary}" stop-opacity="0.12"/>
+    <stop offset="100%" stop-color="${C.primary}" stop-opacity="0"/>
+  </radialGradient>
 </defs>
 
 <!-- Page background -->
 <rect width="${W}" height="${H}" fill="${C.bg}"/>
 
-<!-- Top accent strip: solid brand primary -->
-<rect x="0" y="0" width="${W}" height="6" fill="${C.primary}"/>
+<!-- Logo halo: soft purple aura behind the brand square -->
+<rect x="${logoX - 22}" y="${logoY - 22}" width="${logoSize + 44}" height="${logoSize + 44}" rx="28" fill="url(#logoHalo)"/>
 
 <!-- Brand block: logo square + wordmark + subtitle -->
 <rect x="${logoX}" y="${logoY}" width="${logoSize}" height="${logoSize}" rx="14" fill="url(#logoBg)"/>
@@ -297,20 +299,20 @@ ${brandMark(logoX, logoY, logoSize, "#ffffff")}
 <text x="${W - 56}" y="${logoY + 22}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">GENERATED</text>
 <text x="${W - 56}" y="${logoY + 46}" fill="${C.text}" font-size="16" font-weight="700" text-anchor="end" font-family="${FONT_MONO}">${esc(generatedAt)}</text>
 
-<!-- Hairline divider under header -->
-<line x1="56" y1="128" x2="${W - 56}" y2="128" stroke="${C.border}" stroke-width="1"/>
+<!-- Brand-purple separator: divides letterhead from asset section -->
+<line x1="56" y1="128" x2="${W - 56}" y2="128" stroke="${C.primary}" stroke-width="2"/>
 
-<!-- Symbol + signal pill + name -->
+<!-- Symbol + signal pill (with directional arrow) + name -->
 <text x="56" y="${symbolY}" fill="${C.text}" font-size="56" font-weight="800" font-family="${FONT}" letter-spacing="-0.02em">${esc(meta.symbol)}</text>
 <rect x="${pillX}" y="${pillY}" rx="6" width="${pillW}" height="${pillH}" fill="${accentFill}" stroke="${accent}"/>
-<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" fill="${accent}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(model.signal.toUpperCase())} ${Math.round(meta.strength)}%</text>
+<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" fill="${accent}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${signalArrow} ${esc(model.signal.toUpperCase())} ${Math.round(meta.strength)}%</text>
 <text x="${pillX + pillW + namePillGap}" y="${pillY + pillH / 2 + 1}" fill="${C.muted}" font-size="16" dominant-baseline="central" font-family="${FONT}">${esc(meta.name ?? "")}</text>
 
-<!-- Top-right: current price -->
-<text x="${W - 56}" y="${logoY + 100}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>
+<!-- Top-right: current price (value first, label below) -->
 <text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="36" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>
 
-<!-- Chart panel -->
+<!-- Chart panel (flat card background, matches web) -->
 <rect x="${px0}" y="${top - 22}" width="${px1 - px0}" height="${bottom - top + 44}" rx="14" fill="${C.card}" stroke="${C.border}"/>
 ${zoneRect(model.profitZone.from, model.profitZone.to, C.emeraldFill)}
 ${zoneRect(model.riskZone.from, model.riskZone.to, C.roseFill)}
@@ -322,18 +324,21 @@ ${levels}
      no extra divider needed here). -->
 
 <!-- Stats row: R:R (left) · RISK (center) · REWARD (right) -->
-<text x="56" y="${statsLabelY}" fill="${C.muted}" font-size="12" font-weight="700" text-anchor="start" font-family="${FONT}" letter-spacing="0.24em">RISK : REWARD</text>
+<text x="56" y="${statsLabelY}" fill="${C.muted}" font-size="14" font-weight="700" text-anchor="start" font-family="${FONT}" letter-spacing="0.24em">RISK : REWARD</text>
 <text x="56" y="${statsValueY}" fill="${C.text}" font-size="34" font-weight="800" text-anchor="start" font-family="${FONT_MONO}">1 : ${formatRatio(model.riskReward)}</text>
 
-<text x="${W / 2}" y="${statsLabelY}" fill="${C.muted}" font-size="12" font-weight="700" text-anchor="middle" font-family="${FONT}" letter-spacing="0.24em">RISK</text>
+<text x="${W / 2}" y="${statsLabelY}" fill="${C.muted}" font-size="14" font-weight="700" text-anchor="middle" font-family="${FONT}" letter-spacing="0.24em">RISK</text>
 <text x="${W / 2}" y="${statsValueY}" fill="${C.rose}" font-size="34" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}">${model.risk > 0 ? esc(formatPrice(model.risk, meta.assetType)) : "-"}</text>
 
-<text x="${W - 56}" y="${statsLabelY}" fill="${C.muted}" font-size="12" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">REWARD</text>
+<text x="${W - 56}" y="${statsLabelY}" fill="${C.muted}" font-size="14" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">REWARD</text>
 <text x="${W - 56}" y="${statsValueY}" fill="${C.emerald}" font-size="34" font-weight="800" text-anchor="end" font-family="${FONT_MONO}">${reward > 0 ? esc(formatPrice(reward, meta.assetType)) : "-"}</text>
 
+<!-- Brand-purple separator: divides trade content from footer -->
+<line x1="56" y1="948" x2="${W - 56}" y2="948" stroke="${C.primary}" stroke-width="2"/>
+
 <!-- Footer: disclaimer + brand URL -->
-<text x="56" y="${footerY}" fill="#fbbf24" font-size="13" font-weight="600" font-family="${FONT}">Not financial advice. Do Your Own Research. Past performance does not guarantee future results.</text>
-<text x="${W - 56}" y="${footerY}" fill="${C.primary}" font-size="13" font-weight="700" text-anchor="end" font-family="${FONT_MONO}">https://rabalaba.page.dev</text>
+<text x="56" y="${footerY}" fill="${C.muted}" font-size="16" font-weight="600" font-family="${FONT}">Not Financial Advice. Do Your Own Research.</text>
+<text x="${W - 56}" y="${footerY}" fill="${C.muted}" font-size="16" font-weight="700" text-anchor="end" font-family="${FONT_MONO}">https://rabalaba.page.dev</text>
 </svg>`;
 }
 
