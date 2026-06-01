@@ -203,6 +203,7 @@ export function AssetDetailDialog() {
                 {t("dialog.title_suffix")}
               </DialogDescription>
             </div>
+            {asset && <FollowSignalButton asset={asset} />}
           </div>
 
           {/* Price row */}
@@ -283,7 +284,6 @@ export function AssetDetailDialog() {
                 </div>
                 {tradingPlan && outlook.signal !== "neutral" && (
                   <div className="flex items-center gap-1">
-                    {asset && <FollowSignalButton asset={asset} />}
                     <Button
                       variant="ghost"
                       size="icon-sm"

@@ -26,7 +26,7 @@ import {
   type FollowStatus,
   type FollowedTrade,
 } from "@/features/follow-trade/lib/follow-trade-model";
-import { formatPrice, formatRatio, formatDateTime } from "@/lib/formatters";
+import { formatPrice, formatRatio, formatDateFull, formatClock } from "@/lib/formatters";
 import {
   Table,
   TableHeader,
@@ -94,7 +94,7 @@ function SortButton({
 
 export function FollowHistoryTable() {
   "use no memo";
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const history = useFollowStore((s) => s.history);
   const removeHistory = useFollowStore((s) => s.removeHistory);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -136,13 +136,19 @@ export function FollowHistoryTable() {
         header: ({ column }) => (
           <SortButton label={t("journal.col_date")} column={column} />
         ),
-        cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {formatDateTime(
-              (row.original.closedAt ?? row.original.followedAt) / 1000,
-            )}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const ts = (row.original.closedAt ?? row.original.followedAt) / 1000;
+          return (
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground">
+                {formatDateFull(ts, i18n.language)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {formatClock(ts)}
+              </div>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "symbol",

@@ -190,18 +190,20 @@
   },
   "terminal": {
     "title": "Terminal Riset",
-    "subtitle": "Analisis multi aset dengan data langsung & sinyal berbasis aturan",
+    "subtitle": "Analisis multi aset dengan data langsung & sinyal akurat",
     "access_dialog_title": "Buka Akses Premium",
     "access_dialog_desc": "Fitur ini khusus buat member premium. Masukin kode akses di bawah buat langsung kebuka.",
     "access_dialog_placeholder": "Masukkan kode akses (cth. 1453)...",
     "access_dialog_no_access": "Belum punya kode akses?",
     "access_dialog_no_access_link": "Dapatkan akses",
     "access_dialog_invalid_code": "Kode akses salah! Silakan coba lagi.",
-    "access_dialog_success": "Akses diberikan! Fitur premium sekarang terbuka.",
+    "access_dialog_success": "Akses diberikan! Fitur premium kebuka selamanya.",
     "access_dialog_unlock_btn": "Buka Akses",
     "access_dialog_code_required": "Kode akses wajib diisi",
     "access_config_missing": "Akses premium tidak tersedia saat ini. Silakan hubungi admin.",
-    "access_error_decryption": "Verifikasi akses premium gagal. Silakan masukkan kode akses Anda kembali."
+    "access_error_decryption": "Verifikasi akses premium gagal. Silakan masukkan kode akses Anda kembali.",
+    "access_trial_success": "Akses diberikan! Fitur premium kebuka selama 3 hari.",
+    "access_trial_expired": "Masa trial kamu sudah habis. Hubungi admin untuk akses penuh."
   },
   "calendar": {
     "title": "Kalender Ekonomi",
@@ -219,6 +221,12 @@
     "select_event": "Pilih acara untuk melihat detail",
     "events_found": "Acara",
     "scheduled_event": "Acara Terjadwal",
+    "impact": {
+      "all": "Semua Dampak",
+      "high": "Dampak Tinggi",
+      "medium": "Dampak Sedang",
+      "low": "Dampak Rendah"
+    },
     "days": {
       "su": "M",
       "mo": "S",

@@ -44,7 +44,7 @@ export default function TerminalPage() {
               value={view}
               options={viewOptions}
               onChange={setView}
-              className="shrink-0 min-w-24 sm:w-40"
+              className="shrink-0 sm:w-fit"
             />
           )}
         </div>

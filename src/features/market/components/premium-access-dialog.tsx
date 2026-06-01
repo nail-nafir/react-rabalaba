@@ -46,16 +46,27 @@ export function PremiumAccessDialog({
   });
 
   const onSubmit = (data: AccessFormValues) => {
-    if (grantAccess(data.code.trim())) {
+    const result = grantAccess(data.code.trim());
+    if (result === "granted" || result === "trial") {
       onOpenChange(false);
       form.reset();
       setShowCode(false);
-      toast.success(t("terminal.access_dialog_success"));
+      toast.success(
+        t(
+          result === "trial"
+            ? "terminal.access_trial_success"
+            : "terminal.access_dialog_success",
+        ),
+      );
       onSuccess?.();
     } else {
       form.setError("code", {
         type: "manual",
-        message: t("terminal.access_dialog_invalid_code"),
+        message: t(
+          result === "expired"
+            ? "terminal.access_trial_expired"
+            : "terminal.access_dialog_invalid_code",
+        ),
       });
     }
   };

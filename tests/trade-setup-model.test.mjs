@@ -136,3 +136,29 @@ test("handles missing takeProfit3", async () => {
   assert.equal(m.levels.filter((l) => l.kind === "profit").length, 2);
   assert.equal(m.profitZone.to, 120);
 });
+
+test("priceTicks: endpoints, length and ascending order", async () => {
+  const { priceTicks } = await loadModule(SRC);
+  const t = priceTicks(10, 20, 5);
+  assert.equal(t.length, 5);
+  assert.equal(t[0], 10);
+  assert.equal(t[t.length - 1], 20);
+  for (let i = 1; i < t.length; i++) assert.ok(t[i] > t[i - 1]);
+
+  assert.deepEqual(priceTicks(0, 12, 4), [0, 4, 8, 12]); // custom count
+  assert.deepEqual(priceTicks(5, 5), [5]); // degenerate
+  assert.deepEqual(priceTicks(20, 10), [20]); // max < min
+});
+
+test("dateTickIndices: unique, in range, edge cases", async () => {
+  const { dateTickIndices } = await loadModule(SRC);
+  const idx = dateTickIndices(100, 7);
+  assert.equal(idx.length, 7);
+  assert.equal(idx[0], 0);
+  assert.equal(idx[idx.length - 1], 99);
+  assert.equal(new Set(idx).size, idx.length); // unique
+  idx.forEach((i) => assert.ok(i >= 0 && i <= 99));
+
+  assert.deepEqual(dateTickIndices(0), []); // empty
+  assert.deepEqual(dateTickIndices(4, 7), [0, 1, 2, 3]); // length < count
+});

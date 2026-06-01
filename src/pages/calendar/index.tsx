@@ -35,13 +35,6 @@ import i18n from "@/app/config/i18n";
 
 type ImpactFilter = EventImpact | "all";
 
-const IMPACT_OPTIONS = Object.entries(IMPACT_LEVELS).map(
-  ([value, { label }]) => ({
-    value: value as ImpactFilter,
-    label,
-  }),
-);
-
 /**
  * Helper to format a Date object as YYYY-MM-DD in local time
  */
@@ -58,6 +51,11 @@ export default function CalendarPage() {
   const timelineRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const { data: allEvents = [], isLoading } = useEconomicCalendar();
+
+  const impactOptions = Object.keys(IMPACT_LEVELS).map((value) => ({
+    value: value as ImpactFilter,
+    label: t(`calendar.impact.${value}`),
+  }));
 
   const filteredEvents = useMemo(() => {
     return allEvents
@@ -131,7 +129,7 @@ export default function CalendarPage() {
               <FilterGroup
                 className="shrink-0 min-w-0 sm:w-fit"
                 value={impactFilter}
-                options={IMPACT_OPTIONS}
+                options={impactOptions}
                 onChange={(v) => setImpactFilter(v as ImpactFilter)}
               />
 
@@ -176,8 +174,8 @@ export default function CalendarPage() {
                       {new Date(date).toLocaleDateString(
                         i18n.language === "id" ? "id-ID" : "en-US",
                         {
-                          weekday: "short",
-                          month: "short",
+                          weekday: "long",
+                          month: "long",
                           day: "numeric",
                           year: "numeric",
                         },

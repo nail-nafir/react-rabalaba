@@ -190,18 +190,20 @@
   },
   "terminal": {
     "title": "Research Terminal",
-    "subtitle": "Multi asset analysis with real time data & rule based signals",
+    "subtitle": "Multi asset analysis with real time data & accurate signals",
     "access_dialog_title": "Unlock Premium Access",
     "access_dialog_desc": "This feature is for premium members only. Drop the access code below to unlock it.",
     "access_dialog_placeholder": "Enter access code (e.g. 1453)...",
     "access_dialog_no_access": "Don't have an access code?",
     "access_dialog_no_access_link": "Get access",
     "access_dialog_invalid_code": "Invalid access code! Please try again.",
-    "access_dialog_success": "Access granted! Premium features are now unlocked.",
+    "access_dialog_success": "Access granted! Premium features are unlocked forever.",
     "access_dialog_unlock_btn": "Unlock Access",
     "access_dialog_code_required": "Access code is required",
     "access_config_missing": "Premium access is currently unavailable. Please contact support.",
-    "access_error_decryption": "Premium access verification failed. Please enter your access code again."
+    "access_error_decryption": "Premium access verification failed. Please enter your access code again.",
+    "access_trial_success": "Access granted! Premium features are unlocked for 3 days.",
+    "access_trial_expired": "Your trial has ended. Contact support for full access."
   },
   "calendar": {
     "title": "Economic Calendar",
@@ -219,6 +221,12 @@
     "select_event": "Select an event to view details",
     "events_found": "Events",
     "scheduled_event": "Scheduled Event",
+    "impact": {
+      "all": "All Impact",
+      "high": "High Impact",
+      "medium": "Medium Impact",
+      "low": "Low Impact"
+    },
     "days": {
       "su": "S",
       "mo": "M",

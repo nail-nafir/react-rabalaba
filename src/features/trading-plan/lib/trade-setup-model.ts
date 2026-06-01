@@ -53,6 +53,23 @@ export function priceToRatio(price: number, min: number, max: number): number {
   return Math.min(1, Math.max(0, (price - min) / (max - min)));
 }
 
+/** Evenly-spaced price values across [min..max] inclusive, ascending. */
+export function priceTicks(min: number, max: number, count = 5): number[] {
+  if (max <= min || count < 2) return [min];
+  const step = (max - min) / (count - 1);
+  return Array.from({ length: count }, (_, i) => min + step * i);
+}
+
+/** Evenly-spaced candle indices in [0..length-1], unique and ascending. */
+export function dateTickIndices(length: number, count = 7): number[] {
+  if (length <= 0) return [];
+  if (length <= count) return Array.from({ length }, (_, i) => i);
+  const step = (length - 1) / (count - 1);
+  return Array.from(
+    new Set(Array.from({ length: count }, (_, i) => Math.round(step * i))),
+  );
+}
+
 /**
  * Build the geometry + numeric model for the visual trade setup. Pure: covers
  * both candle extremes and every plan level so nothing is clipped, and exposes

@@ -27,11 +27,11 @@ export function LanguageSwitcher() {
         </div>
       </SelectTrigger>
       <SelectContent align="end" className="p-1">
-        <SelectItem value="en" className="text-[10px] uppercase tracking-wider">
-          English
-        </SelectItem>
         <SelectItem value="id" className="text-[10px] uppercase tracking-wider">
           Indonesia
+        </SelectItem>
+        <SelectItem value="en" className="text-[10px] uppercase tracking-wider">
+          English
         </SelectItem>
       </SelectContent>
     </Select>

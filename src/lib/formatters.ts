@@ -53,19 +53,40 @@ export function formatDate(timestamp: number): string {
   });
 }
 
+/** Numeric day/month (e.g. "01/06"); order follows the given locale. */
+export function formatDayMonth(timestamp: number, locale?: string): string {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
+}
+
+/** Locale-aware full date, e.g. "1 Juni 2026" (id) / "June 1, 2026" (en). */
+export function formatDateFull(timestamp: number, locale?: string): string {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Clock time HH:MM (24h, local), e.g. "05:46". */
+export function formatClock(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const hh = date.getHours().toString().padStart(2, "0");
+  const mm = date.getMinutes().toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 /**
  * Formats a Unix timestamp with time for intraday candles.
  * Uses the viewer's local timezone so hover labels match the user's clock.
  */
-export function formatDateTime(timestamp: number): string {
+export function formatDateTime(timestamp: number, locale?: string): string {
   const date = new Date(timestamp * 1000);
-  return date.toLocaleString("en-US", {
-    month: "short",
+  const day = date.toLocaleDateString(locale, {
     day: "numeric",
+    month: "long",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZoneName: "short",
   });
+  return `${day} ${formatClock(timestamp)}`;
 }

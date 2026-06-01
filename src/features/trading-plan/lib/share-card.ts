@@ -1,10 +1,11 @@
-import { formatPrice, formatRatio } from "@/lib/formatters";
+import { formatPrice, formatRatio, formatDayMonth } from "@/lib/formatters";
 import type { AssetType } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
   priceToRatio,
+  priceTicks,
+  dateTickIndices,
   MAX_CANDLES,
-  PROJ_X_RATIO,
   type TradeSetupModel,
 } from "./trade-setup-model";
 
@@ -175,11 +176,25 @@ export function buildShareCardSvg(
   // renderer in `trade-setup-chart.tsx` (shared via `trade-setup-model.ts`).
   const px0 = 56;
   const px1 = W - 56;
-  const top = 293;
-  const bottom = 805;
-  const left = px0 + 16;
-  const right = px1 - 16;
-  const projX = left + (right - left) * PROJ_X_RATIO;
+  const panelY = 271;
+  const panelH = 556;
+  const PAD = 26; // uniform inner padding from the card border (all sides)
+  const left = px0 + PAD;
+  const right = px1 - PAD;
+  const top = panelY + PAD;
+  const bottom = panelY + panelH - PAD - 18; // leave room for the date labels
+  // Right price column auto-sizes to the widest [KEY | price] pill, so candles
+  // fill the rest of the width (mirrors the web renderer).
+  const pillWidth = (key: string, price: string) =>
+    key.length * 9 + 16 + (price.length * 9 + 16);
+  const axisW =
+    Math.max(
+      60,
+      ...model.levels.map((l) =>
+        pillWidth(l.key.toUpperCase(), formatPrice(l.price, meta.assetType)),
+      ),
+    ) + 8;
+  const projX = right - axisW;
   const chartH = bottom - top;
   const y = (price: number) =>
     top + (1 - priceToRatio(price, model.priceMin, model.priceMax)) * chartH;
@@ -206,10 +221,30 @@ export function buildShareCardSvg(
   const zoneRect = (from: number, to: number, fill: string) => {
     const yt = Math.min(y(from), y(to));
     const h = Math.abs(y(from) - y(to));
-    return `<rect x="${left}" y="${n(yt)}" width="${n(right - left)}" height="${n(h)}" fill="${fill}"/>`;
+    return `<rect x="${left}" y="${n(yt)}" width="${n(projX - left)}" height="${n(h)}" fill="${fill}"/>`;
   };
 
-  // Level lines + badges, mirroring the web chart's badge / price-pill style.
+  // Price axis: horizontal gridlines + candle price labels near the candles.
+  const priceAxis = priceTicks(model.priceMin, model.priceMax)
+    .map((p) => {
+      const py = y(p);
+      return `<line x1="${left}" y1="${n(py)}" x2="${n(projX)}" y2="${n(py)}" stroke="${C.border}" stroke-width="1" opacity="0.5"/><text x="${n(projX + 8)}" y="${n(py)}" fill="${C.muted}" font-size="15" text-anchor="start" dominant-baseline="central" font-family="${FONT_MONO}">${esc(formatPrice(p, meta.assetType))}</text>`;
+    })
+    .join("");
+
+  // Date axis: vertical gridlines + DD/MM labels along the bottom.
+  const dateAxis = view.length
+    ? dateTickIndices(view.length)
+        .map((idx, i, arr) => {
+          const cx = left + (idx + 0.5) * slot;
+          const anchor =
+            i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle";
+          return `<line x1="${n(cx)}" y1="${top}" x2="${n(cx)}" y2="${bottom}" stroke="${C.border}" stroke-width="1" opacity="0.5"/><text x="${n(cx)}" y="${bottom + 18}" fill="${C.muted}" font-size="15" text-anchor="${anchor}" font-family="${FONT_MONO}">${esc(formatDayMonth(view[idx].timestamp))}</text>`;
+        })
+        .join("")
+    : "";
+
+  // Level lines + combined [KEY | price] pills, right-aligned (mirrors web).
   const levels = model.levels
     .map((lvl) => {
       const ly = y(lvl.price);
@@ -221,23 +256,23 @@ export function buildShareCardSvg(
             : C.muted;
       const dash = lvl.kind === "entry" ? "" : `stroke-dasharray="5 4"`;
 
-      const label = lvl.key.toUpperCase();
-      const labelFs = 14;
-      const bw = label.length * 9 + 16;
-      const bh = 22;
-      const bx = projX + 8;
-      const by = ly - bh / 2;
-      const badge = `<rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${bh}" rx="4" fill="${col}"/><text x="${n(bx + bw / 2)}" y="${n(ly)}" fill="${C.bg}" font-size="${labelFs}" font-weight="700" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.05em">${esc(label)}</text>`;
-
+      const key = lvl.key.toUpperCase();
       const price = formatPrice(lvl.price, meta.assetType);
-      const priceFs = 16;
-      const pbw = price.length * 9 + 16;
-      const pbh = 22;
-      const pbx = right - 6 - pbw;
-      const pby = ly - pbh / 2;
-      const pricePill = `<rect x="${n(pbx)}" y="${n(pby)}" width="${n(pbw)}" height="${pbh}" rx="4" fill="${C.card}" stroke="${col}" stroke-width="1"/><text x="${n(pbx + pbw / 2)}" y="${n(ly)}" fill="${col}" font-size="${priceFs}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="${FONT_MONO}">${esc(price)}</text>`;
+      const keyW = key.length * 9 + 16;
+      const priceW = price.length * 9 + 16;
+      const bw = keyW + priceW;
+      const bh = 24;
+      const bx = right - bw;
+      const by = ly - bh / 2;
+      const divX = bx + keyW;
 
-      return `<line x1="${left}" y1="${n(ly)}" x2="${right}" y2="${n(ly)}" stroke="${col}" stroke-width="1.4" ${dash} opacity="0.9"/>${badge}${pricePill}`;
+      const line = `<line x1="${left}" y1="${n(ly)}" x2="${n(projX)}" y2="${n(ly)}" stroke="${col}" stroke-width="1.4" ${dash} opacity="0.9"/>`;
+      const rect = `<rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${bh}" rx="4" fill="${C.card}" stroke="${col}" stroke-width="1"/>`;
+      const keyText = `<text x="${n(bx + keyW / 2)}" y="${n(ly)}" fill="${col}" font-size="14" font-weight="700" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.05em">${esc(key)}</text>`;
+      const divLine = `<line x1="${n(divX)}" y1="${n(ly - bh / 2 + 4)}" x2="${n(divX)}" y2="${n(ly + bh / 2 - 4)}" stroke="${col}" stroke-width="1" opacity="0.5"/>`;
+      const priceText = `<text x="${n(divX + priceW / 2)}" y="${n(ly)}" fill="${col}" font-size="16" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="${FONT_MONO}">${esc(price)}</text>`;
+
+      return `${line}${rect}${keyText}${divLine}${priceText}`;
     })
     .join("");
 
@@ -313,10 +348,11 @@ ${brandMark(logoX, logoY, logoSize, "#ffffff")}
 <text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>
 
 <!-- Chart panel (flat card background, matches web) -->
-<rect x="${px0}" y="${top - 22}" width="${px1 - px0}" height="${bottom - top + 44}" rx="14" fill="${C.card}" stroke="${C.border}"/>
+<rect x="${px0}" y="${panelY}" width="${px1 - px0}" height="${panelH}" rx="14" fill="${C.card}" stroke="${C.border}"/>
 ${zoneRect(model.profitZone.from, model.profitZone.to, C.emeraldFill)}
 ${zoneRect(model.riskZone.from, model.riskZone.to, C.roseFill)}
-<line x1="${n(projX)}" y1="${top}" x2="${n(projX)}" y2="${bottom}" stroke="${C.border}" stroke-dasharray="2 3"/>
+${priceAxis}
+${dateAxis}
 ${candles}
 ${levels}
 

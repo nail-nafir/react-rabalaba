@@ -22,16 +22,19 @@ export function FollowSignalButton({ asset }: { asset: UnifiedAsset }) {
 
   if (isOpen) {
     return (
-      <Button variant="outline" size="sm" disabled>
-        <Check /> {t("journal.following")}
+      <Button
+        disabled
+        className="h-9 px-3 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 tracking-tight hover:bg-primary/90 shadow-sm active:scale-95"
+      >
+        <Check className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">{t("journal.following")}</span>
       </Button>
     );
   }
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      className="h-9 px-3 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 tracking-tight hover:bg-primary/90 shadow-sm active:scale-95"
       onClick={() => {
         if (follow(asset)) {
           toast(t("journal.followed_toast", { symbol: asset.symbol }), {
@@ -49,7 +52,8 @@ export function FollowSignalButton({ asset }: { asset: UnifiedAsset }) {
         }
       }}
     >
-      <Crosshair /> {t("journal.follow")}
+      <Crosshair className="h-3.5 w-3.5" />
+      <span className="hidden sm:inline">{t("journal.follow")}</span>
     </Button>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatPrice, formatDateTime, formatRatio } from "@/lib/formatters";
+import { formatPrice, formatDateTime, formatDayMonth, formatRatio } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,23 +9,27 @@ import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
   buildTradeSetupModel,
   priceToRatio,
+  priceTicks,
+  dateTickIndices,
   MAX_CANDLES,
-  PROJ_X_RATIO,
   type LevelKey,
   type LevelKind,
 } from "../lib/trade-setup-model";
 
 const VB_W = 760;
 const VB_H = 380;
-const PAD_T = 24;
-const PAD_B = 18;
+const PAD_T = 12;
+const PAD_B = 6;
 const PAD_X = 8;
+const AXIS_B = 14; // bottom band for the date axis labels
 const CHART_TOP = PAD_T;
-const CHART_H = VB_H - PAD_T - PAD_B;
+const CHART_H = VB_H - PAD_T - PAD_B - AXIS_B;
+const CHART_BOTTOM = CHART_TOP + CHART_H;
 const CHART_LEFT = PAD_X;
-const CHART_RIGHT = VB_W - PAD_X;
-const CHART_W = CHART_RIGHT - CHART_LEFT;
-const PROJ_X = CHART_LEFT + CHART_W * PROJ_X_RATIO; // start of the (narrow) projection zone
+
+/** Width of a combined level pill ([KEY | price]) for the given strings. */
+const pillWidth = (key: string, price: string) =>
+  key.length * 7 + 12 + (price.length * 6.6 + 12);
 
 /** color language: entry = neutral, risk(SL) = rose, profit(TP) = emerald */
 const LEVEL_COLOR: Record<LevelKind, string> = {
@@ -49,7 +53,7 @@ export function TradeSetupChart({
   assetType,
   currentPrice,
 }: TradeSetupChartProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [hoveredCandle, setHoveredCandle] = useState<number | null>(null);
   const [hoveredLevel, setHoveredLevel] = useState<LevelKey | null>(null);
 
@@ -65,6 +69,17 @@ export function TradeSetupChart({
         .filter((c) => c.high >= model.priceMin && c.low <= model.priceMax),
     [candles, model.priceMin, model.priceMax],
   );
+
+  // Right price column auto-sizes to the widest level pill, so candles fill the
+  // rest of the width (minimal empty space on the right, mirroring the left).
+  const axisW =
+    Math.max(
+      40,
+      ...model.levels.map((l) =>
+        pillWidth(l.key.toUpperCase(), formatPrice(l.price, assetType)),
+      ),
+    ) + 6;
+  const PROJ_X = VB_W - PAD_X - axisW;
 
   const y = (price: number) =>
     CHART_TOP +
@@ -108,31 +123,77 @@ export function TradeSetupChart({
               className="block h-auto w-full"
               role="img"
             >
+              {/* price axis: horizontal gridlines + right-gutter labels */}
+              {priceTicks(model.priceMin, model.priceMax).map((p, i) => {
+                const py = y(p);
+                return (
+                  <g key={`price-tick-${i}`}>
+                    <line
+                      x1={CHART_LEFT}
+                      y1={py}
+                      x2={PROJ_X}
+                      y2={py}
+                      className="stroke-border"
+                      strokeWidth={1}
+                      opacity={0.5}
+                    />
+                    <text
+                      x={PROJ_X + 4}
+                      y={py}
+                      dominantBaseline="central"
+                      textAnchor="start"
+                      className="fill-muted-foreground"
+                      fontSize={11}
+                    >
+                      {formatPrice(p, assetType)}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* date axis: vertical gridlines + bottom labels */}
+              {dateTickIndices(view.length).map((idx, i, arr) => {
+                const cx = candleGeo[idx].cx;
+                const anchor =
+                  i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle";
+                return (
+                  <g key={`date-tick-${idx}`}>
+                    <line
+                      x1={cx}
+                      y1={CHART_TOP}
+                      x2={cx}
+                      y2={CHART_BOTTOM}
+                      className="stroke-border"
+                      strokeWidth={1}
+                      opacity={0.5}
+                    />
+                    <text
+                      x={cx}
+                      y={CHART_BOTTOM + 12}
+                      textAnchor={anchor}
+                      className="fill-muted-foreground"
+                      fontSize={11}
+                    >
+                      {formatDayMonth(view[idx].timestamp, i18n.language)}
+                    </text>
+                  </g>
+                );
+              })}
+
               {/* profit / risk zone shading */}
               <rect
                 x={CHART_LEFT}
                 y={profit.top}
-                width={CHART_W}
+                width={PROJ_X - CHART_LEFT}
                 height={profit.height}
                 className="fill-emerald-400/10"
               />
               <rect
                 x={CHART_LEFT}
                 y={risk.top}
-                width={CHART_W}
+                width={PROJ_X - CHART_LEFT}
                 height={risk.height}
                 className="fill-rose-400/10"
-              />
-
-              {/* projection divider */}
-              <line
-                x1={PROJ_X}
-                y1={CHART_TOP}
-                x2={PROJ_X}
-                y2={CHART_TOP + CHART_H}
-                className="stroke-border"
-                strokeWidth={1}
-                strokeDasharray="2 3"
               />
 
               {/* candles */}
@@ -177,7 +238,7 @@ export function TradeSetupChart({
                     <line
                       x1={CHART_LEFT}
                       y1={ly}
-                      x2={CHART_RIGHT}
+                      x2={PROJ_X}
                       y2={ly}
                       stroke="transparent"
                       strokeWidth={12}
@@ -185,69 +246,63 @@ export function TradeSetupChart({
                     <line
                       x1={CHART_LEFT}
                       y1={ly}
-                      x2={CHART_RIGHT}
+                      x2={PROJ_X}
                       y2={ly}
                       className="stroke-current"
                       strokeWidth={active ? 2 : 1}
                       strokeDasharray={lvl.kind === "entry" ? "1 0" : "5 4"}
                       opacity={active ? 1 : 0.85}
                     />
-                    {/* badge centered on the line */}
+                    {/* combined level + price badge with a divider */}
                     {(() => {
-                      const label = lvl.key.toUpperCase();
-                      const bw = label.length * 6 + 12;
-                      const bh = 15;
+                      const key = lvl.key.toUpperCase();
+                      const price = formatPrice(lvl.price, assetType);
+                      const keyW = key.length * 7 + 12;
+                      const priceW = price.length * 6.6 + 12;
+                      const bw = keyW + priceW;
+                      const bh = 18;
+                      const bx = VB_W - PAD_X - bw;
+                      const divX = bx + keyW;
                       return (
                         <>
                           <rect
-                            x={PROJ_X + 6}
+                            x={bx}
                             y={ly - bh / 2}
                             width={bw}
                             height={bh}
-                            rx={3}
-                            className="fill-current"
-                            opacity={active ? 1 : 0.9}
-                          />
-                          <text
-                            x={PROJ_X + 6 + bw / 2}
-                            y={ly}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            className="fill-background"
-                            fontSize={9}
-                            fontWeight={700}
-                            style={{ letterSpacing: "0.05em" }}
-                          >
-                            {label}
-                          </text>
-                        </>
-                      );
-                    })()}
-                    {/* price badge (masks the line behind it) */}
-                    {(() => {
-                      const price = formatPrice(lvl.price, assetType);
-                      const pbw = price.length * 5.6 + 12;
-                      const pbh = 15;
-                      const pbx = CHART_RIGHT - 4 - pbw;
-                      return (
-                        <>
-                          <rect
-                            x={pbx}
-                            y={ly - pbh / 2}
-                            width={pbw}
-                            height={pbh}
                             rx={3}
                             className="fill-background stroke-current"
                             strokeWidth={1}
                             opacity={active ? 1 : 0.95}
                           />
                           <text
-                            x={pbx + pbw / 2}
+                            x={bx + keyW / 2}
                             y={ly}
                             textAnchor="middle"
                             dominantBaseline="central"
                             className="fill-current"
-                            fontSize={10}
+                            fontSize={11}
+                            fontWeight={700}
+                            style={{ letterSpacing: "0.05em" }}
+                          >
+                            {key}
+                          </text>
+                          <line
+                            x1={divX}
+                            y1={ly - bh / 2 + 3}
+                            x2={divX}
+                            y2={ly + bh / 2 - 3}
+                            className="stroke-current"
+                            strokeWidth={1}
+                            opacity={0.5}
+                          />
+                          <text
+                            x={divX + priceW / 2}
+                            y={ly}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            className="fill-current"
+                            fontSize={12}
                             fontWeight={600}
                           >
                             {price}
@@ -285,8 +340,8 @@ export function TradeSetupChart({
               top: `${(hovered.yHigh / VB_H) * 100}%`,
             }}
           >
-            <div className="mb-1 border-b border-border pb-1 font-medium text-muted-foreground">
-              {formatDateTime(hovered.candle.timestamp)}
+            <div className="mb-1 whitespace-nowrap border-b border-border pb-1 font-medium text-muted-foreground">
+              {formatDateTime(hovered.candle.timestamp, i18n.language)}
             </div>
             {(() => {
               const c = hovered.candle;

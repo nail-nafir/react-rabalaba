@@ -2,30 +2,45 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
+import {
+  encodeTrialStamp,
+  decodeTrialStamp,
+  isTrialActive,
+} from "@/lib/premium-trial";
 
 const ACCESS_KEY = import.meta.env.VITE_ACCESS_KEY;
 const ACCESS_CODE = import.meta.env.VITE_ACCESS_CODE;
+const TRIAL_CODE = import.meta.env.VITE_TRIAL_CODE;
+const TRIAL_STORE_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial` : null;
+
+export type AccessResult = "granted" | "trial" | "expired" | "invalid";
+
+const readPermanent = (): boolean => {
+  if (!ACCESS_KEY || !ACCESS_CODE) return false;
+  const stored = localStorage.getItem(ACCESS_KEY);
+  return !!stored && atob(stored) === ACCESS_CODE;
+};
+
+const readTrial = (): boolean => {
+  if (!TRIAL_STORE_KEY) return false;
+  return isTrialActive(decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY)));
+};
+
+const computeAccess = (): boolean => {
+  try {
+    return readPermanent() || readTrial();
+  } catch {
+    return false;
+  }
+};
 
 interface PremiumAccessState {
   hasAccess: boolean;
   setHasAccess: (access: boolean) => void;
 }
 
-const getInitialAccess = (): boolean => {
-  try {
-    if (!ACCESS_KEY || !ACCESS_CODE) {
-      return false;
-    }
-    const stored = localStorage.getItem(ACCESS_KEY);
-    if (!stored) return false;
-    return atob(stored) === ACCESS_CODE;
-  } catch {
-    return false;
-  }
-};
-
 const usePremiumStore = create<PremiumAccessState>((set) => ({
-  hasAccess: getInitialAccess(),
+  hasAccess: computeAccess(),
   setHasAccess: (hasAccess) => set({ hasAccess }),
 }));
 
@@ -42,26 +57,11 @@ export function usePremiumAccess() {
       });
     }
 
-    const validateAccess = () => {
-      try {
-        if (!ACCESS_KEY || !ACCESS_CODE) {
-          setHasAccess(false);
-          return;
-        }
-        const stored = localStorage.getItem(ACCESS_KEY);
-        if (!stored) {
-          setHasAccess(false);
-          return;
-        }
-        setHasAccess(atob(stored) === ACCESS_CODE);
-      } catch {
-        setHasAccess(false);
-      }
-    };
+    const validateAccess = () => setHasAccess(computeAccess());
 
     window.addEventListener("storage", validateAccess);
     window.addEventListener("focus", validateAccess);
-    
+
     validateAccess();
 
     return () => {
@@ -71,37 +71,35 @@ export function usePremiumAccess() {
   }, [t, setHasAccess]);
 
   const checkAccess = useCallback(() => {
-    try {
-      if (!ACCESS_KEY || !ACCESS_CODE) {
-        setHasAccess(false);
-        return false;
-      }
-      const stored = localStorage.getItem(ACCESS_KEY);
-      if (!stored) {
-        setHasAccess(false);
-        return false;
-      }
-      const isValid = atob(stored) === ACCESS_CODE;
-      setHasAccess(isValid);
-      return isValid;
-    } catch {
-      setHasAccess(false);
-      return false;
-    }
+    const valid = computeAccess();
+    setHasAccess(valid);
+    return valid;
   }, [setHasAccess]);
 
-  const grantAccess = useCallback((code: string) => {
-    if (!ACCESS_KEY || !ACCESS_CODE) {
-      toast.error(t("terminal.access_config_missing"));
-      return false;
-    }
-    if (code === ACCESS_CODE) {
-      localStorage.setItem(ACCESS_KEY, btoa(ACCESS_CODE));
-      setHasAccess(true);
-      return true;
-    }
-    return false;
-  }, [t, setHasAccess]);
+  const grantAccess = useCallback(
+    (code: string): AccessResult => {
+      if (!ACCESS_KEY || !ACCESS_CODE) {
+        toast.error(t("terminal.access_config_missing"));
+        return "invalid";
+      }
+      if (code === ACCESS_CODE) {
+        localStorage.setItem(ACCESS_KEY, btoa(ACCESS_CODE));
+        setHasAccess(true);
+        return "granted";
+      }
+      if (TRIAL_CODE && code === TRIAL_CODE && TRIAL_STORE_KEY) {
+        // First redeem starts the 3-day clock; never reset an existing stamp.
+        if (decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY)) == null) {
+          localStorage.setItem(TRIAL_STORE_KEY, encodeTrialStamp(Date.now()));
+        }
+        const ok = readTrial();
+        setHasAccess(ok || readPermanent());
+        return ok ? "trial" : "expired";
+      }
+      return "invalid";
+    },
+    [t, setHasAccess],
+  );
 
   return {
     hasAccess,
