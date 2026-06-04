@@ -146,7 +146,7 @@ export function OpenPositions() {
 
                 {/* Footer: price stats + close */}
                 <CardFooter className="justify-between gap-3">
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4 sm:gap-6">
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         {t("journal.entry_price")}
@@ -170,13 +170,13 @@ export function OpenPositions() {
                       onClick={() => setSelectedTrade(tr)}
                     >
                       <BarChart3 />
-                      {t("journal.view_detail")}
+                      <span className="hidden sm:inline">{t("journal.view_detail")}</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive">
                           <X />
-                          {t("journal.close_position")}
+                          <span className="hidden sm:inline">{t("journal.close_position")}</span>
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
