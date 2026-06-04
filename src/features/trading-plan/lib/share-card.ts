@@ -1,4 +1,4 @@
-import { formatPrice, formatRatio, formatDayMonth } from "@/lib/formatters";
+import { formatPrice, formatRatio, formatDayMonth, formatDateFull, formatClock } from "@/lib/formatters";
 import type { AssetType } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
@@ -9,6 +9,7 @@ import {
   type TradeSetupModel,
 } from "./trade-setup-model";
 
+
 export interface ShareCardMeta {
   symbol: string;
   name?: string;
@@ -16,6 +17,12 @@ export interface ShareCardMeta {
   currentPrice: number;
   assetType: AssetType;
   candles: NormalizedYahooCandle[];
+  isPosition?: boolean;
+  entryPrice?: number;
+  pnlPct?: number;
+  pnlR?: number;
+  grade?: string;
+  locale?: string;
 }
 
 const W = 1200;
@@ -41,6 +48,7 @@ interface Palette {
   border: string;
   text: string;
   muted: string;
+  mutedBg: string;
   primary: string;
   emerald: string;
   emeraldFill: string;
@@ -56,6 +64,7 @@ const DARK: Palette = {
   border: "#262626",
   text: "#fafafa",
   muted: "#a2a2a2",
+  mutedBg: "#171717",
   primary: BRAND_PURPLE,
   emerald: "#34d399",
   emeraldFill: "rgba(52,211,153,0.10)",
@@ -69,6 +78,7 @@ const LIGHT: Palette = {
   border: "#e4e4e4",
   text: "#0a0a0a",
   muted: "#737373",
+  mutedBg: "#f5f5f5",
   primary: BRAND_PURPLE,
   emerald: "#34d399",
   emeraldFill: "rgba(52,211,153,0.10)",
@@ -112,6 +122,7 @@ function getPalette(): Palette {
     border: resolveCssColor("var(--border)") ?? base.border,
     text: resolveCssColor("var(--foreground)") ?? base.text,
     muted: resolveCssColor("var(--muted-foreground)") ?? base.muted,
+    mutedBg: resolveCssColor("var(--muted)") ?? base.mutedBg,
     primary: resolveCssColor("var(--primary)") ?? base.primary,
   };
 }
@@ -123,27 +134,9 @@ function esc(s: string): string {
 const n = (v: number) => v.toFixed(1);
 
 /** Format generation timestamp, e.g. "31 May 2026 · 12:21". */
-function formatGeneratedAt(d: Date): string {
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const day = d.getDate();
-  const mon = months[d.getMonth()];
-  const year = d.getFullYear();
-  const hh = d.getHours().toString().padStart(2, "0");
-  const mm = d.getMinutes().toString().padStart(2, "0");
-  return `${day} ${mon} ${year} \u00B7 ${hh}:${mm}`;
+function formatGeneratedAt(d: Date, locale?: string): string {
+  const ts = d.getTime() / 1000;
+  return `${formatDateFull(ts, locale)} \u00B7 ${formatClock(ts)}`;
 }
 
 /**
@@ -176,8 +169,8 @@ export function buildShareCardSvg(
   // renderer in `trade-setup-chart.tsx` (shared via `trade-setup-model.ts`).
   const px0 = 56;
   const px1 = W - 56;
-  const panelY = 271;
-  const panelH = 556;
+  const panelY = 312;
+  const panelH = 515;
   const PAD = 26; // uniform inner padding from the card border (all sides)
   const left = px0 + PAD;
   const right = px1 - PAD;
@@ -285,14 +278,53 @@ export function buildShareCardSvg(
 
   // ── Symbol row ─────────────────────────────────────────────────────────
   const symbolY = 198;
-  // Bumped a bit to make room for the directional arrow prefix on the pill.
-  const pillW = isShort ? 124 : 116;
-  const pillX = 56;
-  const pillY = 212;
+  const nameY = 230;
+  const GRADE_COLORS: Record<string, { text: string; fill: string; stroke: string }> = {
+    A: { text: C.emerald, fill: C.emeraldFill, stroke: C.emerald },
+    B: { text: "#fbbf24", fill: "rgba(251, 191, 36, 0.15)", stroke: "#fbbf24" },
+    C: { text: C.rose, fill: C.roseFill, stroke: C.rose },
+  };
+
+  const pillY = 248;
   const pillH = 28;
-  const namePillGap = 12;
-  const generatedAt = formatGeneratedAt(new Date());
+  const gap = 8;
+
+  // 1. Grade Badge (Leftmost)
+  let leftX = 56;
+  let gradeBadgeHtml = "";
+  if (meta.grade) {
+    const gradeUpper = meta.grade.toUpperCase();
+    const gc = GRADE_COLORS[gradeUpper] ?? { text: C.primary, fill: "rgba(134, 59, 255, 0.15)", stroke: C.primary };
+    const text = `\u2726 GRADE ${gradeUpper}`;
+    const w = Math.ceil(text.length * 9.5 + 22);
+    gradeBadgeHtml = `
+<rect x="${leftX}" y="${pillY}" rx="6" width="${w}" height="${pillH}" fill="${gc.fill}" stroke="${gc.stroke}"/>
+<text x="${leftX + w / 2}" y="${pillY + pillH / 2 + 1}" fill="${gc.text}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(text)}</text>
+    `;
+    leftX += w + gap;
+  }
+
+  // 2. Type Badge (Signal/Position - Left, next to Grade)
+  const typeText = meta.isPosition ? "\u25CF POSITION" : "\u2726 SIGNAL";
+  const typeW = Math.ceil(typeText.length * 9.5 + 22);
+  const typeBadgeHtml = `
+<rect x="${leftX}" y="${pillY}" rx="6" width="${typeW}" height="${pillH}" fill="rgba(128, 128, 128, 0.08)" stroke="${C.border}"/>
+<text x="${leftX + typeW / 2}" y="${pillY + pillH / 2 + 1}" fill="${C.muted}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(typeText)}</text>
+  `;
+
+  // 3. Direction Badge (Long/Short - Rightmost)
   const signalArrow = isShort ? "\u25BC" : "\u25B2"; // ▼ / ▲
+  const dirText = meta.isPosition
+    ? `${signalArrow} ${model.signal.toUpperCase()}`
+    : `${signalArrow} ${model.signal.toUpperCase()} ${Math.round(meta.strength)}%`;
+  const dirW = Math.ceil(dirText.length * 9.5 + 22);
+  const rightX = W - 56 - dirW;
+  const dirBadgeHtml = `
+<rect x="${rightX}" y="${pillY}" rx="6" width="${dirW}" height="${pillH}" fill="${accentFill}" stroke="${accent}"/>
+<text x="${rightX + dirW / 2}" y="${pillY + pillH / 2 + 1}" fill="${accent}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(dirText)}</text>
+  `;
+
+  const generatedAt = formatGeneratedAt(new Date(), meta.locale);
 
   // ── Stats row ──────────────────────────────────────────────────────────
   // Three columns: R:R aligned to left, RISK centered, REWARD aligned to right.
@@ -304,6 +336,21 @@ export function buildShareCardSvg(
   // Baseline placed so the gap from the bottom purple separator (y=948) to
   // the footer's text top mirrors the kop surat ↔ top separator gap (~28px).
   const footerY = 989;
+
+
+
+  // Dynamic right-hand header values: either centered PNL & current price for position, or only current price for signal
+  const headerRightSide = meta.isPosition
+    ? `<!-- Position P&L -->
+<text x="${W / 2}" y="${logoY + 148}" fill="${meta.pnlR !== undefined && meta.pnlR >= 0 ? C.emerald : C.rose}" font-size="36" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}" letter-spacing="-0.01em">${meta.pnlPct !== undefined && meta.pnlPct >= 0 ? "+" : ""}${meta.pnlPct?.toFixed(2)}% (${meta.pnlR !== undefined && meta.pnlR >= 0 ? "+" : ""}${formatRatio(meta.pnlR ?? 0)}R)</text>
+<text x="${W / 2}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="middle" font-family="${FONT}" letter-spacing="0.24em">POSITION PNL</text>
+
+<!-- Current Price -->
+<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="36" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>`
+    : `<!-- Current Price -->
+<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="36" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -337,15 +384,12 @@ ${brandMark(logoX, logoY, logoSize, "#ffffff")}
 <!-- Brand-purple separator: divides letterhead from asset section -->
 <line x1="56" y1="128" x2="${W - 56}" y2="128" stroke="${C.primary}" stroke-width="2"/>
 
-<!-- Symbol + signal pill (with directional arrow) + name -->
+<!-- Symbol + name + signal pills -->
 <text x="56" y="${symbolY}" fill="${C.text}" font-size="56" font-weight="800" font-family="${FONT}" letter-spacing="-0.02em">${esc(meta.symbol)}</text>
-<rect x="${pillX}" y="${pillY}" rx="6" width="${pillW}" height="${pillH}" fill="${accentFill}" stroke="${accent}"/>
-<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" fill="${accent}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${signalArrow} ${esc(model.signal.toUpperCase())} ${Math.round(meta.strength)}%</text>
-<text x="${pillX + pillW + namePillGap}" y="${pillY + pillH / 2 + 1}" fill="${C.muted}" font-size="16" dominant-baseline="central" font-family="${FONT}">${esc(meta.name ?? "")}</text>
+<text x="56" y="${nameY}" fill="${C.muted}" font-size="16" font-family="${FONT}">${esc(meta.name ?? "")}</text>
+${gradeBadgeHtml}${typeBadgeHtml}${dirBadgeHtml}
 
-<!-- Top-right: current price (value first, label below) -->
-<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="36" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
-<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>
+${headerRightSide}
 
 <!-- Chart panel (flat card background, matches web) -->
 <rect x="${px0}" y="${panelY}" width="${px1 - px0}" height="${panelH}" rx="14" fill="${C.card}" stroke="${C.border}"/>
@@ -439,3 +483,6 @@ export async function shareOrDownloadPng(
 }
 
 export const SHARE_CARD_SIZE = { width: W, height: H };
+
+
+

@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import {
-  Progress,
-  ProgressTrack,
-  ProgressIndicator,
-} from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 import { useUIStore } from "@/store/ui-store";
 
 interface PageLoaderProps {
@@ -94,19 +89,7 @@ export function PageLoader({ trigger = false }: PageLoaderProps) {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-200 w-full pointer-events-none">
-      <Progress
-        value={progress}
-        className="gap-0 border-none rounded-none bg-transparent"
-      >
-        <ProgressTrack className="h-full bg-transparent border-none rounded-none">
-          <ProgressIndicator
-            className={cn(
-              "bg-primary shadow-[0_0_10px_var(--color-primary)] transition-all duration-300 ease-out",
-              progress >= 100 ? "opacity-0" : "opacity-100",
-            )}
-          />
-        </ProgressTrack>
-      </Progress>
+      <Progress value={progress} />
     </div>
   );
 }

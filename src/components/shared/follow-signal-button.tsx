@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Crosshair, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useFollowStore } from "@/store/follow-store";
 import { useUIStore } from "@/store/ui-store";
 import type { UnifiedAsset } from "@/types/asset";
@@ -23,8 +24,9 @@ export function FollowSignalButton({ asset }: { asset: UnifiedAsset }) {
   if (isOpen) {
     return (
       <Button
+        size="lg"
         disabled
-        className="h-9 px-3 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 tracking-tight hover:bg-primary/90 shadow-sm active:scale-95"
+        className="text-xs font-bold transition-all cursor-pointer shrink-0 tracking-tight"
       >
         <Check className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">{t("journal.following")}</span>
@@ -34,21 +36,34 @@ export function FollowSignalButton({ asset }: { asset: UnifiedAsset }) {
 
   return (
     <Button
-      className="h-9 px-3 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 tracking-tight hover:bg-primary/90 shadow-sm active:scale-95"
+      size="lg"
+      className="text-xs font-bold transition-all cursor-pointer shrink-0 tracking-tight"
       onClick={() => {
         if (follow(asset)) {
-          toast(t("journal.followed_toast", { symbol: asset.symbol }), {
-            description: t("journal.followed_toast_desc"),
-            duration: Infinity,
-            closeButton: true,
-            action: {
-              label: t("journal.followed_toast_action"),
-              onClick: () => {
-                setTerminalView("journal");
-                closeDetailDialog();
-              },
+          const id = toast(
+            t("journal.followed_toast", { symbol: asset.symbol }),
+            {
+              description: t("journal.followed_toast_desc"),
+              duration: Infinity,
+              closeButton: true,
+              action: (
+                <Button
+                  size="lg"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "text-xs font-bold transition-all cursor-pointer shrink-0 tracking-tight",
+                  )}
+                  onClick={() => {
+                    toast.dismiss(id);
+                    setTerminalView("journal");
+                    closeDetailDialog();
+                  }}
+                >
+                  {t("journal.followed_toast_action")}
+                </Button>
+              ),
             },
-          });
+          );
         }
       }}
     >

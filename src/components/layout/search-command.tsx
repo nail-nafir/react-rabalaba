@@ -118,7 +118,10 @@ export function SearchCommand() {
                     {asset.name}
                   </div>
                 </div>
-                <Badge className="px-2 py-0.5 text-[10px] font-medium">
+                <Badge
+                  variant="outline"
+                  className="font-bold tracking-wider uppercase text-[10px] rounded-md"
+                >
                   {asset.type}
                 </Badge>
                 {index === selectedIndex && (

@@ -7,9 +7,9 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="secondary"
+      variant="ghost"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="flex justify-center border border-border"
+      className="flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent!"
       aria-label="Toggle theme"
     >
       {theme === "dark" ? (

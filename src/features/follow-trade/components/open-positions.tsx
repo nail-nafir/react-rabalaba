@@ -1,14 +1,28 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFollowStore } from "@/store/follow-store";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
+import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import { formatPrice, formatRatio } from "@/lib/formatters";
-import { RefreshCw, X } from "lucide-react";
+import { BarChart3, RefreshCw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TradeDetailDialog } from "./trade-detail-dialog";
 import { SIGNAL_COLORS, TIER_COLORS } from "@/constants/signals";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +30,9 @@ export function OpenPositions() {
   const { t } = useTranslation();
   const openTrades = useFollowStore((s) => s.openTrades);
   const closeManual = useFollowStore((s) => s.closeManual);
+  const [selectedTrade, setSelectedTrade] = useState<FollowedTrade | null>(
+    null,
+  );
 
   const symbols = useMemo(
     () => [...new Set(openTrades.map((tr) => tr.symbol))],
@@ -31,14 +48,19 @@ export function OpenPositions() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          {t("journal.open_positions")}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            {t("journal.open_positions")}
+          </h2>
+          <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] font-bold uppercase rounded-md">
+            {openTrades.length} {t("journal.trades")}
+          </Badge>
+        </div>
         <Button
-          variant="link"
+          variant="secondary"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="text-foreground hover:text-primary px-0 hover:no-underline"
+          className="text-xs"
         >
           <RefreshCw className={isFetching ? "animate-spin" : undefined} />
           {t("journal.refresh")}
@@ -142,20 +164,63 @@ export function OpenPositions() {
                       </div>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => closeManual(tr.id, price)}
-                    className="shrink-0 border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300"
-                  >
-                    <X />
-                    {t("journal.close_position")}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setSelectedTrade(tr)}
+                    >
+                      <BarChart3 />
+                      {t("journal.view_detail")}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive">
+                          <X />
+                          {t("journal.close_position")}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+                            <Trash2 />
+                          </AlertDialogMedia>
+                          <AlertDialogTitle>
+                            {t("journal.close_confirm_title")}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t("journal.close_confirm_desc", {
+                              symbol: tr.symbol,
+                            })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>
+                            {t("common.cancel")}
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => closeManual(tr.id, price)}
+                          >
+                            {t("journal.close_confirm_action")}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardFooter>
               </Card>
             );
           })}
         </div>
       )}
+
+      <TradeDetailDialog
+        trade={selectedTrade}
+        open={selectedTrade !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTrade(null);
+        }}
+      />
     </div>
   );
 }

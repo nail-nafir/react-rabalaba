@@ -1,46 +1,20 @@
 import { useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { cn, getEmojiFlag } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { getEmojiFlag } from "@/lib/country";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { IMPACT_LEVELS } from "@/constants/calendar";
-import {
-  CalendarDays,
-  AlertTriangle,
-  ChevronRight,
-  Info,
-  Loader2,
-  ChevronLeft,
-} from "lucide-react";
+import { CalendarDays, AlertTriangle, Loader2 } from "lucide-react";
 import { useEconomicCalendar } from "@/services/queries/use-calendar-data";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonCalendarItem } from "@/components/shared/skeleton-card";
+import { CalendarDetailDialog } from "@/features/economic-calendar/components/calendar-detail-dialog";
+import { MiniCalendar } from "@/features/economic-calendar/components/mini-calendar";
 import type { CalendarEvent, EventImpact } from "@/types/calendar";
-import { t } from "i18next";
-import i18n from "@/app/config/i18n";
 
 type ImpactFilter = EventImpact | "all";
-
-/**
- * Helper to format a Date object as YYYY-MM-DD in local time
- */
-const formatLocalDate = (date: Date) => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
 
 export default function CalendarPage() {
   const { t, i18n } = useTranslation();
@@ -188,7 +162,7 @@ export default function CalendarPage() {
                     {events.map((event) => (
                       <Card
                         key={event.id}
-                        className="border border-border bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
+                        className="border border-border hover:bg-muted/50 hover:border-primary cursor-pointer"
                         onClick={() => handleEventClick(event)}
                       >
                         <CardContent className="flex items-center gap-3 sm:gap-4">
@@ -239,254 +213,12 @@ export default function CalendarPage() {
         </div>
 
         {/* Detail Dialog */}
-        <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-          <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
-            {selectedEvent && (
-              <div className="flex flex-col max-h-[85vh]">
-                <DialogHeader className="p-6 pb-2 shrink-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] rounded-md font-bold uppercase tracking-wider"
-                    >
-                      {getEmojiFlag(selectedEvent.country)}{" "}
-                      {selectedEvent.country}
-                    </Badge>
-                    <Badge
-                      className={cn(
-                        "text-[10px] rounded-md font-bold uppercase tracking-wider",
-                        IMPACT_LEVELS[selectedEvent.impact].badge,
-                      )}
-                    >
-                      {selectedEvent.impact}
-                    </Badge>
-                  </div>
-                  <DialogTitle className="text-xl font-bold leading-tight">
-                    {selectedEvent.title}
-                  </DialogTitle>
-                </DialogHeader>
-
-                <div className="flex-1 overflow-y-auto p-6 pt-2">
-                  <div className="space-y-6">
-                    <Card className="border border-border overflow-hidden">
-                      <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4">
-                        <DetailBox
-                          label={t("calendar.detail.date")}
-                          value={selectedEvent.date}
-                        />
-                        <DetailBox
-                          label={t("calendar.detail.time")}
-                          value={selectedEvent.time}
-                        />
-                        <DetailBox
-                          label={t("calendar.detail.actual")}
-                          value={selectedEvent.actual || "N/A"}
-                        />
-                        <DetailBox
-                          label={t("calendar.detail.forecast")}
-                          value={selectedEvent.forecast || "N/A"}
-                        />
-                        <DetailBox
-                          label={t("calendar.detail.previous")}
-                          value={selectedEvent.previous || "N/A"}
-                        />
-                      </CardContent>
-                    </Card>
-
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Info className="h-3.5 w-3.5 text-primary" />
-                        {t("calendar.detail.market_context")}
-                      </h4>
-                      <p className="text-sm text-foreground/80 leading-relaxed italic border-l-2 border-primary/20 pl-3">
-                        "{selectedEvent.description}"
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        {t("calendar.detail.asset_correlation")}
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedEvent.assetRelevance.map((asset) => (
-                          <Badge
-                            variant="secondary"
-                            key={asset}
-                            className="rounded-md text-[10px] font-bold uppercase tracking-wider"
-                          >
-                            {asset}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <CalendarDetailDialog
+          event={selectedEvent}
+          open={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+        />
       </div>
-    </div>
-  );
-}
-
-/**
- * MiniCalendar Component
- */
-function MiniCalendar({
-  events,
-  onDateClick,
-  currentDate,
-  onMonthChange,
-}: {
-  events: CalendarEvent[];
-  onDateClick: (date: string) => void;
-  currentDate: Date;
-  onMonthChange: (date: Date) => void;
-}) {
-  const monthStart = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1,
-  );
-  const monthEnd = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0,
-  );
-  const startDate = new Date(monthStart);
-  startDate.setDate(startDate.getDate() - startDate.getDay());
-
-  const calendarDays = [];
-  const tempDate = new Date(startDate);
-  while (tempDate <= monthEnd || calendarDays.length % 7 !== 0) {
-    calendarDays.push(new Date(tempDate));
-    tempDate.setDate(tempDate.getDate() + 1);
-  }
-
-  const eventsByDate = useMemo(() => {
-    const map: Record<string, boolean> = {};
-    events.forEach((e) => {
-      map[e.date] = true;
-    });
-    return map;
-  }, [events]);
-
-  const changeMonth = (offset: number) => {
-    onMonthChange(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1),
-    );
-  };
-
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  };
-
-  return (
-    <Card className="border border-border overflow-visible">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-sm font-bold text-foreground">
-          {currentDate.toLocaleDateString(
-            i18n.language === "id" ? "id-ID" : "en-US",
-            {
-              month: "long",
-              year: "numeric",
-            },
-          )}
-        </CardTitle>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => changeMonth(-1)}
-            className="h-8 w-8 rounded-md text-muted-foreground transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => changeMonth(1)}
-            className="h-8 w-8 rounded-md text-muted-foreground transition-colors"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-5 pt-0 space-y-4">
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {[
-            t("calendar.days.su"),
-            t("calendar.days.mo"),
-            t("calendar.days.tu"),
-            t("calendar.days.we"),
-            t("calendar.days.th"),
-            t("calendar.days.fr"),
-            t("calendar.days.sa"),
-          ].map((day, i) => (
-            <span
-              key={i}
-              className="text-[10px] font-bold text-muted-foreground/60 py-1"
-            >
-              {day}
-            </span>
-          ))}
-          {calendarDays.map((date, i) => {
-            const dateStr = formatLocalDate(date);
-            const hasEvents = eventsByDate[dateStr];
-            const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-
-            return (
-              <Button
-                key={i}
-                variant="ghost"
-                onClick={() => hasEvents && onDateClick(dateStr)}
-                disabled={!hasEvents}
-                className={cn(
-                  "relative flex flex-col items-center justify-center h-9 w-full p-0 rounded-md text-xs transition-all",
-                  !isCurrentMonth && "opacity-20",
-                  isToday(date) &&
-                    "bg-primary/10 text-primary font-bold hover:bg-primary/20",
-                  hasEvents
-                    ? "hover:bg-primary/5 cursor-pointer"
-                    : "cursor-default text-muted-foreground/40 hover:bg-transparent",
-                )}
-              >
-                {date.getDate()}
-                {hasEvents && (
-                  <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-primary" />
-                )}
-              </Button>
-            );
-          })}
-        </div>
-      </CardContent>
-
-      <CardFooter>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
-          <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-          {t("calendar.scheduled_event")}
-        </div>
-      </CardFooter>
-    </Card>
-  );
-}
-
-function DetailBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-0.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
-        {label}
-      </span>
-      <span className="text-xs font-bold text-mono-data text-foreground">
-        {value}
-      </span>
     </div>
   );
 }

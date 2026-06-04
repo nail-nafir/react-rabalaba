@@ -27,7 +27,7 @@ export function Footer() {
                 Raba<span className="text-primary">Laba</span>
               </span>
               <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
-                Research Terminal
+                Terminal
               </span>
             </div>
           </Link>

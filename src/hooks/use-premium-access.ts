@@ -12,6 +12,7 @@ const ACCESS_KEY = import.meta.env.VITE_ACCESS_KEY;
 const ACCESS_CODE = import.meta.env.VITE_ACCESS_CODE;
 const TRIAL_CODE = import.meta.env.VITE_TRIAL_CODE;
 const TRIAL_STORE_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial` : null;
+const TRIAL_NOTIFIED_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial_notified` : null;
 
 export type AccessResult = "granted" | "trial" | "expired" | "invalid";
 
@@ -57,7 +58,27 @@ export function usePremiumAccess() {
       });
     }
 
-    const validateAccess = () => setHasAccess(computeAccess());
+    const validateAccess = () => {
+      setHasAccess(computeAccess());
+
+      if (TRIAL_STORE_KEY && TRIAL_NOTIFIED_KEY) {
+        const trialStamp = decodeTrialStamp(
+          localStorage.getItem(TRIAL_STORE_KEY),
+        );
+        const notifiedStamp = localStorage.getItem(TRIAL_NOTIFIED_KEY);
+        if (
+          trialStamp != null &&
+          !isTrialActive(trialStamp) &&
+          notifiedStamp !== String(trialStamp)
+        ) {
+          toast.info(t("terminal.access_trial_expired"), {
+            id: "trial-expired",
+            duration: 5000,
+          });
+          localStorage.setItem(TRIAL_NOTIFIED_KEY, String(trialStamp));
+        }
+      }
+    };
 
     window.addEventListener("storage", validateAccess);
     window.addEventListener("focus", validateAccess);

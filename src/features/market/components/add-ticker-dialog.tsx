@@ -1,9 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useForm, Controller, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Search, SearchX } from "lucide-react";
+import { Loader2, Search, SearchX, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,15 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, FieldGroup, FieldError } from "@/components/ui/field";
+import { Badge } from "@/components/ui/badge";
 import { useFavoriteStore } from "@/store/favorite-store";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useYahooSearch } from "@/services/queries/use-yahoo-data";
-import { fetchYahooChart } from "@/services/api/yahoo-finance";
-import {
-  favoriteSchema,
-  type FavoriteFormValues,
-} from "@/features/market/schemas/favorite-schema";
+import type { YahooSearchQuote } from "@/services/api/yahoo-finance";
 
 interface AddTickerDialogProps {
   open: boolean;
@@ -31,206 +25,210 @@ interface AddTickerDialogProps {
 
 export function AddTickerDialog({ open, onOpenChange }: AddTickerDialogProps) {
   const { t } = useTranslation();
-  const { addSymbol, error: favoriteError, clearError } = useFavoriteStore();
-  const [isAdding, setIsAdding] = useState(false);
+  const { addSymbol, favoriteSymbols } = useFavoriteStore();
+  const [inputValue, setInputValue] = useState("");
   const [hideSuggestions, setHideSuggestions] = useState(false);
+  const [pendingSymbols, setPendingSymbols] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<FavoriteFormValues>({
-    resolver: zodResolver(favoriteSchema),
-    defaultValues: {
-      symbol: "",
-    },
-  });
-
-  const symbolWatch = useWatch({
-    control: form.control,
-    name: "symbol",
-    defaultValue: "",
-  });
-
-  const debouncedNewSymbol = useDebounce(symbolWatch, 300);
+  const debouncedSearch = useDebounce(inputValue, 300);
   const { data: suggestions, isLoading: isSearching } =
-    useYahooSearch(debouncedNewSymbol);
+    useYahooSearch(debouncedSearch);
 
-  const handleSymbolSubmit = async (data: FavoriteFormValues) => {
-    const symbol = data.symbol.trim().toUpperCase();
+  const handleAddFromSuggestion = (s: YahooSearchQuote) => {
+    const symbol = s.symbol.trim().toUpperCase();
     if (!symbol) return;
+    if (favoriteSymbols.includes(symbol)) return;
+    setPendingSymbols((prev) =>
+      prev.includes(symbol) ? prev : [...prev, symbol],
+    );
+    setInputValue("");
+    setHideSuggestions(true);
+    inputRef.current?.focus();
+  };
 
-    setIsAdding(true);
+  const handleRemovePending = (symbol: string) => {
+    setPendingSymbols((prev) => prev.filter((s) => s !== symbol));
+  };
 
-    try {
-      // Validate with real Yahoo API first
-      const result = await fetchYahooChart(symbol, "1d", "1d");
+  const handleSaveAll = () => {
+    if (pendingSymbols.length === 0) return;
+    setIsSaving(true);
 
-      if (!result || !result.meta) {
-        form.setError("symbol", {
-          type: "manual",
-          message: t("market.ticker_not_found", { symbol }),
-        });
-        setIsAdding(false);
-        return;
+    const added: string[] = [];
+    for (const symbol of pendingSymbols) {
+      if (addSymbol(symbol)) {
+        added.push(symbol);
       }
+    }
 
-      const success = addSymbol(symbol);
+    setIsSaving(false);
 
-      if (success) {
-        toast.success(t("market.favorite_added", { symbol }));
-        form.reset({ symbol: "" });
-        onOpenChange(false);
-      } else {
-        const error = useFavoriteStore.getState().error;
-        if (error) {
-          form.setError("symbol", {
-            type: "manual",
-            message: t(`market.${error}`),
-          });
-        }
-      }
-    } catch {
-      form.setError("symbol", {
-        type: "manual",
-        message: t("market.ticker_not_found", { symbol }),
-      });
-    } finally {
-      setIsAdding(false);
+    if (added.length > 0) {
+      toast.success(t("market.favorites_added_bulk", { count: added.length }));
+      onOpenChange(false);
     }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     onOpenChange(newOpen);
     if (!newOpen) {
-      form.reset({ symbol: "" });
-      form.clearErrors();
+      setInputValue("");
+      setPendingSymbols([]);
       setHideSuggestions(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md border border-border text-foreground shadow-2xl rounded-xl p-0">
-        <div className="p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-foreground">
-              {t("market.add_ticker_dialog_title")}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-              {t("market.add_ticker_dialog_desc")}
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            id="add-ticker-form"
-            onSubmit={form.handleSubmit(handleSymbolSubmit)}
-            className="space-y-5 mt-5"
-          >
-            <FieldGroup>
-              <Controller
-                name="symbol"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <div className="relative">
-                      <Input
-                        {...field}
-                        type="text"
-                        placeholder={t("market.add_ticker_placeholder")}
-                        aria-invalid={fieldState.invalid}
-                        className="pr-10 uppercase"
-                        autoFocus
-                        autoComplete="off"
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setHideSuggestions(false);
-                          if (favoriteError) clearError();
-                        }}
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        {isSearching ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        ) : (
-                          <Search className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+      <DialogContent className="sm:max-w-md border border-border text-foreground">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-foreground">
+            {t("market.add_ticker_dialog_title")}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+            {t("market.add_ticker_dialog_desc")}
+          </DialogDescription>
+        </DialogHeader>
 
-                      {/* Suggestions dropdown */}
-                      {symbolWatch.trim().length >= 2 &&
-                        !hideSuggestions &&
-                        !isSearching && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1">
-                            {suggestions && suggestions.length > 0 ? (
-                              suggestions.map((s) => (
-                                <button
-                                  key={s.symbol}
-                                  type="button"
-                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors border-b border-border/50 last:border-0 group cursor-pointer"
-                                  onClick={() => {
-                                    form.setValue("symbol", s.symbol);
-                                    setHideSuggestions(true);
-                                  }}
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-bold truncate">
-                                      {s.symbol}
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground truncate">
-                                      {s.shortname || s.longname}
-                                    </div>
-                                  </div>
-                                  <div className="text-[10px] font-medium bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                                    {s.typeDisp || s.quoteType}
-                                  </div>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50">
-                                  <SearchX className="h-5 w-5 text-muted-foreground/60" />
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-sm font-semibold text-foreground">
-                                    {t("market.ticker_not_found_suggestion")}
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground leading-relaxed max-w-45 mx-auto">
-                                    {t("market.add_ticker_dialog_desc")}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
+        <div className="space-y-4">
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              placeholder={t("market.add_ticker_placeholder")}
+              autoFocus
+              autoComplete="off"
+              className="pr-10 placeholder:text-sm text-sm"
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                setHideSuggestions(false);
+              }}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {isSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Search className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+
+            {inputValue.trim().length >= 2 &&
+              !hideSuggestions &&
+              !isSearching &&
+              suggestions && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1">
+                  {suggestions.length > 0 ? (
+                    suggestions.map((s) => {
+                      const symbol = s.symbol.toUpperCase();
+                      const isFavorited = favoriteSymbols.includes(symbol);
+                      return (
+                        <div
+                          key={s.symbol}
+                          onClick={
+                            isFavorited
+                              ? undefined
+                              : () => handleAddFromSuggestion(s)
+                          }
+                          aria-disabled={isFavorited}
+                          className={
+                            isFavorited
+                              ? "w-full flex items-center gap-3 px-4 py-2.5 text-left border-b border-border/50 last:border-0 opacity-50 cursor-not-allowed"
+                              : "w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors border-b border-border/50 last:border-0 group cursor-pointer"
+                          }
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold truncate">
+                              {s.symbol}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground truncate">
+                              {s.shortname || s.longname}
+                            </div>
                           </div>
-                        )}
+                          <Badge
+                            className="font-bold tracking-wider uppercase text-[10px] rounded-md"
+                            variant={isFavorited ? "outline" : "secondary"}
+                          >
+                            {isFavorited
+                              ? t("market.add_ticker_already_favorite_badge")
+                              : s.typeDisp || s.quoteType}
+                          </Badge>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50">
+                        <SearchX className="h-5 w-5 text-muted-foreground/60" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                          {t("market.ticker_not_found_suggestion")}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed max-w-45 mx-auto">
+                          {t("market.add_ticker_dialog_desc")}
+                        </p>
+                      </div>
                     </div>
-                    {fieldState.invalid && (
-                      <FieldError
-                        errors={[fieldState.error]}
-                        className="text-[10px]"
-                      />
-                    )}
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-          </form>
+                  )}
+                </div>
+              )}
+          </div>
+
+          {pendingSymbols.length > 0 && (
+            <div className="mt-6 space-y-2">
+              <p className="text-[10px] font-semibold text-muted-foreground tracking-wider">
+                {t("market.add_ticker_pending_label", {
+                  count: pendingSymbols.length,
+                })}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {pendingSymbols.map((symbol) => (
+                  <Button
+                    key={symbol}
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleRemovePending(symbol)}
+                    aria-label={t("market.add_ticker_chip_remove", {
+                      symbol,
+                    })}
+                    className="text-[10px] font-bold uppercase"
+                  >
+                    {symbol}
+                    <X className="h-4 w-4 text-destructive" />
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        <DialogFooter className="px-6 py-4 m-0 rounded-none">
+        <DialogFooter>
           <Button
             type="button"
+            size="lg"
             variant="secondary"
             onClick={() => handleOpenChange(false)}
-            className="h-9 text-xs cursor-pointer"
+            className="text-xs cursor-pointer"
           >
             {t("common.cancel")}
           </Button>
           <Button
-            type="submit"
-            form="add-ticker-form"
-            size="sm"
-            disabled={isAdding || !symbolWatch.trim()}
-            className="h-9 px-4 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md shadow-primary/10 cursor-pointer shrink-0"
+            type="button"
+            onClick={handleSaveAll}
+            size="lg"
+            disabled={isSaving || pendingSymbols.length === 0}
+            className="text-xs font-bold cursor-pointer shrink-0"
           >
-            {isAdding ? (
+            {isSaving ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              t("market.add_ticker_btn")
+              t("market.add_ticker_save_all_with_count", {
+                count: pendingSymbols.length,
+              })
             )}
           </Button>
         </DialogFooter>

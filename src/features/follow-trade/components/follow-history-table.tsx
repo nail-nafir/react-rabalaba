@@ -19,6 +19,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 import { useFollowStore } from "@/store/follow-store";
 import {
@@ -26,7 +27,12 @@ import {
   type FollowStatus,
   type FollowedTrade,
 } from "@/features/follow-trade/lib/follow-trade-model";
-import { formatPrice, formatRatio, formatDateFull, formatClock } from "@/lib/formatters";
+import {
+  formatPrice,
+  formatRatio,
+  formatDateFull,
+  formatClock,
+} from "@/lib/formatters";
 import {
   Table,
   TableHeader,
@@ -35,12 +41,25 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
+import { TradeDetailDialog } from "./trade-detail-dialog";
 import {
   FilterGroup,
   type FilterOption,
@@ -101,6 +120,9 @@ export function FollowHistoryTable() {
   const [search, setSearch] = useState("");
   const [dirFilter, setDirFilter] = useState<DirFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [selectedTrade, setSelectedTrade] = useState<FollowedTrade | null>(
+    null,
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -306,20 +328,62 @@ export function FollowHistoryTable() {
         id: "actions",
         header: () => null,
         enableSorting: false,
-        cell: ({ row }) => (
-          <Button
-            variant="link"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-rose-400 hover:bg-muted"
-            onClick={() => removeHistory(row.original.id)}
-            aria-label={`Delete ${row.original.symbol}`}
-          >
-            <Trash2 />
-          </Button>
-        ),
+        cell: ({ row }) => {
+          const tr = row.original;
+          return (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="link"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+                onClick={() => setSelectedTrade(tr)}
+                aria-label={`${t("journal.view_detail")} ${tr.symbol}`}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="link"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-rose-400 hover:bg-muted"
+                    aria-label={`Delete ${tr.symbol}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+                      <Trash2 />
+                    </AlertDialogMedia>
+                    <AlertDialogTitle>
+                      {t("journal.delete_confirm_title")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("journal.delete_confirm_desc", {
+                        symbol: tr.symbol,
+                      })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => removeHistory(tr.id)}
+                    >
+                      {t("journal.delete_confirm_action")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          );
+        },
       },
     ],
-    [t, removeHistory],
+    [t, i18n.language, removeHistory],
   );
 
   const table = useReactTable({
@@ -437,11 +501,11 @@ export function FollowHistoryTable() {
         <div className="text-xs text-muted-foreground">
           {t("table.page")}{" "}
           <span className="font-medium text-foreground">
-            {table.getState().pagination.pageIndex + 1}
+            {table.getPageCount() > 0 ? table.getState().pagination.pageIndex + 1 : 0}
           </span>{" "}
           {t("table.of")}{" "}
           <span className="font-medium text-foreground">
-            {table.getPageCount()}
+            {table.getPageCount() || 0}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -465,6 +529,14 @@ export function FollowHistoryTable() {
           </Button>
         </div>
       </div>
+
+      <TradeDetailDialog
+        trade={selectedTrade}
+        open={selectedTrade !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTrade(null);
+        }}
+      />
     </div>
   );
 }

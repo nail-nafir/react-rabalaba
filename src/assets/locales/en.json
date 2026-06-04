@@ -40,7 +40,7 @@
     }
   },
   "pricing": {
-    "title": "Choose Your Tier",
+    "title": "Pick Research Tier",
     "subtitle": "Veteran level tools to navigate the market faster, catch momentum, and find opportunities without blindly entering trades and getting wrecked.",
     "monthly": "monthly",
     "yearly": "yearly",
@@ -85,12 +85,79 @@
           "Team Collaboration Tools"
         ]
       }
+    },
+    "comparison": {
+      "title": "Compare Every Detail",
+      "subtitle": "See what each tier includes. No hidden catches.",
+      "features": [
+        {
+          "name": "Asset Screener",
+          "basic": "20 assets",
+          "professional": "Unlimited",
+          "ultimate": "Unlimited"
+        },
+        {
+          "name": "Signal Engine",
+          "basic": "-",
+          "professional": "Tier A/B",
+          "ultimate": "Full Access"
+        },
+        {
+          "name": "Trading Plan",
+          "basic": "-",
+          "professional": "Advanced",
+          "ultimate": "Advanced + API"
+        },
+        {
+          "name": "Economic Calendar",
+          "basic": "Daily",
+          "professional": "Full Analysis",
+          "ultimate": "Full Analysis"
+        },
+        {
+          "name": "Volume Analysis",
+          "basic": "-",
+          "professional": "+",
+          "ultimate": "+"
+        },
+        {
+          "name": "Favorites List",
+          "basic": "-",
+          "professional": "Custom",
+          "ultimate": "Custom + Sync"
+        },
+        {
+          "name": "API Access",
+          "basic": "-",
+          "professional": "-",
+          "ultimate": "Full Access"
+        },
+        {
+          "name": "Custom Indicators",
+          "basic": "-",
+          "professional": "-",
+          "ultimate": "+"
+        },
+        {
+          "name": "Account Manager",
+          "basic": "-",
+          "professional": "-",
+          "ultimate": "Dedicated"
+        },
+        {
+          "name": "Priority Support",
+          "basic": "-",
+          "professional": "Email",
+          "ultimate": "Direct Line"
+        }
+      ]
     }
   },
   "payment": {
-    "title": "Multiple Ways to Fuel Your Hustle",
-    "subtitle": "Pick the payment method that works best. We have streamlined everything so you can focus on making moves.",
-    "activation_notice": "Manual review. Activation within 24 hours after verification.",
+    "title": "Multiple Ways For Massive Gains",
+    "subtitle": "Pick the payment method that works best. Multiple options supported for smoother process and faster response.",
+    "activation_notice_title": "Manual Review",
+    "activation_notice_desc": "Once payment verification is complete, the account will be activated within 24 hours at most. The team will process it as soon as possible.",
     "methods": {
       "bank_transfer": {
         "name": "Bank Transfer",
@@ -111,20 +178,20 @@
     }
   },
   "faq": {
-    "title": "Curious? We Got You",
-    "subtitle": "Everything you need to kickstart your journey and stop the guesswork.",
+    "title": "Curious? We Got Answers",
+    "subtitle": "Everything needed to kickstart the journey and stop the guesswork.",
     "questions": [
       {
         "q": "What is RabaLaba?",
-        "a": "RabaLaba is a professional financial research terminal designed for multi asset analysis, featuring rule based signals and real time data."
+        "a": "RabaLaba is a professional financial research terminal for multi asset analysis, featuring rule based signals and real time data."
       },
       {
         "q": "Is the terminal free to use?",
-        "a": "RabaLaba offers the '$t(pricing.plans.basic.name)' tier is free for basic research. For advanced features, the '$t(pricing.plans.professional.name)' tier and the '$t(pricing.plans.ultimate.name)' tier for professional."
+        "a": "RabaLaba offers the '$t(pricing.plans.basic.name)' tier is free for basic research. For advanced features, the '$t(pricing.plans.professional.name)' and '$t(pricing.plans.ultimate.name)' tier for professional."
       },
       {
         "q": "Is the data reliable?",
-        "a": "We source our data from institutional grade providers like Yahoo Finance and other trusted giants. It is realtime and realible."
+        "a": "We source our data from institutional grade providers like Yahoo Finance and other trusted giants. It is real time and credible."
       },
       {
         "q": "Do I need to sign up for an account?",
@@ -147,7 +214,7 @@
     },
     "sentiment": {
       "title": "Long/Short Sentiment",
-      "description": "Analyze rule-based buy and sell signals with transparent signal-strength scores — decision support, not predictions. Let the data speak for itself."
+      "description": "Analyze rule based buy and sell signals with transparent signal strength scores, decision support not predictions. Let the data speak for itself."
     },
     "trading_plan": {
       "title": "Trading Plan Setup",
@@ -155,15 +222,15 @@
     },
     "volume": {
       "title": "Volume Analysis",
-      "description": "Detect whale movements through significant spikes in trading volume. Confirm market trends with real-time data instead of just vibes."
+      "description": "Detect whale movements through significant spikes in trading volume. Confirm market trends with real time data not just vibes."
     },
     "calendar": {
       "title": "Economic Calendar",
-      "description": "Track major global economic events that trigger market volatility. Stay updated on CPI, FOMC, and high-impact news to keep edge."
+      "description": "Track major global economic events that trigger market volatility. Stay updated on CPI, FOMC, and high impact news to keep edge."
     },
     "fear_greed": {
       "title": "Fear & Greed Monitor",
-      "description": "Track market psychology with our Fear & Greed Index. Find buying opportunities when others are fearful, and sell when they get greedy."
+      "description": "Track market psychology with our Fear & Greed Index. Buy when others are fearful, and sell when they get greedy."
     }
   },
   "market": {
@@ -172,8 +239,8 @@
     "ticker_title": "Real Time Price Action",
     "search_placeholder": "Filter assets by name or symbol...",
     "add_ticker_placeholder": "Add symbol (e.g. AAPL, BBCA.JK, BTC-USD)",
-    "add_ticker_dialog_title": "Add Ticker to Favorites",
-    "add_ticker_dialog_desc": "Enter a valid market symbol (e.g. AAPL, BBCA.JK, BTC-USD).",
+    "add_ticker_dialog_title": "Add Favorite Tickers",
+    "add_ticker_dialog_desc": "Enter a valid market symbol",
     "ticker_not_found_suggestion": "Ticker not found",
     "ticker_not_found": "Symbol {{symbol}} not found",
     "favorite_empty_desc": "Add tickers using the button above or star symbols in other categories.",
@@ -182,9 +249,14 @@
     "favorite_removed": "Removed {{symbol}} from favorites",
     "favorite_tab": "Favorites",
     "add_ticker_btn": "Add Ticker",
+    "add_ticker_save_all_with_count": "Add ({{count}})",
+    "add_ticker_pending_label": "To be added ({{count}})",
+    "add_ticker_chip_remove": "Remove {{symbol}}",
+    "add_ticker_already_favorite_badge": "Favorited",
+    "favorites_added_bulk": "Added {{count}} ticker(s) to favorites",
     "assets_found": "Assets",
     "auto_refresh": "Auto Refresh 1m",
-    "already_exists": "Symbol is already in your favorites",
+    "already_exists": "Symbol is already in favorites",
     "screener": "Asset Screener",
     "filters": "Filters"
   },
@@ -201,15 +273,15 @@
     "access_dialog_unlock_btn": "Unlock Access",
     "access_dialog_code_required": "Access code is required",
     "access_config_missing": "Premium access is currently unavailable. Please contact support.",
-    "access_error_decryption": "Premium access verification failed. Please enter your access code again.",
+    "access_error_decryption": "Premium access verification failed. Please enter the access code again.",
     "access_trial_success": "Access granted! Premium features are unlocked for 3 days.",
-    "access_trial_expired": "Your trial has ended. Contact support for full access."
+    "access_trial_expired": "The trial is ended. Hit up support for full access."
   },
   "calendar": {
     "title": "Economic Calendar",
     "subtitle": "Worldwide weekly schedule of market moving economic events",
     "upcoming": "upcoming events",
-    "no_events": "No events match your filters",
+    "no_events": "No events match the filters",
     "filters": "Filters",
     "about": "About",
     "affects": "Affects",
@@ -319,21 +391,23 @@
     "take_profit": "Take Profit",
     "risk_reward": "Risk : Reward",
     "projection": "Projection",
-    "copy": "Copy signal",
-    "share": "Share setup",
-    "copied": "Trade setup copied to clipboard",
-    "shared": "Setup image shared",
-    "downloaded": "Setup image downloaded",
-    "share_failed": "Could not generate the setup image"
+    "signal_type": "Signal",
+    "share": "Share signal",
+    "shared_signal": "Signal image shared",
+    "downloaded_signal": "Signal image downloaded",
+    "share_failed_signal": "Could not generate the signal image",
+    "shared_position": "Position image shared",
+    "downloaded_position": "Position image downloaded",
+    "share_failed_position": "Could not generate the position image"
   },
   "disclaimer": {
     "title": "Know The Risks",
     "description": "The RabaLaba Research Terminal provides high octane intel, but please note these essential rules:",
     "points": [
-      "Not financial advice, just pure data and research. Always do your own due diligence.",
-      "You are the pilot, we are the radar. All trading decisions and risks are yours alone.",
+      "Not financial advice, just pure data and research. Always do due diligence.",
+      "The pilot is in control, the terminal is the radar. All trading decisions and risks belong to the user alone.",
       "Use cold capital only. Never trade with essential funds like rent or daily needs.",
-      "Market volatility is real. Stay disciplined and keep your emotions in check."
+      "Market volatility is real. Stay disciplined and keep emotions in check."
     ],
     "confirm": "I have read and understood the risk disclosure",
     "agree": "Understand & Proceed",
@@ -346,6 +420,7 @@
     "view_market": "Market",
     "view_journal": "Journal",
     "open_positions": "Open Positions",
+    "running_position": "Running Position",
     "no_open": "Follow a signal from the Market tab to start tracking.",
     "close_position": "Close Position",
     "history": "Trading History",
@@ -372,7 +447,7 @@
     "chart_status": "Status Distribution",
     "chart_per_asset": "P/L by Asset (R)",
     "chart_direction": "Long vs Short",
-    "empty_dashboard": "Follow and close trades to see your performance here.",
+    "empty_dashboard": "Follow and close trades to see performance here.",
     "summary": "Trading Summary",
     "no_open_title": "No open positions",
     "no_history_title": "No history yet",
@@ -381,8 +456,24 @@
     "trades": "Trades",
     "entry_price": "Entry",
     "current_price": "Current",
+    "close_price": "Close Price",
+    "followed_at": "Followed",
+    "closed_at": "Closed",
+    "trade_detail": "Trade Detail",
     "filter_all_status": "All Statuses",
     "followed_toast_desc": "New open position is now being tracked. Want to see the details?",
-    "followed_toast_action": "View in Journal"
+    "followed_toast_action": "View in Journal",
+    "delete_confirm_title": "Delete Trade Record",
+    "delete_confirm_desc": "Delete the {{symbol}} trade record? This action cannot be undone.",
+    "delete_confirm_action": "Delete",
+    "close_confirm_title": "Close Position",
+    "close_confirm_desc": "Want to manually close {{symbol}} position at the current price?",
+    "close_confirm_action": "Yes, Close It",
+    "view_detail": "View Detail"
+  },
+  "not_found": {
+    "title": "Lost in Space?",
+    "description": "This page drifted off into the unknown. Might've moved or vanished. Let's head home.",
+    "action": "Go Home"
   }
 }

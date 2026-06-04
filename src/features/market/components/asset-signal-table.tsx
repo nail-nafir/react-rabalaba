@@ -42,14 +42,18 @@ import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SkeletonTableRow } from "@/components/shared/skeleton-card";
 import { MiniSparkline } from "@/components/charts/mini-sparkline";
-import { FilterBar } from "./filter-bar";
-import { TIER_COLORS, SIGNAL_COLORS, SIGNAL_LABELS } from "@/constants/signals";
+import {
+  TIER_COLORS,
+  SIGNAL_COLORS,
+  SIGNAL_LABELS,
+  SIGNAL_FILTER_OPTIONS,
+} from "@/constants/signals";
 import { useUIStore } from "@/store/ui-store";
-import { useFilterStore } from "@/store/filter-store";
+import { useFilterStore, type SignalFilterType } from "@/store/filter-store";
 import { useFavoriteStore } from "@/store/favorite-store";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
-import type { UnifiedAsset } from "@/types/asset";
+import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import {
   DEFAULT_COMMODITY_TICKERS,
   DEFAULT_CRYPTO_TICKERS,
@@ -59,6 +63,7 @@ import {
   TOP_CRYPTO_TICKERS,
   TOP_ID_STOCK_TICKERS,
   TOP_US_STOCK_TICKERS,
+  ASSET_TYPE_OPTIONS,
 } from "@/constants/assets";
 import { Button } from "@/components/ui/button";
 import { PremiumAccessDialog } from "./premium-access-dialog";
@@ -67,6 +72,7 @@ import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
 import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
 import { AddTickerDialog } from "./add-ticker-dialog";
+import { FilterGroup } from "@/components/shared/filter-group";
 
 type PendingAction =
   | { type: "ANALYZE"; symbol: string }
@@ -88,8 +94,14 @@ export function AssetSignalTable() {
   const { t } = useTranslation();
   const [sorting, setSorting] = useState<SortingState>([]);
   const { openDetailDialog } = useUIStore();
-  const { assetType, setAssetType, searchQuery, setSearchQuery, signalFilter } =
-    useFilterStore();
+  const {
+    assetType,
+    setAssetType,
+    searchQuery,
+    setSearchQuery,
+    signalFilter,
+    setSignalFilter,
+  } = useFilterStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
   const { hasAccess } = usePremiumAccess();
 
@@ -98,6 +110,7 @@ export function AssetSignalTable() {
 
   // Favorite integration
   const { favoriteSymbols, removeSymbol } = useFavoriteStore();
+  const [showFavorites, setShowFavorites] = useState(false);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
@@ -123,6 +136,16 @@ export function AssetSignalTable() {
   // Fetch favorite data
   const { data: favoriteAssets, isFetching: favoriteFetching } =
     useMarketData(favoriteSymbols);
+
+  const translatedAssetOptions = ASSET_TYPE_OPTIONS.map((opt) => ({
+    ...opt,
+    label: t(`common.asset_types.${opt.value}`),
+  }));
+
+  const translatedSignalOptions = SIGNAL_FILTER_OPTIONS.map((opt) => ({
+    ...opt,
+    label: t(`common.signals.${opt.value}`),
+  }));
 
   const isFetching =
     cryptoFetching ||
@@ -172,12 +195,21 @@ export function AssetSignalTable() {
 
   const isLoading = isFetching && allAssets.length === 0;
 
+  const displayFavCount = useMemo(() => {
+    if (assetType === "all") return favoriteSymbols.length;
+    return allAssets.filter(
+      (a) => a.assetType === assetType && favoriteSymbols.includes(a.symbol),
+    ).length;
+  }, [allAssets, assetType, favoriteSymbols]);
+
   const filteredData = useMemo(() => {
     let data = [...allAssets];
-    if (assetType === "favorite") {
-      data = data.filter((a) => favoriteSymbols.includes(a.symbol));
-    } else if (assetType !== "all") {
+    if (assetType !== "all") {
       data = data.filter((a) => a.assetType === assetType);
+    }
+
+    if (showFavorites) {
+      data = data.filter((a) => favoriteSymbols.includes(a.symbol));
     }
 
     if (signalFilter !== "all") {
@@ -193,7 +225,7 @@ export function AssetSignalTable() {
       );
     }
     return data;
-  }, [allAssets, assetType, favoriteSymbols, debouncedSearch, signalFilter]);
+  }, [allAssets, assetType, showFavorites, favoriteSymbols, debouncedSearch, signalFilter]);
 
   const columns = useMemo<ColumnDef<UnifiedAsset>[]>(
     () => [
@@ -461,7 +493,23 @@ export function AssetSignalTable() {
       <div className="flex flex-col gap-3">
         {/* Filters Header at the top */}
         <div className="flex items-center gap-2">
-          <FilterBar />
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <FilterGroup
+              value={assetType}
+              options={translatedAssetOptions}
+              onChange={(v) => setAssetType(v as AssetFilterType)}
+              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+            />
+
+            <Separator orientation="vertical" className="mx-1" />
+
+            <FilterGroup
+              value={signalFilter}
+              options={translatedSignalOptions}
+              onChange={(v) => setSignalFilter(v as SignalFilterType)}
+              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+            />
+          </div>
 
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
             {isLoading ? (
@@ -484,7 +532,7 @@ export function AssetSignalTable() {
               placeholder={t("market.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-9 h-9 text-sm focus:ring-primary/20 transition-all shadow-sm"
+              className="pl-9 pr-9 text-sm placeholder:text-sm"
             />
             {searchQuery && (
               <button
@@ -501,53 +549,52 @@ export function AssetSignalTable() {
 
           <div className="flex items-center gap-2 shrink-0">
             <Button
-              variant={assetType === "favorite" ? "default" : "secondary"}
+              size="lg"
+              variant={showFavorites ? "default" : "secondary"}
               onClick={() => {
-                if (assetType === "favorite") {
-                  setAssetType("all");
+                if (showFavorites) {
+                  setShowFavorites(false);
                   return;
                 }
 
                 if (hasAccess) {
-                  setAssetType("favorite");
+                  setShowFavorites(true);
                 } else {
                   setPendingAction({ type: "FAVORITE" });
                   setIsAccessDialogOpen(true);
                 }
               }}
               className={cn(
-                "h-9 px-3 gap-2 transition-all cursor-pointer",
-                assetType === "favorite"
-                  ? "bg-amber-500/10 border-amber-500/50 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:border-amber-500"
-                  : "text-muted-foreground hover:text-foreground",
+                "cursor-pointer transition-all",
+                showFavorites &&
+                  "bg-amber-500/10 border-amber-500/50 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:border-amber-500",
               )}
             >
               <Star
                 className={cn(
-                  "h-3.5 w-3.5 transition-all",
-                  assetType === "favorite"
+                  "h-3.5 w-3.5",
+                  showFavorites
                     ? "fill-amber-500 text-amber-500 scale-110"
                     : "text-muted-foreground/60",
                 )}
               />
-              <span className="hidden sm:inline text-xs font-bold tracking-tight">
+              <span className={cn("hidden sm:inline text-xs font-bold tracking-tight", showFavorites && "text-amber-500")}>
                 {t("common.favorite")}
               </span>
-              {favoriteSymbols.length > 0 && (
-                <Badge
-                  className={cn(
-                    "text-xs rounded-md font-black leading-none transition-colors",
-                    assetType === "favorite"
-                      ? "bg-amber-500 text-background"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {favoriteSymbols.length}
-                </Badge>
-              )}
+              <Badge
+                className={cn(
+                  "text-xs rounded-md font-black leading-none transition-colors",
+                  showFavorites
+                    ? "bg-amber-500 text-background"
+                    : "text-muted-foreground",
+                )}
+              >
+                {displayFavCount}
+              </Badge>
             </Button>
 
             <Button
+              size="lg"
               onClick={() => {
                 if (hasAccess) {
                   setIsAddDialogOpen(true);
@@ -556,7 +603,7 @@ export function AssetSignalTable() {
                   setIsAccessDialogOpen(true);
                 }
               }}
-              className="h-9 px-3 text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 tracking-tight hover:bg-primary/90 shadow-sm active:scale-95"
+              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">
@@ -598,7 +645,7 @@ export function AssetSignalTable() {
                   colSpan={columns.length}
                   className="h-64 text-center"
                 >
-                  {assetType === "favorite" && favoriteSymbols.length === 0 ? (
+                  {showFavorites && favoriteSymbols.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-8 max-w-sm mx-auto space-y-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-md bg-amber-500/10 text-amber-500 animate-pulse">
                         <Star className="h-6 w-6 fill-amber-500/20" />
@@ -642,11 +689,11 @@ export function AssetSignalTable() {
         <div className="text-xs text-muted-foreground">
           {t("table.page")}{" "}
           <span className="font-medium text-foreground">
-            {table.getState().pagination.pageIndex + 1}
+            {table.getPageCount() > 0 ? table.getState().pagination.pageIndex + 1 : 0}
           </span>{" "}
           {t("table.of")}{" "}
           <span className="font-medium text-foreground">
-            {table.getPageCount()}
+            {table.getPageCount() || 0}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -692,7 +739,7 @@ export function AssetSignalTable() {
               openDetailDialog(pendingAction.symbol);
               break;
             case "FAVORITE":
-              setAssetType("favorite");
+              setShowFavorites(true);
               break;
             case "ADD_TICKER":
               setIsAddDialogOpen(true);

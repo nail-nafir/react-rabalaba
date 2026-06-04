@@ -6,11 +6,14 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Pie,
   PieChart,
+  Rectangle,
+  Sector,
   XAxis,
   YAxis,
+  type BarShapeProps,
+  type PieSectorShapeProps,
 } from "recharts";
 import { useFollowStore } from "@/store/follow-store";
 import {
@@ -33,10 +36,10 @@ const NEG = "#fb7185";
 const STATUS_COLOR: Record<FollowStatus, string> = {
   open: "#a1a1aa",
   tp1: "#34d399",
-  tp2: "#10b981",
-  tp3: "#059669",
+  tp2: "#34d399",
+  tp3: "#34d399",
   sl: "#fb7185",
-  manual: "#fbbf24",
+  manual: "#a1a1aa",
 };
 
 function StatCard({
@@ -121,8 +124,10 @@ export function JournalDashboard() {
     fill: d.signal === "long" ? POS : NEG,
   }));
 
-  const rFmt = (v: number | string | undefined) =>
-    `${Number(v) >= 0 ? "+" : ""}${formatRatio(Number(v))}R`;
+  const rFmt = (v: number | string | readonly (number | string)[] | undefined) => {
+    const n = Number(Array.isArray(v) ? v[0] : v);
+    return `${n >= 0 ? "+" : ""}${formatRatio(n)}R`;
+  };
   const equityConfig: ChartConfig = {
     cumR: { label: t("journal.stat_avg_r"), color: POS },
   };
@@ -200,15 +205,14 @@ export function JournalDashboard() {
                       nameKey="name"
                       innerRadius={40}
                       outerRadius={70}
-                    >
-                      {statusData.map((d) => (
-                        <Cell
-                          key={d.key}
-                          fill={d.fill}
+                      shape={(props: PieSectorShapeProps) => (
+                        <Sector
+                          {...props}
+                          fill={props.payload?.fill}
                           stroke="var(--background)"
                         />
-                      ))}
-                    </Pie>
+                      )}
+                    />
                   </PieChart>
                 </ChartContainer>
               </ChartCard>
@@ -241,11 +245,16 @@ export function JournalDashboard() {
                         <ChartTooltipContent formatter={(v) => rFmt(v)} />
                       }
                     />
-                    <Bar dataKey="r" radius={4}>
-                      {stats.perAsset.map((d) => (
-                        <Cell key={d.symbol} fill={d.r >= 0 ? POS : NEG} />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="r"
+                      radius={4}
+                      shape={(props: BarShapeProps) => (
+                        <Rectangle
+                          {...props}
+                          fill={(props.payload?.r ?? 0) >= 0 ? POS : NEG}
+                        />
+                      )}
+                    />
                   </BarChart>
                 </ChartContainer>
               </ChartCard>
@@ -278,11 +287,13 @@ export function JournalDashboard() {
                         <ChartTooltipContent formatter={(v) => rFmt(v)} />
                       }
                     />
-                    <Bar dataKey="r" radius={4}>
-                      {dirData.map((d) => (
-                        <Cell key={d.name} fill={d.fill} />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="r"
+                      radius={4}
+                      shape={(props: BarShapeProps) => (
+                        <Rectangle {...props} fill={props.payload?.fill} />
+                      )}
+                    />
                   </BarChart>
                 </ChartContainer>
               </ChartCard>

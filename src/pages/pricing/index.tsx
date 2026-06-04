@@ -21,13 +21,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default function PricingPage() {
   const { t } = useTranslation();
 
   return (
-    <div className="w-full py-16">
-      <div className="max-w-7xl mx-auto px-6 space-y-12 text-center">
+    <div className="w-full py-10 md:py-16">
+      <div className="max-w-7xl mx-auto px-6 space-y-6 md:space-y-12 text-center">
         {/* Header */}
         <div className="space-y-4 max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground bg-clip-text bg-linear-to-b from-foreground to-foreground/70">
@@ -39,7 +40,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Tiers */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 w-full items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-3 pt-4 md:pt-12 gap-6 md:gap-12 w-full">
           {/* Basic Plan */}
           <PricingCard
             name={t("pricing.plans.basic.name")}
@@ -90,7 +91,7 @@ export default function PricingPage() {
         </div>
 
         {/* Payment Methods Section */}
-        <div className="max-w-4xl mx-auto space-y-8 pt-8">
+        <div className="max-w-4xl mx-auto space-y-5 md:space-y-8 pt-3 md:pt-8">
           <div className="space-y-2 text-center">
             <h2 className="text-2xl font-bold tracking-tight">
               {t("payment.title")}
@@ -123,12 +124,15 @@ export default function PricingPage() {
             />
           </div>
 
-          <Card className="flex items-center justify-center gap-4 border-border w-full mx-auto overflow-visible shadow-sm hover:border-primary/20 bg-muted transition-all group">
-            <div className="h-10 w-10 rounded-md bg-foreground/10 text-foreground flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+          <Card className="flex flex-col items-center justify-center gap-2 border border-border w-full mx-auto overflow-visible px-4 sm:px-6">
+            <div className="h-10 w-10 rounded-md bg-foreground/10 text-foreground flex items-center justify-center">
               <Target className="h-5 w-5" />
             </div>
-            <CardDescription className="text-xs font-medium text-foreground text-center">
-              {t("payment.activation_notice")}
+            <CardTitle className="text-sm font-semibold text-center">
+              {t("payment.activation_notice_title")}
+            </CardTitle>
+            <CardDescription className="text-xs text-center">
+              {t("payment.activation_notice_desc")}
             </CardDescription>
           </Card>
         </div>
@@ -147,13 +151,13 @@ function PaymentCard({
   icon: React.ElementType;
 }) {
   return (
-    <Card className="hover:border-primary hover:shadow-xl hover:shadow-primary/5 transition-all hover:-translate-y-1 overflow-visible border border-border">
-      <CardHeader className="flex flex-col items-center p-0 pb-3">
+    <Card className="hover:border-primary hover:shadow-xl hover:shadow-primary/5 overflow-visible border border-border">
+      <CardHeader className="flex flex-col items-center">
         <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
           <Icon className="h-5 w-5" />
         </div>
       </CardHeader>
-      <CardContent className="p-0 space-y-1">
+      <CardContent className="space-y-1">
         <CardTitle className="text-sm font-bold tracking-tight">
           {name}
         </CardTitle>
@@ -195,8 +199,8 @@ function PricingCard({
       className={cn(
         "relative transition-all h-full overflow-visible",
         highlighted
-          ? "border border-primary shadow-xl shadow-primary/20 scale-105 z-20 bg-card hover:scale-[1.08] hover:shadow-primary/30"
-          : "border border-border hover:border-primary hover:shadow-xl hover:shadow-primary/10 shadow-sm bg-card/50 hover:-translate-y-1",
+          ? "border border-primary shadow-xl shadow-primary/20 md:scale-110 z-20 md:hover:scale-115 hover:shadow-primary/30"
+          : "border border-border hover:border-primary hover:shadow-xl hover:shadow-primary/10 shadow-sm hover:-translate-y-1",
       )}
     >
       {highlighted && (
@@ -222,7 +226,7 @@ function PricingCard({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="flex-1 w-full flex flex-col items-center pt-0 pb-8">
+      <CardContent className="flex-1 w-full flex flex-col items-center">
         <div className="flex items-baseline justify-center gap-1 pb-6 w-full">
           <span className="text-4xl font-extrabold tracking-tight">
             {price}
@@ -234,7 +238,9 @@ function PricingCard({
           )}
         </div>
 
-        <ul className="space-y-3 pt-6 border-t border-border w-full">
+        <Separator className="w-full" />
+
+        <ul className="space-y-3 py-6 w-full">
           {features.map((feature, i) => (
             <li
               key={i}
@@ -249,16 +255,17 @@ function PricingCard({
         </ul>
       </CardContent>
 
-      <CardFooter className="pb-6 pt-4 w-full mt-auto">
+      <CardFooter className="py-6">
         <Link
           to={ctaLink}
           target={isExternal ? "_blank" : undefined}
           rel={isExternal ? "noopener noreferrer" : undefined}
           className={cn(
             buttonVariants({
+              size: "lg",
               variant: highlighted ? "default" : "secondary",
             }),
-            "w-full h-11 text-sm font-bold tracking-tight rounded-xl group whitespace-nowrap px-6",
+            "w-full text-sm font-bold tracking-tight whitespace-nowrap py-5",
             highlighted && "shadow-lg shadow-primary/20",
           )}
         >

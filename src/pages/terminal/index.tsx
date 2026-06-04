@@ -27,7 +27,7 @@ export default function TerminalPage() {
   ];
 
   return (
-    <div className="w-full py-10">
+    <div className="w-full py-10 bg-background">
       <div className="max-w-7xl mx-auto px-6 space-y-8">
         {/* Page header + view switcher */}
         <div className="flex flex-row items-start justify-between gap-4">

@@ -10,12 +10,17 @@ const resources = {
   id: { translation: id },
 };
 
+const storedLang =
+  typeof window !== "undefined"
+    ? localStorage.getItem("i18nextLng") || "id"
+    : "id";
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
-    lng: "id",
+    lng: storedLang,
     fallbackLng: "id",
     interpolation: {
       escapeValue: false,

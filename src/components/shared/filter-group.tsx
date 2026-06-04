@@ -5,6 +5,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -27,19 +28,25 @@ export function FilterGroup<T extends string>({
   className,
 }: FilterGroupProps<T>) {
   const isMobile = useIsMobile();
-  const selectedOption = options.find((o) => o.value === value);
 
   if (isMobile) {
     return (
       <Select value={value} onValueChange={(v) => onChange(v as T)}>
-        <SelectTrigger className={cn("w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8", className)}>
-          <span className="truncate text-left">
-            {selectedOption?.label || value}
-          </span>
+        <SelectTrigger
+          className={cn(
+            "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8",
+            className,
+          )}
+        >
+          <SelectValue className="truncate text-left" />
         </SelectTrigger>
-        <SelectContent align="start" className="p-1">
+        <SelectContent align="start" position="popper" className="p-1">
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="uppercase tracking-wider text-[10px]">
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="uppercase tracking-wider text-[10px]"
+            >
               {option.label}
             </SelectItem>
           ))}
@@ -51,22 +58,19 @@ export function FilterGroup<T extends string>({
   return (
     <div
       className={cn(
-        "flex items-center gap-1 rounded-lg border bg-muted p-0.5 shadow-sm",
+        "flex items-center gap-1 rounded-lg border border-input bg-card p-1",
         className,
       )}
     >
       {options.map((option) => (
         <Button
           key={option.value}
-          type="button"
           variant={value === option.value ? "default" : "ghost"}
-          size="sm"
+          size="xs"
           onClick={() => onChange(option.value)}
           className={cn(
-            "h-7 rounded-md px-3 text-[10px] font-bold transition-all duration-200 whitespace-nowrap uppercase tracking-wider",
-            value === option.value
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+            "text-[10px] font-bold whitespace-nowrap uppercase tracking-wider cursor-pointer",
+            value !== option.value && "text-muted-foreground hover:bg-accent!",
           )}
         >
           {option.label}

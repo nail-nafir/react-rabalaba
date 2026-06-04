@@ -4,7 +4,13 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { buttonVariants } from "../ui/button";
+import { Button, buttonVariants } from "../ui/button";
+
+const NAV_ITEMS = [
+  { to: "/terminal", icon: BarChart3 },
+  { to: "/calendar", icon: Calendar },
+  { to: "/pricing", icon: CreditCard },
+] as const;
 
 export function Header() {
   const { t } = useTranslation();
@@ -43,25 +49,24 @@ export function Header() {
 
         {/* Center: Nav (Absolute) */}
         {location.pathname !== "/" && (
-          <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-1 rounded-lg border bg-muted p-0.5 shadow-sm">
-            <NavTab
-              to="/terminal"
-              label={t("common.terminal")}
-              icon={BarChart3}
-              isActive={location.pathname === "/terminal"}
-            />
-            <NavTab
-              to="/calendar"
-              label={t("common.calendar")}
-              icon={Calendar}
-              isActive={location.pathname === "/calendar"}
-            />
-            <NavTab
-              to="/pricing"
-              label={t("common.pricing")}
-              icon={CreditCard}
-              isActive={location.pathname === "/pricing"}
-            />
+          <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2 rounded-lg border border-input bg-card p-1">
+            {NAV_ITEMS.map(({ to, icon: Icon }) => (
+              <Button
+                asChild
+                key={to}
+                variant={location.pathname === to ? "default" : "ghost"}
+                size="xs"
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider",
+                  location.pathname !== to && "text-muted-foreground",
+                )}
+              >
+                <Link to={to}>
+                  <Icon className="h-3.5 w-3.5" />
+                  {t(`common.${to.replace("/", "")}`)}
+                </Link>
+              </Button>
+            ))}
           </nav>
         )}
 
@@ -74,32 +79,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  );
-}
-
-function NavTab({
-  to,
-  label,
-  icon: Icon,
-  isActive,
-}: {
-  to: string;
-  label: string;
-  icon: React.ElementType;
-  isActive: boolean;
-}) {
-  return (
-    <Link
-      to={to}
-      className={cn(
-        "flex items-center gap-1.5 px-3 transition-all duration-200 h-7 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
-        isActive
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </Link>
   );
 }

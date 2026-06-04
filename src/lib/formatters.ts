@@ -3,6 +3,13 @@
  */
 
 /**
+ * Format a Date object as YYYY-MM-DD in local time.
+ */
+export function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/**
  * Formats asset prices beautifully with dynamic decimal adjustment.
  * Handles Indonesian stocks in Rupiah and international assets in USD.
  * Dynamically scales decimal places for tiny assets (like SHIB or DOGE) to avoid rounding to 0.
@@ -41,18 +48,6 @@ export function formatVolume(vol: number): string {
   return vol.toString();
 }
 
-/**
- * Formats a Unix timestamp into a standard readable date string.
- */
-export function formatDate(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 /** Numeric day/month (e.g. "01/06"); order follows the given locale. */
 export function formatDayMonth(timestamp: number, locale?: string): string {
   const date = new Date(timestamp * 1000);
@@ -75,18 +70,4 @@ export function formatClock(timestamp: number): string {
   const hh = date.getHours().toString().padStart(2, "0");
   const mm = date.getMinutes().toString().padStart(2, "0");
   return `${hh}:${mm}`;
-}
-
-/**
- * Formats a Unix timestamp with time for intraday candles.
- * Uses the viewer's local timezone so hover labels match the user's clock.
- */
-export function formatDateTime(timestamp: number, locale?: string): string {
-  const date = new Date(timestamp * 1000);
-  const day = date.toLocaleDateString(locale, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  return `${day} ${formatClock(timestamp)}`;
 }

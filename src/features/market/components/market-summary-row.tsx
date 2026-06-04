@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MarketSummaryCard } from "./market-summary-card";
 import { SkeletonCard } from "@/components/shared/skeleton-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
@@ -9,6 +8,9 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { FearGreedBar } from "@/components/charts/fear-greed-bar";
+import { PercentageChange } from "@/components/shared/percentage-change";
+import { MiniSparkline } from "@/components/charts/mini-sparkline";
+import { TrendIndicator } from "@/components/shared/trend-indicator";
 import type { TrendDirection } from "@/types/market";
 
 export function MarketSummaryRow() {
@@ -67,7 +69,7 @@ export function MarketSummaryRow() {
             {fearGreedLoading ? (
               <SkeletonCard className="min-w-50" />
             ) : fearGreed ? (
-              <Card className="flex flex-col items-start min-w-50 shadow-sm bg-muted border border-border transition-all duration-200">
+              <Card className="min-w-50 border border-border">
                 <CardHeader className="w-full text-left">
                   <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Fear & Greed
@@ -127,14 +129,37 @@ export function MarketSummaryRow() {
                     .slice(-20);
 
                   return (
-                    <MarketSummaryCard
+                    <Card
                       key={idx.symbol}
-                      name={meta?.name || idx.name}
-                      value={formattedValue}
-                      change={idx.changePercent}
-                      trend={trend}
-                      sparkline={sparklineData}
-                    />
+                      className="min-w-50 border border-border"
+                    >
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {meta?.name || idx.name}
+                        </CardTitle>
+                        <TrendIndicator trend={trend} />
+                      </CardHeader>
+
+                      <CardContent className="flex-1 flex flex-col">
+                        <div className="text-2xl font-bold text-mono-data tracking-tight mb-2 text-foreground">
+                          {formattedValue}
+                        </div>
+
+                        <div className="flex items-center justify-between mt-auto pt-2">
+                          <PercentageChange
+                            value={idx.changePercent}
+                            className="text-xs font-semibold"
+                          />
+                          {sparklineData && sparklineData.length > 1 && (
+                            <MiniSparkline
+                              data={sparklineData}
+                              width={60}
+                              height={20}
+                            />
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   );
                 })}
           </>

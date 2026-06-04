@@ -1,9 +1,16 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatPrice, formatDateTime, formatDayMonth, formatRatio } from "@/lib/formatters";
+import {
+  formatPrice,
+  formatDateFull,
+  formatClock,
+  formatDayMonth,
+  formatRatio,
+} from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
@@ -116,7 +123,7 @@ export function TradeSetupChart({
   return (
     <div className="space-y-3">
       <div className="relative w-full">
-        <Card className="overflow-hidden border border-border">
+        <Card className="overflow-hidden border border-border bg-muted/50">
           <CardContent>
             <svg
               viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -333,59 +340,71 @@ export function TradeSetupChart({
 
         {/* candle tooltip */}
         {hovered && (
-          <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-xl border border-border bg-card px-2 py-1.5 text-[10px]"
+          <Card
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full border border-border text-[10px]"
             style={{
               left: `${Math.min(85, Math.max(15, (hovered.cx / VB_W) * 100))}%`,
               top: `${(hovered.yHigh / VB_H) * 100}%`,
             }}
           >
-            <div className="mb-1 whitespace-nowrap border-b border-border pb-1 font-medium text-muted-foreground">
-              {formatDateTime(hovered.candle.timestamp, i18n.language)}
-            </div>
-            {(() => {
-              const c = hovered.candle;
-              const up = c.close >= c.open;
-              const chg =
-                c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
-              const closeColor = up ? "text-emerald-400" : "text-rose-400";
-              return (
-                <>
-                  <div className="flex flex-col gap-0.5 text-mono-data">
-                    <Ohlc label="Open" value={formatPrice(c.open, assetType)} />
-                    <Ohlc
-                      label="High"
-                      value={formatPrice(c.high, assetType)}
-                      valueClassName="text-emerald-400"
-                    />
-                    <Ohlc
-                      label="Low"
-                      value={formatPrice(c.low, assetType)}
-                      valueClassName="text-rose-400"
-                    />
-                    <Ohlc
-                      label="Close"
-                      value={formatPrice(c.close, assetType)}
-                      valueClassName={closeColor}
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-between gap-3 border-t border-border pt-1 text-mono-data">
-                    <span className="text-muted-foreground">Change</span>
-                    <span className={closeColor}>
-                      {chg >= 0 ? "+" : ""}
-                      {chg.toFixed(2)}%
-                    </span>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+            <CardContent>
+              <div className="flex items-center justify-between gap-4 whitespace-nowrap">
+                <span className="font-medium text-muted-foreground">
+                  {formatDateFull(hovered.candle.timestamp, i18n.language)}
+                </span>
+                <span className="font-medium text-muted-foreground">
+                  {formatClock(hovered.candle.timestamp)}
+                </span>
+              </div>
+              <Separator className="my-2" />
+              {(() => {
+                const c = hovered.candle;
+                const up = c.close >= c.open;
+                const chg =
+                  c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
+                const closeColor = up ? "text-emerald-400" : "text-rose-400";
+                return (
+                  <>
+                    <div className="flex flex-col gap-1 text-mono-data">
+                      <Ohlc
+                        label="Open"
+                        value={formatPrice(c.open, assetType)}
+                      />
+                      <Ohlc
+                        label="High"
+                        value={formatPrice(c.high, assetType)}
+                        valueClassName="text-emerald-400"
+                      />
+                      <Ohlc
+                        label="Low"
+                        value={formatPrice(c.low, assetType)}
+                        valueClassName="text-rose-400"
+                      />
+                      <Ohlc
+                        label="Close"
+                        value={formatPrice(c.close, assetType)}
+                        valueClassName={closeColor}
+                      />
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between gap-3 text-mono-data">
+                      <span className="text-muted-foreground">Change</span>
+                      <span className={closeColor}>
+                        {chg >= 0 ? "+" : ""}
+                        {chg.toFixed(2)}%
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
         )}
       </div>
 
       {/* numeric panel: R:R · Entry · SL · TP1 · TP2 · TP3 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <Card className="overflow-hidden border border-border transition-colors hover:border-primary/50">
+        <Card className="overflow-hidden border border-border bg-muted/50 transition-colors hover:border-primary">
           <CardContent className="flex flex-col gap-1.5">
             <span className="text-[10px] text-muted-foreground">
               {t("dialog.risk_reward")}
@@ -401,8 +420,8 @@ export function TradeSetupChart({
             onMouseEnter={() => setHoveredLevel(lvl.key)}
             onMouseLeave={() => setHoveredLevel(null)}
             className={cn(
-              "overflow-hidden border transition-colors",
-              hoveredLevel === lvl.key ? "border-primary/50" : "border-border",
+              "overflow-hidden border bg-muted/50 transition-colors",
+              hoveredLevel === lvl.key ? "border-primary" : "border-border",
             )}
           >
             <CardContent className="flex flex-col gap-1.5">

@@ -85,12 +85,79 @@
           "Alat Kolaborasi Team"
         ]
       }
+    },
+    "comparison": {
+      "title": "Bandingkan Secara Detail",
+      "subtitle": "Lihat apa yang didapat di tiap kasta. Gak ada yang ditutup-tutupin.",
+      "features": [
+        {
+          "name": "Penyaring Aset",
+          "basic": "20 aset",
+          "professional": "Tanpa Batas",
+          "ultimate": "Tanpa Batas"
+        },
+        {
+          "name": "Mesin Sinyal",
+          "basic": "-",
+          "professional": "Tier A/B",
+          "ultimate": "Akses Penuh"
+        },
+        {
+          "name": "Rencana Dagang",
+          "basic": "-",
+          "professional": "Lanjutan",
+          "ultimate": "Lanjutan + API"
+        },
+        {
+          "name": "Kalender Ekonomi",
+          "basic": "Harian",
+          "professional": "Analisis Lengkap",
+          "ultimate": "Analisis Lengkap"
+        },
+        {
+          "name": "Analisis Volume",
+          "basic": "-",
+          "professional": "+",
+          "ultimate": "+"
+        },
+        {
+          "name": "Daftar Favorit",
+          "basic": "-",
+          "professional": "Kustom",
+          "ultimate": "Kustom + Sync"
+        },
+        {
+          "name": "Akses API",
+          "basic": "-",
+          "professional": "-",
+          "ultimate": "Akses Penuh"
+        },
+        {
+          "name": "Indikator Kustom",
+          "basic": "-",
+          "professional": "-",
+          "ultimate": "+"
+        },
+        {
+          "name": "Manajer Akun",
+          "basic": "-",
+          "professional": "-",
+          "ultimate": "Khusus"
+        },
+        {
+          "name": "Dukungan Prioritas",
+          "basic": "-",
+          "professional": "Email",
+          "ultimate": "Langsung"
+        }
+      ]
     }
   },
   "payment": {
     "title": "Banyak Jalan Menuju Cuan Melimpah",
     "subtitle": "Pilih cara bayar yang paling pas. Kita dukung berbagai metode biar prosesnya makin gacor gak pake lama.",
-    "activation_notice": "Tinjauan manual. Aktivasi dalam waktu 24 jam setelah verifikasi.",
+    "activation_notice_title": "Tinjauan Manual",
+    "activation_notice_desc": "Setelah verifikasi pembayaran selesai, akun akan aktif dalam maksimal 1x24 jam. Tim kami akan memprosesnya secepat mungkin.",
     "methods": {
       "bank_transfer": {
         "name": "Transfer Bank",
@@ -111,12 +178,12 @@
     }
   },
   "faq": {
-    "title": "Bingung? Kasih Paham",
-    "subtitle": "Kumpulan jawaban buat pertanyaan yang sering sliweran. Biar makin paham.",
+    "title": "Bingung? Kita Kasih Paham",
+    "subtitle": "Kumpulan jawaban buat pertanyaan yang sering muncul. Biar makin paham.",
     "questions": [
       {
         "q": "Apa itu RabaLaba?",
-        "a": "RabaLaba adalah terminal riset keuangan profesional dirancang untuk analisis multi aset, fitur sinyal berbasis aturan dan data langsung."
+        "a": "RabaLaba adalah terminal riset keuangan profesional untuk analisis multi aset, fitur sinyal berbasis aturan dan data langsung."
       },
       {
         "q": "Terminal ini gratis gak?",
@@ -143,11 +210,11 @@
     "description": "Terminal riset paling gacor buat riset beneran, bukan cuma FOMO.",
     "multi_asset": {
       "title": "Riset Multi Aset",
-      "description": "Pantau Saham Indonesia, Saham AS, Kripto, Komoditas, dan Forex dalam satu layar. Gak pake ribet deh."
+      "description": "Pantau Saham Indonesia, Saham AS, Kripto, Komoditas, dan Forex dalam satu layar. Pokoknya gak pake ribet."
     },
     "sentiment": {
       "title": "Sinyal Long/Short",
-      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kekuatan sinyal yang transparan — alat bantu keputusan, bukan prediksi. Biarkan data bicara."
+      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kekuatan sinyal yang transparan, alat bantu keputusan bukan prediksi. Biarkan data bicara."
     },
     "trading_plan": {
       "title": "Susun Rencana Dagang",
@@ -163,7 +230,7 @@
     },
     "fear_greed": {
       "title": "Monitor Fear & Greed",
-      "description": "Pantau psikologi pasar lewat Indeks Fear & Greed. Ambil peluang beli pas yang lain takut, dan jual pas yang lain mulai serakah."
+      "description": "Pantau psikologi pasar lewat Indeks Fear & Greed. Beli pas yang lain takut, dan jual pas yang lain mulai serakah."
     }
   },
   "market": {
@@ -172,8 +239,8 @@
     "ticker_title": "Pantauan Harga Gacor",
     "search_placeholder": "Cari aset berdasarkan nama atau simbol...",
     "add_ticker_placeholder": "Tambah simbol (cth. AAPL, BBCA.JK, BTC-USD)",
-    "add_ticker_dialog_title": "Tambah Ticker ke Favorit",
-    "add_ticker_dialog_desc": "Masukkan simbol pasar yang valid (cth. AAPL, BBCA.JK, BTC-USD).",
+    "add_ticker_dialog_title": "Tambah Ticker Favorit",
+    "add_ticker_dialog_desc": "Masukkan simbol pasar yang valid",
     "ticker_not_found_suggestion": "Ticker tidak ditemukan",
     "ticker_not_found": "Simbol {{symbol}} tidak ditemukan",
     "favorite_empty_desc": "Tambahkan ticker menggunakan tombol di atas atau berikan bintang pada aset di kategori lain.",
@@ -182,6 +249,11 @@
     "favorite_removed": "{{symbol}} berhasil dihapus dari favorit",
     "favorite_tab": "Favorit",
     "add_ticker_btn": "Tambah",
+    "add_ticker_save_all_with_count": "Tambah ({{count}})",
+    "add_ticker_pending_label": "Akan ditambahkan ({{count}})",
+    "add_ticker_chip_remove": "Hapus {{symbol}}",
+    "add_ticker_already_favorite_badge": "Sudah di favorit",
+    "favorites_added_bulk": "{{count}} ticker berhasil ditambahkan ke favorit",
     "assets_found": "Aset",
     "auto_refresh": "Auto Refresh 1m",
     "already_exists": "Simbol sudah ada di daftar favorit",
@@ -200,16 +272,16 @@
     "access_dialog_success": "Akses diberikan! Fitur premium kebuka selamanya.",
     "access_dialog_unlock_btn": "Buka Akses",
     "access_dialog_code_required": "Kode akses wajib diisi",
-    "access_config_missing": "Akses premium tidak tersedia saat ini. Silakan hubungi admin.",
-    "access_error_decryption": "Verifikasi akses premium gagal. Silakan masukkan kode akses Anda kembali.",
+    "access_config_missing": "Akses premium tidak tersedia saat ini. Silakan hubungi tim bantuan.",
+    "access_error_decryption": "Verifikasi akses premium gagal. Silakan masukkan kode akses lagi.",
     "access_trial_success": "Akses diberikan! Fitur premium kebuka selama 3 hari.",
-    "access_trial_expired": "Masa trial kamu sudah habis. Hubungi admin untuk akses penuh."
+    "access_trial_expired": "Yah masa percobaan udah abis nih. Hubungi tim bantuan buat akses penuh ya."
   },
   "calendar": {
     "title": "Kalender Ekonomi",
     "subtitle": "Jadwal mingguan peristiwa ekonomi penggerak pasar di seluruh dunia",
     "upcoming": "acara mendatang",
-    "no_events": "Tidak ada acara yang sesuai dengan filter Anda",
+    "no_events": "Tidak ada acara yang sesuai filter",
     "filters": "Filter",
     "about": "Tentang",
     "affects": "Mempengaruhi",
@@ -319,12 +391,14 @@
     "take_profit": "Take Profit",
     "risk_reward": "Risk : Reward",
     "projection": "Proyeksi",
-    "copy": "Salin sinyal",
-    "share": "Bagikan setup",
-    "copied": "Rencana trading disalin ke clipboard",
-    "shared": "Gambar setup dibagikan",
-    "downloaded": "Gambar setup diunduh",
-    "share_failed": "Gagal membuat gambar setup"
+    "signal_type": "Sinyal",
+    "share": "Bagikan sinyal",
+    "shared_signal": "Gambar sinyal dibagikan",
+    "downloaded_signal": "Gambar sinyal diunduh",
+    "share_failed_signal": "Gagal membuat gambar sinyal",
+    "shared_position": "Gambar posisi dibagikan",
+    "downloaded_position": "Gambar posisi diunduh",
+    "share_failed_position": "Gagal membuat gambar posisi"
   },
   "disclaimer": {
     "title": "Pahami Resikonya",
@@ -346,6 +420,7 @@
     "view_market": "Pasar",
     "view_journal": "Jurnal",
     "open_positions": "Posisi Terbuka",
+    "running_position": "Posisi Berjalan",
     "no_open": "Ikuti sinyal dari tab Pasar untuk mulai melacak.",
     "close_position": "Tutup Posisi",
     "history": "Riwayat Dagang",
@@ -381,8 +456,24 @@
     "trades": "Transaksi",
     "entry_price": "Masuk",
     "current_price": "Sekarang",
+    "close_price": "Harga Tutup",
+    "followed_at": "Diikuti",
+    "closed_at": "Ditutup",
+    "trade_detail": "Detail Dagang",
     "filter_all_status": "Semua Status",
     "followed_toast_desc": "Posisi terbuka baru sekarang lagi dipantau. Mau lihat detailnya?",
-    "followed_toast_action": "Lihat di Jurnal"
+    "followed_toast_action": "Lihat di Jurnal",
+    "delete_confirm_title": "Hapus Riwayat Transaksi",
+    "delete_confirm_desc": "Yakin mau hapus riwayat transaksi {{symbol}}? Tindakan ini tidak bisa dibatalkan.",
+    "delete_confirm_action": "Hapus",
+    "close_confirm_title": "Tutup Posisi",
+    "close_confirm_desc": "Mau tutup manual posisi {{symbol}} di harga saat sekarang?",
+    "close_confirm_action": "Ya, Tutup Aja",
+    "view_detail": "Lihat Detail"
+  },
+  "not_found": {
+    "title": "Nyasar di Luar Angkasa?",
+    "description": "Halaman ini hanyut entah kemana. Mungkin udah pindah atau raib. Mending balik.",
+    "action": "Ke Beranda"
   }
 }
