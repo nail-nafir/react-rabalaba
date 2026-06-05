@@ -455,7 +455,7 @@
     "refresh": "Refresh",
     "trades": "Trades",
     "entry_price": "Entry",
-    "current_price": "Current",
+    "current_price": "Current Price",
     "close_price": "Close Price",
     "followed_at": "Followed",
     "closed_at": "Closed",

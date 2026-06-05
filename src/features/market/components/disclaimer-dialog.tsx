@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function DisclaimerDialog() {
   const { t } = useTranslation();
@@ -61,42 +62,26 @@ export function DisclaimerDialog() {
         </DialogDescription>
 
         <ul className="space-y-3 px-1">
-          {(
-            t("disclaimer.points", { returnObjects: true }) as string[]
-          ).map((point, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-3 text-xs text-muted-foreground leading-snug group/item"
-            >
-              <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-              <span className="transition-colors group-hover/item:text-foreground">
-                {point}
-              </span>
-            </li>
-          ))}
+          {(t("disclaimer.points", { returnObjects: true }) as string[]).map(
+            (point, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-3 text-xs text-muted-foreground leading-snug group/item"
+              >
+                <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                <span className="transition-colors group-hover/item:text-foreground">
+                  {point}
+                </span>
+              </li>
+            ),
+          )}
         </ul>
 
         <label className="flex items-center gap-3 cursor-pointer group select-none p-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-all active:scale-[0.98]">
-          <div className="relative flex items-center justify-center">
-            <input
-              type="checkbox"
-              checked={hasConfirmed}
-              onChange={(e) => setHasConfirmed(e.target.checked)}
-              className="peer h-5 w-5 appearance-none rounded-md border border-border/50 bg-background transition-all checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
-            />
-            <svg
-              className="absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
+          <Checkbox
+            checked={hasConfirmed}
+            onCheckedChange={(v) => setHasConfirmed(v === true)}
+          />
           <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
             {t("disclaimer.confirm")}
           </span>

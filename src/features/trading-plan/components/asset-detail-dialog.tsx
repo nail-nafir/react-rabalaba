@@ -145,7 +145,8 @@ export function AssetDetailDialog() {
             </div>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {asset?.name ?? selectedAssetSymbol} · {t("dialog.title_suffix")}
+            {asset?.name ?? selectedAssetSymbol} ·{" "}
+            {asset && t(`common.asset_types.${asset.assetType}`)}
           </DialogDescription>
 
           {/* Price row */}
@@ -155,14 +156,21 @@ export function AssetDetailDialog() {
               <Skeleton className="h-15 w-full rounded" />
             </div>
           ) : (
-            <div className="flex items-end gap-3 mt-2">
-              <span className="text-3xl font-bold text-mono-data">
-                {formatPrice(currentPrice, asset?.assetType)}
-              </span>
-              <PercentageChange
-                value={changePercent}
-                className="text-sm pb-1"
-              />
+            <div className="flex items-end justify-between gap-3 mt-2">
+              <div className="space-y-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {t("journal.current_price")}
+                </p>
+                <div className="flex items-end gap-3 min-w-0">
+                  <span className="text-xl sm:text-3xl font-bold text-mono-data break-words">
+                    {formatPrice(currentPrice, asset?.assetType)}
+                  </span>
+                  <PercentageChange
+                    value={changePercent}
+                    className="text-sm pb-1"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

@@ -20,8 +20,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Check, Loader2, Calendar, Share2 } from "lucide-react";
-import { SIGNAL_COLORS, TIER_COLORS } from "@/constants/signals";
+import { Target, Check, Loader2, Share2 } from "lucide-react";
+import { SIGNAL_COLORS } from "@/constants/signals";
 
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import type { TradingPlan, SignalDirection } from "@/types/asset";
@@ -153,19 +153,6 @@ export function TradeDetailDialog({
             >
               {t(`journal.${trade.signal}`)}
             </Badge>
-            {trade.grade && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[10px] font-bold rounded-md",
-                  TIER_COLORS[trade.grade].border,
-                  TIER_COLORS[trade.grade].bg,
-                  TIER_COLORS[trade.grade].text,
-                )}
-              >
-                {trade.grade}
-              </Badge>
-            )}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
             {trade.name} · {t(`common.asset_types.${trade.assetType}`)}
@@ -179,12 +166,12 @@ export function TradeDetailDialog({
             </div>
           ) : (
             <div className="flex items-end justify-between gap-3 mt-2">
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   {priceLabel}
                 </p>
-                <div className="flex items-end gap-3">
-                  <span className="text-3xl font-bold text-mono-data">
+                <div className="flex items-end gap-3 min-w-0">
+                  <span className="text-xl sm:text-3xl font-bold text-mono-data break-words">
                     {formatPrice(displayPrice, trade.assetType)}
                   </span>
                   {!isClosed && (
@@ -195,7 +182,7 @@ export function TradeDetailDialog({
                   )}
                 </div>
               </div>
-              <div className="shrink-0 text-right leading-tight">
+              <div className="text-right leading-tight">
                 <div
                   className={`text-xl font-bold text-mono-data ${
                     pos ? "text-emerald-400" : "text-rose-400"
@@ -216,53 +203,49 @@ export function TradeDetailDialog({
             </div>
           )}
 
-          {/* Meta row: followed date + TP milestones */}
-          <div className="flex items-center gap-3 mt-3 flex-wrap">
+          {/* Meta badges */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             <Badge
               variant="outline"
-              className="text-[10px] font-semibold rounded-md border-border bg-muted/50 text-muted-foreground gap-1"
+              className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 gap-1"
             >
-              <Calendar className="h-3 w-3" />
-              {t("journal.followed_at")}: {formattedFollowedDate}
+              <Check className="h-3 w-3 shrink-0" />
+              {formattedFollowedDate}
             </Badge>
             {formattedClosedDate && (
               <Badge
                 variant="outline"
-                className="text-[10px] font-semibold rounded-md border-border bg-muted/50 text-muted-foreground gap-1"
+                className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 gap-1"
               >
-                <Calendar className="h-3 w-3" />
-                {t("journal.closed_at")}: {formattedClosedDate}
+                <Check className="h-3 w-3 shrink-0" />
+                {formattedClosedDate}
               </Badge>
             )}
-            {trade.takeProfits.map((_, i) => {
-              const reached = trade.highestTpReached > i;
-              return (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className={cn(
-                    "text-[10px] font-bold rounded-md",
-                    reached
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                      : "border-border bg-muted/50 text-muted-foreground",
-                  )}
-                >
-                  {reached && <Check className="h-3 w-3 mr-0.5" />}
-                  TP{i + 1}
-                </Badge>
-              );
-            })}
+            {trade.takeProfits.length > 0 && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                  trade.highestTpReached > 0
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : "border-border bg-muted/50 text-muted-foreground",
+                )}
+              >
+                {trade.highestTpReached > 0 && <Check className="h-3 w-3" />}
+                TP {trade.highestTpReached}/{trade.takeProfits.length}
+              </Badge>
+            )}
             {isClosed && (
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[10px] font-bold rounded-md",
+                  "font-bold uppercase tracking-wider text-[10px] rounded-md",
                   slReached
                     ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
                     : "border-border bg-muted/50 text-muted-foreground",
                 )}
               >
-                {slReached && <Check className="h-3 w-3 mr-0.5" />}
+                {slReached && <Check className="h-3 w-3" />}
                 SL
               </Badge>
             )}
