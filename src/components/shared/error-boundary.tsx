@@ -1,6 +1,9 @@
 import { Component, type ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import i18next from 'i18next';
 
 interface Props {
   children: ReactNode;
@@ -10,15 +13,18 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  showDetails: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: undefined, showDetails: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    console.error('[ErrorBoundary]', error);
+    // Partial update — React merges this into state, preserving showDetails.
     return { hasError: true, error };
   }
 
@@ -26,26 +32,64 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
+      const t = i18next.t.bind(i18next);
+
       return (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 mb-4">
-            <AlertTriangle className="h-7 w-7 text-rose-400" />
+        <div className="flex min-h-[80vh] items-center justify-center px-4">
+          <div className="flex flex-col items-center text-center">
+            <DotLottieReact
+              src="/animations/empty.lottie"
+              className="mb-6 size-48"
+              loop
+              autoplay
+            />
+            <h1 className="text-3xl font-bold text-foreground mb-3">
+              {t('error_boundary.title')}
+            </h1>
+            <p className="text-base text-muted-foreground max-w-md mb-6">
+              {t('error_boundary.description')}
+            </p>
+            {this.state.error && (
+              <button
+                type="button"
+                onClick={() => this.setState({ showDetails: !this.state.showDetails })}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+              >
+                {this.state.showDetails ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    {t('error_boundary.hide_details')}
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    {t('error_boundary.show_details')}
+                  </>
+                )}
+              </button>
+            )}
+            {this.state.showDetails && this.state.error && (
+              <div className="w-full max-w-md mb-6 rounded-xl border border-border bg-muted p-4 text-left">
+                <p className="text-xs font-mono text-muted-foreground break-all">
+                  {this.state.error.message}
+                </p>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                this.setState({ hasError: false, error: undefined, showDetails: false });
+                window.location.reload();
+              }}
+              className={cn(
+                buttonVariants({ variant: 'default', size: 'lg' }),
+                'rounded-xl px-10 font-bold shadow-lg shadow-primary/20 text-base gap-2',
+              )}
+            >
+              <RefreshCw className="h-5 w-5" />
+              {t('error_boundary.action')}
+            </button>
           </div>
-          <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md">
-            {this.state.error?.message || 'An unexpected error occurred.'}
-          </p>
-          <Button
-            type="button"
-            onClick={() => {
-              this.setState({ hasError: false, error: undefined });
-              window.location.reload();
-            }}
-            className="gap-2"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Reload Page
-          </Button>
         </div>
       );
     }

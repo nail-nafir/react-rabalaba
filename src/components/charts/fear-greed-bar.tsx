@@ -1,20 +1,21 @@
 import { cn } from "@/lib/utils";
 
 interface FearGreedBarProps {
-  value: number; // 0-100
+  value: number;
   label?: string;
+  change?: number;
   className?: string;
 }
 
-export function FearGreedBar({ value, label, className }: FearGreedBarProps) {
+export function FearGreedBar({ value, label, change, className }: FearGreedBarProps) {
   const clampedValue = Math.min(100, Math.max(0, value));
 
   const getColor = () => {
-    if (clampedValue <= 20) return "#f43f5e"; // Extreme Fear (rose-500)
-    if (clampedValue <= 40) return "#f97316"; // Fear
-    if (clampedValue <= 60) return "#f59e0b"; // Neutral (amber-500)
-    if (clampedValue <= 80) return "#84cc16"; // Greed
-    return "#10b981"; // Extreme Greed (emerald-500)
+    if (clampedValue <= 20) return "#f43f5e";
+    if (clampedValue <= 40) return "#f97316";
+    if (clampedValue <= 60) return "#f59e0b";
+    if (clampedValue <= 80) return "#84cc16";
+    return "#10b981";
   };
 
   const getLabel = () => {
@@ -30,30 +31,41 @@ export function FearGreedBar({ value, label, className }: FearGreedBarProps) {
   const currentLabel = getLabel();
 
   return (
-    <div className={cn("w-full space-y-3", className)}>
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-3xl font-bold tracking-tighter text-foreground tabular-nums">
-          {clampedValue}
-        </span>
-        <span
-          className="text-[10px] font-bold uppercase tracking-widest text-right leading-none"
-          style={{ color }}
-        >
-          {currentLabel}
-        </span>
+    <div className={cn("w-full", className)}>
+      <div className="flex items-baseline justify-between mb-2 w-full">
+        <div className="flex items-baseline gap-1.5">
+          <span
+            className="text-[10px] font-bold tabular-nums leading-none"
+            style={{ color }}
+          >
+            {clampedValue}
+          </span>
+          <span
+            className="text-[10px] font-bold uppercase tracking-widest leading-none"
+            style={{ color }}
+          >
+            {currentLabel}
+          </span>
+        </div>
+        {change !== undefined && (
+          <span
+            className={cn(
+              "text-[10px] font-bold uppercase tracking-widest leading-none",
+              change > 0 ? "text-emerald-400" : change < 0 ? "text-rose-400" : "",
+            )}
+            style={change === 0 ? { color } : undefined}
+          >
+            {change > 0 ? `+${change}` : change}
+          </span>
+        )}
       </div>
 
-      <div className="relative h-2.5 w-full rounded-md bg-muted/20 overflow-hidden border border-border">
-        {/* Gradient Background */}
+      <div className="relative h-2.5 w-full rounded-md overflow-hidden mb-2">
         <div className="absolute inset-0 bg-linear-to-r from-rose-500 via-amber-500 to-emerald-500 opacity-30" />
-
-        {/* Indicator Line */}
         <div
-          className="absolute top-0 bottom-0 w-1.5 bg-foreground shadow-[0_0_8px_rgba(255,255,255,0.4)] z-20 transition-all duration-700 ease-out"
+          className="absolute top-0 bottom-0 w-1.5 bg-foreground z-20 transition-all duration-700 ease-out"
           style={{ left: `${clampedValue}%`, transform: "translateX(-50%)" }}
         />
-
-        {/* Active Zone Fill */}
         <div
           className="absolute top-0 bottom-0 left-0 transition-all duration-700 ease-out opacity-40 z-10"
           style={{ width: `${clampedValue}%`, backgroundColor: color }}

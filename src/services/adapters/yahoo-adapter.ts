@@ -1,14 +1,13 @@
 import type { YahooChartResult } from "../api/yahoo-finance";
-import type {
-  UnifiedAsset,
-  AssetType,
-  TradingPlan,
-} from "@/types/asset";
-import { computeSignal, createUnavailableSignal } from "@/features/signals/engine/signal-engine";
-import type { Outlook } from "@/features/signals/engine/signal-engine";
+import type { UnifiedAsset, AssetType, TradingPlan } from "@/types/asset";
+import {
+  computeSignal,
+  createUnavailableSignal,
+} from "@/features/engine/signals";
+import type { Outlook } from "@/features/engine/signals";
 import { resolveTimeframePreset } from "@/constants/timeframes";
 import type { TimeframePresetKey } from "@/constants/timeframes";
-import { computeTradingPlan } from "@/features/signals/engine/trading-plan";
+import { computeTradingPlan } from "@/features/engine/trading-plan";
 import {
   buildSignalSeriesFromCandles,
   normalizeYahooCandles,
@@ -56,6 +55,11 @@ export function adaptYahooChart(
   const volume = meta.regularMarketVolume ?? 0;
   const assetType = detectAssetType(meta.symbol, meta.instrumentType);
 
+  // Fear & Greed (alternative.me) is a CRYPTO sentiment index. Applying it to
+  // stocks/forex/commodities is misleading, so scope it to crypto only.
+  const effectiveFearGreed =
+    assetType === "crypto" ? fearGreedValue : undefined;
+
   // IMPORTANT: For daily percentage change, we MUST use previousClose (yesterday's close)
   // instead of chartPreviousClose (which is the close before the requested range start).
   const previousClose =
@@ -70,9 +74,7 @@ export function adaptYahooChart(
       : 0;
 
   // Normalize candles ONCE — reused for both signal computation and UI rendering.
-  const candles = quote
-    ? normalizeYahooCandles(quote, result.timestamp)
-    : [];
+  const candles = quote ? normalizeYahooCandles(quote, result.timestamp) : [];
 
   let outlook: Outlook | null = null;
   let tradingPlan: TradingPlan | null = null;
@@ -97,7 +99,7 @@ export function adaptYahooChart(
       ...signalSeries,
       assetType,
       timeframe: timeframeKey,
-      fearGreedValue,
+      fearGreedValue: effectiveFearGreed,
       higherTimeframeTrend,
     });
 
@@ -105,9 +107,9 @@ export function adaptYahooChart(
       tradingPlan = computeTradingPlan(outlook, currentPrice, assetType);
     }
   }
-  
+
   if (!outlook) {
-    outlook = createUnavailableSignal(fearGreedValue);
+    outlook = createUnavailableSignal(effectiveFearGreed);
     // If we have price change but no full signal, we can still set a basic trend
     if (changePercent > 1) {
       outlook.trend = "bullish";

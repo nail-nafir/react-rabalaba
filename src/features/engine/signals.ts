@@ -15,6 +15,10 @@ import {
   classifyRegime,
   detectSwingLevels,
 } from "./indicators";
+import {
+  generateSentimentAnalysis,
+  fearGreedContextWarning,
+} from "./sentiment";
 import type {
   AssetType,
   SignalDirection,
@@ -76,6 +80,12 @@ export interface Outlook {
   /** Qualitative label for strength. */
   technicalAlignment: "strong" | "moderate" | "weak";
   tier: SignalTier;
+  /** True when a directional lean (long/short) was forced back to NEUTRAL by the
+   *  chop/no-trade filter or the counter-trend guard. `strength`/`tier` still
+   *  reflect the underlying directional conviction, so the UI can explain
+   *  "strong lean, but held back by market conditions" instead of showing a
+   *  confusing high-tier NEUTRAL with no context. */
+  suppressed: boolean;
   risk: RiskLevel;
   trend: TrendDirection;
   regime: MarketRegime;
@@ -617,16 +627,13 @@ export function computeSignal(input: SignalInput): Outlook {
   // 12. Fear & Greed Sentiment Context (warning only)
   // Not scored because the index is lagging and crypto-heavy, but extreme
   // readings are surfaced so users have the context for risk management.
-  if (fearGreedValue !== undefined && fearGreedValue !== null) {
-    if (fearGreedValue <= 20 && directionScore < 0) {
-      reasons.warnings.push(
-        `Extreme Fear (F&G: ${fearGreedValue}) — oversold sentiment may limit further downside`,
-      );
-    } else if (fearGreedValue >= 80 && directionScore > 0) {
-      reasons.warnings.push(
-        `Extreme Greed (F&G: ${fearGreedValue}) — elevated risk of mean reversion pullback`,
-      );
-    }
+  // Delegated to the sentiment engine (see ./sentiment).
+  const sentimentWarning = fearGreedContextWarning(
+    fearGreedValue,
+    directionScore,
+  );
+  if (sentimentWarning) {
+    reasons.warnings.push(sentimentWarning);
   }
 
   // ─── Determine signal ────────────────────────────────────
@@ -638,6 +645,11 @@ export function computeSignal(input: SignalInput): Outlook {
   } else {
     signal = "neutral";
   }
+
+  // Tracks whether a real directional lean was forced back to NEUTRAL below
+  // (counter-trend guard or chop filter). When true, strength/tier still carry
+  // the underlying conviction, so the UI can label it as "held back".
+  let suppressed = false;
 
   // Countertrend trades are allowed when a real divergence override exists
   // OR when the regime-weighted direction score is exceptionally strong,
@@ -656,6 +668,7 @@ export function computeSignal(input: SignalInput): Outlook {
       "Raw score crossed the threshold, but trend regime disagrees; signal forced back to NEUTRAL.",
     );
     signal = "neutral";
+    suppressed = true;
   }
 
   // ─── Chop / no-trade filter ──────────────────────────────
@@ -668,6 +681,7 @@ export function computeSignal(input: SignalInput): Outlook {
         "Chop/no-trade filter: low-volatility squeeze (weak ADX, tight Bollinger bands) — directional signal suppressed to NEUTRAL.",
       );
       signal = "neutral";
+      suppressed = true;
     } else {
       reasons.warnings.push(
         "Chop/no-trade filter active: low-volatility squeeze — staying flat until volatility expands.",
@@ -745,6 +759,7 @@ export function computeSignal(input: SignalInput): Outlook {
     strength,
     technicalAlignment,
     tier,
+    suppressed,
     risk,
     trend,
     regime,
@@ -791,6 +806,7 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
     strength: 0,
     technicalAlignment: "weak",
     tier: "C",
+    suppressed: false,
     risk: "high",
     trend: "sideways",
     regime: "ranging",
@@ -1043,18 +1059,4 @@ function generateMomentumAnalysis(
   }
 
   return `RSI at ${rsi.toFixed(1)} indicates ${rsiStatus}.${divText} MACD histogram is ${macdStatus} (${macd.histogram.toFixed(2)}). StochRSI at ${stochRSI.toFixed(1)} is ${stochStatus}. Price is ${bbPosition} within Bollinger Bands (%B: ${(bb.percentB * 100).toFixed(0)}%).`;
-}
-
-function generateSentimentAnalysis(fearGreed?: number): string {
-  if (fearGreed === undefined || fearGreed === null)
-    return "Market sentiment data unavailable. Consider external indicators for sentiment confirmation.";
-  if (fearGreed <= 20)
-    return `Fear & Greed Index at ${fearGreed} (Extreme Fear). Market may be approaching a contrarian buy opportunity.`;
-  if (fearGreed <= 40)
-    return `Fear & Greed Index at ${fearGreed} (Fear). Cautious market conditions. Watch for capitulation or reversal signals.`;
-  if (fearGreed <= 60)
-    return `Fear & Greed Index at ${fearGreed} (Neutral). Balanced market sentiment. Follow technical signals for direction.`;
-  if (fearGreed <= 80)
-    return `Fear & Greed Index at ${fearGreed} (Greed). Optimistic market. Trend may continue but watch for overextension.`;
-  return `Fear & Greed Index at ${fearGreed} (Extreme Greed). Elevated risk of pullback. Consider tightening stops.`;
 }

@@ -9,6 +9,7 @@ import { Search, TrendingUp, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback } from "react";
 import { Badge } from "../ui/badge";
+import { useTranslation } from "react-i18next";
 
 // Mock search results — will be replaced with API data
 const MOCK_ASSETS = [
@@ -27,6 +28,7 @@ const MOCK_ASSETS = [
 ];
 
 export function SearchCommand() {
+  const { t } = useTranslation();
   const { isSearchOpen, setSearchOpen } = useUIStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -93,7 +95,7 @@ export function SearchCommand() {
         <div className="max-h-80 overflow-y-auto py-2">
           {filteredAssets.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No assets found for "{debouncedQuery}"
+              {t("market.search_no_results", { query: debouncedQuery })}
             </div>
           ) : (
             filteredAssets.map((asset, index) => (

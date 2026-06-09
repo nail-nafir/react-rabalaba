@@ -162,3 +162,69 @@ test("dateTickIndices: unique, in range, edge cases", async () => {
   assert.deepEqual(dateTickIndices(0), []); // empty
   assert.deepEqual(dateTickIndices(4, 7), [0, 1, 2, 3]); // length < count
 });
+
+test("mapMarkerToCandle: nearest index for in-range timestamps", async () => {
+  const { mapMarkerToCandle } = await loadModule(SRC);
+  // candles at t = 10, 20, 30, 40, 50
+  const view = [10, 20, 30, 40, 50].map((timestamp) => ({ timestamp }));
+
+  const mapped = mapMarkerToCandle(
+    [
+      { kind: "entry", timestamp: 22, price: 100 }, // nearest 20 → idx 1
+      { kind: "close", timestamp: 38, price: 110, outcome: "profit" }, // nearest 40 → idx 3
+    ],
+    view,
+  );
+  assert.equal(mapped.length, 2);
+  assert.equal(mapped[0].candleIndex, 1);
+  assert.equal(mapped[0].kind, "entry");
+  assert.equal(mapped[1].candleIndex, 3);
+  assert.equal(mapped[1].outcome, "profit");
+});
+
+test("mapMarkerToCandle: edge timestamps map to first/last", async () => {
+  const { mapMarkerToCandle } = await loadModule(SRC);
+  const view = [10, 20, 30].map((timestamp) => ({ timestamp }));
+  const mapped = mapMarkerToCandle(
+    [
+      { kind: "entry", timestamp: 10, price: 1 },
+      { kind: "close", timestamp: 30, price: 2 },
+    ],
+    view,
+  );
+  assert.equal(mapped[0].candleIndex, 0);
+  assert.equal(mapped[1].candleIndex, 2);
+});
+
+test("mapMarkerToCandle: clamps out-of-range markers to the nearest edge", async () => {
+  const { mapMarkerToCandle } = await loadModule(SRC);
+  const view = [10, 20, 30].map((timestamp) => ({ timestamp }));
+  const mapped = mapMarkerToCandle(
+    [
+      { kind: "entry", timestamp: 5, price: 1 }, // before first → start edge
+      { kind: "close", timestamp: 35, price: 2 }, // after last → end edge
+      { kind: "entry", timestamp: 20, price: 3 }, // in range → nearest
+    ],
+    view,
+  );
+  assert.equal(mapped.length, 3);
+
+  assert.equal(mapped[0].candleIndex, 0);
+  assert.equal(mapped[0].outOfRange, true);
+  assert.equal(mapped[0].edge, "start");
+
+  assert.equal(mapped[1].candleIndex, 2);
+  assert.equal(mapped[1].outOfRange, true);
+  assert.equal(mapped[1].edge, "end");
+
+  assert.equal(mapped[2].candleIndex, 1);
+  assert.ok(!mapped[2].outOfRange);
+});
+
+test("mapMarkerToCandle: empty view returns []", async () => {
+  const { mapMarkerToCandle } = await loadModule(SRC);
+  assert.deepEqual(
+    mapMarkerToCandle([{ kind: "entry", timestamp: 1, price: 1 }], []),
+    [],
+  );
+});

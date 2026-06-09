@@ -18,9 +18,11 @@ import {
   priceToRatio,
   priceTicks,
   dateTickIndices,
+  mapMarkerToCandle,
   MAX_CANDLES,
   type LevelKey,
   type LevelKind,
+  type ChartMarker,
 } from "../lib/trade-setup-model";
 
 const VB_W = 760;
@@ -45,12 +47,103 @@ const LEVEL_COLOR: Record<LevelKind, string> = {
   profit: "text-emerald-400",
 };
 
+/** Shared geometry for the combined chart pills (level badges + markers). */
+const PILL_H = 18;
+
+/** One segment of a chart pill. `emphasis` = the bold key cell (e.g. "ENTRY"). */
+interface PillCell {
+  text: string;
+  emphasis?: boolean;
+}
+
+/** Width of a single pill cell — matches the level-badge measurements exactly. */
+const pillCellWidth = (text: string, emphasis = false) =>
+  emphasis ? text.length * 7 + 12 : text.length * 6.6 + 12;
+
+/** Total width of a multi-cell pill. */
+const pillCellsWidth = (cells: PillCell[]) =>
+  cells.reduce((w, c) => w + pillCellWidth(c.text, c.emphasis), 0);
+
+/**
+ * The combined badge used on the chart: a rounded box of divider-separated
+ * cells. Single source of truth so level badges and entry/close markers share
+ * identical fill, stroke, fonts, weights, letter-spacing and divider styling.
+ * Color is inherited from the parent `<g>` via `currentColor`.
+ */
+function ChartPill({
+  cells,
+  x,
+  cy,
+  opacity = 0.95,
+}: {
+  cells: PillCell[];
+  /** Left edge of the pill. */
+  x: number;
+  /** Vertical center of the pill. */
+  cy: number;
+  opacity?: number;
+}) {
+  const widths = cells.map((c) => pillCellWidth(c.text, c.emphasis));
+  const bw = widths.reduce((a, b) => a + b, 0);
+  // Left edge of each cell relative to `x`, computed purely (no mutation).
+  const offsets = widths.map((_, i) =>
+    widths.slice(0, i).reduce((a, b) => a + b, 0),
+  );
+  return (
+    <>
+      <rect
+        x={x}
+        y={cy - PILL_H / 2}
+        width={bw}
+        height={PILL_H}
+        rx={3}
+        className="fill-background stroke-current"
+        strokeWidth={1}
+        opacity={opacity}
+      />
+      {cells.map((c, i) => {
+        const cw = widths[i];
+        const cellX = x + offsets[i];
+        return (
+          <g key={i}>
+            {i > 0 && (
+              <line
+                x1={cellX}
+                y1={cy - PILL_H / 2 + 3}
+                x2={cellX}
+                y2={cy + PILL_H / 2 - 3}
+                className="stroke-current"
+                strokeWidth={1}
+                opacity={0.5}
+              />
+            )}
+            <text
+              x={cellX + cw / 2}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              className="fill-current"
+              fontSize={c.emphasis ? 11 : 12}
+              fontWeight={c.emphasis ? 700 : 600}
+              style={c.emphasis ? { letterSpacing: "0.05em" } : undefined}
+            >
+              {c.text}
+            </text>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
 interface TradeSetupChartProps {
   candles: NormalizedYahooCandle[];
   plan: TradingPlan;
   signal: SignalDirection;
   assetType: AssetType;
   currentPrice: number;
+  /** Optional entry/close annotations plotted on the candles (journal view). */
+  markers?: ChartMarker[];
 }
 
 export function TradeSetupChart({
@@ -59,6 +152,7 @@ export function TradeSetupChart({
   signal,
   assetType,
   currentPrice,
+  markers,
 }: TradeSetupChartProps) {
   const { t, i18n } = useTranslation();
   const [hoveredCandle, setHoveredCandle] = useState<number | null>(null);
@@ -119,6 +213,30 @@ export function TradeSetupChart({
   const risk = zone(model.riskZone.from, model.riskZone.to);
 
   const hovered = hoveredCandle != null ? candleGeo[hoveredCandle] : null;
+
+  // Entry/close annotations resolved to the visible candle window. Out-of-range
+  // markers are clamped to the chart edge (cx) and flagged so they render an
+  // off-screen indicator. Computed inline (like candleGeo) as it depends on the
+  // per-render `y`/`slot`.
+  const markerGeo = mapMarkerToCandle(markers ?? [], view).map((m) => ({
+    ...m,
+    cx: m.outOfRange
+      ? m.edge === "start"
+        ? CHART_LEFT
+        : PROJ_X
+      : CHART_LEFT + (m.candleIndex + 0.5) * slot,
+    py: y(m.price),
+  }));
+
+  // Label side per marker by price rank (top half above, bottom half below) so
+  // nearby entry/close badges fan apart; deterministic on ties; single = below.
+  const markerLabelAbove = (() => {
+    const order = [...markerGeo.map((mk, idx) => ({ idx, py: mk.py }))]
+      .sort((a, b) => a.py - b.py || a.idx - b.idx)
+      .map((e) => e.idx);
+    return (idx: number) =>
+      markerGeo.length > 1 && order.indexOf(idx) < markerGeo.length / 2;
+  })();
 
   return (
     <div className="space-y-3">
@@ -262,61 +380,136 @@ export function TradeSetupChart({
                     />
                     {/* combined level + price badge with a divider */}
                     {(() => {
-                      const key = lvl.key.toUpperCase();
-                      const price = formatPrice(lvl.price, assetType);
-                      const keyW = key.length * 7 + 12;
-                      const priceW = price.length * 6.6 + 12;
-                      const bw = keyW + priceW;
-                      const bh = 18;
-                      const bx = VB_W - PAD_X - bw;
-                      const divX = bx + keyW;
+                      const cells: PillCell[] = [
+                        { text: lvl.key.toUpperCase(), emphasis: true },
+                        { text: formatPrice(lvl.price, assetType) },
+                      ];
+                      const bx = VB_W - PAD_X - pillCellsWidth(cells);
                       return (
-                        <>
-                          <rect
-                            x={bx}
-                            y={ly - bh / 2}
-                            width={bw}
-                            height={bh}
-                            rx={3}
-                            className="fill-background stroke-current"
-                            strokeWidth={1}
-                            opacity={active ? 1 : 0.95}
-                          />
-                          <text
-                            x={bx + keyW / 2}
-                            y={ly}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            className="fill-current"
-                            fontSize={11}
-                            fontWeight={700}
-                            style={{ letterSpacing: "0.05em" }}
-                          >
-                            {key}
-                          </text>
-                          <line
-                            x1={divX}
-                            y1={ly - bh / 2 + 3}
-                            x2={divX}
-                            y2={ly + bh / 2 - 3}
-                            className="stroke-current"
-                            strokeWidth={1}
-                            opacity={0.5}
-                          />
-                          <text
-                            x={divX + priceW / 2}
-                            y={ly}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            className="fill-current"
-                            fontSize={12}
-                            fontWeight={600}
-                          >
-                            {price}
-                          </text>
-                        </>
+                        <ChartPill
+                          cells={cells}
+                          x={bx}
+                          cy={ly}
+                          opacity={active ? 1 : 0.95}
+                        />
                       );
                     })()}
+                  </g>
+                );
+              })}
+
+              {/* entry / close markers: arrow at (time, price) + level-style badge */}
+              {markerGeo.map((m, i) => {
+                // Match the level color language: entry neutral, close by P/L.
+                const colorClass =
+                  m.kind === "entry"
+                    ? "text-muted-foreground"
+                    : m.outcome === "loss"
+                      ? "text-rose-400"
+                      : "text-emerald-400";
+                const arrowH = 7;
+                const arrowHalf = 5;
+                const word =
+                  m.kind === "entry"
+                    ? t("journal.entry_marker")
+                    : t("journal.close_marker");
+                const cells: PillCell[] = [
+                  { text: word, emphasis: true },
+                  { text: formatDayMonth(m.timestamp, i18n.language) },
+                  { text: formatPrice(m.price, assetType) },
+                ];
+                const bw = pillCellsWidth(cells);
+                const clampCy = (v: number) =>
+                  Math.min(
+                    CHART_BOTTOM - PILL_H / 2,
+                    Math.max(CHART_TOP + PILL_H / 2, v),
+                  );
+
+                // Out-of-range: clamp to the edge with an outward chevron so the
+                // event still reads at its real price, flagged as off-screen.
+                if (m.outOfRange) {
+                  const atStart = m.edge === "start";
+                  const baseX = atStart ? m.cx + arrowH : m.cx - arrowH;
+                  const chevron = `${m.cx},${m.py} ${baseX},${m.py - arrowHalf} ${baseX},${m.py + arrowHalf}`;
+                  const above = markerLabelAbove(i);
+                  const labelCy = clampCy(
+                    above ? m.py - PILL_H / 2 - 4 : m.py + PILL_H / 2 + 4,
+                  );
+                  const labelX = atStart ? CHART_LEFT : PROJ_X - bw;
+                  const nearY = above
+                    ? labelCy + PILL_H / 2
+                    : labelCy - PILL_H / 2;
+                  return (
+                    <g key={`marker-${m.kind}-${i}`} className={colorClass}>
+                      {/* dashed tail emphasizing the event lies off-screen */}
+                      <line
+                        x1={m.cx}
+                        y1={m.py}
+                        x2={baseX}
+                        y2={m.py}
+                        className="stroke-current"
+                        strokeWidth={1}
+                        strokeDasharray="3 2"
+                        opacity={0.6}
+                      />
+                      {/* leader connecting the price point to the badge */}
+                      <line
+                        x1={m.cx}
+                        y1={m.py}
+                        x2={m.cx}
+                        y2={nearY}
+                        className="stroke-current"
+                        strokeWidth={1}
+                        opacity={0.6}
+                      />
+                      <polygon points={chevron} className="fill-current" />
+                      <ChartPill
+                        cells={cells}
+                        x={labelX}
+                        cy={labelCy}
+                        opacity={1}
+                      />
+                    </g>
+                  );
+                }
+
+                // In-range: label side by price rank (see markerLabelAbove).
+                const pointsUp = !markerLabelAbove(i);
+                const baseY = pointsUp ? m.py + arrowH : m.py - arrowH;
+                const tri = `${m.cx},${m.py} ${m.cx - arrowHalf},${baseY} ${m.cx + arrowHalf},${baseY}`;
+                const gap = 4;
+                const labelCy = clampCy(
+                  pointsUp
+                    ? baseY + gap + PILL_H / 2
+                    : baseY - gap - PILL_H / 2,
+                );
+                const labelX = Math.min(
+                  PROJ_X - bw,
+                  Math.max(CHART_LEFT, m.cx - bw / 2),
+                );
+                const nearY = pointsUp
+                  ? labelCy - PILL_H / 2
+                  : labelCy + PILL_H / 2;
+
+                return (
+                  <g key={`marker-${m.kind}-${i}`} className={colorClass}>
+                    {/* leader line from the price point to the badge */}
+                    <line
+                      x1={m.cx}
+                      y1={m.py}
+                      x2={m.cx}
+                      y2={nearY}
+                      className="stroke-current"
+                      strokeWidth={1}
+                      opacity={0.6}
+                    />
+                    <polygon points={tri} className="fill-current" />
+                    <ChartPill
+                      cells={cells}
+                      x={labelX}
+                      cy={labelCy}
+                      opacity={1}
+                    />
                   </g>
                 );
               })}
@@ -425,7 +618,7 @@ export function TradeSetupChart({
             )}
           >
             <CardContent className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between gap-1">
+              <div className="flex items-start justify-between gap-1">
                 <span className={cn("text-[10px]", LEVEL_COLOR[lvl.kind])}>
                   {lvl.kind === "profit"
                     ? `${t("dialog.take_profit")} ${lvl.key.slice(2)}`

@@ -33,6 +33,17 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/fng/, ""),
       },
+      "/api/coingecko": {
+        target: "https://api.coingecko.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/coingecko/, ""),
+      },
+      "/api/binance": {
+        target: "https://fapi.binance.com",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/binance/, ""),
+      },
     },
   },
 });

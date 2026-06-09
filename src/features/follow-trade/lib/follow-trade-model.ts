@@ -46,60 +46,122 @@ export interface FollowEvaluation {
   highestTpReached: number;
   closePrice?: number;
   closed: boolean;
+  /** When the closing level was actually hit (ms). Derived from candle history
+   *  so a level touched in the past is stamped with its REAL time, not "now".
+   *  Undefined when closed off a live snapshot (caller falls back to Date.now). */
+  closedAt?: number;
+}
+
+/** Minimal candle for follow evaluation. `timestamp` in ms, ascending order. */
+export interface FollowCandle {
+  high: number;
+  low: number;
+  timestamp: number;
 }
 
 /**
- * Evaluate a trade against the latest price.
- * - final (highest) TP hit -> close at that TP.
- * - SL hit with no TP touched -> close as loss.
- * - SL hit after a TP was touched -> close at the highest TP (secured profit).
- * - otherwise stay open, advancing the monotonic milestone.
+ * Evaluate a trade against the candle history since it was followed (+ the live
+ * price), REPLAYED IN ORDER so the outcome respects sequence:
+ * - within each bar a touched target is "taken" first — a TP counts as secured
+ *   profit even if the stop is hit in the same bar (follower's assumption);
+ * - the trade closes on the FIRST terminal event — final TP, or SL (a loss ONLY
+ *   if no TP was ever touched, else a secured close at the highest TP so far);
+ * - otherwise it stays open with the milestone the candles actually show.
+ *
+ * Why ordered: aggregate highs/lows can't tell whether the stop or a target came
+ * first, which produces phantom "secured TP" closes. When candles are supplied
+ * they are the authoritative ordered record since follow, so the milestone is
+ * replayed from scratch and `closedAt` is the real hit time; without candles it
+ * degrades to a single live-price check that preserves the stored milestone.
  */
 export function evaluateFollow(
   trade: FollowedTrade,
   price: number,
+  candles?: FollowCandle[],
 ): FollowEvaluation {
   const { signal, stopLoss, takeProfits } = trade;
   const isLong = signal === "long";
-  const reached = (level: number) => (isLong ? price >= level : price <= level);
-  const hitStop = isLong ? price <= stopLoss : price >= stopLoss;
-
-  let reachedNow = 0;
-  for (let i = 0; i < takeProfits.length; i++) {
-    if (reached(takeProfits[i])) reachedNow = i + 1;
-    else break;
-  }
-  const highestTpReached = Math.max(trade.highestTpReached, reachedNow);
   const finalIndex = takeProfits.length;
+  const hasCandles = !!candles && candles.length > 0;
 
-  if (finalIndex > 0 && highestTpReached >= finalIndex) {
-    return {
-      status: `tp${finalIndex}` as FollowStatus,
-      highestTpReached: finalIndex,
-      closePrice: takeProfits[finalIndex - 1],
-      closed: true,
-    };
-  }
-
-  if (hitStop) {
-    if (highestTpReached === 0) {
-      return { status: "sl", highestTpReached, closePrice: stopLoss, closed: true };
+  const stopHitBy = (probe: number) =>
+    isLong ? probe <= stopLoss : probe >= stopLoss;
+  const tpCountBy = (probe: number) => {
+    let n = 0;
+    for (let i = 0; i < takeProfits.length; i++) {
+      if (isLong ? probe >= takeProfits[i] : probe <= takeProfits[i]) n = i + 1;
+      else break;
     }
-    return {
-      status: `tp${highestTpReached}` as FollowStatus,
-      highestTpReached,
-      closePrice: takeProfits[highestTpReached - 1],
-      closed: true,
-    };
+    return n;
+  };
+
+  // With candles, replay from scratch (they're the ordered truth). Live-only,
+  // keep the stored monotonic milestone.
+  let highestTpReached = hasCandles ? 0 : trade.highestTpReached;
+
+  // Steps in chronological order: each candle (favorable extreme for TP, adverse
+  // for SL), then the latest live tick (no timestamp -> caller stamps "now").
+  const steps: { tpProbe: number; slProbe: number; at?: number }[] = [];
+  if (hasCandles) {
+    for (const c of candles!) {
+      steps.push({
+        tpProbe: isLong ? c.high : c.low,
+        slProbe: isLong ? c.low : c.high,
+        at: c.timestamp,
+      });
+    }
+  }
+  steps.push({ tpProbe: price, slProbe: price });
+
+  for (const step of steps) {
+    // Targets first: a touched TP is "taken", so it secures profit even if the
+    // stop is hit in the same bar; touching the final TP is a full win.
+    const reachedNow = tpCountBy(step.tpProbe);
+    if (reachedNow > highestTpReached) highestTpReached = reachedNow;
+    if (finalIndex > 0 && highestTpReached >= finalIndex) {
+      return {
+        status: `tp${finalIndex}` as FollowStatus,
+        highestTpReached: finalIndex,
+        closePrice: takeProfits[finalIndex - 1],
+        closed: true,
+        closedAt: step.at,
+      };
+    }
+    // Then the stop: a loss ONLY if no TP has ever been touched; otherwise close
+    // securing the highest TP reached so far.
+    if (stopHitBy(step.slProbe)) {
+      if (highestTpReached === 0) {
+        return {
+          status: "sl",
+          highestTpReached: 0,
+          closePrice: stopLoss,
+          closed: true,
+          closedAt: step.at,
+        };
+      }
+      return {
+        status: `tp${highestTpReached}` as FollowStatus,
+        highestTpReached,
+        closePrice: takeProfits[highestTpReached - 1],
+        closed: true,
+        closedAt: step.at,
+      };
+    }
   }
 
   return { status: "open", highestTpReached, closed: false };
 }
 
-/** Apply a price snapshot to all open trades, partitioning into open/closed. */
+/**
+ * Apply a price snapshot to all open trades, partitioning into open/closed.
+ * `candlesBySymbol` (optional) carries each symbol's candles since the trade was
+ * followed so TP/SL touches by an intraday wick are caught — and the close is
+ * stamped with the REAL hit time, not "now".
+ */
 export function applyPriceSync(
   openTrades: FollowedTrade[],
   prices: Record<string, number>,
+  candlesBySymbol?: Record<string, FollowCandle[]>,
 ): { stillOpen: FollowedTrade[]; justClosed: FollowedTrade[] } {
   const stillOpen: FollowedTrade[] = [];
   const justClosed: FollowedTrade[] = [];
@@ -109,14 +171,14 @@ export function applyPriceSync(
       stillOpen.push(trade);
       continue;
     }
-    const ev = evaluateFollow(trade, price);
+    const ev = evaluateFollow(trade, price, candlesBySymbol?.[trade.symbol]);
     if (ev.closed) {
       justClosed.push({
         ...trade,
         status: ev.status,
         highestTpReached: ev.highestTpReached,
         closePrice: ev.closePrice,
-        closedAt: Date.now(),
+        closedAt: ev.closedAt ?? Date.now(),
       });
     } else if (ev.highestTpReached !== trade.highestTpReached) {
       stillOpen.push({ ...trade, highestTpReached: ev.highestTpReached });

@@ -10,7 +10,7 @@ export function SkeletonCard({ className }: SkeletonCardProps) {
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl border border-border/50 p-3 min-w-50 h-45",
+        "flex flex-col rounded-xl border border-border/50 p-3 min-w-50",
         className,
       )}
     >
@@ -24,6 +24,70 @@ export function SkeletonCard({ className }: SkeletonCardProps) {
           <Skeleton className="h-4 w-12" />
         </div>
         <Skeleton className="h-5 w-16 rounded" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonCryptoCard({ className }: SkeletonCardProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col rounded-xl border border-border/50 p-3 min-w-52",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-5 w-16 rounded" />
+      </div>
+      
+      <div className="flex items-center gap-3 w-full py-1 mb-4">
+        <Skeleton className="h-20 w-20 rounded-full shrink-0" />
+        <div className="flex flex-col items-start gap-1 flex-1">
+          <Skeleton className="h-3 w-16 mb-0.5" />
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-1.5 w-1.5 rounded-full shrink-0" />
+            <Skeleton className="h-3 w-14" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-1.5 w-1.5 rounded-full shrink-0" />
+            <Skeleton className="h-3 w-14" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-auto flex flex-col gap-2">
+        <div className="flex justify-between items-center w-full">
+          <Skeleton className="h-3.5 w-16" />
+          <Skeleton className="h-3.5 w-8" />
+        </div>
+        <Skeleton className="h-2.5 w-full rounded-md" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonIndexCard({ className }: SkeletonCardProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col rounded-xl border border-border/50 p-3 min-w-52",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-5 w-12 rounded" />
+      </div>
+      
+      <div className="w-full h-20 mb-4 flex items-center justify-center">
+        <Skeleton className="w-full h-full rounded-sm" />
+      </div>
+
+      <div className="mt-auto flex flex-col gap-1">
+        <Skeleton className="h-7 w-20" />
+        <Skeleton className="h-4 w-12" />
       </div>
     </div>
   );

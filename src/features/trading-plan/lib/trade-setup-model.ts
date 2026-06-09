@@ -47,6 +47,82 @@ export interface TradeSetupModel {
   riskZone: { from: number; to: number };
 }
 
+/** A point-in-time annotation (entry / close) plotted on the candle chart. */
+export interface ChartMarker {
+  kind: "entry" | "close";
+  /** Event time in ms (e.g. followedAt / closedAt). */
+  timestamp: number;
+  /** Price at which the marker is drawn (entryPrice / closePrice). */
+  price: number;
+  /** Close markers are colored by realized outcome; entry stays neutral. */
+  outcome?: "profit" | "loss";
+}
+
+/** A chart marker resolved to a concrete candle index within the view window. */
+export interface MappedMarker extends ChartMarker {
+  /** Index into the supplied `view` array of the resolved candle. */
+  candleIndex: number;
+  /** True when the event time fell outside the window and was clamped to an edge. */
+  outOfRange?: boolean;
+  /** Which edge it was clamped to (only meaningful when `outOfRange`). */
+  edge?: "start" | "end";
+}
+
+/**
+ * Resolve each marker to a candle in the rendered `view`. Markers inside the
+ * visible window snap to the nearest candle (min absolute timestamp distance);
+ * markers outside it are clamped to the nearest edge and flagged `outOfRange`
+ * so the chart can render an off-screen indicator instead of a false position.
+ * Pure. Returns [] for an empty view.
+ */
+export function mapMarkerToCandle(
+  markers: ChartMarker[],
+  view: { timestamp: number }[],
+): MappedMarker[] {
+  if (view.length === 0) return [];
+  const first = view[0].timestamp;
+  const last = view[view.length - 1].timestamp;
+  const lo = Math.min(first, last);
+  const hi = Math.max(first, last);
+  // Candle indices for the earliest/latest visible time (candles are ascending,
+  // but resolve generally in case the order is ever reversed).
+  const startIdx = first <= last ? 0 : view.length - 1;
+  const endIdx = first <= last ? view.length - 1 : 0;
+
+  const mapped: MappedMarker[] = [];
+  for (const marker of markers) {
+    if (marker.timestamp < lo) {
+      mapped.push({
+        ...marker,
+        candleIndex: startIdx,
+        outOfRange: true,
+        edge: "start",
+      });
+      continue;
+    }
+    if (marker.timestamp > hi) {
+      mapped.push({
+        ...marker,
+        candleIndex: endIdx,
+        outOfRange: true,
+        edge: "end",
+      });
+      continue;
+    }
+    let candleIndex = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < view.length; i++) {
+      const dist = Math.abs(view[i].timestamp - marker.timestamp);
+      if (dist < bestDist) {
+        bestDist = dist;
+        candleIndex = i;
+      }
+    }
+    mapped.push({ ...marker, candleIndex });
+  }
+  return mapped;
+}
+
 /** Map a price into a [0..1] ratio within [min..max] (0 = min, 1 = max). */
 export function priceToRatio(price: number, min: number, max: number): number {
   if (max <= min) return 0.5;
@@ -122,13 +198,20 @@ export function buildTradeSetupModel(
 
   const levelPrices = levels.map((l) => l.price);
 
-  // Scale to the recent price action + the plan levels only. Using a recent
-  // window (not the full history) stops old, far-away candles from dragging the
-  // scale and opening a large empty band below the action. Must match the
-  // window used by the chart renderer so on-screen candles aren't clipped.
+  // Scale to the plan levels + current price, plus candle extremes that sit
+  // within a band around the plan's own range. Clipping out-of-band candles
+  // stops old, far-away action (e.g. a coin that has since 10x'd) from dragging
+  // the scale and opening a huge empty gap. Levels and the current price are
+  // always enclosed. Uses a recent window first to bound the work.
   const recent = candles.slice(-MAX_CANDLES);
-  const highs = [...levelPrices, ref, ...recent.map((c) => c.high)];
-  const lows = [...levelPrices, ref, ...recent.map((c) => c.low)];
+  const anchorLow = Math.min(...levelPrices, ref);
+  const anchorHigh = Math.max(...levelPrices, ref);
+  const span = anchorHigh - anchorLow || ref * 0.1 || 1;
+  const inBand = (p: number) => p >= anchorLow - span && p <= anchorHigh + span;
+  const candleHighs = recent.map((c) => c.high).filter(inBand);
+  const candleLows = recent.map((c) => c.low).filter(inBand);
+  const highs = [...levelPrices, ref, ...candleHighs];
+  const lows = [...levelPrices, ref, ...candleLows];
   let max = Math.max(...highs);
   let min = Math.min(...lows);
   const pad = (max - min) * 0.05 || ref * 0.02 || 1;

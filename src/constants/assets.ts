@@ -181,9 +181,13 @@ export const MARKET_INDICES = [
   { symbol: "^JKSE", name: "IHSG", region: "id" },
   { symbol: "^GSPC", name: "S&P 500", region: "us" },
   { symbol: "^IXIC", name: "NASDAQ", region: "us" },
+  { symbol: "^DJI", name: "Dow Jones", region: "us" },
+  { symbol: "^N225", name: "Nikkei", region: "asia" },
+  { symbol: "^KS11", name: "KOSPI", region: "asia" },
   { symbol: "BTC-USD", name: "BTC-USD", region: "global" },
   { symbol: "ETH-USD", name: "ETH-USD", region: "global" },
   { symbol: "GC=F", name: "Gold", region: "global" },
   { symbol: "SI=F", name: "Silver", region: "global" },
+  { symbol: "CL=F", name: "Crude Oil", region: "global" },
   { symbol: "DX-Y.NYB", name: "DXY", region: "global" },
 ];

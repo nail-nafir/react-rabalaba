@@ -17,8 +17,6 @@ export const SIGNAL_WEIGHTS = {
 export const SIGNAL_THRESHOLDS = {
   RSI_OVERSOLD: 30,
   RSI_OVERBOUGHT: 70,
-  RSI_NEUTRAL_LOW: 40,
-  RSI_NEUTRAL_HIGH: 60,
   VOLUME_SPIKE_MULTIPLIER: 1.5,
   /** Max share of zero/missing-volume candles (in the recent window) tolerated
    *  before OBV and volume-spike confirmation are disabled. Crypto feeds (e.g.
@@ -90,6 +88,39 @@ export const TIER_THRESHOLDS = {
 export const RISK_RULES = {
   LOW_MIN_CONFIDENCE: 75,
   MEDIUM_MIN_CONFIDENCE: 50,
+};
+
+/** Top-down market-context gating. Most alts are leveraged beta to BTC, so a
+ *  setup that fights the BTC-led risk state is de-rated (not hidden). */
+export const MARKET_CONTEXT = {
+  /** |btcDirectionScore| at/above which BTC is decisively risk-on / risk-off. */
+  RISK_SCORE_THRESHOLD: 0.3,
+  /** Multiplier applied to directionScore & strength when a setup fights the
+   *  prevailing market risk state. <1 = de-rate. */
+  COUNTER_MARKET_DERATE: 0.6,
+  /** Fear & Greed extremes that break a tie when BTC is indecisive. */
+  EXTREME_FEAR: 25,
+  EXTREME_GREED: 80,
+};
+
+/** Backtest realism: costs applied to every entry & exit so expectancy isn't
+ *  optimistic. Expressed as a fraction of price (per side). */
+export const BACKTEST_COSTS = {
+  crypto: { fee: 0.0004, slippage: 0.0006 },
+  default: { fee: 0.0002, slippage: 0.0003 },
+};
+
+/** Crypto "smart money" (derivatives positioning). Funding/OI/long-short are
+ *  CONTRARIAN at extremes — the crowded side is the one that gets squeezed. */
+export const SMART_MONEY = {
+  /** |OI change| over the window that counts as a meaningful build/unwind. */
+  OI_DELTA_THRESHOLD: 0.03,
+  /** Funding rate (per 8h) magnitude considered an overcrowding extreme. */
+  FUNDING_EXTREME: 0.0005,
+  /** Global long/short account ratio considered crowded (and its inverse). */
+  LS_EXTREME: 2.0,
+  /** Max conviction multiplier from positioning (±). Modest by design. */
+  MAX_CONVICTION_ADJ: 0.15,
 };
 
 export const SIGNAL_COLORS = {

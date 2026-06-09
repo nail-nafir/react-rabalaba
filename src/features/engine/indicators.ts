@@ -319,24 +319,6 @@ export function calculateDMI(
 }
 
 /**
- * Average Directional Index (ADX) — measures trend STRENGTH, not direction.
- *
- * - ADX > 25 → strong trend (trending market)
- * - ADX 20-25 → developing trend
- * - ADX < 20 → weak/no trend (ranging/choppy market)
- *
- * Requires arrays of highs, lows, and closes of equal length.
- */
-export function calculateADX(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-  period = 14
-): number {
-  return calculateDMI(highs, lows, closes, period).adx;
-}
-
-/**
  * Average True Range (ATR) — measures average volatility.
  *
  * Used to validate whether a price move is significant relative to
@@ -424,16 +406,47 @@ export function calculateOBVTrend(
 
 /**
  * Generates a series of RSI values for a price array.
+ *
+ * Optimized to O(n) using incremental Wilder's smoothing (mirrors
+ * calculateStochRSI) instead of the previous O(n²) approach that recomputed a
+ * full RSI for every sub-array. Output is numerically identical: each element
+ * is the RSI at that ending candle, and only the last ~100 candles are returned
+ * to bound work in computeSignal.
  */
 export function calculateRSISeries(prices: number[], period = 14): number[] {
   if (prices.length < period + 1) return [];
-  const rsiSeries: number[] = [];
-  // For efficiency in computeSignal, we only compute the last ~50 periods if array is large
-  const start = Math.max(0, prices.length - 100);
-  for (let i = start + period + 1; i <= prices.length; i++) {
-    rsiSeries.push(calculateRSI(prices.slice(0, i), period));
+
+  // Seed Wilder averages from the first `period` changes.
+  let gains = 0;
+  let losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = prices[i] - prices[i - 1];
+    if (change > 0) gains += change;
+    else losses += Math.abs(change);
   }
-  return rsiSeries;
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  const rsiAt = (): number => {
+    if (avgGain === 0 && avgLoss === 0) return 50;
+    if (avgLoss === 0) return 100;
+    return 100 - 100 / (1 + avgGain / avgLoss);
+  };
+
+  // fullSeries[k] is the RSI at ending candle index (period + k).
+  const fullSeries: number[] = [rsiAt()];
+  for (let i = period + 1; i < prices.length; i++) {
+    const change = prices[i] - prices[i - 1];
+    avgGain = (avgGain * (period - 1) + Math.max(change, 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + Math.max(-change, 0)) / period;
+    fullSeries.push(rsiAt());
+  }
+
+  // Match previous behavior: only return the last ~100 candles' RSI values.
+  // The old loop emitted ending indices from `start` onward, and fullSeries is
+  // indexed by (endingIndex - period), so slicing at `start` aligns exactly.
+  const start = Math.max(0, prices.length - 100);
+  return fullSeries.slice(start);
 }
 
 /**
@@ -554,48 +567,12 @@ export function calculateFibLevels(high: number, low: number): {
 }
 
 /**
- * Market regime classification (Layer 1).
- *
- * Distinguishes the four behavioral states so the engine can weight indicator
- * categories appropriately and avoid trading chop:
- * - low_volatility  → compression/squeeze (weak ADX + tight Bollinger bands)
- * - trending        → strong directional move (ADX >= strong-trend threshold)
- * - high_volatility → non-directional volatility expansion (ATR% elevated)
- * - ranging         → default: weak trend, normal volatility
- *
- * Trending takes priority over high_volatility so a clean strong trend is not
- * mislabeled; squeeze takes priority over everything because it is a no-trade
- * pre-breakout state.
+ * Market regime classification (Layer 1) now lives in its own regime engine.
+ * Re-exported here so existing import sites (and tests that load this module)
+ * keep working unchanged. See `./regime` for the implementation.
  */
-export function classifyRegime(params: {
-  adx: number;
-  atrPercent: number;
-  bbBandwidthPercent: number;
-  strongAdx: number;
-  highVolAtrPercent: number;
-  squeezeBandwidthPercent: number;
-  squeezeMaxAdx: number;
-}): "trending" | "ranging" | "high_volatility" | "low_volatility" {
-  const {
-    adx,
-    atrPercent,
-    bbBandwidthPercent,
-    strongAdx,
-    highVolAtrPercent,
-    squeezeBandwidthPercent,
-    squeezeMaxAdx,
-  } = params;
-
-  const isSqueeze =
-    bbBandwidthPercent > 0 &&
-    bbBandwidthPercent < squeezeBandwidthPercent &&
-    adx < squeezeMaxAdx;
-  if (isSqueeze) return "low_volatility";
-
-  if (adx >= strongAdx) return "trending";
-  if (atrPercent >= highVolAtrPercent) return "high_volatility";
-  return "ranging";
-}
+export { classifyRegime } from "./regime";
+export type { MarketRegimeKind, RegimeInput } from "./regime";
 
 /**
  * Detect the most recent structural swing high/low via 3-bar fractal pivots

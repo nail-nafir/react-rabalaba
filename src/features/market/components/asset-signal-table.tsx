@@ -38,10 +38,10 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SkeletonTableRow } from "@/components/shared/skeleton-card";
-import { MiniSparkline } from "@/components/charts/mini-sparkline";
+import { StrengthBar } from "@/components/charts/strength-bar";
+import { AreaChart, Area, YAxis } from "recharts";
 import {
   TIER_COLORS,
   SIGNAL_COLORS,
@@ -53,6 +53,10 @@ import { useFilterStore, type SignalFilterType } from "@/store/filter-store";
 import { useFavoriteStore } from "@/store/favorite-store";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketContext } from "@/services/queries/use-market-context";
+import { useSmartMoney } from "@/services/queries/use-smart-money";
+import { applyMarketContext } from "@/features/engine/market-context";
+import { applySmartMoney } from "@/features/engine/smart-money";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import {
   DEFAULT_COMMODITY_TICKERS,
@@ -92,7 +96,9 @@ function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
 export function AssetSignalTable() {
   "use no memo";
   const { t } = useTranslation();
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "strength", desc: true },
+  ]);
   const { openDetailDialog } = useUIStore();
   const {
     assetType,
@@ -136,6 +142,9 @@ export function AssetSignalTable() {
   // Fetch favorite data
   const { data: favoriteAssets, isFetching: favoriteFetching } =
     useMarketData(favoriteSymbols);
+
+  // Top-down market context (BTC regime + sentiment), shared & cached.
+  const { data: marketContext } = useMarketContext();
 
   const translatedAssetOptions = ASSET_TYPE_OPTIONS.map((opt) => ({
     ...opt,
@@ -193,17 +202,50 @@ export function AssetSignalTable() {
     favoriteAssets,
   ]);
 
+  // Crypto with an actionable signal → fetch smart-money only for the coins
+  // where positioning actually matters (keeps Binance calls bounded).
+  const cryptoForSmartMoney = useMemo(
+    () =>
+      allAssets.filter(
+        (a) =>
+          a.assetType === "crypto" &&
+          a.outlook != null &&
+          a.outlook.signal !== "neutral",
+      ),
+    [allAssets],
+  );
+  const { data: smartMoney } = useSmartMoney(cryptoForSmartMoney);
+
+  // Enrichment pass over the full universe (where cross-asset data exists):
+  // 1) market context (de-rate crypto setups that fight BTC),
+  // 2) smart-money positioning (modest conviction nudge, crypto only).
+  // computeSignal stays pure & per-asset; this layer never mutates cache data.
+  const enrichedAssets = useMemo<UnifiedAsset[]>(() => {
+    if (allAssets.length === 0) return allAssets;
+    const ctx = marketContext ?? undefined;
+    const enriched = allAssets.map((asset) => {
+      if (!asset.outlook) return asset;
+      let outlook = ctx
+        ? applyMarketContext(asset.outlook, asset, ctx)
+        : asset.outlook;
+      const sm = smartMoney[asset.symbol];
+      if (sm) outlook = applySmartMoney(outlook, sm);
+      return sm ? { ...asset, outlook, smartMoney: sm } : { ...asset, outlook };
+    });
+    return enriched;
+  }, [allAssets, marketContext, smartMoney]);
+
   const isLoading = isFetching && allAssets.length === 0;
 
   const displayFavCount = useMemo(() => {
     if (assetType === "all") return favoriteSymbols.length;
-    return allAssets.filter(
+    return enrichedAssets.filter(
       (a) => a.assetType === assetType && favoriteSymbols.includes(a.symbol),
     ).length;
-  }, [allAssets, assetType, favoriteSymbols]);
+  }, [enrichedAssets, assetType, favoriteSymbols]);
 
   const filteredData = useMemo(() => {
-    let data = [...allAssets];
+    let data = [...enrichedAssets];
     if (assetType !== "all") {
       data = data.filter((a) => a.assetType === assetType);
     }
@@ -225,7 +267,14 @@ export function AssetSignalTable() {
       );
     }
     return data;
-  }, [allAssets, assetType, showFavorites, favoriteSymbols, debouncedSearch, signalFilter]);
+  }, [
+    enrichedAssets,
+    assetType,
+    showFavorites,
+    favoriteSymbols,
+    debouncedSearch,
+    signalFilter,
+  ]);
 
   const columns = useMemo<ColumnDef<UnifiedAsset>[]>(
     () => [
@@ -371,11 +420,9 @@ export function AssetSignalTable() {
           </Button>
         ),
         cell: ({ row }) => {
-          return row.original.outlook ? (
-            <SignalStrengthMeter
-              value={row.original.outlook.strength}
-              size="sm"
-            />
+          const strength = row.original.outlook?.strength;
+          return strength !== undefined ? (
+            <StrengthBar value={strength} barWidth="w-16" />
           ) : (
             "-"
           );
@@ -395,16 +442,20 @@ export function AssetSignalTable() {
         ),
         cell: ({ row }) => {
           if (!row.original.outlook) return "-";
-          const tier = row.original.outlook.tier;
+          const { tier, suppressed } = row.original.outlook;
           const colors = TIER_COLORS[tier];
           return (
             <Badge
               variant="outline"
+              title={suppressed ? t("table.suppressed_hint") : undefined}
               className={cn(
                 "text-[10px] font-bold rounded-md",
                 colors.border,
                 colors.bg,
                 colors.text,
+                // A high tier on a suppressed (NEUTRAL) row is a held-back lean,
+                // not an actionable grade — dim + strike it so it doesn't mislead.
+                suppressed && "opacity-50 line-through decoration-1",
               )}
             >
               {tier}
@@ -438,6 +489,7 @@ export function AssetSignalTable() {
           );
         },
       },
+
       {
         id: "sparkline",
         header: "",
@@ -446,11 +498,65 @@ export function AssetSignalTable() {
             ?.filter((p): p is number => p !== null)
             .slice(-30);
 
-          return sparklineData && sparklineData.length > 1 ? (
-            <div className="flex justify-end pr-4">
-              <MiniSparkline data={sparklineData} width={60} height={20} />
-            </div>
-          ) : null;
+          const sparkColor =
+            sparklineData &&
+            sparklineData.length >= 2 &&
+            sparklineData[sparklineData.length - 1] >= sparklineData[0]
+              ? "#10b981"
+              : "#f43f5e";
+
+          return sparklineData && sparklineData.length > 1
+            ? (() => {
+                const sparkMin = Math.min(...sparklineData);
+                const sparkMax = Math.max(...sparklineData);
+                const sparkPad = sparkMax - sparkMin || 1;
+                const id = `sg-tbl-${row.id}`;
+                return (
+                  <div className="flex justify-end pr-4">
+                    <AreaChart
+                      width={60}
+                      height={20}
+                      data={sparklineData.map((v) => ({ v }))}
+                      margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+                          <stop
+                            offset="0%"
+                            stopColor={sparkColor}
+                            stopOpacity={0.45}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor={sparkColor}
+                            stopOpacity={0.05}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <YAxis
+                        hide
+                        domain={[
+                          sparkMin - sparkPad * 0.1,
+                          sparkMax + sparkPad * 0.1,
+                        ]}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="v"
+                        stroke={sparkColor}
+                        strokeWidth={1}
+                        fill={`url(#${id})`}
+                        dot={false}
+                        activeDot={false}
+                        isAnimationActive
+                        animationDuration={900}
+                        animationBegin={100}
+                      />
+                    </AreaChart>
+                  </div>
+                );
+              })()
+            : null;
         },
         enableSorting: false,
       },
@@ -578,7 +684,12 @@ export function AssetSignalTable() {
                     : "text-muted-foreground/60",
                 )}
               />
-              <span className={cn("hidden sm:inline text-xs font-bold tracking-tight", showFavorites && "text-amber-500")}>
+              <span
+                className={cn(
+                  "hidden sm:inline text-xs font-bold tracking-tight",
+                  showFavorites && "text-amber-500",
+                )}
+              >
                 {t("common.favorite")}
               </span>
               <Badge
@@ -661,8 +772,8 @@ export function AssetSignalTable() {
                     </div>
                   ) : (
                     <EmptyState
-                      title="No assets found"
-                      description="Try adjusting your filters."
+                      title={t("market.no_assets_found")}
+                      description={t("market.no_assets_found_desc")}
                     />
                   )}
                 </TableCell>
@@ -689,7 +800,9 @@ export function AssetSignalTable() {
         <div className="text-xs text-muted-foreground">
           {t("table.page")}{" "}
           <span className="font-medium text-foreground">
-            {table.getPageCount() > 0 ? table.getState().pagination.pageIndex + 1 : 0}
+            {table.getPageCount() > 0
+              ? table.getState().pagination.pageIndex + 1
+              : 0}
           </span>{" "}
           {t("table.of")}{" "}
           <span className="font-medium text-foreground">

@@ -25,6 +25,7 @@ import { SIGNAL_COLORS } from "@/constants/signals";
 
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import type { TradingPlan, SignalDirection } from "@/types/asset";
+import type { ChartMarker } from "@/features/trading-plan/lib/trade-setup-model";
 
 interface TradeDetailDialogProps {
   trade: FollowedTrade | null;
@@ -88,6 +89,33 @@ export function TradeDetailDialog({
     if (!trade) return { pct: 0, r: 0 };
     return computePnl(trade, displayPrice);
   }, [trade, displayPrice]);
+
+  // Entry/close annotations for the chart: always show entry; add the close
+  // marker only when the trade is closed, colored by realized outcome.
+  // Candle timestamps are in SECONDS (Yahoo), but followedAt/closedAt are ms
+  // (Date.now()), so convert to seconds to keep the marker on the same axis.
+  const markers = useMemo<ChartMarker[]>(() => {
+    if (!trade) return [];
+    const toSec = (ms: number) => Math.floor(ms / 1000);
+    const list: ChartMarker[] = [
+      {
+        kind: "entry",
+        timestamp: toSec(trade.followedAt),
+        price: trade.entryPrice,
+      },
+    ];
+    if (isClosed && trade.closedAt != null && trade.closePrice != null) {
+      const outcome =
+        computePnl(trade, trade.closePrice).r >= 0 ? "profit" : "loss";
+      list.push({
+        kind: "close",
+        timestamp: toSec(trade.closedAt),
+        price: trade.closePrice,
+        outcome,
+      });
+    }
+    return list;
+  }, [trade, isClosed]);
 
   const pos = pnl.r >= 0;
   const sign = (v: number) => (v >= 0 ? "+" : "");
@@ -293,6 +321,7 @@ export function TradeDetailDialog({
                   signal={signal}
                   assetType={trade.assetType}
                   currentPrice={displayPrice}
+                  markers={markers}
                 />
               </div>
             </>

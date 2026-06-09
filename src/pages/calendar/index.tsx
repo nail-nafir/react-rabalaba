@@ -128,7 +128,7 @@ export default function CalendarPage() {
               <div className="w-full flex items-center justify-center border rounded-xl py-20 border-dashed">
                 <EmptyState
                   title={t("calendar.no_events")}
-                  description="Try adjusting your filters or choosing another date."
+                  description={t("calendar.no_events_desc")}
                   icon={
                     <CalendarDays className="h-10 w-10 text-muted-foreground/20" />
                   }

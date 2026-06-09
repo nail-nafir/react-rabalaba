@@ -11,8 +11,8 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  title = "No results found",
-  description = "Try adjusting your filters or search query.",
+  title = "Nothing here yet",
+  description = "Try tweaking your filters or changing your search query.",
   icon,
   action,
   className,

@@ -7,6 +7,7 @@ import {
   computePnl,
   type FollowedTrade,
   type FollowSignal,
+  type FollowCandle,
 } from "@/features/follow-trade/lib/follow-trade-model";
 
 interface FollowState {
@@ -15,8 +16,14 @@ interface FollowState {
 
   /** Snapshot a followable asset. Returns false if not followable or already open. */
   follow: (asset: UnifiedAsset) => boolean;
-  /** Feed latest prices ({ symbol: price }); auto-close trades that hit a terminal level. */
-  syncPrices: (prices: Record<string, number>) => void;
+  /** Feed latest prices ({ symbol: price }) + optional candles since follow
+   *  ({ symbol: FollowCandle[] }); auto-close trades that hit a terminal level,
+   *  catching intraday wicks (not just the latest snapshot) and stamping the
+   *  real hit time. */
+  syncPrices: (
+    prices: Record<string, number>,
+    candlesBySymbol?: Record<string, FollowCandle[]>,
+  ) => void;
   /** User-initiated close at the given live price. */
   closeManual: (id: string, price: number) => void;
   removeHistory: (id: string) => void;
@@ -37,10 +44,14 @@ export const useFollowStore = create<FollowState>()(
         return true;
       },
 
-      syncPrices: (prices) => {
+      syncPrices: (prices, candlesBySymbol) => {
         const { openTrades } = get();
         if (openTrades.length === 0) return;
-        const { stillOpen, justClosed } = applyPriceSync(openTrades, prices);
+        const { stillOpen, justClosed } = applyPriceSync(
+          openTrades,
+          prices,
+          candlesBySymbol,
+        );
         if (justClosed.length === 0) {
           // Only persist when a milestone actually advanced (reference identity changed).
           if (stillOpen.some((t, i) => t !== openTrades[i])) {

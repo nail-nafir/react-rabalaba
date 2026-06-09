@@ -1,4 +1,4 @@
-import type { Outlook } from "./signal-engine";
+import type { Outlook } from "./signals";
 import type { TradingPlan, AssetType } from "@/types/asset";
 
 export function computeTradingPlan(

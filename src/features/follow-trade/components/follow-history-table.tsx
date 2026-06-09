@@ -58,7 +58,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/shared/empty-state";
-import { SignalStrengthMeter } from "@/components/shared/signal-strength-meter";
+import { StrengthBar } from "@/components/charts/strength-bar";
 import { TradeDetailDialog } from "./trade-detail-dialog";
 import {
   FilterGroup,
@@ -256,7 +256,7 @@ export function FollowHistoryTable() {
           <SortButton label={t("table.strength")} column={column} />
         ),
         cell: ({ row }) => (
-          <SignalStrengthMeter value={row.original.strengthAtEntry} size="sm" />
+          <StrengthBar value={row.original.strengthAtEntry} barWidth="w-16" />
         ),
       },
       {

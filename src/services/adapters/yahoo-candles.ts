@@ -1,6 +1,9 @@
 import type { YahooQuoteIndicators } from "@/types/asset";
 import type { TrendDirection } from "@/types/market";
-import { calculateEMA, calculateDMI } from "@/features/signals/engine/indicators";
+import {
+  calculateEMA,
+  calculateDMI,
+} from "@/features/engine/indicators";
 import { SIGNAL_THRESHOLDS } from "@/constants/signals";
 
 export interface NormalizedYahooCandle {
