@@ -21,10 +21,12 @@ export function LanguageSwitcher() {
 
   return (
     <Select value={currentLang} onValueChange={toggleLanguage}>
-      <SelectTrigger className="bg-card! hover:bg-accent! py-4! text-[10px] font-bold uppercase tracking-wider">
+      <SelectTrigger className="bg-card! hover:bg-accent! py-4! text-[10px] font-bold uppercase tracking-wider [&>svg]:hidden sm:[&>svg]:block">
         <div className="flex items-center gap-1.5">
           <Languages className="h-3 w-3 text-muted-foreground" />
-          <SelectValue placeholder="Language" className="truncate" />
+          <span className="hidden sm:inline">
+            <SelectValue placeholder="Language" className="truncate" />
+          </span>
         </div>
       </SelectTrigger>
       <SelectContent align="end" position="popper" className="p-1">

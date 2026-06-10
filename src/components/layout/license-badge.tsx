@@ -50,7 +50,7 @@ export function LicenseBadge() {
       )}
     >
       <Icon className="h-3.5 w-3.5" />
-      <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">
+      <span className="text-[10px] font-bold uppercase tracking-wider">
         {label}
       </span>
     </Button>
