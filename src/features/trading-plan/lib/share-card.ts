@@ -5,8 +5,10 @@ import {
   priceToRatio,
   priceTicks,
   dateTickIndices,
+  mapMarkerToCandle,
   MAX_CANDLES,
   type TradeSetupModel,
+  type ChartMarker,
 } from "./trade-setup-model";
 
 
@@ -18,11 +20,19 @@ export interface ShareCardMeta {
   assetType: AssetType;
   candles: NormalizedYahooCandle[];
   isPosition?: boolean;
+  /** A closed position labels the right-hand price as the close price. */
+  closed?: boolean;
+  /** Why a closed position ended, as an uppercase fragment (e.g. "TP2", "SL"). */
+  closeReason?: string;
   entryPrice?: number;
   pnlPct?: number;
   pnlR?: number;
   grade?: string;
   locale?: string;
+  /** Entry/close annotations plotted on the candles (journal/position view). */
+  markers?: ChartMarker[];
+  /** Localized words for the marker badges (e.g. MASUK / TUTUP). */
+  markerLabels?: { entry: string; close: string };
 }
 
 const W = 1200;
@@ -269,6 +279,84 @@ export function buildShareCardSvg(
     })
     .join("");
 
+  // Entry/close markers (journal/position view): an arrow at the (time, price)
+  // point + a single-word badge (MASUK/TUTUP). Mirrors the web renderer in
+  // `trade-setup-chart.tsx` — out-of-window events clamp to the edge with an
+  // outward chevron; in-window events fan above/below by price rank.
+  const mGeo = (
+    meta.markers && meta.markerLabels && view.length
+      ? mapMarkerToCandle(meta.markers, view)
+      : []
+  ).map((m) => ({
+    ...m,
+    cx: m.outOfRange
+      ? m.edge === "start"
+        ? left
+        : projX
+      : left + (m.candleIndex + 0.5) * slot,
+    py: y(m.price),
+  }));
+  const markerOrder = [...mGeo.map((mk, idx) => ({ idx, py: mk.py }))]
+    .sort((a, b) => a.py - b.py || a.idx - b.idx)
+    .map((e) => e.idx);
+  const markerLabelAbove = (idx: number) =>
+    mGeo.length > 1 && markerOrder.indexOf(idx) < mGeo.length / 2;
+  const PILL_H_M = 24;
+  const arrowH = 10;
+  const arrowHalf = 7;
+  const clampCy = (v: number) =>
+    Math.min(bottom - PILL_H_M / 2, Math.max(top + PILL_H_M / 2, v));
+  const markers = mGeo
+    .map((m, i) => {
+      const col =
+        m.kind === "entry"
+          ? C.muted
+          : m.outcome === "loss"
+            ? C.rose
+            : C.emerald;
+      const word = (
+        m.kind === "entry" ? meta.markerLabels!.entry : meta.markerLabels!.close
+      ).toUpperCase();
+      const bw = word.length * 9 + 16;
+      const pill = (bx: number, cy: number) =>
+        `<rect x="${n(bx)}" y="${n(cy - PILL_H_M / 2)}" width="${n(bw)}" height="${PILL_H_M}" rx="4" fill="${C.card}" stroke="${col}" stroke-width="1"/>` +
+        `<text x="${n(bx + bw / 2)}" y="${n(cy)}" fill="${col}" font-size="14" font-weight="700" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.05em">${esc(word)}</text>`;
+
+      if (m.outOfRange) {
+        const atStart = m.edge === "start";
+        const baseX = atStart ? m.cx + arrowH : m.cx - arrowH;
+        const chevron = `${n(m.cx)},${n(m.py)} ${n(baseX)},${n(m.py - arrowHalf)} ${n(baseX)},${n(m.py + arrowHalf)}`;
+        const above = markerLabelAbove(i);
+        const labelCy = clampCy(
+          above ? m.py - PILL_H_M / 2 - 6 : m.py + PILL_H_M / 2 + 6,
+        );
+        const labelX = atStart ? left : projX - bw;
+        const nearY = above ? labelCy + PILL_H_M / 2 : labelCy - PILL_H_M / 2;
+        return (
+          `<line x1="${n(m.cx)}" y1="${n(m.py)}" x2="${n(baseX)}" y2="${n(m.py)}" stroke="${col}" stroke-width="1" stroke-dasharray="3 2" opacity="0.6"/>` +
+          `<line x1="${n(m.cx)}" y1="${n(m.py)}" x2="${n(m.cx)}" y2="${n(nearY)}" stroke="${col}" stroke-width="1" opacity="0.6"/>` +
+          `<polygon points="${chevron}" fill="${col}"/>` +
+          pill(labelX, labelCy)
+        );
+      }
+
+      const pointsUp = !markerLabelAbove(i);
+      const baseY = pointsUp ? m.py + arrowH : m.py - arrowH;
+      const tri = `${n(m.cx)},${n(m.py)} ${n(m.cx - arrowHalf)},${n(baseY)} ${n(m.cx + arrowHalf)},${n(baseY)}`;
+      const gap = 6;
+      const labelCy = clampCy(
+        pointsUp ? baseY + gap + PILL_H_M / 2 : baseY - gap - PILL_H_M / 2,
+      );
+      const labelX = Math.min(projX - bw, Math.max(left, m.cx - bw / 2));
+      const nearY = pointsUp ? labelCy - PILL_H_M / 2 : labelCy + PILL_H_M / 2;
+      return (
+        `<line x1="${n(m.cx)}" y1="${n(m.py)}" x2="${n(m.cx)}" y2="${n(nearY)}" stroke="${col}" stroke-width="1" opacity="0.6"/>` +
+        `<polygon points="${tri}" fill="${col}"/>` +
+        pill(labelX, labelCy)
+      );
+    })
+    .join("");
+
   // ── Header ──────────────────────────────────────────────────────────────
   // Brand block: rounded gradient square with white Radio icon + wordmark
   const logoX = 56;
@@ -279,6 +367,11 @@ export function buildShareCardSvg(
   // ── Symbol row ─────────────────────────────────────────────────────────
   const symbolY = 198;
   const nameY = 230;
+  // One shared, fixed size for the three header values — ticker, centered P&L,
+  // and the right-hand price — so the row reads as a uniform set.
+  const HEADER_FONT = 40;
+  // Shared size for the small caps labels above the header/footer values.
+  const LABEL_FONT = 12;
   const GRADE_COLORS: Record<string, { text: string; fill: string; stroke: string }> = {
     A: { text: C.emerald, fill: C.emeraldFill, stroke: C.emerald },
     B: { text: "#fbbf24", fill: "rgba(251, 191, 36, 0.15)", stroke: "#fbbf24" },
@@ -289,40 +382,85 @@ export function buildShareCardSvg(
   const pillH = 28;
   const gap = 8;
 
-  // 1. Grade Badge (Leftmost)
+  // 1. Type / status badges (left). A signal is a single
+  // "SIGNAL" chip; a position breaks into separate pills \u2014 POSITION, its
+  // lifecycle (OPEN / CLOSED), and, once closed, how it ended (TP* / SL /
+  // MANUAL) colored by realized outcome.
+  const pnlWin = (meta.pnlR ?? 0) >= 0;
+  const neutralChip = {
+    text: C.muted,
+    fill: "rgba(128, 128, 128, 0.08)",
+    stroke: C.border,
+  };
+  const outcomeChip = pnlWin
+    ? { text: C.emerald, fill: C.emeraldFill, stroke: C.emerald }
+    : { text: C.rose, fill: C.roseFill, stroke: C.rose };
+  const statusPills: { text: string; chip: typeof neutralChip }[] =
+    meta.isPosition
+      ? [
+          // Position + lifecycle in one chip. \u25B6 = running, \u25A0 = finished.
+          {
+            text: meta.closed ? "\u25A0 CLOSED POSITION" : "\u25B6 OPEN POSITION",
+            chip: neutralChip,
+          },
+          ...(meta.closed && meta.closeReason
+            ? [
+                {
+                  // TP \u2192 \u2713, SL \u2192 \u2715 (colored by outcome); manual exit \u2192 \u21A9 stays
+                  // neutral like the position chip since it has no win/loss verdict.
+                  text: `${meta.closeReason === "MANUAL" ? "\u21A9" : pnlWin ? "\u2713" : "\u2715"} ${meta.closeReason}`,
+                  chip: meta.closeReason === "MANUAL" ? neutralChip : outcomeChip,
+                },
+              ]
+            : []),
+        ]
+      : [{ text: "\u2726 SIGNAL", chip: neutralChip }];
   let leftX = 56;
-  let gradeBadgeHtml = "";
-  if (meta.grade) {
-    const gradeUpper = meta.grade.toUpperCase();
-    const gc = GRADE_COLORS[gradeUpper] ?? { text: C.primary, fill: "rgba(134, 59, 255, 0.15)", stroke: C.primary };
-    const text = `\u2726 GRADE ${gradeUpper}`;
-    const w = Math.ceil(text.length * 9.5 + 22);
-    gradeBadgeHtml = `
-<rect x="${leftX}" y="${pillY}" rx="6" width="${w}" height="${pillH}" fill="${gc.fill}" stroke="${gc.stroke}"/>
-<text x="${leftX + w / 2}" y="${pillY + pillH / 2 + 1}" fill="${gc.text}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(text)}</text>
-    `;
-    leftX += w + gap;
-  }
+  const typeBadgeHtml = statusPills
+    .map((p) => {
+      const w = Math.ceil(p.text.length * 8 + 18);
+      const html = `
+<rect x="${leftX}" y="${pillY}" rx="6" width="${w}" height="${pillH}" fill="${p.chip.fill}" stroke="${p.chip.stroke}"/>
+<text x="${leftX + w / 2}" y="${pillY + pillH / 2 + 1}" fill="${p.chip.text}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}">${esc(p.text)}</text>`;
+      leftX += w + gap;
+      return html;
+    })
+    .join("");
 
-  // 2. Type Badge (Signal/Position - Left, next to Grade)
-  const typeText = meta.isPosition ? "\u25CF POSITION" : "\u2726 SIGNAL";
-  const typeW = Math.ceil(typeText.length * 9.5 + 22);
-  const typeBadgeHtml = `
-<rect x="${leftX}" y="${pillY}" rx="6" width="${typeW}" height="${pillH}" fill="rgba(128, 128, 128, 0.08)" stroke="${C.border}"/>
-<text x="${leftX + typeW / 2}" y="${pillY + pillH / 2 + 1}" fill="${C.muted}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(typeText)}</text>
-  `;
-
-  // 3. Direction Badge (Long/Short - Rightmost)
+  // 2. Right cluster (grade / strength / direction)
   const signalArrow = isShort ? "\u25BC" : "\u25B2"; // ▼ / ▲
-  const dirText = meta.isPosition
-    ? `${signalArrow} ${model.signal.toUpperCase()}`
-    : `${signalArrow} ${model.signal.toUpperCase()} ${Math.round(meta.strength)}%`;
-  const dirW = Math.ceil(dirText.length * 9.5 + 22);
-  const rightX = W - 56 - dirW;
-  const dirBadgeHtml = `
-<rect x="${rightX}" y="${pillY}" rx="6" width="${dirW}" height="${pillH}" fill="${accentFill}" stroke="${accent}"/>
-<text x="${rightX + dirW / 2}" y="${pillY + pillH / 2 + 1}" fill="${accent}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.08em">${esc(dirText)}</text>
-  `;
+  // Right cluster — grade · direction, right-aligned to the margin. Shown on
+  // every card. Grade carries its tier color; direction (with the strength %)
+  // uses the long/short accent.
+  const gradeUpper = meta.grade?.toUpperCase();
+  const gc =
+    gradeUpper &&
+    (GRADE_COLORS[gradeUpper] ?? {
+      text: C.primary,
+      fill: "rgba(134, 59, 255, 0.15)",
+      stroke: C.primary,
+    });
+  const rightPills: { text: string; chip: typeof neutralChip }[] = [
+    ...(gc ? [{ text: `✦ GRADE ${gradeUpper}`, chip: gc }] : []),
+    {
+      text: `${signalArrow} ${model.signal.toUpperCase()} ${Math.round(meta.strength)}%`,
+      chip: { text: accent, fill: accentFill, stroke: accent },
+    },
+  ];
+  const rightWidths = rightPills.map((p) => Math.ceil(p.text.length * 8 + 18));
+  const rightTotal =
+    rightWidths.reduce((a, b) => a + b, 0) + gap * (rightPills.length - 1);
+  let rightX = W - 56 - rightTotal;
+  const dirBadgeHtml = rightPills
+    .map((p, i) => {
+      const w = rightWidths[i];
+      const html = `
+<rect x="${rightX}" y="${pillY}" rx="6" width="${w}" height="${pillH}" fill="${p.chip.fill}" stroke="${p.chip.stroke}"/>
+<text x="${rightX + w / 2}" y="${pillY + pillH / 2 + 1}" fill="${p.chip.text}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="${FONT}">${esc(p.text)}</text>`;
+      rightX += w + gap;
+      return html;
+    })
+    .join("");
 
   const generatedAt = formatGeneratedAt(new Date(), meta.locale);
 
@@ -339,18 +477,22 @@ export function buildShareCardSvg(
 
 
 
+  // Right-hand price label: a closed position shows its close price, otherwise
+  // the live/current price (signals are always live).
+  const priceLabel = meta.closed ? "CLOSE PRICE" : "CURRENT PRICE";
+
   // Dynamic right-hand header values: either centered PNL & current price for position, or only current price for signal
   const headerRightSide = meta.isPosition
     ? `<!-- Position P&L -->
-<text x="${W / 2}" y="${logoY + 148}" fill="${meta.pnlR !== undefined && meta.pnlR >= 0 ? C.emerald : C.rose}" font-size="36" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}" letter-spacing="-0.01em">${meta.pnlPct !== undefined && meta.pnlPct >= 0 ? "+" : ""}${meta.pnlPct?.toFixed(2)}% (${meta.pnlR !== undefined && meta.pnlR >= 0 ? "+" : ""}${formatRatio(meta.pnlR ?? 0)}R)</text>
-<text x="${W / 2}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="middle" font-family="${FONT}" letter-spacing="0.24em">POSITION PNL</text>
+<text x="${W / 2}" y="${logoY + 148}" fill="${meta.pnlR !== undefined && meta.pnlR >= 0 ? C.emerald : C.rose}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}" letter-spacing="-0.01em">${meta.pnlPct !== undefined && meta.pnlPct >= 0 ? "+" : ""}${meta.pnlPct?.toFixed(2)}% (${meta.pnlR !== undefined && meta.pnlR >= 0 ? "+" : ""}${formatRatio(meta.pnlR ?? 0)}R)</text>
+<text x="${W / 2}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="middle" font-family="${FONT}">${meta.closed ? "REALIZED PNL" : "FLOATING PNL"}</text>
 
-<!-- Current Price -->
-<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="36" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
-<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>`
+<!-- Right-hand price -->
+<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">${priceLabel}</text>`
     : `<!-- Current Price -->
-<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="36" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
-<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">CURRENT PRICE</text>`;
+<text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">CURRENT PRICE</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -378,16 +520,16 @@ ${brandMark(logoX, logoY, logoSize, "#ffffff")}
 <text x="${wordmarkX}" y="${logoY + 50}" fill="${C.muted}" font-size="11" font-weight="700" font-family="${FONT}" letter-spacing="0.32em">TERMINAL</text>
 
 <!-- Top-right: timestamp -->
-<text x="${W - 56}" y="${logoY + 22}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">GENERATED</text>
+<text x="${W - 56}" y="${logoY + 22}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.32em">GENERATED</text>
 <text x="${W - 56}" y="${logoY + 46}" fill="${C.text}" font-size="16" font-weight="700" text-anchor="end" font-family="${FONT_MONO}">${esc(generatedAt)}</text>
 
 <!-- Brand-purple separator: divides letterhead from asset section -->
 <line x1="56" y1="128" x2="${W - 56}" y2="128" stroke="${C.primary}" stroke-width="2"/>
 
 <!-- Symbol + name + signal pills -->
-<text x="56" y="${symbolY}" fill="${C.text}" font-size="56" font-weight="800" font-family="${FONT}" letter-spacing="-0.02em">${esc(meta.symbol)}</text>
-<text x="56" y="${nameY}" fill="${C.muted}" font-size="16" font-family="${FONT}">${esc(meta.name ?? "")}</text>
-${gradeBadgeHtml}${typeBadgeHtml}${dirBadgeHtml}
+<text x="56" y="${symbolY}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" font-family="${FONT}" letter-spacing="-0.02em">${esc(meta.symbol)}</text>
+<text x="56" y="${nameY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" font-family="${FONT}">${esc(meta.name ?? "")}</text>
+${typeBadgeHtml}${dirBadgeHtml}
 
 ${headerRightSide}
 
@@ -399,19 +541,20 @@ ${priceAxis}
 ${dateAxis}
 ${candles}
 ${levels}
+${markers}
 
 <!-- Hairline divider above stats (panel border serves as visual separator,
      no extra divider needed here). -->
 
 <!-- Stats row: R:R (left) · RISK (center) · REWARD (right) -->
-<text x="56" y="${statsLabelY}" fill="${C.muted}" font-size="14" font-weight="700" text-anchor="start" font-family="${FONT}" letter-spacing="0.24em">RISK : REWARD</text>
-<text x="56" y="${statsValueY}" fill="${C.text}" font-size="34" font-weight="800" text-anchor="start" font-family="${FONT_MONO}">1 : ${formatRatio(model.riskReward)}</text>
+<text x="56" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="start" font-family="${FONT}">RISK : REWARD</text>
+<text x="56" y="${statsValueY}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="start" font-family="${FONT_MONO}">1 : ${formatRatio(model.riskReward)}</text>
 
-<text x="${W / 2}" y="${statsLabelY}" fill="${C.muted}" font-size="14" font-weight="700" text-anchor="middle" font-family="${FONT}" letter-spacing="0.24em">RISK</text>
-<text x="${W / 2}" y="${statsValueY}" fill="${C.rose}" font-size="34" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}">${model.risk > 0 ? esc(formatPrice(model.risk, meta.assetType)) : "-"}</text>
+<text x="${W / 2}" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="middle" font-family="${FONT}">RISK</text>
+<text x="${W / 2}" y="${statsValueY}" fill="${C.rose}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}">${model.risk > 0 ? esc(formatPrice(model.risk, meta.assetType)) : "-"}</text>
 
-<text x="${W - 56}" y="${statsLabelY}" fill="${C.muted}" font-size="14" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.24em">REWARD</text>
-<text x="${W - 56}" y="${statsValueY}" fill="${C.emerald}" font-size="34" font-weight="800" text-anchor="end" font-family="${FONT_MONO}">${reward > 0 ? esc(formatPrice(reward, meta.assetType)) : "-"}</text>
+<text x="${W - 56}" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">REWARD</text>
+<text x="${W - 56}" y="${statsValueY}" fill="${C.emerald}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="end" font-family="${FONT_MONO}">${reward > 0 ? esc(formatPrice(reward, meta.assetType)) : "-"}</text>
 
 <!-- Brand-purple separator: divides trade content from footer -->
 <line x1="56" y1="948" x2="${W - 56}" y2="948" stroke="${C.primary}" stroke-width="2"/>

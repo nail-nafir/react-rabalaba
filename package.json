@@ -15,7 +15,6 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@hookform/resolvers": "^5.4.0",
-    "@lottiefiles/dotlottie-react": "^0.19.4",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-table": "^8.21.3",

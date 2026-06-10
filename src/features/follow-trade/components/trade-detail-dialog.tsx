@@ -130,14 +130,18 @@ export function TradeDetailDialog({
       name: trade.name,
       signal: trade.signal,
       strength: trade.strengthAtEntry ?? 0,
+      grade: trade.grade,
       currentPrice: displayPrice,
       assetType: trade.assetType,
       candles,
       tradingPlan,
       isPosition: true,
+      closed: isClosed,
+      closeReason: isClosed ? trade.status.toUpperCase() : undefined,
       entryPrice: trade.entryPrice,
       pnlPct: pnl.pct,
       pnlR: pnl.r,
+      markers,
     });
   };
 

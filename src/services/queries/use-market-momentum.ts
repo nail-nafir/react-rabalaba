@@ -43,6 +43,7 @@ export function useMarketMomentum(): {
       bullish,
       bearish,
       bullishPercent: Math.round((bullish / total) * 100),
+      bearishPercent: Math.round((bearish / total) * 100),
     };
   }, [crypto, ctx]);
 

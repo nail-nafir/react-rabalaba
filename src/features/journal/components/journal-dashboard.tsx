@@ -31,16 +31,22 @@ import {
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
-const POS = "#34d399";
-const NEG = "#fb7185";
+const POS = "var(--color-emerald-400)";
+const NEG = "var(--color-rose-400)";
 const STATUS_COLOR: Record<FollowStatus, string> = {
-  open: "#a1a1aa",
-  tp1: "#34d399",
-  tp2: "#34d399",
-  tp3: "#34d399",
-  sl: "#fb7185",
-  manual: "#a1a1aa",
+  open: "var(--color-zinc-400)",
+  tp1: POS,
+  tp2: POS,
+  tp3: POS,
+  sl: NEG,
+  manual: "var(--color-zinc-400)",
 };
+
+// Hoisted so the charts' margin prop keeps a stable identity — recharts
+// restarts mount animations (with setState in effect cleanup) whenever
+// data/layout prop identity changes, which can cascade into "Maximum update
+// depth exceeded" under re-render bursts (see components/charts/sparkline.tsx).
+const CHART_MARGIN = { left: 4, right: 8, top: 8 };
 
 function StatCard({
   label,
@@ -99,6 +105,28 @@ export function JournalDashboard() {
     [history, openCount],
   );
 
+  // Identity-stable chart data (same constraint as CHART_MARGIN above); must
+  // sit before the early return to keep the hook order unconditional.
+  const statusData = useMemo(
+    () =>
+      stats.statusDistribution.map((s) => ({
+        key: s.status,
+        name: t(`journal.status_${s.status}`),
+        value: s.count,
+        fill: STATUS_COLOR[s.status],
+      })),
+    [stats, t],
+  );
+  const dirData = useMemo(
+    () =>
+      stats.longVsShort.map((d) => ({
+        name: t(`journal.${d.signal}`),
+        r: d.r,
+        fill: d.signal === "long" ? POS : NEG,
+      })),
+    [stats, t],
+  );
+
   if (stats.totalFollowed === 0) {
     return (
       <Card className="border border-border">
@@ -111,18 +139,6 @@ export function JournalDashboard() {
       </Card>
     );
   }
-
-  const statusData = stats.statusDistribution.map((s) => ({
-    key: s.status,
-    name: t(`journal.status_${s.status}`),
-    value: s.count,
-    fill: STATUS_COLOR[s.status],
-  }));
-  const dirData = stats.longVsShort.map((d) => ({
-    name: t(`journal.${d.signal}`),
-    r: d.r,
-    fill: d.signal === "long" ? POS : NEG,
-  }));
 
   const rFmt = (v: number | string | readonly (number | string)[] | undefined) => {
     const n = Number(Array.isArray(v) ? v[0] : v);
@@ -158,7 +174,7 @@ export function JournalDashboard() {
               >
                 <AreaChart
                   data={stats.equitySeries}
-                  margin={{ left: 4, right: 8, top: 8 }}
+                  margin={CHART_MARGIN}
                 >
                   <CartesianGrid vertical={false} />
                   <XAxis
@@ -225,7 +241,7 @@ export function JournalDashboard() {
                 >
                   <BarChart
                     data={stats.perAsset}
-                    margin={{ left: 4, right: 8, top: 8 }}
+                    margin={CHART_MARGIN}
                   >
                     <CartesianGrid vertical={false} />
                     <XAxis
@@ -260,14 +276,14 @@ export function JournalDashboard() {
               </ChartCard>
 
               {/* Long vs short */}
-              <ChartCard title={t("journal.chart_direction")}>
+              <ChartCard title="Long vs Short">
                 <ChartContainer
                   config={barConfig}
                   className="aspect-auto h-50 w-full"
                 >
                   <BarChart
                     data={dirData}
-                    margin={{ left: 4, right: 8, top: 8 }}
+                    margin={CHART_MARGIN}
                   >
                     <CartesianGrid vertical={false} />
                     <XAxis

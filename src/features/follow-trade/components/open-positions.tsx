@@ -52,19 +52,23 @@ export function OpenPositions() {
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("journal.open_positions")}
           </h2>
-          <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] font-bold uppercase rounded-md">
-            {openTrades.length} {t("journal.trades")}
-          </Badge>
+          <Button
+            variant="link"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            title={t("journal.refresh")}
+            aria-label={t("journal.refresh")}
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+          >
+            <RefreshCw
+              className={cn("h-4 w-4", isFetching && "animate-spin")}
+            />
+          </Button>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="text-xs"
-        >
-          <RefreshCw className={isFetching ? "animate-spin" : undefined} />
-          {t("journal.refresh")}
-        </Button>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest shrink-0">
+          {openTrades.length} {t("journal.trades")}
+        </div>
       </div>
 
       {openTrades.length === 0 ? (

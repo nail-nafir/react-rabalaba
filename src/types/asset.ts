@@ -43,6 +43,8 @@ export interface SmartMoney {
   positioningScore: number;
   /** Short interpretation, e.g. "New longs", "Crowded longs (squeeze risk)". */
   label: string;
+  /** OI×price quadrant directions behind the label, when applicable. */
+  flow?: { oi: "up" | "down"; price: "up" | "down" };
 }
 
 export interface UnifiedAsset {

@@ -309,7 +309,7 @@ export function FollowHistoryTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("journal.col_status")}
+            Status
           </span>
         ),
         cell: ({ row }) => {

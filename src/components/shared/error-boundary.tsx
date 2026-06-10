@@ -1,8 +1,7 @@
 import { Component, type ReactNode } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import i18next from 'i18next';
 
 interface Props {
@@ -35,14 +34,11 @@ export class ErrorBoundary extends Component<Props, State> {
       const t = i18next.t.bind(i18next);
 
       return (
-        <div className="flex min-h-[80vh] items-center justify-center px-4">
+            <div className="flex min-h-[80vh] items-center justify-center px-4">
           <div className="flex flex-col items-center text-center">
-            <DotLottieReact
-              src="/animations/empty.lottie"
-              className="mb-6 size-48"
-              loop
-              autoplay
-            />
+            <div className="mb-6 flex h-40 w-40 items-center justify-center rounded-4xl bg-muted/20 ring-1 ring-border/50 animate-empty-float">
+              <AlertTriangle className="h-24 w-24 text-muted-foreground/60 animate-empty-pulse" />
+            </div>
             <h1 className="text-3xl font-bold text-foreground mb-3">
               {t('error_boundary.title')}
             </h1>

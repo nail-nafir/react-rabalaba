@@ -7,7 +7,10 @@ import { toast } from "sonner";
 import { runBacktest } from "@/features/engine/backtest";
 import { calibrateConfidence } from "@/features/engine/calibration";
 import { applyMarketContext } from "@/features/engine/market-context";
-import { applySmartMoney } from "@/features/engine/smart-money";
+import {
+  applySmartMoney,
+  isNeutralPositioning,
+} from "@/features/engine/smart-money";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import { TradeSetupChart } from "./trade-setup-chart";
 import { FollowSignalButton } from "@/components/shared/follow-signal-button";
@@ -35,6 +38,8 @@ import { PercentageChange } from "@/components/shared/percentage-change";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StrengthBar } from "@/components/charts/strength-bar";
+import { CategoryScoreChart } from "@/components/charts/category-score-chart";
+import { WinRateRing } from "@/components/charts/win-rate-ring";
 import { Badge } from "@/components/ui/badge";
 import { RISK_COLORS, REGIME_COLORS } from "@/constants/signals";
 import { cn } from "@/lib/utils";
@@ -50,6 +55,8 @@ import {
   Share2,
   PauseCircle,
   RotateCw,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 export function AssetDetailDialog() {
@@ -139,6 +146,7 @@ export function AssetDetailDialog() {
       name: asset.name,
       signal: outlook.signal,
       strength: outlook.strength,
+      grade: outlook.tier,
       currentPrice,
       assetType: asset.assetType,
       candles,
@@ -212,7 +220,7 @@ export function AssetDetailDialog() {
                   {t("journal.current_price")}
                 </p>
                 <div className="flex items-end gap-3 min-w-0">
-                  <span className="text-xl sm:text-3xl font-bold text-mono-data break-words">
+                  <span className="text-xl sm:text-3xl font-bold text-mono-data wrap-break-word">
                     {formatPrice(currentPrice, asset?.assetType)}
                   </span>
                   <PercentageChange
@@ -354,62 +362,8 @@ export function AssetDetailDialog() {
 
                 {/* Per-category alignment — bars with signed score (-100..+100) */}
                 <Card className="border border-border bg-muted/50">
-                  <CardContent className="space-y-3">
-                    {(
-                      [
-                        ["cat_trend", outlook.categoryScores.trend],
-                        ["cat_momentum", outlook.categoryScores.momentum],
-                        ["cat_volatility", outlook.categoryScores.volatility],
-                        ["cat_volume", outlook.categoryScores.volume],
-                      ] as const
-                    ).map(([key, val]) => {
-                      const pct = Math.round(val * 100);
-                      const isPos = val > 0.05;
-                      const isNeg = val < -0.05;
-                      return (
-                        <div key={key} className="flex items-center gap-3">
-                          <span className="w-20 shrink-0 text-[11px] text-muted-foreground">
-                            {t(`dialog.${key}`)}
-                          </span>
-                          <div className="relative h-2 flex-1 rounded-full bg-muted-foreground/15">
-                            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
-                            <div
-                              className={cn(
-                                "absolute top-0 h-full rounded-full",
-                                isPos
-                                  ? "bg-emerald-400"
-                                  : isNeg
-                                    ? "bg-rose-400"
-                                    : "bg-zinc-500",
-                              )}
-                              style={
-                                val >= 0
-                                  ? {
-                                      left: "50%",
-                                      width: `${Math.abs(pct) / 2}%`,
-                                    }
-                                  : {
-                                      right: "50%",
-                                      width: `${Math.abs(pct) / 2}%`,
-                                    }
-                              }
-                            />
-                          </div>
-                          <span
-                            className={cn(
-                              "w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-mono-data",
-                              isPos
-                                ? "text-emerald-400"
-                                : isNeg
-                                  ? "text-rose-400"
-                                  : "text-muted-foreground",
-                            )}
-                          >
-                            {pct > 0 ? `+${pct}` : pct}%
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <CardContent>
+                    <CategoryScoreChart scores={outlook.categoryScores} />
                   </CardContent>
                 </Card>
 
@@ -422,74 +376,86 @@ export function AssetDetailDialog() {
                           label={`${backtest.trades} ${t("dialog.bt_trades").toLowerCase()}`}
                         />
                       </div>
-                      <div className="grid grid-cols-3 divide-x divide-border border-t border-border pt-3">
-                        <MetricRow
-                          label={t("dialog.bt_expectancy")}
-                          value={`${backtest.expectancy.toFixed(2)}R`}
-                          color={
-                            backtest.expectancy > 0
-                              ? "text-emerald-400"
-                              : backtest.expectancy < 0
-                                ? "text-rose-400"
-                                : undefined
-                          }
-                        />
-                        <MetricRow
-                          label={t("dialog.bt_profit_factor")}
-                          value={
-                            Number.isFinite(backtest.profitFactor)
-                              ? backtest.profitFactor.toFixed(2)
-                              : "∞"
-                          }
-                          color={
-                            backtest.profitFactor >= 1
-                              ? "text-emerald-400"
-                              : "text-rose-400"
-                          }
-                        />
-                        <MetricRow
-                          label={t("dialog.bt_max_dd")}
-                          value={`${backtest.maxDrawdownR.toFixed(2)}R`}
-                        />
-                      </div>
-                      {calibration && (
-                        <div className="border-t border-border pt-3 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              {t("dialog.calibrated_winrate")} (
-                              {t("dialog.tier")} {outlook.tier})
-                            </CardTitle>
+                      <div className="flex items-stretch gap-3">
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
                             <div
                               className={cn(
-                                "text-xs font-bold tabular-nums",
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                backtest.expectancy > 0
+                                  ? "text-emerald-400"
+                                  : backtest.expectancy < 0
+                                    ? "text-rose-400"
+                                    : "",
+                              )}
+                            >
+                              {backtest.expectancy.toFixed(2)}R
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              Expectancy (Avg R)
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                backtest.profitFactor >= 1
+                                  ? "text-emerald-400"
+                                  : "text-rose-400",
+                              )}
+                            >
+                              {Number.isFinite(backtest.profitFactor)
+                                ? backtest.profitFactor.toFixed(2)
+                                : "∞"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              Profit Factor
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div className="text-sm font-bold tabular-nums tracking-tight text-rose-400">
+                              -{backtest.maxDrawdownR.toFixed(2)}R
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              Max Drawdown (R)
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      {calibration && (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              {t("dialog.calibrated_winrate")} (Tier{" "}
+                              {outlook.tier})
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-bold uppercase tracking-wider text-[10px] rounded-md",
                                 calibration.winRate == null
-                                  ? "text-muted-foreground"
+                                  ? "text-muted-foreground border-muted-foreground/30"
                                   : calibration.winRate >= 0.5
-                                    ? "text-emerald-400"
-                                    : "text-rose-400",
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                    : "bg-rose-500/15 text-rose-400 border-rose-500/30",
                               )}
                             >
                               {calibration.winRate == null
                                 ? t("dialog.low_sample")
                                 : `${Math.round(calibration.winRate * 100)}%`}
-                            </div>
+                            </Badge>
                           </div>
-                          <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                          <div className="text-xs text-muted-foreground leading-relaxed">
                             {calibration.sufficient
-                              ? t("dialog.calibrated_desc", {
-                                  sample: calibration.sample,
-                                })
-                              : t("dialog.calibrated_low_desc", {
-                                  sample: calibration.sample,
-                                })}
+                              ? `Historical hit-rate of same-tier signals on this asset (${calibration.sample} trades). Not a guarantee.`
+                              : `Only ${calibration.sample} same-tier trades in history, too few to trust a win-rate yet.`}
                             {calibration.regimeWinRate != null &&
-                              ` ${t("dialog.regime_winrate", {
-                                regime: outlook.regime.replace("_", " "),
-                                rate: Math.round(
-                                  calibration.regimeWinRate * 100,
-                                ),
-                              })}`}
-                          </CardDescription>
+                              ` In ${outlook.regime.replace("_", " ")}: ${Math.round(calibration.regimeWinRate * 100)}%.`}
+                          </div>
                         </div>
                       )}
                     </CardContent>
@@ -507,26 +473,28 @@ export function AssetDetailDialog() {
                     <Card className="border border-border bg-muted/50">
                       <CardContent className="space-y-1">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.market_context")}
+                          Market Context
                         </CardTitle>
                         <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                          {t("dialog.market_context_desc", {
-                            risk:
-                              marketContext.riskState === "risk_on"
-                                ? "risk-on"
-                                : marketContext.riskState === "risk_off"
-                                  ? "risk-off"
-                                  : "neutral",
-                            score: marketContext.btcDirectionScore.toFixed(2),
-                            signal: outlook.signal.toUpperCase(),
-                            stance:
-                              (outlook.signal === "long" &&
-                                marketContext.riskState === "risk_off") ||
-                              (outlook.signal === "short" &&
-                                marketContext.riskState === "risk_on")
-                                ? "fighting"
-                                : "aligned with",
-                          })}
+                          BTC is{" "}
+                          {marketContext.riskState === "risk_on"
+                            ? "risk-on"
+                            : marketContext.riskState === "risk_off"
+                              ? "risk-off"
+                              : "neutral"}{" "}
+                          (score {marketContext.btcDirectionScore.toFixed(2)}),{" "}
+                          {marketContext.riskState === "risk_off"
+                            ? "smart money is stepping back"
+                            : "risk appetite is strong"}
+                          . Most alt coins are leveraged beta to BTC, so{" "}
+                          {outlook.signal.toUpperCase()} here is{" "}
+                          {(outlook.signal === "long" &&
+                            marketContext.riskState === "risk_off") ||
+                          (outlook.signal === "short" &&
+                            marketContext.riskState === "risk_on")
+                            ? "fighting the current"
+                            : "aligned with the market flow"}
+                          .
                         </CardDescription>
                       </CardContent>
                     </Card>
@@ -534,79 +502,106 @@ export function AssetDetailDialog() {
 
                 {/* Smart money: crypto derivatives positioning (Binance). */}
                 {smartMoney && outlook.signal !== "neutral" && (
-                  <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        {t("dialog.smart_money")}
-                      </CardTitle>
-                      <div
-                        className={cn(
-                          "text-xs font-bold text-right",
-                          smartMoney.positioningScore > 0
-                            ? "text-emerald-400"
-                            : smartMoney.positioningScore < 0
-                              ? "text-rose-400"
-                              : "text-muted-foreground",
-                        )}
-                      >
-                        {smartMoney.label}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <CardDescription className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.sm_funding")}
-                        </CardDescription>
-                        <div
-                          className={cn(
-                            "text-xs font-bold tabular-nums",
-                            smartMoney.fundingRate == null
-                              ? "text-muted-foreground"
-                              : smartMoney.fundingRate > 0
-                                ? "text-emerald-400"
-                                : smartMoney.fundingRate < 0
-                                  ? "text-rose-400"
-                                  : "",
-                          )}
-                        >
-                          {smartMoney.fundingRate != null
-                            ? `${(smartMoney.fundingRate * 100).toFixed(3)}%`
-                            : "—"}
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.smart_money")}
+                        </CardTitle>
+                        <div className="text-right">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                              isNeutralPositioning(smartMoney.label)
+                                ? "text-muted-foreground border-muted-foreground/30"
+                                : smartMoney.positioningScore > 0
+                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                  : "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                            )}
+                          >
+                            {smartMoney.label}
+                            {smartMoney.flow && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium normal-case text-muted-foreground">
+                                OI
+                                {smartMoney.flow.oi === "up" ? (
+                                  <ArrowUp className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDown className="h-3 w-3" />
+                                )}
+                                price
+                                {smartMoney.flow.price === "up" ? (
+                                  <ArrowUp className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDown className="h-3 w-3" />
+                                )}
+                              </span>
+                            )}
+                          </Badge>
                         </div>
                       </div>
-                      <div>
-                        <CardDescription className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.sm_oi_delta")}
-                        </CardDescription>
-                        <div
-                          className={cn(
-                            "text-xs font-bold tabular-nums",
-                            smartMoney.openInterestDelta == null
-                              ? "text-muted-foreground"
-                              : smartMoney.openInterestDelta > 0
-                                ? "text-emerald-400"
-                                : smartMoney.openInterestDelta < 0
-                                  ? "text-rose-400"
-                                  : "",
-                          )}
-                        >
-                          {smartMoney.openInterestDelta != null
-                            ? `${(smartMoney.openInterestDelta * 100).toFixed(1)}%`
-                            : "—"}
-                        </div>
+                      <div className="flex items-stretch gap-3">
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                smartMoney.fundingRate == null
+                                  ? "text-muted-foreground"
+                                  : smartMoney.fundingRate > 0
+                                    ? "text-emerald-400"
+                                    : smartMoney.fundingRate < 0
+                                      ? "text-rose-400"
+                                      : "",
+                              )}
+                            >
+                              {smartMoney.fundingRate != null
+                                ? `${(smartMoney.fundingRate * 100).toFixed(4)}%`
+                                : "—"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              Funding
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                smartMoney.openInterestDelta == null
+                                  ? "text-muted-foreground"
+                                  : smartMoney.openInterestDelta > 0
+                                    ? "text-emerald-400"
+                                    : smartMoney.openInterestDelta < 0
+                                      ? "text-rose-400"
+                                      : "",
+                              )}
+                            >
+                              {smartMoney.openInterestDelta != null
+                                ? `${smartMoney.openInterestDelta > 0 ? "+" : ""}${(smartMoney.openInterestDelta * 100).toFixed(1)}%`
+                                : "—"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              OI 24h
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                              {smartMoney.longShortRatio != null
+                                ? smartMoney.longShortRatio.toFixed(2)
+                                : "—"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              Long/Short
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
                       </div>
-                      <div>
-                        <CardDescription className="text-xs uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.sm_ls")}
-                        </CardDescription>
-                        <div className="text-xs font-bold tabular-nums">
-                          {smartMoney.longShortRatio != null
-                            ? smartMoney.longShortRatio.toFixed(2)
-                            : "—"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Smart money unavailable (e.g. Binance derivatives blocked by the network/ISP) — surface it instead of hiding silently. */}
@@ -847,7 +842,7 @@ export function AssetDetailDialog() {
                   />
                   <AnalysisItem
                     icon={Gauge}
-                    title={t("dialog.momentum")}
+                    title="Momentum"
                     text={outlook.analysis.momentum}
                   />
                   <AnalysisItem
@@ -866,72 +861,6 @@ export function AssetDetailDialog() {
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function WinRateRing({ value, label }: { value: number; label: string }) {
-  const { t } = useTranslation();
-  const r = 42;
-  const c = 2 * Math.PI * r;
-  const pct = Math.min(1, Math.max(0, value));
-  const positive = value >= 0.5;
-  return (
-    <div className="relative flex h-28 w-28 shrink-0 items-center justify-center">
-      <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90">
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          strokeWidth="9"
-          className="fill-none stroke-muted-foreground/15"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          strokeWidth="9"
-          strokeLinecap="round"
-          className={cn(
-            "fill-none",
-            positive ? "stroke-emerald-400" : "stroke-rose-400",
-          )}
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - pct)}
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center">
-        <span className="text-[9px] font-semibold tracking-wide text-muted-foreground">
-          {t("dialog.bt_success_rate")}
-        </span>
-        <span className="text-xl font-bold text-mono-data">
-          {Math.round(value * 100)}%
-        </span>
-        <span className="px-2 text-center text-[9px] leading-tight text-muted-foreground">
-          {label}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function MetricRow({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center px-1 text-center">
-      <span className={cn("text-sm font-bold text-mono-data", color)}>
-        {value}
-      </span>
-      <span className="mt-1 text-[10px] leading-tight tracking-wider text-muted-foreground">
-        {label}
-      </span>
-    </div>
   );
 }
 

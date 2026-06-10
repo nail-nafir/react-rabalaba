@@ -8,6 +8,7 @@ import {
   shareOrDownloadPng,
   SHARE_CARD_SIZE,
 } from "@/features/trading-plan/lib/share-card";
+import type { ChartMarker } from "@/features/trading-plan/lib/trade-setup-model";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 
@@ -16,14 +17,22 @@ interface ShareSetupOptions {
   name: string;
   signal: SignalDirection;
   strength: number;
+  /** Signal tier (A/B/C) shown as the grade badge. */
+  grade?: string;
   currentPrice: number;
   assetType: AssetType;
   candles: NormalizedYahooCandle[];
   tradingPlan: TradingPlan | null;
   isPosition?: boolean;
+  /** A closed position labels the right-hand price as the close price. */
+  closed?: boolean;
+  /** Why a closed position ended, as an uppercase fragment (e.g. "TP2", "SL"). */
+  closeReason?: string;
   entryPrice?: number;
   pnlPct?: number;
   pnlR?: number;
+  /** Entry/close annotations to plot on the share card (journal/position). */
+  markers?: ChartMarker[];
 }
 
 export function useShareSetup() {
@@ -36,14 +45,18 @@ export function useShareSetup() {
       name,
       signal,
       strength,
+      grade,
       currentPrice,
       assetType,
       candles,
       tradingPlan,
       isPosition = false,
+      closed = false,
+      closeReason,
       entryPrice,
       pnlPct,
       pnlR,
+      markers,
     } = options;
 
     if (!tradingPlan || !symbol) return;
@@ -59,14 +72,22 @@ export function useShareSetup() {
         symbol,
         name,
         strength,
+        grade,
         currentPrice,
         assetType,
         candles,
         isPosition,
+        closed,
+        closeReason,
         entryPrice,
         pnlPct,
         pnlR,
         locale: i18n.language,
+        markers,
+        markerLabels: {
+          entry: t("journal.entry_marker"),
+          close: t("journal.close_marker"),
+        },
       });
       const blob = await svgToPngBlob(
         svg,

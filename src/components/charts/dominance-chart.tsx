@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { PieChart, Pie, Cell } from "recharts";
 
 interface DominanceChartProps {
@@ -8,6 +9,19 @@ interface DominanceChartProps {
   height?: number;
 }
 
+const getColor = (val: number) => {
+  if (val <= 20) return "var(--color-rose-400)";
+  if (val <= 40) return "var(--color-orange-400)";
+  if (val <= 60) return "var(--color-amber-400)";
+  if (val <= 80) return "var(--color-lime-400)";
+  return "var(--color-emerald-400)";
+};
+
+// Hoisted so the background ring keeps a stable data identity — recharts
+// re-runs its mount animation (with setState in effect cleanup) whenever a
+// pie's `data` reference changes.
+const BACKGROUND_RING = [{ value: 100 }];
+
 export function DominanceChart({
   btc,
   eth,
@@ -15,19 +29,15 @@ export function DominanceChart({
   width = 80,
   height = 80,
 }: DominanceChartProps) {
-  const getHex = (val: number) => {
-    if (val <= 20) return "#f43f5e";
-    if (val <= 40) return "#f97316";
-    if (val <= 60) return "#f59e0b";
-    if (val <= 80) return "#84cc16";
-    return "#10b981";
-  };
-
-  const data = [
-    { name: "BTC", value: btc, color: getHex(btc) },
-    { name: "ETH", value: eth, color: getHex(eth) },
-    { name: "Others", value: others, color: "var(--muted-foreground)" },
-  ].filter((d) => d.value > 0);
+  const data = useMemo(
+    () =>
+      [
+        { name: "BTC", value: btc, color: getColor(btc) },
+        { name: "ETH", value: eth, color: getColor(eth) },
+        { name: "Others", value: others, color: "var(--color-zinc-400)" },
+      ].filter((d) => d.value > 0),
+    [btc, eth, others],
+  );
 
   const innerRadius = Math.round(width * 0.28);
   const outerRadius = Math.round(width * 0.42);
@@ -35,14 +45,14 @@ export function DominanceChart({
   return (
     <PieChart width={width} height={height}>
       <Pie
-        data={[{ value: 100 }]}
+        data={BACKGROUND_RING}
         cx="50%"
         cy="50%"
         innerRadius={innerRadius}
         outerRadius={outerRadius}
         dataKey="value"
         strokeWidth={0}
-        fill="var(--muted-foreground)"
+        fill="var(--color-zinc-400)"
         opacity={0.3}
       />
       <Pie

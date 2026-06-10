@@ -70,4 +70,6 @@ export interface Breadth {
   bearish: number;
   /** Percent of the universe that is bullish, 0-100. */
   bullishPercent: number;
+  /** Percent of the universe that is bearish, 0-100. */
+  bearishPercent: number;
 }

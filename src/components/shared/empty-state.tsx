@@ -1,5 +1,5 @@
+import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 interface EmptyStateProps {
   title?: string;
@@ -7,7 +7,6 @@ interface EmptyStateProps {
   icon?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
-  lottie?: string;
 }
 
 export function EmptyState({
@@ -16,7 +15,6 @@ export function EmptyState({
   icon,
   action,
   className,
-  lottie = "/animations/empty.lottie",
 }: EmptyStateProps) {
   return (
     <div
@@ -25,18 +23,11 @@ export function EmptyState({
         className,
       )}
     >
-      {icon ? (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted/50">
-          {icon}
-        </div>
-      ) : (
-        <DotLottieReact
-          src={lottie}
-          className="mb-4 size-28"
-          loop
-          autoplay
-        />
-      )}
+      <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-3xl bg-muted/20 ring-1 ring-border/50 animate-empty-float">
+        {icon ?? (
+          <Inbox className="h-14 w-14 text-muted-foreground/60 animate-empty-pulse" />
+        )}
+      </div>
       <h3 className="text-sm font-medium text-foreground">{title}</h3>
       <p className="mt-2 text-sm text-muted-foreground max-w-sm">
         {description}

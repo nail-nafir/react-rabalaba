@@ -10,18 +10,19 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Loader2,
+  RefreshCw,
   ChevronLeft,
   ChevronRight,
   Search,
   Info,
   Star,
   Plus,
-  Sparkles,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,15 +34,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SkeletonTableRow } from "@/components/shared/skeleton-card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { EmptyState } from "@/components/shared/empty-state";
-import { SkeletonTableRow } from "@/components/shared/skeleton-card";
 import { StrengthBar } from "@/components/charts/strength-bar";
-import { AreaChart, Area, YAxis } from "recharts";
+import { Sparkline } from "@/components/charts/sparkline";
 import {
   TIER_COLORS,
   SIGNAL_COLORS,
@@ -70,19 +71,13 @@ import {
   ASSET_TYPE_OPTIONS,
 } from "@/constants/assets";
 import { Button } from "@/components/ui/button";
-import { PremiumAccessDialog } from "./premium-access-dialog";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
 import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
 import { AddTickerDialog } from "./add-ticker-dialog";
-import { FilterGroup } from "@/components/shared/filter-group";
 
-type PendingAction =
-  | { type: "ANALYZE"; symbol: string }
-  | { type: "FAVORITE" }
-  | { type: "ADD_TICKER" }
-  | null;
+import { FilterGroup } from "@/components/shared/filter-group";
 
 function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
   const isSorted = column.getIsSorted();
@@ -99,7 +94,7 @@ export function AssetSignalTable() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "strength", desc: true },
   ]);
-  const { openDetailDialog } = useUIStore();
+  const { openDetailDialog, openLicenseDialog } = useUIStore();
   const {
     assetType,
     setAssetType,
@@ -111,40 +106,45 @@ export function AssetSignalTable() {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const { hasAccess } = usePremiumAccess();
 
-  // Access Pending Action
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-
   // Favorite integration
   const { favoriteSymbols, removeSymbol } = useFavoriteStore();
   const [showFavorites, setShowFavorites] = useState(false);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  // Access Dialog States
-  const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
-
-  const { data: cryptoAssets, isFetching: cryptoFetching } = useMarketData(
+  const { data: cryptoAssets, isLoading: cryptoLoading } = useMarketData(
     hasAccess ? TOP_CRYPTO_TICKERS : DEFAULT_CRYPTO_TICKERS,
   );
-  const { data: usStocks, isFetching: usFetching } = useMarketData(
+  const { data: usStocks, isLoading: usLoading } = useMarketData(
     hasAccess ? TOP_US_STOCK_TICKERS : DEFAULT_US_STOCK_TICKERS,
   );
-  const { data: idStocks, isFetching: idFetching } = useMarketData(
+  const { data: idStocks, isLoading: idLoading } = useMarketData(
     hasAccess ? TOP_ID_STOCK_TICKERS : DEFAULT_ID_STOCK_TICKERS,
   );
-  const { data: commodities, isFetching: comFetching } = useMarketData(
+  const { data: commodities, isLoading: comLoading } = useMarketData(
     DEFAULT_COMMODITY_TICKERS,
   );
-  const { data: forexAssets, isFetching: forexFetching } = useMarketData(
+  const { data: forexAssets, isLoading: forexLoading } = useMarketData(
     DEFAULT_FOREX_TICKERS,
   );
 
   // Fetch favorite data
-  const { data: favoriteAssets, isFetching: favoriteFetching } =
-    useMarketData(favoriteSymbols);
+  const {
+    data: favoriteAssets,
+    isFetching: favoriteFetching,
+    isLoading: favoriteLoading,
+  } = useMarketData(favoriteSymbols);
 
   // Top-down market context (BTC regime + sentiment), shared & cached.
-  const { data: marketContext } = useMarketContext();
+  const { data: marketContext, isLoading: marketContextLoading } =
+    useMarketContext();
+
+  // Refresh the whole screener: invalidate every asset-data query at once
+  // (all asset types + favorites share the ["asset-data", ...] key).
+  const queryClient = useQueryClient();
+  const refreshingCount = useIsFetching({ queryKey: ["asset-data"] });
+  const handleRefresh = () =>
+    queryClient.invalidateQueries({ queryKey: ["asset-data"] });
 
   const translatedAssetOptions = ASSET_TYPE_OPTIONS.map((opt) => ({
     ...opt,
@@ -155,14 +155,6 @@ export function AssetSignalTable() {
     ...opt,
     label: t(`common.signals.${opt.value}`),
   }));
-
-  const isFetching =
-    cryptoFetching ||
-    usFetching ||
-    idFetching ||
-    comFetching ||
-    forexFetching ||
-    favoriteFetching;
 
   // Monitor for symbols in favorites that failed to fetch
   useEffect(() => {
@@ -214,7 +206,8 @@ export function AssetSignalTable() {
       ),
     [allAssets],
   );
-  const { data: smartMoney } = useSmartMoney(cryptoForSmartMoney);
+  const { data: smartMoney, isPending: smartMoneyPending } =
+    useSmartMoney(cryptoForSmartMoney);
 
   // Enrichment pass over the full universe (where cross-asset data exists):
   // 1) market context (de-rate crypto setups that fight BTC),
@@ -235,7 +228,23 @@ export function AssetSignalTable() {
     return enriched;
   }, [allAssets, marketContext, smartMoney]);
 
-  const isLoading = isFetching && allAssets.length === 0;
+  // Tahan SATU skeleton sampai SEMUA sumber screener selesai initial load:
+  // base assets (semua kategori) + market context BTC + smart-money crypto —
+  // supaya table tampil sekaligus & sudah ter-sort, bukan nongol per-kategori
+  // lalu re-sort. Pakai flag first-load (isLoading/isPending), bukan isFetching,
+  // biar refetch background 60s update nilai di tempat tanpa nge-flash skeleton.
+  const baseInitialLoading =
+    cryptoLoading ||
+    usLoading ||
+    idLoading ||
+    comLoading ||
+    forexLoading ||
+    favoriteLoading;
+  // Smart money baru mount setelah ada crypto target; gate hanya saat ada target,
+  // kalau tidak ia kebaca "not pending" sebelum sempat jalan (premature reveal).
+  const smartMoneyGating = cryptoForSmartMoney.length > 0 && smartMoneyPending;
+  const isLoading =
+    baseInitialLoading || marketContextLoading || smartMoneyGating;
 
   const displayFavCount = useMemo(() => {
     if (assetType === "all") return favoriteSymbols.length;
@@ -291,11 +300,9 @@ export function AssetSignalTable() {
                 if (hasAccess) {
                   openDetailDialog(row.original.symbol);
                 } else {
-                  setPendingAction({
-                    type: "ANALYZE",
-                    symbol: row.original.symbol,
-                  });
-                  setIsAccessDialogOpen(true);
+                  openLicenseDialog(() =>
+                    openDetailDialog(row.original.symbol),
+                  );
                 }
               }}
               title={t("common.analyze")}
@@ -493,75 +500,18 @@ export function AssetSignalTable() {
       {
         id: "sparkline",
         header: "",
-        cell: ({ row }) => {
-          const sparklineData = row.original.quoteIndicators?.close
-            ?.filter((p): p is number => p !== null)
-            .slice(-30);
-
-          const sparkColor =
-            sparklineData &&
-            sparklineData.length >= 2 &&
-            sparklineData[sparklineData.length - 1] >= sparklineData[0]
-              ? "#10b981"
-              : "#f43f5e";
-
-          return sparklineData && sparklineData.length > 1
-            ? (() => {
-                const sparkMin = Math.min(...sparklineData);
-                const sparkMax = Math.max(...sparklineData);
-                const sparkPad = sparkMax - sparkMin || 1;
-                const id = `sg-tbl-${row.id}`;
-                return (
-                  <div className="flex justify-end pr-4">
-                    <AreaChart
-                      width={60}
-                      height={20}
-                      data={sparklineData.map((v) => ({ v }))}
-                      margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                          <stop
-                            offset="0%"
-                            stopColor={sparkColor}
-                            stopOpacity={0.45}
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor={sparkColor}
-                            stopOpacity={0.05}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <YAxis
-                        hide
-                        domain={[
-                          sparkMin - sparkPad * 0.1,
-                          sparkMax + sparkPad * 0.1,
-                        ]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="v"
-                        stroke={sparkColor}
-                        strokeWidth={1}
-                        fill={`url(#${id})`}
-                        dot={false}
-                        activeDot={false}
-                        isAnimationActive
-                        animationDuration={900}
-                        animationBegin={100}
-                      />
-                    </AreaChart>
-                  </div>
-                );
-              })()
-            : null;
-        },
+        cell: ({ row }) => (
+          <Sparkline
+            className="flex justify-end pr-4"
+            values={row.original.quoteIndicators?.close}
+            width={60}
+            height={20}
+          />
+        ),
         enableSorting: false,
       },
     ],
-    [hasAccess, openDetailDialog, t],
+    [hasAccess, openDetailDialog, openLicenseDialog, t],
   );
 
   const table = useReactTable({
@@ -583,15 +533,19 @@ export function AssetSignalTable() {
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("market.screener")}
           </h2>
-          {hasAccess && (
-            <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] font-bold animate-shimmer rounded-md">
-              <Sparkles className="h-2.5 w-2.5 fill-primary/50" />
-              PREMIUM
-            </Badge>
-          )}
-          {isLoading && (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary opacity-50" />
-          )}
+          <Button
+            variant="link"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={refreshingCount > 0}
+            title={t("journal.refresh")}
+            aria-label={t("journal.refresh")}
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+          >
+            <RefreshCw
+              className={cn("h-4 w-4", refreshingCount > 0 && "animate-spin")}
+            />
+          </Button>
         </div>
       </div>
 
@@ -666,8 +620,7 @@ export function AssetSignalTable() {
                 if (hasAccess) {
                   setShowFavorites(true);
                 } else {
-                  setPendingAction({ type: "FAVORITE" });
-                  setIsAccessDialogOpen(true);
+                  openLicenseDialog(() => setShowFavorites(true));
                 }
               }}
               className={cn(
@@ -710,8 +663,7 @@ export function AssetSignalTable() {
                 if (hasAccess) {
                   setIsAddDialogOpen(true);
                 } else {
-                  setPendingAction({ type: "ADD_TICKER" });
-                  setIsAccessDialogOpen(true);
+                  openLicenseDialog(() => setIsAddDialogOpen(true));
                 }
               }}
               className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
@@ -729,7 +681,10 @@ export function AssetSignalTable() {
         <Table>
           <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              <TableRow
+                key={headerGroup.id}
+                className="hover:bg-transparent"
+              >
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
@@ -744,9 +699,9 @@ export function AssetSignalTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {isLoading && allAssets.length === 0 ? (
-              Array.from({ length: 10 }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
                   <SkeletonTableRow />
                 </TableRow>
               ))
@@ -796,40 +751,42 @@ export function AssetSignalTable() {
         </Table>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-          {t("table.page")}{" "}
-          <span className="font-medium text-foreground">
-            {table.getPageCount() > 0
-              ? table.getState().pagination.pageIndex + 1
-              : 0}
-          </span>{" "}
-          {t("table.of")}{" "}
-          <span className="font-medium text-foreground">
-            {table.getPageCount() || 0}
-          </span>
+      {!isLoading && (
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">
+            {t("table.page")}{" "}
+            <span className="font-medium text-foreground">
+              {table.getPageCount() > 0
+                ? table.getState().pagination.pageIndex + 1
+                : 0}
+            </span>{" "}
+            {t("table.of")}{" "}
+            <span className="font-medium text-foreground">
+              {table.getPageCount() || 0}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="h-8 w-8 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="h-8 w-8 cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="h-8 w-8 cursor-pointer"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="h-8 w-8 cursor-pointer"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Detail dialog */}
       <AssetDetailDialog />
@@ -838,28 +795,6 @@ export function AssetSignalTable() {
       <AddTickerDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
-      />
-
-      {/* Access Premium Dialog Popup */}
-      <PremiumAccessDialog
-        open={isAccessDialogOpen}
-        onOpenChange={setIsAccessDialogOpen}
-        onSuccess={() => {
-          if (!pendingAction) return;
-
-          switch (pendingAction.type) {
-            case "ANALYZE":
-              openDetailDialog(pendingAction.symbol);
-              break;
-            case "FAVORITE":
-              setShowFavorites(true);
-              break;
-            case "ADD_TICKER":
-              setIsAddDialogOpen(true);
-              break;
-          }
-          setPendingAction(null);
-        }}
       />
     </>
   );

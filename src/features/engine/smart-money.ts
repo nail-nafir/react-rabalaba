@@ -2,6 +2,17 @@ import type { SmartMoney } from "@/types/asset";
 import type { Outlook } from "./signals";
 import { TIER_THRESHOLDS, SMART_MONEY } from "@/constants/signals";
 
+/** Labels that mean "no directional lean" — used to keep UI color in sync. */
+export const NEUTRAL_POSITIONING_LABEL = "Neutral positioning";
+export const NO_POSITIONING_DATA_LABEL = "No positioning data";
+
+/** True when positioning has no directional read (color should be muted). */
+export function isNeutralPositioning(label: string): boolean {
+  return (
+    label === NEUTRAL_POSITIONING_LABEL || label === NO_POSITIONING_DATA_LABEL
+  );
+}
+
 /**
  * Crypto "smart money" = derivatives positioning, not pivots-with-a-fancy-name.
  *
@@ -35,7 +46,8 @@ export function derivePositioning(input: PositioningInput): SmartMoney {
   } = input;
 
   let score = 0;
-  let label = "Neutral positioning";
+  let label: string = NEUTRAL_POSITIONING_LABEL;
+  let flow: SmartMoney["flow"];
   // Tracks whether ANY source actually contributed. If nothing did, the read is
   // "no data" rather than a confident "neutral" — the label reflects that.
   let hasSignal = false;
@@ -49,16 +61,20 @@ export function derivePositioning(input: PositioningInput): SmartMoney {
     const priceDown = priceChangePercent < 0;
     if (oiUp && priceUp) {
       score += 0.4;
-      label = "New longs (OI↑ price↑)";
+      label = "New longs";
+      flow = { oi: "up", price: "up" };
     } else if (oiUp && priceDown) {
       score -= 0.4;
-      label = "New shorts (OI↑ price↓)";
+      label = "New shorts";
+      flow = { oi: "up", price: "down" };
     } else if (oiDown && priceUp) {
       score -= 0.2;
-      label = "Short covering (OI↓ price↑)";
+      label = "Short covering";
+      flow = { oi: "down", price: "up" };
     } else if (oiDown && priceDown) {
       score += 0.2;
-      label = "Long capitulation (OI↓ price↓)";
+      label = "Long capitulation";
+      flow = { oi: "down", price: "down" };
     }
   }
 
@@ -67,10 +83,12 @@ export function derivePositioning(input: PositioningInput): SmartMoney {
     hasSignal = true;
     if (fundingRate >= SMART_MONEY.FUNDING_EXTREME) {
       score -= 0.4;
-      label = "Crowded longs — squeeze-down risk";
+      label = "Crowded longs, squeeze down risk";
+      flow = undefined;
     } else if (fundingRate <= -SMART_MONEY.FUNDING_EXTREME) {
       score += 0.4;
-      label = "Crowded shorts — squeeze-up potential";
+      label = "Crowded shorts, squeeze up potential";
+      flow = undefined;
     }
   }
 
@@ -81,7 +99,7 @@ export function derivePositioning(input: PositioningInput): SmartMoney {
     else if (longShortRatio <= 1 / SMART_MONEY.LS_EXTREME) score += 0.2;
   }
 
-  if (!hasSignal) label = "No positioning data";
+  if (!hasSignal) label = NO_POSITIONING_DATA_LABEL;
 
   return {
     openInterest,
@@ -90,6 +108,7 @@ export function derivePositioning(input: PositioningInput): SmartMoney {
     longShortRatio,
     positioningScore: clampUnit(score),
     label,
+    flow,
   };
 }
 
@@ -125,11 +144,14 @@ export function applySmartMoney(outlook: Outlook, sm: SmartMoney): Outlook {
     Math.sign(sm.positioningScore) === dir
       ? Math.abs(sm.positioningScore)
       : -Math.abs(sm.positioningScore);
-  if (agreement === 0) return { ...outlook, /* unchanged conviction */ };
+  if (agreement === 0) return { ...outlook /* unchanged conviction */ };
 
   const factor = 1 + agreement * SMART_MONEY.MAX_CONVICTION_ADJ;
   const directionScore = clampUnit(outlook.directionScore * factor);
-  const strength = Math.max(0, Math.min(100, Math.round(outlook.strength * factor)));
+  const strength = Math.max(
+    0,
+    Math.min(100, Math.round(outlook.strength * factor)),
+  );
 
   const note =
     agreement > 0

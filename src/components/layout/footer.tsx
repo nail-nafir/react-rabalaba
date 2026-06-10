@@ -108,7 +108,7 @@ export function Footer() {
         {/* Platform Column */}
         <div className="space-y-4 text-left">
           <h4 className="text-xs font-bold uppercase tracking-widest text-foreground">
-            {t("footer.platform")}
+            Platform
           </h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>

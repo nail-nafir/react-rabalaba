@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { FearGreedBar } from "@/components/charts/fear-greed-bar";
 import { DominanceChart } from "@/components/charts/dominance-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { AreaChart, Area, XAxis, YAxis } from "recharts";
+import { Sparkline } from "@/components/charts/sparkline";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import type { TrendDirection } from "@/types/market";
 import { cn } from "@/lib/utils";
@@ -92,7 +92,10 @@ export function MarketSummaryRow() {
                     {marketContext && (
                       <TrendIndicator
                         trend={marketContext.btcTrend}
-                        meta={momentum?.bullishPercent?.toString()}
+                        meta={(marketContext.btcTrend === "bearish"
+                          ? momentum?.bearishPercent
+                          : momentum?.bullishPercent
+                        )?.toString()}
                         showBar={false}
                       />
                     )}
@@ -208,18 +211,6 @@ export function MarketSummaryRow() {
                           : idx.price.toFixed(2)
                         : String(idx.price);
 
-                    const sparklineData = idx.quoteIndicators?.close
-                      ?.filter((p): p is number => p !== null)
-                      .slice(-30);
-
-                    const sparklineColor =
-                      sparklineData &&
-                      sparklineData.length >= 2 &&
-                      sparklineData[sparklineData.length - 1] >=
-                        sparklineData[0]
-                        ? "#10b981"
-                        : "#f43f5e";
-
                     return (
                       <Card
                         key={idx.symbol}
@@ -233,68 +224,16 @@ export function MarketSummaryRow() {
                         </CardHeader>
 
                         <CardContent className="flex-1 flex flex-col">
-                          {sparklineData && sparklineData.length > 1 && (
-                            <div className="w-full h-full">
-                              <AreaChart
-                                width={170}
-                                height={80}
-                                data={sparklineData.map((v) => ({ v }))}
-                                margin={{
-                                  top: 2,
-                                  right: 2,
-                                  bottom: 2,
-                                  left: 2,
-                                }}
-                              >
-                                <XAxis hide />
-                                <YAxis
-                                  hide
-                                  domain={[
-                                    Math.min(...sparklineData) -
-                                      (Math.max(...sparklineData) -
-                                        Math.min(...sparklineData)) *
-                                        0.1,
-                                    Math.max(...sparklineData) +
-                                      (Math.max(...sparklineData) -
-                                        Math.min(...sparklineData)) *
-                                        0.1,
-                                  ]}
-                                />
-                                <defs>
-                                  <linearGradient
-                                    id={`sg-${idx.symbol}`}
-                                    x1="0"
-                                    y1="0"
-                                    x2="0"
-                                    y2="1"
-                                  >
-                                    <stop
-                                      offset="0%"
-                                      stopColor={sparklineColor}
-                                      stopOpacity={0.45}
-                                    />
-                                    <stop
-                                      offset="100%"
-                                      stopColor={sparklineColor}
-                                      stopOpacity={0.05}
-                                    />
-                                  </linearGradient>
-                                </defs>
-                                <Area
-                                  type="monotone"
-                                  dataKey="v"
-                                  stroke={sparklineColor}
-                                  strokeWidth={1.5}
-                                  fill={`url(#sg-${idx.symbol})`}
-                                  dot={false}
-                                  activeDot={false}
-                                  isAnimationActive
-                                  animationDuration={1000}
-                                  animationBegin={200}
-                                />
-                              </AreaChart>
-                            </div>
-                          )}
+                          <Sparkline
+                            className="w-full h-full"
+                            values={idx.quoteIndicators?.close}
+                            width={170}
+                            height={80}
+                            strokeWidth={1.5}
+                            margin={2}
+                            animationDuration={1000}
+                            animationBegin={200}
+                          />
                         </CardContent>
 
                         <CardFooter className="flex-col items-start justify-center">

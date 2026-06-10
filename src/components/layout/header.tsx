@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Radio, BarChart3, Calendar, CreditCard } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
+import { LicenseBadge } from "./license-badge";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Button, buttonVariants } from "../ui/button";
@@ -73,6 +74,7 @@ export function Header() {
         {/* Right: Actions */}
         <div className="flex flex-1 items-center justify-end gap-3">
           <div className="flex items-center gap-2">
+            <LicenseBadge />
             <LanguageSwitcher />
             <ThemeToggle />
           </div>

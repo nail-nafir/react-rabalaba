@@ -6,6 +6,9 @@ import {
   encodeTrialStamp,
   decodeTrialStamp,
   isTrialActive,
+  trialExpiresAt,
+  trialDaysLeft,
+  parseTrialDuration,
 } from "@/lib/premium-trial";
 
 const ACCESS_KEY = import.meta.env.VITE_ACCESS_KEY;
@@ -14,7 +17,21 @@ const TRIAL_CODE = import.meta.env.VITE_TRIAL_CODE;
 const TRIAL_STORE_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial` : null;
 const TRIAL_NOTIFIED_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial_notified` : null;
 
+// Trial length comes entirely from env; an unset/invalid value disables trials.
+const TRIAL_DURATION_MS = parseTrialDuration(
+  import.meta.env.VITE_TRIAL_DURATION,
+);
+const TRIAL_ENABLED = !!(TRIAL_CODE && TRIAL_STORE_KEY && TRIAL_DURATION_MS);
+
 export type AccessResult = "granted" | "trial" | "expired" | "invalid";
+
+export type LicenseTier = "free" | "trial" | "premium";
+
+export interface LicenseStatus {
+  tier: LicenseTier;
+  hasAccess: boolean;
+  expiresAt: number | null;
+}
 
 const readPermanent = (): boolean => {
   if (!ACCESS_KEY || !ACCESS_CODE) return false;
@@ -23,52 +40,72 @@ const readPermanent = (): boolean => {
 };
 
 const readTrial = (): boolean => {
-  if (!TRIAL_STORE_KEY) return false;
-  return isTrialActive(decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY)));
+  if (!TRIAL_ENABLED) return false;
+  return isTrialActive(
+    decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY!)),
+    Date.now(),
+    TRIAL_DURATION_MS!,
+  );
 };
 
-const computeAccess = (): boolean => {
+// Permanent wins over trial so upgrading mid-trial resolves to premium.
+const computeStatus = (): LicenseStatus => {
   try {
-    return readPermanent() || readTrial();
+    if (readPermanent()) {
+      return { tier: "premium", hasAccess: true, expiresAt: null };
+    }
+    const stamp = TRIAL_ENABLED
+      ? decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY!))
+      : null;
+    if (stamp != null && isTrialActive(stamp, Date.now(), TRIAL_DURATION_MS!)) {
+      return {
+        tier: "trial",
+        hasAccess: true,
+        expiresAt: trialExpiresAt(stamp, TRIAL_DURATION_MS!),
+      };
+    }
   } catch {
-    return false;
+    // Corrupted storage falls through to free.
   }
+  return { tier: "free", hasAccess: false, expiresAt: null };
 };
+
+const statusEquals = (a: LicenseStatus, b: LicenseStatus): boolean =>
+  a.tier === b.tier &&
+  a.hasAccess === b.hasAccess &&
+  a.expiresAt === b.expiresAt;
 
 interface PremiumAccessState {
-  hasAccess: boolean;
-  setHasAccess: (access: boolean) => void;
+  status: LicenseStatus;
+  setStatus: (status: LicenseStatus) => void;
 }
 
 const usePremiumStore = create<PremiumAccessState>((set) => ({
-  hasAccess: computeAccess(),
-  setHasAccess: (hasAccess) => set({ hasAccess }),
+  status: computeStatus(),
+  // Skip the set when nothing changed; focus events fire constantly and a
+  // fresh object would re-render every subscriber.
+  setStatus: (status) =>
+    set((state) => (statusEquals(state.status, status) ? state : { status })),
 }));
 
 export function usePremiumAccess() {
   const { t } = useTranslation();
-  const hasAccess = usePremiumStore((state) => state.hasAccess);
-  const setHasAccess = usePremiumStore((state) => state.setHasAccess);
+  const status = usePremiumStore((state) => state.status);
+  const setStatus = usePremiumStore((state) => state.setStatus);
+  const expiresAt = status.expiresAt;
 
   useEffect(() => {
-    if (!ACCESS_KEY || !ACCESS_CODE) {
-      toast.error(t("terminal.access_config_missing"), {
-        id: "premium-access-missing",
-        duration: 5000,
-      });
-    }
-
     const validateAccess = () => {
-      setHasAccess(computeAccess());
+      setStatus(computeStatus());
 
-      if (TRIAL_STORE_KEY && TRIAL_NOTIFIED_KEY) {
+      if (TRIAL_ENABLED && TRIAL_NOTIFIED_KEY) {
         const trialStamp = decodeTrialStamp(
-          localStorage.getItem(TRIAL_STORE_KEY),
+          localStorage.getItem(TRIAL_STORE_KEY!),
         );
         const notifiedStamp = localStorage.getItem(TRIAL_NOTIFIED_KEY);
         if (
           trialStamp != null &&
-          !isTrialActive(trialStamp) &&
+          !isTrialActive(trialStamp, Date.now(), TRIAL_DURATION_MS!) &&
           notifiedStamp !== String(trialStamp)
         ) {
           toast.info(t("terminal.access_trial_expired"), {
@@ -83,19 +120,43 @@ export function usePremiumAccess() {
     window.addEventListener("storage", validateAccess);
     window.addEventListener("focus", validateAccess);
 
-    validateAccess();
+    // Flip an active trial to free the moment it runs out, even while the
+    // tab stays open; the grace keeps isTrialActive strictly false on fire.
+    let expiryTimer: number | undefined;
+    if (expiresAt != null) {
+      expiryTimer = window.setTimeout(
+        validateAccess,
+        Math.max(0, expiresAt - Date.now()) + 250,
+      );
+    }
+
+    setStatus(computeStatus());
+
+    // The Toaster mounts after this effect in the first commit, so toasts
+    // fired here would be dropped; defer them one tick past the commit.
+    const mountTimer = window.setTimeout(() => {
+      if (!ACCESS_KEY || !ACCESS_CODE) {
+        toast.error(t("terminal.access_config_missing"), {
+          id: "premium-access-missing",
+          duration: 5000,
+        });
+      }
+      validateAccess();
+    }, 0);
 
     return () => {
       window.removeEventListener("storage", validateAccess);
       window.removeEventListener("focus", validateAccess);
+      if (expiryTimer != null) window.clearTimeout(expiryTimer);
+      window.clearTimeout(mountTimer);
     };
-  }, [t, setHasAccess]);
+  }, [t, setStatus, expiresAt]);
 
   const checkAccess = useCallback(() => {
-    const valid = computeAccess();
-    setHasAccess(valid);
-    return valid;
-  }, [setHasAccess]);
+    const next = computeStatus();
+    setStatus(next);
+    return next.hasAccess;
+  }, [setStatus]);
 
   const grantAccess = useCallback(
     (code: string): AccessResult => {
@@ -105,25 +166,28 @@ export function usePremiumAccess() {
       }
       if (code === ACCESS_CODE) {
         localStorage.setItem(ACCESS_KEY, btoa(ACCESS_CODE));
-        setHasAccess(true);
+        setStatus(computeStatus());
         return "granted";
       }
-      if (TRIAL_CODE && code === TRIAL_CODE && TRIAL_STORE_KEY) {
-        // First redeem starts the 3-day clock; never reset an existing stamp.
-        if (decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY)) == null) {
-          localStorage.setItem(TRIAL_STORE_KEY, encodeTrialStamp(Date.now()));
+      if (TRIAL_ENABLED && code === TRIAL_CODE) {
+        // First redeem starts the env-configured clock; never reset a stamp.
+        if (decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY!)) == null) {
+          localStorage.setItem(TRIAL_STORE_KEY!, encodeTrialStamp(Date.now()));
         }
         const ok = readTrial();
-        setHasAccess(ok || readPermanent());
+        setStatus(computeStatus());
         return ok ? "trial" : "expired";
       }
       return "invalid";
     },
-    [t, setHasAccess],
+    [t, setStatus],
   );
 
   return {
-    hasAccess,
+    hasAccess: status.hasAccess,
+    tier: status.tier,
+    expiresAt,
+    daysLeft: expiresAt != null ? trialDaysLeft(expiresAt) : null,
     checkAccess,
     grantAccess,
     accessCode: ACCESS_CODE || "",

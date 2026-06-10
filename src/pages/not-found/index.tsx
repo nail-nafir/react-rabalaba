@@ -1,9 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { Home } from "lucide-react";
+import { Home, Binoculars } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 export default function NotFoundPage() {
   const { t } = useTranslation();
@@ -11,12 +10,9 @@ export default function NotFoundPage() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="flex flex-col items-center text-center">
-        <DotLottieReact
-          src="/animations/empty.lottie"
-          className="mb-6 size-48"
-          loop
-          autoplay
-        />
+        <div className="mb-6 flex h-40 w-40 items-center justify-center rounded-4xl bg-muted/20 ring-1 ring-border/50 animate-empty-float">
+          <Binoculars className="h-24 w-24 text-muted-foreground/60 animate-empty-pulse" />
+        </div>
         <h1 className="text-3xl font-bold text-foreground mb-3">
           {t("not_found.title")}
         </h1>

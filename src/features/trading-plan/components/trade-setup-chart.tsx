@@ -36,9 +36,17 @@ const CHART_H = VB_H - PAD_T - PAD_B - AXIS_B;
 const CHART_BOTTOM = CHART_TOP + CHART_H;
 const CHART_LEFT = PAD_X;
 
+// Per-cell width estimates. Emphasis cells render bold uppercase with
+// letter-spacing, so wide glyphs (M/W) and the tracking push the text wider
+// than a plain char count — bump the per-char estimate and padding so the text
+// keeps clear of the cell dividers instead of crowding them.
+const CELL_PAD = 16; // horizontal padding inside a cell (8px per side)
+const EMPHASIS_CHAR_W = 7.6;
+const NORMAL_CHAR_W = 6.6;
+
 /** Width of a combined level pill ([KEY | price]) for the given strings. */
 const pillWidth = (key: string, price: string) =>
-  key.length * 7 + 12 + (price.length * 6.6 + 12);
+  key.length * EMPHASIS_CHAR_W + CELL_PAD + (price.length * NORMAL_CHAR_W + CELL_PAD);
 
 /** color language: entry = neutral, risk(SL) = rose, profit(TP) = emerald */
 const LEVEL_COLOR: Record<LevelKind, string> = {
@@ -58,7 +66,7 @@ interface PillCell {
 
 /** Width of a single pill cell — matches the level-badge measurements exactly. */
 const pillCellWidth = (text: string, emphasis = false) =>
-  emphasis ? text.length * 7 + 12 : text.length * 6.6 + 12;
+  text.length * (emphasis ? EMPHASIS_CHAR_W : NORMAL_CHAR_W) + CELL_PAD;
 
 /** Total width of a multi-cell pill. */
 const pillCellsWidth = (cells: PillCell[]) =>
@@ -413,11 +421,9 @@ export function TradeSetupChart({
                   m.kind === "entry"
                     ? t("journal.entry_marker")
                     : t("journal.close_marker");
-                const cells: PillCell[] = [
-                  { text: word, emphasis: true },
-                  { text: formatDayMonth(m.timestamp, i18n.language) },
-                  { text: formatPrice(m.price, assetType) },
-                ];
+                // Keep the marker badge clean: just the action word, no date /
+                // price cells (those read off the axis + level badges already).
+                const cells: PillCell[] = [{ text: word, emphasis: true }];
                 const bw = pillCellsWidth(cells);
                 const clampCy = (v: number) =>
                   Math.min(
@@ -596,11 +602,11 @@ export function TradeSetupChart({
       </div>
 
       {/* numeric panel: R:R · Entry · SL · TP1 · TP2 · TP3 */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="overflow-hidden border border-border bg-muted/50 transition-colors hover:border-primary">
           <CardContent className="flex flex-col gap-1.5">
             <span className="text-[10px] text-muted-foreground">
-              {t("dialog.risk_reward")}
+              Risk : Reward
             </span>
             <span className="text-base font-bold leading-none text-mono-data">
               1 : {formatRatio(model.riskReward)}

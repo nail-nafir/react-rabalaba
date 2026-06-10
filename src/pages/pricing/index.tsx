@@ -8,8 +8,11 @@ import {
   Target,
   Wallet,
   ScanBarcode,
+  KeyRound,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { useUIStore } from "@/store/ui-store";
+import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import {
@@ -25,6 +28,8 @@ import { Separator } from "@/components/ui/separator";
 
 export default function PricingPage() {
   const { t } = useTranslation();
+  const openLicenseDialog = useUIStore((state) => state.openLicenseDialog);
+  const { isConfigured } = usePremiumAccess();
 
   return (
     <div className="w-full py-10 md:py-16">
@@ -104,16 +109,16 @@ export default function PricingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <PaymentCard
               name={t("payment.methods.bank_transfer.name")}
-              desc={t("payment.methods.bank_transfer.desc")}
+              desc="BCA, Mandiri, BNI, BRI"
               icon={Globe}
             />
             <PaymentCard
-              name={t("payment.methods.e_wallet.name")}
-              desc={t("payment.methods.e_wallet.desc")}
+              name="E-Wallet"
+              desc="GoPay, OVO, Dana, LinkAja"
               icon={Wallet}
             />
             <PaymentCard
-              name={t("payment.methods.qris.name")}
+              name="QRIS"
               desc={t("payment.methods.qris.desc")}
               icon={ScanBarcode}
             />
@@ -134,6 +139,17 @@ export default function PricingPage() {
             <CardDescription className="text-xs text-center">
               {t("payment.activation_notice_desc")}
             </CardDescription>
+            {isConfigured && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => openLicenseDialog()}
+                className="mt-2 text-xs font-bold cursor-pointer"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                {t("license.activate_btn")}
+              </Button>
+            )}
           </Card>
         </div>
       </div>

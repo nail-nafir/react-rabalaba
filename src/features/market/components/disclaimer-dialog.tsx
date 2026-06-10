@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldContent,
+  FieldTitle,
+} from "@/components/ui/field";
 
 export function DisclaimerDialog() {
   const { t } = useTranslation();
@@ -77,15 +84,22 @@ export function DisclaimerDialog() {
           )}
         </ul>
 
-        <label className="flex items-center gap-3 cursor-pointer group select-none p-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-all active:scale-[0.98]">
-          <Checkbox
-            checked={hasConfirmed}
-            onCheckedChange={(v) => setHasConfirmed(v === true)}
-          />
-          <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
-            {t("disclaimer.confirm")}
-          </span>
-        </label>
+        <FieldGroup>
+          <FieldLabel htmlFor="disclaimer-confirm">
+            <Field orientation="horizontal">
+              <Checkbox
+                id="disclaimer-confirm"
+                checked={hasConfirmed}
+                onCheckedChange={(v) => setHasConfirmed(v === true)}
+              />
+              <FieldContent>
+                <FieldTitle className="text-xs font-semibold">
+                  {t("disclaimer.confirm")}
+                </FieldTitle>
+              </FieldContent>
+            </Field>
+          </FieldLabel>
+        </FieldGroup>
 
         <DialogFooter>
           <Button
