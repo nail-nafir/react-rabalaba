@@ -15,7 +15,7 @@ import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useMarketContext } from "@/services/queries/use-market-context";
 import { useMarketMomentum } from "@/services/queries/use-market-momentum";
 import { MARKET_INDICES } from "@/constants/assets";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FearGreedBar } from "@/components/charts/fear-greed-bar";
 import { DominanceChart } from "@/components/charts/dominance-chart";
@@ -74,7 +74,6 @@ export function MarketSummaryRow() {
             <EmptyState
               title={t("market.data_unavailable")}
               description={t("market.data_unavailable_desc")}
-              icon={<AlertCircle className="h-6 w-6 text-muted-foreground" />}
             />
           </div>
         ) : (

@@ -498,10 +498,10 @@
     "action": "Go Home"
   },
   "error_boundary": {
-    "title": "Error Forever",
-    "description": "Something went wrong in here. Just try to reload first. Should be fine after.",
-    "action": "Reload Page",
-    "show_details": "Show Details",
-    "hide_details": "Hide Details"
+    "title": "Something Broke",
+    "description": "No worries, nothing major here. A quick reload usually gets things back to normal.",
+    "action": "Hit Reload",
+    "show_details": "Show the Deets",
+    "hide_details": "Hide the Deets"
   }
 }

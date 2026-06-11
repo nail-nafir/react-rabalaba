@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { getEmojiFlag } from "@/lib/country";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { IMPACT_LEVELS } from "@/constants/calendar";
-import { CalendarDays, AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEconomicCalendar } from "@/services/queries/use-calendar-data";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
@@ -129,9 +129,6 @@ export default function CalendarPage() {
                 <EmptyState
                   title={t("calendar.no_events")}
                   description={t("calendar.no_events_desc")}
-                  icon={
-                    <CalendarDays className="h-10 w-10 text-muted-foreground/20" />
-                  }
                 />
               </div>
             ) : (

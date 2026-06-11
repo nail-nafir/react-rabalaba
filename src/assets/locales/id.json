@@ -497,10 +497,10 @@
     "action": "Balik ke Beranda"
   },
   "error_boundary": {
-    "title": "Error Terus",
-    "description": "Ada yang error entah apa. Coba reload aja dulu. Biasanya langsung balik normal.",
-    "action": "Muat Ulang",
-    "show_details": "Lihat Detail",
-    "hide_details": "Sembunyikan Detail"
+    "title": "Ada yang Rusak",
+    "description": "Tenang, bukan masalah besar kok. Coba reload dulu aja. Biasanya langsung balik normal.",
+    "action": "Reload Aja",
+    "show_details": "Intip Detail",
+    "hide_details": "Tutup Detail"
   }
 }

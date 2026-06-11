@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getEmojiFlag } from "@/lib/country";
 import { IMPACT_LEVELS } from "@/constants/calendar";
-import { Activity, CalendarDays, Info } from "lucide-react";
+import { Activity, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -48,9 +48,6 @@ export function CalendarDetailDialog({
         {!event ? (
           <EmptyState
             title={t("calendar.no_events")}
-            icon={
-              <CalendarDays className="h-10 w-10 text-muted-foreground/20" />
-            }
           />
         ) : (
           <>
