@@ -321,18 +321,25 @@ export function AssetDetailDialog() {
                 {/* Custom SVG candlestick visual trade setup */}
                 {outlook.signal === "neutral" || !tradingPlan || !asset ? (
                   outlook.suppressed ? (
-                    <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
-                      <PauseCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        {t("dialog.suppressed_note", {
-                          tier: outlook.tier,
-                          reason:
-                            outlook.regime === "low_volatility"
-                              ? t("dialog.suppressed_reason_chop")
-                              : t("dialog.suppressed_reason_countertrend"),
-                        })}
-                      </p>
-                    </div>
+                    <Card className="border border-amber-500/30 bg-amber-500/10">
+                      <CardContent className="space-y-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                            <PauseCircle className="h-3.5 w-3.5 shrink-0" />
+                            {t("dialog.suppressed_badge")}
+                          </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-amber-700/90 dark:text-amber-300/90">
+                          {t("dialog.suppressed_note", {
+                            tier: outlook.tier,
+                            reason:
+                              outlook.regime === "low_volatility"
+                                ? t("dialog.suppressed_reason_chop")
+                                : t("dialog.suppressed_reason_countertrend"),
+                          })}
+                        </p>
+                      </CardContent>
+                    </Card>
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       {t("dialog.no_setup")}
