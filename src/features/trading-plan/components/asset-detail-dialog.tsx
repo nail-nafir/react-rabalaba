@@ -6,11 +6,13 @@ import { useFavoriteStore } from "@/store/favorite-store";
 import { toast } from "sonner";
 import { runBacktest } from "@/features/engine/backtest";
 import { calibrateConfidence } from "@/features/engine/calibration";
-import { applyMarketContext } from "@/features/engine/market-context";
+import { fightsMarket } from "@/features/engine/market-context";
+import { isNeutralPositioning } from "@/features/engine/smart-money";
 import {
-  applySmartMoney,
-  isNeutralPositioning,
-} from "@/features/engine/smart-money";
+  isNeutralFlow,
+  supportsAccumulation,
+} from "@/features/engine/accumulation";
+import { enrichAsset } from "@/features/engine/enrichment";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import { TradeSetupChart } from "./trade-setup-chart";
 import { FollowSignalButton } from "@/components/shared/follow-signal-button";
@@ -32,6 +34,7 @@ import {
 import { useUIStore } from "@/store/ui-store";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useMarketContext } from "@/services/queries/use-market-context";
+import { useIdxContext } from "@/services/queries/use-idx-context";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
 import { useQueryClient } from "@tanstack/react-query";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -59,6 +62,15 @@ import {
   ArrowDown,
 } from "lucide-react";
 
+/** Engine flow labels are English (not i18n) — map them to locale keys. */
+const ACCUMULATION_LABEL_KEYS: Record<string, string> = {
+  "Strong accumulation": "dialog.acc_label_strong_accumulation",
+  Accumulation: "dialog.acc_label_accumulation",
+  "Neutral flow": "dialog.acc_label_neutral",
+  Distribution: "dialog.acc_label_distribution",
+  "Strong distribution": "dialog.acc_label_strong_distribution",
+};
+
 export function AssetDetailDialog() {
   const { t } = useTranslation();
   const { isDetailDialogOpen, selectedAssetSymbol, closeDetailDialog } =
@@ -74,9 +86,11 @@ export function AssetDetailDialog() {
   );
   const asset = assets?.[0];
 
-  // Apply the same enrichment the screener uses, so conviction / tier shown
-  // here is consistent: market-context de-rate + smart-money positioning nudge.
+  // Apply the same enrichment the screener uses (shared enrichAsset chain),
+  // so conviction / tier shown here is consistent: context de-rate (BTC for
+  // crypto / IHSG for id-stock) + flow nudge (smart-money / accumulation).
   const { data: marketContext } = useMarketContext();
+  const { data: idxContext } = useIdxContext();
   const smAssets = useMemo(() => (asset ? [asset] : []), [asset]);
   const { data: smartMoneyMap, isUnavailable: smartMoneyUnavailable } =
     useSmartMoney(smAssets);
@@ -97,13 +111,19 @@ export function AssetDetailDialog() {
       setIsRetryingSmartMoney(false);
     }
   };
-  const outlook = useMemo(() => {
-    let o = asset?.outlook ?? undefined;
-    if (!o || !asset) return o;
-    if (marketContext) o = applyMarketContext(o, asset, marketContext);
-    if (smartMoney) o = applySmartMoney(o, smartMoney);
-    return o;
-  }, [asset, marketContext, smartMoney]);
+  const enriched = useMemo(
+    () =>
+      asset
+        ? enrichAsset(asset, {
+            marketContext: marketContext ?? undefined,
+            idxContext: idxContext ?? undefined,
+            smartMoney,
+          })
+        : undefined,
+    [asset, marketContext, idxContext, smartMoney],
+  );
+  const outlook = enriched?.outlook ?? undefined;
+  const accumulation = enriched?.accumulation;
   const tradingPlan = asset?.tradingPlan;
 
   // Normalized OHLC candles (shared by the chart, backtest and share card).
@@ -468,9 +488,18 @@ export function AssetDetailDialog() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t("dialog.bt_insufficient")}
-                  </p>
+                  <Card className="border border-amber-500/30 bg-amber-500/10">
+                    <CardContent className="space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                          {t("dialog.bt_insufficient_badge")}
+                        </span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-amber-700/90 dark:text-amber-300/90">
+                        {t("dialog.bt_insufficient")}
+                      </p>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Market context: how this setup sits vs the BTC-led regime. */}
@@ -502,6 +531,44 @@ export function AssetDetailDialog() {
                             ? "fighting the current"
                             : "aligned with the market flow"}
                           .
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                {/* IDX context: how this setup sits vs the IHSG-led regime. */}
+                {idxContext &&
+                  outlook.signal !== "neutral" &&
+                  asset?.assetType === "id-stock" && (
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-1">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.idx_context")}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                          {t("dialog.idx_context_desc", {
+                            riskState: t(
+                              idxContext.riskState === "risk_off"
+                                ? "dialog.idx_risk_off"
+                                : idxContext.riskState === "risk_on"
+                                  ? "dialog.idx_risk_on"
+                                  : "dialog.idx_risk_neutral",
+                            ),
+                            score: idxContext.ihsgDirectionScore.toFixed(2),
+                            rupiahTrend: t(
+                              idxContext.usdIdrTrend === "bullish"
+                                ? "dialog.idx_rupiah_weakening"
+                                : idxContext.usdIdrTrend === "bearish"
+                                  ? "dialog.idx_rupiah_strengthening"
+                                  : "dialog.idx_rupiah_stable",
+                            ),
+                            signal: outlook.signal.toUpperCase(),
+                            alignment: t(
+                              fightsMarket(outlook.signal, idxContext.riskState)
+                                ? "dialog.idx_fighting"
+                                : "dialog.idx_aligned",
+                            ),
+                          })}
                         </CardDescription>
                       </CardContent>
                     </Card>
@@ -607,6 +674,100 @@ export function AssetDetailDialog() {
                           </CardContent>
                         </Card>
                       </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Accumulation: equities daily OHLCV flow (US & ID stocks).
+                    No neutral gate — flow context is useful pre-signal. */}
+                {accumulation && asset && supportsAccumulation(asset.assetType) && (
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.accumulation")}
+                        </CardTitle>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                            isNeutralFlow(accumulation.label)
+                              ? "text-muted-foreground border-muted-foreground/30"
+                              : accumulation.score > 0
+                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                : "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                          )}
+                        >
+                          {t(
+                            ACCUMULATION_LABEL_KEYS[accumulation.label] ??
+                              "dialog.acc_label_neutral",
+                          )}
+                        </Badge>
+                      </div>
+                      <div className="flex items-stretch gap-3">
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                accumulation.breakdown.cmf > 0
+                                  ? "text-emerald-400"
+                                  : accumulation.breakdown.cmf < 0
+                                    ? "text-rose-400"
+                                    : "text-muted-foreground",
+                              )}
+                            >
+                              {`${accumulation.breakdown.cmf > 0 ? "+" : ""}${accumulation.breakdown.cmf.toFixed(2)}`}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              {t("dialog.acc_cmf")}
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                accumulation.breakdown.mfi > 50
+                                  ? "text-emerald-400"
+                                  : accumulation.breakdown.mfi < 50
+                                    ? "text-rose-400"
+                                    : "text-muted-foreground",
+                              )}
+                            >
+                              {accumulation.breakdown.mfi.toFixed(0)}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              {t("dialog.acc_mfi")}
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums tracking-tight",
+                                accumulation.breakdown.upDownVolume > 0
+                                  ? "text-emerald-400"
+                                  : accumulation.breakdown.upDownVolume < 0
+                                    ? "text-rose-400"
+                                    : "text-muted-foreground",
+                              )}
+                            >
+                              {`${accumulation.breakdown.upDownVolume > 0 ? "+" : ""}${(accumulation.breakdown.upDownVolume * 100).toFixed(0)}%`}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              {t("dialog.acc_updown")}
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("dialog.acc_days", {
+                          days: accumulation.daysAnalyzed,
+                        })}
+                      </p>
                     </CardContent>
                   </Card>
                 )}

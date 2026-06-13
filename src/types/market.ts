@@ -63,6 +63,27 @@ export interface MarketContext {
   lastUpdated: number;
 }
 
+/** Top-down IDX (Indonesian equities) context — structural mirror of
+ *  MarketContext with IHSG in BTC's seat. .JK stocks are beta to IHSG flow,
+ *  and foreign outflow shows up in the rupiah first, so USDIDR acts as the
+ *  tiebreak when IHSG is indecisive. NOTE: a bullish USDIDR trend means the
+ *  rupiah is WEAKENING (= risk-off pressure). NOT a per-asset value. */
+export interface IdxContext {
+  ihsgTrend: TrendDirection;
+  ihsgRegime: MarketRegime;
+  /** IHSG regime-weighted direction score [-1..1] from the signal engine. */
+  ihsgDirectionScore: number;
+  /** Net risk posture derived from IHSG score + rupiah pressure tiebreak. */
+  riskState: RiskState;
+  /** USDIDR trend (bullish = rupiah weakening = risk-off pressure). */
+  usdIdrTrend: TrendDirection;
+  /** USDIDR change over ~1 trading week, percent (+ = rupiah weakening). */
+  usdIdr1wChangePercent?: number;
+  /** IHSG window returns in percent, reused by relative-strength display. */
+  ihsgReturns?: { r1w?: number; r1m?: number };
+  lastUpdated: number;
+}
+
 /** Universe momentum over a single asset class (crypto sleeve by default). */
 export interface Breadth {
   total: number;

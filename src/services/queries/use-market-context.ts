@@ -3,8 +3,8 @@ import { fetchYahooChart } from "@/services/api/yahoo-finance";
 import { adaptYahooChart } from "@/services/adapters/yahoo-adapter";
 import { DEFAULT_TIMEFRAME } from "@/constants/timeframes";
 import { deriveMarketContext } from "@/features/engine/market-context";
-import { fetchDominance } from "@/services/api/coingecko";
 import { useFearGreedIndex } from "./use-fear-greed";
+import { useCryptoDominance } from "./use-crypto-dominance";
 import type { MarketContext } from "@/types/market";
 
 /** BTC is the macro driver for the crypto sleeve. */
@@ -27,13 +27,7 @@ export function useMarketContext() {
 
   // Dominance is optional context — fetched separately and cached longer. If it
   // fails (rate limit / unavailable) the context simply omits it (graceful).
-  const { data: dominance } = useQuery({
-    queryKey: ["dominance"],
-    queryFn: fetchDominance,
-    staleTime: 600_000, // 10 minutes (CoinGecko free tier is rate-limited)
-    refetchInterval: 600_000,
-    retry: 1,
-  });
+  const { data: dominance } = useCryptoDominance();
 
   return useQuery({
     queryKey: [

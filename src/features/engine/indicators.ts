@@ -405,6 +405,95 @@ export function calculateOBVTrend(
 }
 
 /**
+ * Close Location Value — where the close sits within the bar's range,
+ * in [-1..1] (+1 = close at the high, -1 = close at the low).
+ * Returns 0 when high === low: a zero-range bar carries no flow information.
+ */
+export function calculateCLV(high: number, low: number, close: number): number {
+  const range = high - low;
+  if (range <= 0) return 0;
+  return (close - low - (high - close)) / range;
+}
+
+/**
+ * Accumulation/Distribution delta over the window, normalized by the window's
+ * total volume. The A/D line accumulates CLV × volume per bar; its delta over
+ * the window is Σ(CLV × volume), and dividing by Σvolume guarantees [-1..1]
+ * since |CLV| ≤ 1. + = net buying pressure (closes near highs on volume),
+ * − = net selling pressure. Returns 0 when there is no volume in the window.
+ */
+export function calculateADDelta(
+  highs: number[],
+  lows: number[],
+  closes: number[],
+  volumes: number[],
+  period = 20
+): number {
+  const len = Math.min(highs.length, lows.length, closes.length, volumes.length);
+  if (len === 0) return 0;
+
+  let flow = 0;
+  let totalVolume = 0;
+  for (let i = Math.max(0, len - period); i < len; i++) {
+    flow += calculateCLV(highs[i], lows[i], closes[i]) * volumes[i];
+    totalVolume += volumes[i];
+  }
+
+  if (totalVolume <= 0) return 0;
+  return flow / totalVolume;
+}
+
+/**
+ * Chaikin Money Flow (20-period standard) — volume-weighted CLV over the
+ * period, in [-1..1]. Mathematically the normalized A/D delta at the standard
+ * period, so it delegates; kept as its own named export because callers mean
+ * different things by it (CMF = standard recent read, ADDelta = full-window
+ * flow direction).
+ */
+export function calculateCMF(
+  highs: number[],
+  lows: number[],
+  closes: number[],
+  volumes: number[],
+  period = 20
+): number {
+  return calculateADDelta(highs, lows, closes, volumes, period);
+}
+
+/**
+ * Money Flow Index (14-period standard) — a volume-weighted RSI analog,
+ * 0-100 (>50 = net inflow). Uses typical price (H+L+C)/3; bars whose typical
+ * price is unchanged contribute no flow. Returns neutral 50 when there is not
+ * enough data or no flow at all (mirrors the RSI fallback).
+ */
+export function calculateMFI(
+  highs: number[],
+  lows: number[],
+  closes: number[],
+  volumes: number[],
+  period = 14
+): number {
+  const len = Math.min(highs.length, lows.length, closes.length, volumes.length);
+  if (len < period + 1) return 50; // neutral fallback
+
+  const typicalPrice = (i: number) => (highs[i] + lows[i] + closes[i]) / 3;
+
+  let positiveFlow = 0;
+  let negativeFlow = 0;
+  for (let i = len - period; i < len; i++) {
+    const tp = typicalPrice(i);
+    const prevTp = typicalPrice(i - 1);
+    const flow = tp * volumes[i];
+    if (tp > prevTp) positiveFlow += flow;
+    else if (tp < prevTp) negativeFlow += flow;
+  }
+
+  if (positiveFlow === 0 && negativeFlow === 0) return 50;
+  if (negativeFlow === 0) return 100;
+  return 100 - 100 / (1 + positiveFlow / negativeFlow);
+}
+
+/**
  * Generates a series of RSI values for a price array.
  *
  * Optimized to O(n) using incremental Wilder's smoothing (mirrors

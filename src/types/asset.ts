@@ -47,6 +47,63 @@ export interface SmartMoney {
   flow?: { oi: "up" | "down"; price: "up" | "down" };
 }
 
+/** OHLCV-derived accumulation/distribution flow-read for equities (US & ID
+ *  stocks). Free data has no broker summary, so institutional flow is
+ *  approximated from DAILY price/volume behavior only. Present only for
+ *  volume-reliable equities with enough daily history (graceful otherwise). */
+export interface Accumulation {
+  /** Net flow score [-1..1]: + accumulation, − distribution. */
+  score: number;
+  /** Short interpretation, e.g. "Accumulation", "Strong distribution". */
+  label: string;
+  /** Components behind the composite. All in [-1..1] except `mfi`, which is
+   *  the raw Money Flow Index 0-100 (display-friendly; the score uses its
+   *  normalized form (MFI − 50) / 50 internally). */
+  breakdown: {
+    adFlow: number;
+    cmf: number;
+    mfi: number;
+    upDownVolume: number;
+    spikeBias: number;
+  };
+  /** Number of daily candles analyzed. */
+  daysAnalyzed: number;
+  /** False when some volume data is missing (still scored, but read it with
+   *  more caution). Too-patchy volume yields null instead of an Accumulation. */
+  reliable: boolean;
+}
+
+/** Performance vs the IHSG benchmark in percentage points (display-only,
+ *  Phase 2). r-windows are trading days (1w = 5, 1m ≈ 21). */
+export interface RelativeStrength {
+  r1w?: number;
+  r1m?: number;
+  label: "outperform" | "underperform" | "inline";
+}
+
+/** OHLC-only speculative/"gorengan" heuristics for Indonesian stocks
+ *  (Phase 2). Auto-reject bands are approximations from daily closes — the
+ *  special monitoring board (full call auction ±10%) is NOT detectable from
+ *  OHLC, so warnings are phrased as approximate. */
+export interface SpeculativeRisk {
+  flags: {
+    nearAra: boolean;
+    nearArb: boolean;
+    limitLock: boolean;
+    consecutiveLimitMoves: number;
+    lowLiquidity: boolean;
+    extremeRange: boolean;
+    pennyZone: boolean;
+  };
+  /** Count of raised flags — drives risk escalation, never signal changes. */
+  severity: number;
+  warnings: string[];
+  /** Auto-reject band as fractions of the reference price (ara = up limit,
+   *  arb = down limit). Split so an asymmetric regime is a one-line change. */
+  band: { ara: number; arb: number };
+  medianDailyValueRp: number;
+}
+
 export interface UnifiedAsset {
   symbol: string;
   name: string;
@@ -66,6 +123,12 @@ export interface UnifiedAsset {
   // ── Enrichment (computed AFTER per-asset signals, over the full universe) ──
   /** Crypto derivatives positioning (Phase 3), when available. */
   smartMoney?: SmartMoney;
+  /** OHLCV accumulation/distribution read (equities only), when derivable. */
+  accumulation?: Accumulation;
+  /** Return vs IHSG (id-stock only, display-only, Phase 2). */
+  relativeStrength?: RelativeStrength;
+  /** Speculative/"gorengan" risk heuristics (id-stock only, Phase 2). */
+  speculativeRisk?: SpeculativeRisk;
 }
 
 export type AssetFilterType = "all" | AssetType | "favorite";

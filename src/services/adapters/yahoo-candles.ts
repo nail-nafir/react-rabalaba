@@ -130,6 +130,41 @@ export function resampleCandles(
 }
 
 /**
+ * Resample candles into calendar-daily bars by bucketing on UTC date
+ * (open=first, high=max, low=min, close=last, volume=sum, timestamp=last).
+ *
+ * resampleCandles buckets by COUNT, which drifts across session gaps; flow
+ * math (A/D, CMF, MFI) needs a stable per-day unit instead. UTC-date bucketing
+ * is exact for .JK: the IDX session (02:00–09:00 UTC) never crosses UTC
+ * midnight. Input that is already daily passes through ~1:1. Timestamps are
+ * epoch seconds (Yahoo convention).
+ */
+export function resampleCandlesToDaily(
+  candles: NormalizedYahooCandle[],
+): NormalizedYahooCandle[] {
+  if (candles.length === 0) return candles;
+
+  const result: NormalizedYahooCandle[] = [];
+  let currentDay = "";
+  for (const candle of candles) {
+    const day = new Date(candle.timestamp * 1000).toISOString().slice(0, 10);
+    if (day === currentDay) {
+      // Mutates only the local clone pushed below — input stays untouched.
+      const bucket = result[result.length - 1];
+      bucket.high = Math.max(bucket.high, candle.high);
+      bucket.low = Math.min(bucket.low, candle.low);
+      bucket.close = candle.close;
+      bucket.volume += candle.volume;
+      bucket.timestamp = candle.timestamp;
+    } else {
+      currentDay = day;
+      result.push({ ...candle });
+    }
+  }
+  return result;
+}
+
+/**
  * Derive a coarse trend direction from a candle series using EMA alignment and
  * DMI sign — the same logic the engine uses for its own trend, applied to a
  * higher timeframe for multi-timeframe confirmation.

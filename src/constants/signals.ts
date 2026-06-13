@@ -103,6 +103,55 @@ export const MARKET_CONTEXT = {
   EXTREME_GREED: 80,
 };
 
+/** Top-down IDX-context gating. Mirrors MARKET_CONTEXT with IHSG in BTC's
+ *  seat: .JK stocks are beta to IHSG flow, so a setup that fights the
+ *  IHSG-led risk state is de-rated (not hidden). */
+export const IDX_CONTEXT = {
+  /** |ihsgDirectionScore| at/above which IHSG is decisively risk-on/off. */
+  RISK_SCORE_THRESHOLD: 0.3,
+  /** Multiplier applied to directionScore & strength when a setup fights the
+   *  prevailing IDX risk state. <1 = de-rate. */
+  COUNTER_MARKET_DERATE: 0.6,
+  /** |USDIDR ~1-week % change| that breaks the tie when IHSG is indecisive.
+   *  + = rupiah weakening = foreign-outflow pressure (risk-off). The rupiah
+   *  is ONLY a tiebreak; IHSG stays the primary driver. */
+  RUPIAH_PRESSURE_1W_PCT: 1.0,
+};
+
+/** Accumulation/distribution flow scoring for equities (US & ID stocks).
+ *  Derived from DAILY candles only — intraday Yahoo volume is patchy (lunch
+ *  break / partial last bar on .JK), so daily is the only stable flow unit. */
+export const ACCUMULATION = {
+  /** Minimum daily candles for a meaningful flow read (~3 trading weeks). */
+  MIN_DAILY_CANDLES: 15,
+  /** Chaikin Money Flow period (industry standard). */
+  CMF_PERIOD: 20,
+  /** Money Flow Index period (industry standard). */
+  MFI_PERIOD: 14,
+  /** Volume z-score at/above which a day counts as a "spike" day. */
+  VOLUME_Z_SPIKE: 2,
+  /** Max share of zero-volume days tolerated before the whole read is
+   *  refused (null) — same honesty rationale as ZERO_VOLUME_MAX_RATIO above. */
+  ZERO_VOLUME_MAX_RATIO: 0.3,
+  /** |score| at/above which the label reads accumulation/distribution. */
+  SCORE_THRESHOLD: 0.25,
+  /** |score| at/above which the label reads STRONG accumulation/distribution. */
+  STRONG_THRESHOLD: 0.6,
+  /** Max conviction multiplier from flow (±). Modest by design — flow nudges,
+   *  never flips. Mirrors SMART_MONEY.MAX_CONVICTION_ADJ. */
+  MAX_CONVICTION_ADJ: 0.15,
+  /** Component weights (sum = 1). Full-window A/D flow dominates — it is the
+   *  most direct "volume pushing price" read; spike bias is the noisiest, so it
+   *  gets the least weight alongside the slower confirmations. */
+  WEIGHTS: {
+    adFlow: 0.3,
+    cmf: 0.25,
+    mfi: 0.15,
+    upDownVolume: 0.15,
+    spikeBias: 0.15,
+  },
+};
+
 /** Backtest realism: costs applied to every entry & exit so expectancy isn't
  *  optimistic. Expressed as a fraction of price (per side). */
 export const BACKTEST_COSTS = {

@@ -405,3 +405,86 @@ test("calculatePivotLevels: BTC-scale stays finite", async () => {
   const p = calculatePivotLevels(72000, 68000, 70000);
   assert.ok(Number.isFinite(p.support) && Number.isFinite(p.resistance));
 });
+
+// ─── calculateCLV ────────────────────────────────────────────
+test("calculateCLV: close at high → +1, at low → −1, midpoint → 0", async () => {
+  const { calculateCLV } = await loadModule(IND);
+  assert.equal(calculateCLV(12, 8, 12), 1);
+  assert.equal(calculateCLV(12, 8, 8), -1);
+  assert.equal(calculateCLV(12, 8, 10), 0);
+});
+
+test("calculateCLV: zero-range bar (H === L) → 0, no division by zero", async () => {
+  const { calculateCLV } = await loadModule(IND);
+  assert.equal(calculateCLV(10, 10, 10), 0);
+});
+
+// ─── calculateCMF / calculateADDelta ─────────────────────────
+// Hand-computed 4-bar fixture. CLV per bar: 0, +1, −1, +0.5; volumes
+// 100/200/100/200 → Σ(CLV×vol)/Σvol = (0 + 200 − 100 + 100) / 600 = 1/3.
+const FLOW_HIGHS = [10, 12, 10, 10];
+const FLOW_LOWS = [8, 8, 6, 8];
+const FLOW_CLOSES = [9, 12, 6, 9.5];
+const FLOW_VOLUMES = [100, 200, 100, 200];
+
+test("calculateCMF: hand-computed 4-bar fixture → 1/3", async () => {
+  const { calculateCMF } = await loadModule(IND);
+  const v = calculateCMF(FLOW_HIGHS, FLOW_LOWS, FLOW_CLOSES, FLOW_VOLUMES, 4);
+  assert.ok(Math.abs(v - 1 / 3) < 1e-12);
+});
+
+test("calculateADDelta: window restriction — last 2 bars of the fixture → 0", async () => {
+  const { calculateADDelta } = await loadModule(IND);
+  // Bars 3-4 only: (−1×100 + 0.5×200) / 300 = 0.
+  const v = calculateADDelta(FLOW_HIGHS, FLOW_LOWS, FLOW_CLOSES, FLOW_VOLUMES, 2);
+  assert.equal(v, 0);
+});
+
+test("calculateADDelta: zero volume in window → 0, empty input → 0", async () => {
+  const { calculateADDelta } = await loadModule(IND);
+  assert.equal(calculateADDelta([12, 12], [8, 8], [10, 11], [0, 0], 2), 0);
+  assert.equal(calculateADDelta([], [], [], [], 20), 0);
+});
+
+test("calculateADDelta: result bounded to [-1..1] even on extreme bars", async () => {
+  const { calculateADDelta } = await loadModule(IND);
+  // Every close at its high → CLV +1 on every bar → exactly +1.
+  const v = calculateADDelta([10, 20], [5, 10], [10, 20], [1e9, 1e9], 2);
+  assert.equal(v, 1);
+});
+
+// ─── calculateMFI ────────────────────────────────────────────
+test("calculateMFI: hand-computed 5-bar fixture (period 4) → 62.5", async () => {
+  const { calculateMFI } = await loadModule(IND);
+  // Typical prices: 9, 10, 11, 8, 9 → flows +2000, +1100, −2400, +900
+  // → MFI = 100 − 100 / (1 + 4000/2400) = 62.5.
+  const v = calculateMFI(
+    [10, 11, 12, 9, 10],
+    [8, 9, 10, 7, 8],
+    [9, 10, 11, 8, 9],
+    [100, 200, 100, 300, 100],
+    4,
+  );
+  assert.ok(Math.abs(v - 62.5) < 1e-12);
+});
+
+test("calculateMFI: not enough data → neutral 50", async () => {
+  const { calculateMFI } = await loadModule(IND);
+  assert.equal(calculateMFI([10], [8], [9], [100], 14), 50);
+  assert.equal(calculateMFI([], [], [], [], 14), 50);
+});
+
+test("calculateMFI: flat typical prices → no flow → 50", async () => {
+  const { calculateMFI } = await loadModule(IND);
+  const flat = Array(10).fill(10);
+  assert.equal(calculateMFI(flat, flat, flat, Array(10).fill(100), 4), 50);
+});
+
+test("calculateMFI: only positive flow → 100", async () => {
+  const { calculateMFI } = await loadModule(IND);
+  const highs = ramp(10, 11);
+  const lows = ramp(10, 9);
+  const closes = ramp(10, 10);
+  const v = calculateMFI(highs, lows, closes, Array(10).fill(100), 4);
+  assert.equal(v, 100);
+});

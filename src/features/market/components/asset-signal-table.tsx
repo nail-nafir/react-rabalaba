@@ -55,9 +55,9 @@ import { useFavoriteStore } from "@/store/favorite-store";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useMarketContext } from "@/services/queries/use-market-context";
+import { useIdxContext } from "@/services/queries/use-idx-context";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
-import { applyMarketContext } from "@/features/engine/market-context";
-import { applySmartMoney } from "@/features/engine/smart-money";
+import { enrichAsset } from "@/features/engine/enrichment";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import {
   DEFAULT_COMMODITY_TICKERS,
@@ -139,6 +139,10 @@ export function AssetSignalTable() {
   const { data: marketContext, isLoading: marketContextLoading } =
     useMarketContext();
 
+  // Top-down IDX context (IHSG regime + rupiah pressure) for id-stocks —
+  // subscribes to the same ^JKSE/USDIDR=X cache entries, zero extra fetches.
+  const { data: idxContext, isLoading: idxContextLoading } = useIdxContext();
+
   // Refresh the whole screener: invalidate every asset-data query at once
   // (all asset types + favorites share the ["asset-data", ...] key).
   const queryClient = useQueryClient();
@@ -209,24 +213,21 @@ export function AssetSignalTable() {
   const { data: smartMoney, isPending: smartMoneyPending } =
     useSmartMoney(cryptoForSmartMoney);
 
-  // Enrichment pass over the full universe (where cross-asset data exists):
-  // 1) market context (de-rate crypto setups that fight BTC),
-  // 2) smart-money positioning (modest conviction nudge, crypto only).
-  // computeSignal stays pure & per-asset; this layer never mutates cache data.
+  // Enrichment pass over the full universe (where cross-asset data exists),
+  // via the shared enrichAsset chain (same one the detail dialog uses):
+  // context de-rate (BTC for crypto / IHSG for id-stock) → flow nudge
+  // (smart-money / accumulation). computeSignal stays pure & per-asset; this
+  // layer never mutates cache data.
   const enrichedAssets = useMemo<UnifiedAsset[]>(() => {
     if (allAssets.length === 0) return allAssets;
-    const ctx = marketContext ?? undefined;
-    const enriched = allAssets.map((asset) => {
-      if (!asset.outlook) return asset;
-      let outlook = ctx
-        ? applyMarketContext(asset.outlook, asset, ctx)
-        : asset.outlook;
-      const sm = smartMoney[asset.symbol];
-      if (sm) outlook = applySmartMoney(outlook, sm);
-      return sm ? { ...asset, outlook, smartMoney: sm } : { ...asset, outlook };
-    });
-    return enriched;
-  }, [allAssets, marketContext, smartMoney]);
+    return allAssets.map((asset) =>
+      enrichAsset(asset, {
+        marketContext: marketContext ?? undefined,
+        idxContext: idxContext ?? undefined,
+        smartMoney: smartMoney[asset.symbol],
+      }),
+    );
+  }, [allAssets, marketContext, idxContext, smartMoney]);
 
   // Tahan SATU skeleton sampai SEMUA sumber screener selesai initial load:
   // base assets (semua kategori) + market context BTC + smart-money crypto —
@@ -244,7 +245,10 @@ export function AssetSignalTable() {
   // kalau tidak ia kebaca "not pending" sebelum sempat jalan (premature reveal).
   const smartMoneyGating = cryptoForSmartMoney.length > 0 && smartMoneyPending;
   const isLoading =
-    baseInitialLoading || marketContextLoading || smartMoneyGating;
+    baseInitialLoading ||
+    marketContextLoading ||
+    idxContextLoading ||
+    smartMoneyGating;
 
   const displayFavCount = useMemo(() => {
     if (assetType === "all") return favoriteSymbols.length;
