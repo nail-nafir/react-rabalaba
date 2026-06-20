@@ -13,6 +13,7 @@ const SubscriptionPage = lazy(() => import('@/pages/subscription'));
 const AdminPage = lazy(() => import('@/pages/admin'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
+const AuthCallbackPage = lazy(() => import('@/pages/auth-callback'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
 
 export const router = createBrowserRouter([
@@ -115,6 +116,17 @@ export const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  {
+    // OAuth landing — standalone, no layout (it's just a full-screen loader).
+    path: '/auth/callback',
+    element: (
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader trigger />}>
+          <AuthCallbackPage />
+        </Suspense>
+      </ErrorBoundary>
+    ),
   },
   {
     path: '*',

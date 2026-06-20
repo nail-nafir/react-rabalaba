@@ -60,35 +60,26 @@ export function UserMenu() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-48 sm:w-56 p-1.5 text-foreground">
+      <DropdownMenuContent align="end" className="w-48 text-foreground">
         {!isAuthenticated ? (
           <>
-            <DropdownMenuLabel className="flex flex-col gap-1 p-3 bg-primary/5 rounded-lg border border-primary/10 m-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                {t("license.auth_required")}
-              </span>
-              <span className="text-[11px] font-normal leading-normal text-muted-foreground whitespace-normal">
-                {t("auth.login_subtitle")}
-              </span>
-            </DropdownMenuLabel>
-            
-            <div className="p-1 space-y-1">
+            <div className="p-1 space-y-1.5">
               <DropdownMenuItem
                 onClick={() => navigate("/login")}
-                className="text-xs cursor-pointer font-bold bg-primary text-primary-foreground hover:bg-primary/95 focus:bg-primary/95 focus:text-primary-foreground justify-center h-9 rounded-lg flex items-center gap-1.5 transition-colors border-0"
+                className="text-xs cursor-pointer font-bold bg-primary text-primary-foreground hover:bg-primary/80 focus:bg-primary/80 focus:text-primary-foreground justify-center h-9 rounded-lg flex items-center gap-1.5 transition-all border-0 tracking-tight"
               >
                 <LogIn className="h-3.5 w-3.5" />
                 {t("auth.login_btn")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => navigate("/register")}
-                className="text-xs cursor-pointer justify-center h-9 rounded-lg flex items-center gap-1.5 border border-border bg-card hover:bg-accent focus:bg-accent transition-colors"
+                className="text-xs cursor-pointer font-bold bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] focus:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] focus:text-secondary-foreground justify-center h-9 rounded-lg flex items-center gap-1.5 transition-all border-0 tracking-tight"
               >
                 <UserPlus className="h-3.5 w-3.5" />
                 {t("auth.signup_btn")}
               </DropdownMenuItem>
             </div>
-            
+
             <DropdownMenuSeparator />
           </>
         ) : (
@@ -156,13 +147,22 @@ export function UserMenu() {
               value={theme}
               onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
             >
-              <DropdownMenuRadioItem value="light" className="text-xs cursor-pointer">
+              <DropdownMenuRadioItem
+                value="light"
+                className="text-xs cursor-pointer"
+              >
                 {t("common.theme_light")}
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="dark" className="text-xs cursor-pointer">
+              <DropdownMenuRadioItem
+                value="dark"
+                className="text-xs cursor-pointer"
+              >
                 {t("common.theme_dark")}
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="system" className="text-xs cursor-pointer">
+              <DropdownMenuRadioItem
+                value="system"
+                className="text-xs cursor-pointer"
+              >
                 {t("common.theme_system")}
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>

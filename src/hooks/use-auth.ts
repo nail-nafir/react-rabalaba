@@ -43,6 +43,19 @@ export function useAuth() {
       supabase.auth.signInWithPassword({ email, password }),
     signUp: (email: string, password: string) =>
       supabase.auth.signUp({ email, password }),
+    // OAuth (Google). Redirects the browser to Google, then back to our
+    // /auth/callback route where supabase-js auto-exchanges the code for a
+    // session (PKCE + detectSessionInUrl are on by default). `redirectTo`
+    // carries the post-login target through the round-trip.
+    signInWithGoogle: (redirectTo?: string) =>
+      supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback${
+            redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""
+          }`,
+        },
+      }),
     signOut: () => supabase.auth.signOut(),
   };
 }

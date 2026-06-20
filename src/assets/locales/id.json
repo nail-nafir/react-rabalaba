@@ -244,7 +244,11 @@
     "logout_success": "Berhasil keluar.",
     "login_failed": "Email atau password salah.",
     "confirm_email_title": "Cek email",
-    "confirm_email_desc": "Link konfirmasi udah dikirim. Klik dulu buat ngaktifin akun, terus balik ke sini buat aktivasi kode."
+    "confirm_email_desc": "Link konfirmasi udah dikirim. Klik dulu buat ngaktifin akun, terus balik ke sini buat aktivasi kode.",
+    "or_continue_with": "atau lanjut dengan",
+    "continue_with_google": "Lanjut dengan Google",
+    "google_failed": "Gagal masuk dengan Google. Coba lagi.",
+    "signing_in": "Sedang memproses…"
   },
   "faq": {
     "title": "Bingung? Kita Kasih Paham",

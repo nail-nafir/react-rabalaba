@@ -25,63 +25,64 @@ export function AuthLayout() {
       <PageLoader />
 
       {/* Top Floating Navigation Controls */}
-      <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none md:top-6 md:left-6 md:right-6">
-        
-        {/* Left: Back to Home Link */}
-        <Link 
-          to="/" 
-          className="pointer-events-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium group"
-        >
-          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-          <span>{t('common.back_to_home')}</span>
-        </Link>
-
-        {/* Right: Language and Theme Selects */}
-        <div className="pointer-events-auto flex items-center gap-2">
+      <div className="absolute top-4 left-0 right-0 z-50 pointer-events-none md:top-6">
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between w-full">
           
-          {/* Language Selector Dropdown */}
-          <Select value={currentLang} onValueChange={(v) => i18n.changeLanguage(v)}>
-            <SelectTrigger 
-              size="sm" 
-              className="h-8 bg-card/30 backdrop-blur-xs border-border/40 text-[10px] font-bold tracking-wider uppercase pl-2.5 pr-2 gap-1 rounded-lg cursor-pointer"
-            >
-              <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper" align="end" className="text-xs">
-              <SelectItem value="id" className="text-xs">Indonesia</SelectItem>
-              <SelectItem value="en" className="text-xs">English</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Left: Back to Home Link */}
+          <Link 
+            to="/" 
+            className="pointer-events-auto flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium group"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+            <span>{t('common.back_to_home')}</span>
+          </Link>
 
-          {/* Theme Selector Dropdown */}
-          <Select value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
-            <SelectTrigger 
-              size="sm" 
-              className="h-8 bg-card/30 backdrop-blur-xs border-border/40 text-[10px] font-bold tracking-wider uppercase pl-2.5 pr-2 gap-1 rounded-lg cursor-pointer"
-            >
-              {theme === 'dark' ? (
-                <Moon className="h-3.5 w-3.5 text-primary mr-1" />
-              ) : theme === 'light' ? (
-                <Sun className="h-3.5 w-3.5 text-amber-500 mr-1" />
-              ) : (
-                <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-              )}
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper" align="end" className="text-xs">
-              <SelectItem value="light" className="text-xs">{t('common.theme_light')}</SelectItem>
-              <SelectItem value="dark" className="text-xs">{t('common.theme_dark')}</SelectItem>
-              <SelectItem value="system" className="text-xs">{t('common.theme_system')}</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Right: Language and Theme Selects */}
+          <div className="pointer-events-auto flex items-center gap-2">
+            
+            {/* Language Selector Dropdown */}
+            <Select value={currentLang} onValueChange={(v) => i18n.changeLanguage(v)}>
+              <SelectTrigger 
+                className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg"
+              >
+                <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" align="end" className="p-1">
+                <SelectItem value="id" className="uppercase tracking-wider text-[10px] cursor-pointer">Indonesia</SelectItem>
+                <SelectItem value="en" className="uppercase tracking-wider text-[10px] cursor-pointer">English</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Theme Selector Dropdown */}
+            <Select value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
+              <SelectTrigger 
+                className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg"
+              >
+                {theme === 'dark' ? (
+                  <Moon className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                ) : theme === 'light' ? (
+                  <Sun className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                ) : (
+                  <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                )}
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" align="end" className="p-1">
+                <SelectItem value="light" className="uppercase tracking-wider text-[10px] cursor-pointer">{t('common.theme_light')}</SelectItem>
+                <SelectItem value="dark" className="uppercase tracking-wider text-[10px] cursor-pointer">{t('common.theme_dark')}</SelectItem>
+                <SelectItem value="system" className="uppercase tracking-wider text-[10px] cursor-pointer">{t('common.theme_system')}</SelectItem>
+              </SelectContent>
+            </Select>
+
+          </div>
 
         </div>
 
       </div>
 
       {/* Auth Content Port */}
-      <main className="flex-1 flex items-center justify-center p-4 pt-16 md:pt-4">
+      <main className="flex-1 flex items-center justify-center w-full max-w-7xl mx-auto px-6 py-4 pt-16 md:py-4">
         <Outlet />
       </main>
     </div>

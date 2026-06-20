@@ -244,7 +244,11 @@
     "logout_success": "Logged out.",
     "login_failed": "Wrong email or password.",
     "confirm_email_title": "Check the inbox",
-    "confirm_email_desc": "A confirmation link is on its way. Click it to activate the account, then head back here to redeem a code."
+    "confirm_email_desc": "A confirmation link is on its way. Click it to activate the account, then head back here to redeem a code.",
+    "or_continue_with": "or continue with",
+    "continue_with_google": "Continue with Google",
+    "google_failed": "Google sign-in failed. Try again.",
+    "signing_in": "Signing you in…"
   },
   "faq": {
     "title": "Curious? We Got Answers",

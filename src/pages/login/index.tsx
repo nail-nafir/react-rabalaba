@@ -4,7 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldError } from "@/components/ui/field";
@@ -15,6 +15,7 @@ import {
   type AuthFormValues,
 } from "@/features/auth/schemas/auth-schema";
 import { AuthShell } from "@/features/auth/components/auth-shell";
+import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -153,10 +154,16 @@ export default function LoginPage() {
           disabled={form.formState.isSubmitting}
           className="h-10 w-full cursor-pointer text-xs font-extrabold bg-primary hover:bg-primary/95 text-primary-foreground shadow-lg shadow-primary/15 hover:shadow-primary/25 hover:-translate-y-px active:translate-y-px active:scale-[0.985] transition-all rounded-lg mt-2 flex items-center justify-center gap-1.5"
         >
-          {form.formState.isSubmitting ? <Spinner className="h-4 w-4" /> : null}
+          {form.formState.isSubmitting ? (
+            <Spinner className="h-4 w-4" />
+          ) : (
+            <LogIn className="h-4 w-4" />
+          )}
           <span>{t("auth.login_btn")}</span>
         </Button>
       </form>
+
+      <GoogleAuthButton redirect={redirect} />
     </AuthShell>
   );
 }
