@@ -11,7 +11,7 @@ export function MobileNav() {
   const NAV_ITEMS = [
     { to: "/terminal", label: t("common.terminal"), icon: Monitor },
     { to: "/calendar", label: t("common.calendar"), icon: CalendarDays },
-    { to: "/pricing", label: t("common.pricing"), icon: CreditCard },
+    { to: "/subscription", label: t("common.subscription"), icon: CreditCard },
   ];
 
   return (
@@ -20,7 +20,9 @@ export function MobileNav() {
       aria-label="Mobile navigation"
     >
       {NAV_ITEMS.map((item) => {
-        const isActive = location.pathname === item.to;
+        const isActive =
+          location.pathname === item.to ||
+          location.pathname.startsWith(`${item.to}/`);
         const Icon = item.icon;
         return (
           <Link

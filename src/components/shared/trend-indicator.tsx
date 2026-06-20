@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { TrendDirection } from '@/types/market';
-import { TREND_DISPLAY } from '@/constants/signals';
+import { TREND_DISPLAY } from '@/constants';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface TrendIndicatorProps {

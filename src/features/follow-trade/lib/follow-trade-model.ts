@@ -1,8 +1,23 @@
-import type { AssetType, SignalTier, UnifiedAsset } from "@/types/asset";
+import type { AssetType, UnifiedAsset } from "@/types/asset";
+import { TRADEABLE_ASSET_TYPES } from "@/constants/taxonomy/asset";
+import { SIGNAL_TIERS, type SignalTier } from "@/constants/taxonomy/tier";
+import {
+  FOLLOW_SIGNALS,
+  LIFECYCLE_STATUSES,
+  type FollowSignal,
+  type FollowStatus,
+  type LifecycleStatus,
+} from "@/constants/taxonomy/status";
 
-/** Lifecycle status of a followed trade. `open` while live; the rest are terminal. */
-export type FollowStatus = "open" | "tp1" | "tp2" | "tp3" | "sl" | "manual";
-export type FollowSignal = "long" | "short";
+// Re-export the followed-trade status taxonomy so existing imports of these
+// names from this module (UI + engine) keep resolving unchanged.
+export {
+  FOLLOW_SIGNALS,
+  LIFECYCLE_STATUSES,
+  type FollowSignal,
+  type FollowStatus,
+  type LifecycleStatus,
+};
 
 export interface FollowedTrade {
   id: string;
@@ -152,6 +167,56 @@ export function evaluateFollow(
   return { status: "open", highestTpReached, closed: false };
 }
 
+/** Display-facing split of a followed trade: LIFECYCLE vs OUTCOME. */
+export interface FollowProgress {
+  /** Position state — open vs done. Always the server's source of truth. */
+  lifecycle: LifecycleStatus;
+  /** TP levels touched (0..tpTotal); live-ratcheted for running trades. */
+  tpReached: number;
+  tpTotal: number;
+  /** Closed via stop-loss (no TP ever secured). */
+  slHit: boolean;
+}
+
+/**
+ * Split a trade into the two independent things the UI shows: its LIFECYCLE
+ * (open/closed) and its OUTCOME (TP milestone + SL). Lifecycle is the stored
+ * status (server truth). The milestone is recomputed LIVE for running trades and
+ * ratcheted up from the stored floor — the cron only persists `highestTpReached`
+ * on close (see core/auto-journal-core.ts), so an open row's stored milestone is
+ * stale (0). `rawCandles` are Yahoo-normalized (timestamp in SECONDS); they're
+ * filtered to since-follow and ms-stamped here, mirroring the cron's prep.
+ */
+export function deriveFollowProgress(
+  trade: FollowedTrade,
+  price: number,
+  rawCandles?: { high: number; low: number; timestamp: number }[],
+): FollowProgress {
+  const tpTotal = trade.takeProfits.length;
+  if (trade.status !== "open") {
+    return {
+      lifecycle: "closed",
+      tpReached: trade.highestTpReached,
+      tpTotal,
+      slHit: trade.status === "sl",
+    };
+  }
+  const since = rawCandles
+    ?.filter((c) => c.timestamp * 1000 >= trade.followedAt)
+    .map<FollowCandle>((c) => ({
+      high: c.high,
+      low: c.low,
+      timestamp: c.timestamp * 1000,
+    }));
+  const live = evaluateFollow(trade, price, since);
+  return {
+    lifecycle: "open",
+    tpReached: Math.max(trade.highestTpReached, live.highestTpReached),
+    tpTotal,
+    slHit: false,
+  };
+}
+
 /**
  * Apply a price snapshot to all open trades, partitioning into open/closed.
  * `candlesBySymbol` (optional) carries each symbol's candles since the trade was
@@ -229,10 +294,24 @@ export interface TrackerStats {
   winRate: number;
   avgR: number;
   totalR: number;
-  equitySeries: { index: number; date: number; r: number; cumR: number; symbol: string }[];
-  statusDistribution: { status: FollowStatus; count: number }[];
-  perAsset: { symbol: string; r: number }[];
+  equitySeries: {
+    index: number;
+    date: number;
+    r: number;
+    cumR: number;
+    symbol: string;
+  }[];
+  /** % P/L summed per calendar day (local), with the running cumulative %. */
+  dailySeries: { date: string; dayPct: number; cumPct: number }[];
+  statusDistribution: { status: LifecycleStatus; count: number }[];
+  perAsset: { symbol: string; pct: number }[];
+  /** % P/L summed per asset type (crypto / stock / forex …). */
+  byAssetType: { assetType: string; pct: number }[];
   longVsShort: { signal: FollowSignal; count: number; r: number }[];
+  /** Closed-trade outcome tally: profitable vs losing trades. */
+  winLoss: { wins: number; losses: number };
+  /** Avg R per signal grade (A/B/C) — validates the engine's tiering. */
+  byGrade: { grade: SignalTier; count: number; avgR: number }[];
 }
 
 /** Aggregate closed-trade history (+ current open count) into dashboard stats. */
@@ -245,19 +324,28 @@ export function buildTrackerStats(
     (a, b) => (a.closedAt ?? 0) - (b.closedAt ?? 0),
   );
 
+  const dayKey = (ms: number) => {
+    const d = new Date(ms);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
   const statusCounts = new Map<FollowStatus, number>();
   const perAssetMap = new Map<string, number>();
+  const assetTypeMap = new Map<string, number>();
   const dirMap = new Map<FollowSignal, { count: number; r: number }>();
+  const gradeMap = new Map<SignalTier, { count: number; r: number }>();
+  const dateToPct = new Map<string, number>();
   const equitySeries: TrackerStats["equitySeries"] = [];
   let totalR = 0;
   let wins = 0;
+  let losses = 0;
   let cumR = 0;
 
   ordered.forEach((t, i) => {
-    const { r } = computePnl(t, t.closePrice ?? t.entryPrice);
+    const { pct, r } = computePnl(t, t.closePrice ?? t.entryPrice);
     totalR += r;
     cumR += r;
     if (r > 0) wins++;
+    else if (r < 0) losses++;
     equitySeries.push({
       index: i + 1,
       date: t.closedAt ?? t.followedAt,
@@ -266,9 +354,43 @@ export function buildTrackerStats(
       symbol: t.symbol,
     });
     statusCounts.set(t.status, (statusCounts.get(t.status) ?? 0) + 1);
-    perAssetMap.set(t.symbol, (perAssetMap.get(t.symbol) ?? 0) + r);
+    perAssetMap.set(t.symbol, (perAssetMap.get(t.symbol) ?? 0) + pct);
+    assetTypeMap.set(t.assetType, (assetTypeMap.get(t.assetType) ?? 0) + pct);
     const d = dirMap.get(t.signal) ?? { count: 0, r: 0 };
     dirMap.set(t.signal, { count: d.count + 1, r: d.r + r });
+    if (t.grade) {
+      const g = gradeMap.get(t.grade) ?? { count: 0, r: 0 };
+      gradeMap.set(t.grade, { count: g.count + 1, r: g.r + r });
+    }
+    const day = dayKey(t.closedAt ?? t.followedAt);
+    dateToPct.set(day, (dateToPct.get(day) ?? 0) + pct);
+  });
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+
+  const daysInMonth: string[] = [];
+  for (let d = 1; d <= lastDay; d++) {
+    daysInMonth.push(
+      `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    );
+  }
+  const minDayStr = daysInMonth[0];
+
+  let initialCumPct = 0;
+  for (const [date, pct] of dateToPct.entries()) {
+    if (date < minDayStr) {
+      initialCumPct += pct;
+    }
+  }
+
+  let dayCum = initialCumPct;
+  const dailySeries = daysInMonth.map((date) => {
+    const dayPct = dateToPct.get(date) ?? 0;
+    dayCum += dayPct;
+    return { date, dayPct, cumPct: dayCum };
   });
 
   return {
@@ -279,15 +401,33 @@ export function buildTrackerStats(
     avgR: closed > 0 ? totalR / closed : 0,
     totalR,
     equitySeries,
-    statusDistribution: [...statusCounts.entries()].map(([status, count]) => ({
+    dailySeries,
+    // Matches the table's Status column (open vs closed lifecycle). Uses the shared LIFECYCLE_STATUSES array.
+    statusDistribution: LIFECYCLE_STATUSES.map((status) => ({
       status,
-      count,
+      count: status === "open" ? openCount : closed,
     })),
-    perAsset: [...perAssetMap.entries()].map(([symbol, r]) => ({ symbol, r })),
-    longVsShort: [...dirMap.entries()].map(([signal, v]) => ({
-      signal,
-      count: v.count,
-      r: v.r,
+    perAsset: [...perAssetMap.entries()].map(([symbol, pct]) => ({
+      symbol,
+      pct,
     })),
+    byAssetType: TRADEABLE_ASSET_TYPES.map((assetType) => ({
+      assetType,
+      pct: assetTypeMap.get(assetType) ?? 0,
+    })),
+    // Fixed order (long → short) to match the signal filter dropdown. Uses the shared FOLLOW_SIGNALS array.
+    longVsShort: FOLLOW_SIGNALS.map((signal) => {
+      const v = dirMap.get(signal) ?? { count: 0, r: 0 };
+      return { signal, count: v.count, r: v.r };
+    }),
+    winLoss: { wins, losses },
+    byGrade: SIGNAL_TIERS.filter((g) => gradeMap.has(g)).map((g) => {
+      const v = gradeMap.get(g)!;
+      return {
+        grade: g,
+        count: v.count,
+        avgR: v.count > 0 ? v.r / v.count : 0,
+      };
+    }),
   };
 }

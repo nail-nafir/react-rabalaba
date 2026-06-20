@@ -1,4 +1,11 @@
-/** Signal engine thresholds and scoring configuration */
+/** Signal engine thresholds and scoring configuration.
+ *
+ *  This module is now engine NUMERIC config only. The categorical display maps
+ *  that used to live here (SIGNAL_COLORS/LABELS, TIER/RISK/REGIME/STATUS colors,
+ *  TREND_DISPLAY, filter options) moved to @/constants/taxonomy/* — the single
+ *  source of truth for each domain's values, colors and label keys. */
+import type { CategoryKey } from "@/constants/taxonomy/category";
+import type { MarketRegime } from "@/constants/taxonomy/regime";
 
 /** Weighted scoring — each indicator contributes differently based on reliability */
 export const SIGNAL_WEIGHTS = {
@@ -45,7 +52,7 @@ export const REGIME_THRESHOLDS = {
 
 /** Maximum raw (unsigned) contribution each category can accumulate, derived
  *  from the indicator weights it owns. Used to normalize categories to [-1..1]. */
-export const CATEGORY_MAX_SCORE = {
+export const CATEGORY_MAX_SCORE: Record<CategoryKey, number> = {
   trend:
     SIGNAL_WEIGHTS.EMA_ALIGNMENT +
     SIGNAL_WEIGHTS.MACD +
@@ -60,7 +67,7 @@ export const CATEGORY_MAX_SCORE = {
 
 /** Base category weights. Correlated indicators live in the same category, so
  *  trend is no longer counted multiple times across EMA/MACD/ADX. */
-export const CATEGORY_BASE_WEIGHTS = {
+export const CATEGORY_BASE_WEIGHTS: Record<CategoryKey, number> = {
   trend: 0.4,
   momentum: 0.3,
   volatility: 0.2,
@@ -70,7 +77,10 @@ export const CATEGORY_BASE_WEIGHTS = {
 /** Per-regime multipliers applied to the base category weights. Indicators
  *  perform differently per regime: trend tools dominate trends, oscillators
  *  dominate ranges, and momentum is de-emphasized in volatility expansion. */
-export const REGIME_WEIGHT_MULTIPLIERS = {
+export const REGIME_WEIGHT_MULTIPLIERS: Record<
+  MarketRegime,
+  Record<CategoryKey, number>
+> = {
   trending: { trend: 1.5, momentum: 0.8, volatility: 0.8, volume: 1.0 },
   ranging: { trend: 0.5, momentum: 1.5, volatility: 1.5, volume: 1.0 },
   high_volatility: { trend: 1.0, momentum: 0.6, volatility: 1.2, volume: 1.0 },
@@ -171,102 +181,3 @@ export const SMART_MONEY = {
   /** Max conviction multiplier from positioning (±). Modest by design. */
   MAX_CONVICTION_ADJ: 0.15,
 };
-
-export const SIGNAL_COLORS = {
-  long: {
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-  },
-  short: {
-    bg: "bg-rose-500/15",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
-  },
-  neutral: {
-    bg: "bg-muted-foreground/15",
-    text: "text-muted-foreground",
-    border: "border-muted-foreground/30",
-  },
-};
-
-/** Signal display labels (signal neutral = no actionable trade). */
-export const SIGNAL_LABELS = {
-  long: "Long",
-  short: "Short",
-  neutral: "Neutral",
-};
-
-export const TREND_DISPLAY = {
-  bullish: { label: "Bullish", text: "text-emerald-400" },
-  bearish: { label: "Bearish", text: "text-rose-400" },
-  sideways: { label: "Sideways", text: "text-muted-foreground" },
-};
-
-export const TIER_COLORS = {
-  A: {
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-  },
-  B: {
-    bg: "bg-amber-500/15",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
-  },
-  C: {
-    bg: "bg-rose-500/15",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
-  },
-};
-
-export const RISK_COLORS = {
-  low: {
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-  },
-  medium: {
-    bg: "bg-amber-500/15",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
-  },
-  high: {
-    bg: "bg-rose-500/15",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
-  },
-};
-
-/** Badge colors per market regime (distinct from the directional signal/trend
- *  hues so they aren't read as bullish/bearish). */
-export const REGIME_COLORS = {
-  trending: {
-    bg: "bg-primary/15",
-    text: "text-primary",
-    border: "border-primary/30",
-  },
-  ranging: {
-    bg: "bg-amber-500/15",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
-  },
-  high_volatility: {
-    bg: "bg-rose-500/15",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
-  },
-  low_volatility: {
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-  },
-};
-
-export const SIGNAL_FILTER_OPTIONS = [
-  { value: "all", label: "All Signals" },
-  { value: "long", label: "Buy / Long" },
-  { value: "short", label: "Sell / Short" },
-  { value: "neutral", label: "Neutral" },
-];

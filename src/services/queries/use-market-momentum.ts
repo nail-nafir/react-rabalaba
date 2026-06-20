@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { useMarketData } from "./use-yahoo-data";
 import { useMarketContext } from "./use-market-context";
 import { applyMarketContext } from "@/features/engine/market-context";
-import { DEFAULT_CRYPTO_TICKERS, TOP_CRYPTO_TICKERS } from "@/constants/assets";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useScreenerUniverse } from "@/hooks/use-screener-universe";
 import type { Breadth } from "@/types/market";
 
 /**
@@ -18,9 +17,10 @@ export function useMarketMomentum(): {
   momentum: Breadth | null;
   isLoading: boolean;
 } {
-  const { hasAccess } = usePremiumAccess();
-  const tickers = hasAccess ? TOP_CRYPTO_TICKERS : DEFAULT_CRYPTO_TICKERS;
-  const { data: crypto, isLoading } = useMarketData(tickers);
+  // Premium → admin-managed DB crypto universe; free → DEFAULT_CRYPTO (the hook
+  // handles the gate + fallback). Same per-symbol cache the screener uses.
+  const { crypto: cryptoTickers } = useScreenerUniverse();
+  const { data: crypto, isLoading } = useMarketData(cryptoTickers);
   const { data: ctx } = useMarketContext();
 
   const momentum = useMemo<Breadth | null>(() => {

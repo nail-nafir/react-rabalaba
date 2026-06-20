@@ -36,13 +36,13 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
             <div className="flex min-h-[80vh] items-center justify-center px-4">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-6 flex h-40 w-40 items-center justify-center rounded-4xl bg-muted/20 ring-1 ring-border/50 animate-empty-float">
-              <AlertTriangle className="h-24 w-24 text-muted-foreground/60 animate-empty-pulse" />
+            <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-3xl border border-rose-500/30 bg-rose-500/15">
+              <AlertTriangle className="h-14 w-14 text-rose-400" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-3">
+            <h1 className="text-sm font-medium text-foreground">
               {t('error_boundary.title')}
             </h1>
-            <p className="text-base text-muted-foreground max-w-md mb-6">
+            <p className="mt-2 mb-6 text-sm text-muted-foreground max-w-sm">
               {t('error_boundary.description')}
             </p>
             {this.state.error && (

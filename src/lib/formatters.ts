@@ -48,10 +48,20 @@ export function formatVolume(vol: number): string {
   return vol.toString();
 }
 
-/** Numeric day/month (e.g. "01/06"); order follows the given locale. */
+/** Numeric day/month (e.g. "01/06" into "01-06"); order follows the given locale. */
 export function formatDayMonth(timestamp: number, locale?: string): string {
   const date = new Date(timestamp * 1000);
-  return date.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
+  return date
+    .toLocaleDateString(locale, { day: "2-digit", month: "2-digit" })
+    .replace(/\//g, "-");
+}
+
+/** Fixed numeric date DD-MM-YYYY, e.g. "15-06-2023" (locale-independent order). */
+export function formatDateNumeric(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${date.getFullYear()}`;
 }
 
 /** Locale-aware full date, e.g. "1 Juni 2026" (id) / "June 1, 2026" (en). */

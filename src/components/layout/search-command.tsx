@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useUIStore } from "@/store/ui-store";
+import { useAppSelector, useUIActions } from "@/store/hooks";
 import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Search, TrendingUp, ArrowRight } from "lucide-react";
@@ -10,26 +10,29 @@ import { cn } from "@/lib/utils";
 import { useCallback } from "react";
 import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
+import { ASSET_TYPE_LABEL_KEYS } from "@/constants";
+import type { AssetType } from "@/types/asset";
 
 // Mock search results — will be replaced with API data
-const MOCK_ASSETS = [
-  { symbol: "BTC/USD", name: "Bitcoin", type: "Crypto" },
-  { symbol: "ETH/USD", name: "Ethereum", type: "Crypto" },
-  { symbol: "SOL/USD", name: "Solana", type: "Crypto" },
-  { symbol: "AAPL", name: "Apple Inc.", type: "US Stock" },
-  { symbol: "MSFT", name: "Microsoft", type: "US Stock" },
-  { symbol: "GOOGL", name: "Alphabet", type: "US Stock" },
-  { symbol: "NVDA", name: "NVIDIA", type: "US Stock" },
-  { symbol: "BBCA.JK", name: "Bank Central Asia", type: "ID Stock" },
-  { symbol: "BBRI.JK", name: "Bank Rakyat Indonesia", type: "ID Stock" },
-  { symbol: "TLKM.JK", name: "Telkom Indonesia", type: "ID Stock" },
-  { symbol: "GC=F", name: "Gold Futures", type: "Commodity" },
-  { symbol: "CL=F", name: "Crude Oil", type: "Commodity" },
+const MOCK_ASSETS: { symbol: string; name: string; assetType: AssetType }[] = [
+  { symbol: "BTC/USD", name: "Bitcoin", assetType: "crypto" },
+  { symbol: "ETH/USD", name: "Ethereum", assetType: "crypto" },
+  { symbol: "SOL/USD", name: "Solana", assetType: "crypto" },
+  { symbol: "AAPL", name: "Apple Inc.", assetType: "us-stock" },
+  { symbol: "MSFT", name: "Microsoft", assetType: "us-stock" },
+  { symbol: "GOOGL", name: "Alphabet", assetType: "us-stock" },
+  { symbol: "NVDA", name: "NVIDIA", assetType: "us-stock" },
+  { symbol: "BBCA.JK", name: "Bank Central Asia", assetType: "id-stock" },
+  { symbol: "BBRI.JK", name: "Bank Rakyat Indonesia", assetType: "id-stock" },
+  { symbol: "TLKM.JK", name: "Telkom Indonesia", assetType: "id-stock" },
+  { symbol: "GC=F", name: "Gold Futures", assetType: "commodity" },
+  { symbol: "CL=F", name: "Crude Oil", assetType: "commodity" },
 ];
 
 export function SearchCommand() {
   const { t } = useTranslation();
-  const { isSearchOpen, setSearchOpen } = useUIStore();
+  const isSearchOpen = useAppSelector((s) => s.ui.isSearchOpen);
+  const { setSearchOpen } = useUIActions();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const debouncedQuery = useDebounce(query, 200);
@@ -124,7 +127,7 @@ export function SearchCommand() {
                   variant="outline"
                   className="font-bold tracking-wider uppercase text-[10px] rounded-md"
                 >
-                  {asset.type}
+                  {t(ASSET_TYPE_LABEL_KEYS[asset.assetType])}
                 </Badge>
                 {index === selectedIndex && (
                   <ArrowRight className="h-4 w-4 text-primary" />

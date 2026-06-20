@@ -1,4 +1,4 @@
-import { formatPrice, formatRatio, formatDayMonth, formatDateFull, formatClock } from "@/lib/formatters";
+import { formatPrice, formatRatio, formatDayMonth, formatDateNumeric, formatClock } from "@/lib/formatters";
 import type { AssetType } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
@@ -143,10 +143,9 @@ function esc(s: string): string {
 
 const n = (v: number) => v.toFixed(1);
 
-/** Format generation timestamp, e.g. "31 May 2026 · 12:21". */
-function formatGeneratedAt(d: Date, locale?: string): string {
+function formatGeneratedAt(d: Date): string {
   const ts = d.getTime() / 1000;
-  return `${formatDateFull(ts, locale)} \u00B7 ${formatClock(ts)}`;
+  return `${formatDateNumeric(ts)} \u00B7 ${formatClock(ts)}`;
 }
 
 /**
@@ -202,10 +201,11 @@ export function buildShareCardSvg(
   const y = (price: number) =>
     top + (1 - priceToRatio(price, model.priceMin, model.priceMax)) * chartH;
 
-  // Use the same window as the web chart for consistency.
+  // Use the same window as the web chart for consistency — fully-contained only,
+  // so a candle is never half-rendered clipped against an edge in the share image.
   const view = meta.candles
     .slice(-MAX_CANDLES)
-    .filter((c) => c.high >= model.priceMin && c.low <= model.priceMax);
+    .filter((c) => c.low >= model.priceMin && c.high <= model.priceMax);
   const slot = view.length ? (projX - left) / view.length : 0;
   const candles = view
     .map((c, i) => {
@@ -462,7 +462,7 @@ export function buildShareCardSvg(
     })
     .join("");
 
-  const generatedAt = formatGeneratedAt(new Date(), meta.locale);
+  const generatedAt = formatGeneratedAt(new Date());
 
   // ── Stats row ──────────────────────────────────────────────────────────
   // Three columns: R:R aligned to left, RISK centered, REWARD aligned to right.

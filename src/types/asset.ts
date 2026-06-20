@@ -1,14 +1,14 @@
 import type { Outlook } from "@/features/engine/signals";
+import type { AssetType } from "@/constants/taxonomy/asset";
+import type { RelativeStrengthLabel } from "@/constants/taxonomy/indicator";
 
-export type AssetType =
-  | "crypto"
-  | "us-stock"
-  | "id-stock"
-  | "commodity"
-  | "forex";
-export type SignalDirection = "long" | "short" | "neutral";
-export type SignalTier = "A" | "B" | "C";
-export type RiskLevel = "low" | "medium" | "high";
+// Categorical domain types are sourced from @/constants/taxonomy (the value
+// list is the source of truth). Re-exported here so the many existing
+// `@/types/asset` import sites keep resolving unchanged.
+export type { AssetType, AssetFilterType } from "@/constants/taxonomy/asset";
+export type { SignalDirection } from "@/constants/taxonomy/signal";
+export type { SignalTier } from "@/constants/taxonomy/tier";
+export type { RiskLevel } from "@/constants/taxonomy/risk";
 
 export interface YahooQuoteIndicators {
   close: (number | null)[];
@@ -78,7 +78,7 @@ export interface Accumulation {
 export interface RelativeStrength {
   r1w?: number;
   r1m?: number;
-  label: "outperform" | "underperform" | "inline";
+  label: RelativeStrengthLabel;
 }
 
 /** OHLC-only speculative/"gorengan" heuristics for Indonesian stocks
@@ -117,6 +117,9 @@ export interface UnifiedAsset {
   outlook: Outlook | null;
   tradingPlan: TradingPlan | null;
   timeframe: string;
+  /** Epoch ms of the latest quote (Yahoo meta.regularMarketTime). Drives the
+   *  auto-journal freshness guard — a stale snapshot must NOT be journaled. */
+  quoteTime?: number;
   quoteIndicators?: YahooQuoteIndicators;
   timestamps?: number[];
   isNotFound?: boolean;
@@ -130,5 +133,3 @@ export interface UnifiedAsset {
   /** Speculative/"gorengan" risk heuristics (id-stock only, Phase 2). */
   speculativeRisk?: SpeculativeRisk;
 }
-
-export type AssetFilterType = "all" | AssetType | "favorite";

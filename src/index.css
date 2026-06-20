@@ -128,11 +128,7 @@
 }
 
 @layer utilities {
-    .font-tabular { font-variant-numeric: tabular-nums; }
     .text-mono-data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-    .glass-morphism {
-        @apply bg-background/80 backdrop-blur-md;
-    }
 }
 
 /* Custom scrollbar slim */
@@ -192,22 +188,6 @@
 
 .animate-ticker:hover {
     animation-play-state: paused;
-}
-
-/* Vertical scan beam — Grid scan-beam loader */
-@keyframes scan-y {
-    0% { top: -25%; opacity: 0; }
-    12% { opacity: 1; }
-    88% { opacity: 1; }
-    100% { top: 100%; opacity: 0; }
-}
-
-.animate-scan-y {
-    animation: scan-y 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .animate-scan-y { animation: none; }
 }
 
 /* Empty state icon animation — floating + soft pulse */

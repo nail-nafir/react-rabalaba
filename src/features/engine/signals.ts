@@ -37,6 +37,7 @@ import {
   REGIME_WEIGHT_MULTIPLIERS,
   DIRECTION_OVERRIDE_SCORE,
 } from "@/constants/signals";
+import type { ObvTrend, RsiDivergence } from "@/constants/taxonomy/indicator";
 import {
   TIMEFRAME_PRESETS,
   type TimeframePresetKey,
@@ -126,8 +127,8 @@ export interface Outlook {
     plusDI: number;
     minusDI: number;
     atr: number;
-    obvTrend: "rising" | "falling" | "flat";
-    rsiDivergence: "bullish" | "bearish" | "none";
+    obvTrend: ObvTrend;
+    rsiDivergence: RsiDivergence;
     fibLevels: { 0.382: number; 0.5: number; 0.618: number };
   };
   analysis: {
@@ -1003,7 +1004,7 @@ function generateVolumeAnalysis(
   current: number,
   ma: number,
   spike: boolean,
-  obvTrend: "rising" | "falling" | "flat",
+  obvTrend: ObvTrend,
   volumeReliable: boolean,
 ): string {
   if (!volumeReliable) {
@@ -1032,7 +1033,7 @@ function generateMomentumAnalysis(
   macd: { histogram: number; macdLine: number; signalLine: number },
   stochRSI: number,
   bb: { percentB: number },
-  rsiDivergence: "bullish" | "bearish" | "none",
+  rsiDivergence: RsiDivergence,
 ): string {
   const rsiStatus =
     rsi > 70 ? "overbought" : rsi < 30 ? "oversold" : "neutral territory";

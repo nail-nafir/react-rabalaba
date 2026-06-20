@@ -14,11 +14,12 @@ import {
 } from "recharts";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
+import { PALETTE, SCORE_CATEGORIES, CATEGORY_LABEL_KEYS } from "@/constants";
 import type { Outlook } from "@/features/engine/signals";
 
-const POS = "var(--color-emerald-400)";
-const NEG = "var(--color-rose-400)";
-const FLAT = "var(--color-zinc-400)";
+const POS = PALETTE.positive.fill;
+const NEG = PALETTE.negative.fill;
+const FLAT = PALETTE.neutral.fill;
 
 /** ±0.05 dead zone on the raw [-1..1] score, in the chart's [-100..100] units. */
 const tone = (v: number): "pos" | "neg" | "flat" =>
@@ -44,7 +45,7 @@ const VALUE_GUTTER = 36;
 const MARGIN = { top: 0, right: VALUE_GUTTER + 4, bottom: 0, left: 0 };
 const DOMAIN: [number, number] = [-100, 100];
 /** Full-width track behind each bar. */
-const TRACK = { fill: "var(--color-zinc-400)", fillOpacity: 0.15, radius: 4 };
+const TRACK = { fill: FLAT, fillOpacity: 0.15, radius: 4 };
 
 function renderBar(props: BarShapeProps) {
   return <Rectangle {...props} fill={BAR_FILL[tone(props.payload?.v ?? 0)]} />;
@@ -105,16 +106,9 @@ export const CategoryScoreChart = memo(function CategoryScoreChart({
 
   const data = useMemo(
     () =>
-      (
-        [
-          ["cat_trend", scores.trend],
-          ["cat_momentum", scores.momentum],
-          ["cat_volatility", scores.volatility],
-          ["cat_volume", scores.volume],
-        ] as const
-      ).map(([key, val]) => ({
-        name: t(`dialog.${key}`),
-        v: val * 100,
+      SCORE_CATEGORIES.map((key) => ({
+        name: t(CATEGORY_LABEL_KEYS[key]),
+        v: scores[key] * 100,
       })),
     [scores, t],
   );

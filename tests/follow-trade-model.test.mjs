@@ -264,3 +264,48 @@ test("buildTrackerStats: win rate, cumulative equity, per-asset, direction", asy
   assert.equal(stats.longVsShort[0].signal, "long");
   assert.equal(stats.longVsShort[0].count, 2);
 });
+
+test("deriveFollowProgress: open trade lights up TP from live candles", async () => {
+  const { deriveFollowProgress } = await loadModule(SRC);
+  // open trade; an intraday candle wicks through TP2 (132 >= 130) then pulls back.
+  const p = deriveFollowProgress(longTrade(), 128, [
+    { high: 132, low: 100, timestamp: 10 },
+  ]);
+  assert.equal(p.lifecycle, "open");
+  assert.equal(p.tpReached, 2);
+  assert.equal(p.tpTotal, 3);
+  assert.equal(p.slHit, false);
+});
+
+test("deriveFollowProgress: never downgrades below the stored milestone", async () => {
+  const { deriveFollowProgress } = await loadModule(SRC);
+  // stored floor = 1, but the fetched candle window shows no TP touch (115 < 120).
+  // evaluateFollow replays from 0 with candles, so the floor must be preserved.
+  const p = deriveFollowProgress(longTrade({ highestTpReached: 1 }), 110, [
+    { high: 115, low: 105, timestamp: 10 },
+  ]);
+  assert.equal(p.lifecycle, "open");
+  assert.equal(p.tpReached, 1);
+});
+
+test("deriveFollowProgress: closed sl -> slHit, no TP", async () => {
+  const { deriveFollowProgress } = await loadModule(SRC);
+  const p = deriveFollowProgress(
+    longTrade({ status: "sl", highestTpReached: 0, closePrice: 80 }),
+    80,
+  );
+  assert.equal(p.lifecycle, "closed");
+  assert.equal(p.slHit, true);
+  assert.equal(p.tpReached, 0);
+});
+
+test("deriveFollowProgress: closed tp3 -> all pips, no SL", async () => {
+  const { deriveFollowProgress } = await loadModule(SRC);
+  const p = deriveFollowProgress(
+    longTrade({ status: "tp3", highestTpReached: 3, closePrice: 150 }),
+    150,
+  );
+  assert.equal(p.lifecycle, "closed");
+  assert.equal(p.tpReached, 3);
+  assert.equal(p.slHit, false);
+});

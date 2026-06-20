@@ -46,12 +46,13 @@ import { Sparkline } from "@/components/charts/sparkline";
 import {
   TIER_COLORS,
   SIGNAL_COLORS,
-  SIGNAL_LABELS,
+  SIGNAL_LABEL_KEYS,
   SIGNAL_FILTER_OPTIONS,
-} from "@/constants/signals";
-import { useUIStore } from "@/store/ui-store";
-import { useFilterStore, type SignalFilterType } from "@/store/filter-store";
-import { useFavoriteStore } from "@/store/favorite-store";
+  ASSET_TYPE_OPTIONS,
+} from "@/constants";
+import { useAppSelector, useUIActions, useFilterActions } from "@/store/hooks";
+import { type SignalFilterType } from "@/store/slices/filter-slice";
+import { useFavorites } from "@/hooks/use-favorites";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useMarketContext } from "@/services/queries/use-market-context";
@@ -61,17 +62,11 @@ import { enrichAsset } from "@/features/engine/enrichment";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import {
   DEFAULT_COMMODITY_TICKERS,
-  DEFAULT_CRYPTO_TICKERS,
-  DEFAULT_ID_STOCK_TICKERS,
-  DEFAULT_US_STOCK_TICKERS,
   DEFAULT_FOREX_TICKERS,
-  TOP_CRYPTO_TICKERS,
-  TOP_ID_STOCK_TICKERS,
-  TOP_US_STOCK_TICKERS,
-  ASSET_TYPE_OPTIONS,
 } from "@/constants/assets";
 import { Button } from "@/components/ui/button";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useScreenerUniverse } from "@/hooks/use-screener-universe";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
 import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
@@ -94,32 +89,36 @@ export function AssetSignalTable() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "strength", desc: true },
   ]);
-  const { openDetailDialog, openLicenseDialog } = useUIStore();
-  const {
-    assetType,
-    setAssetType,
-    searchQuery,
-    setSearchQuery,
-    signalFilter,
-    setSignalFilter,
-  } = useFilterStore();
+  // Actions only — no UI-state subscription — so this expensive screener never
+  // re-renders on unrelated UI changes (e.g. license-dialog open/close). That
+  // decoupling is what kept a stray unstable reference from spiraling into a
+  // page-unresponsive render loop.
+  const { openDetailDialog, openLicenseDialog } = useUIActions();
+  const assetType = useAppSelector((s) => s.filter.assetType);
+  const signalFilter = useAppSelector((s) => s.filter.signalFilter);
+  const searchQuery = useAppSelector((s) => s.filter.searchQuery);
+  const { setAssetType, setSignalFilter, setSearchQuery } = useFilterActions();
   const debouncedSearch = useDebounce(searchQuery, 300);
   const { hasAccess } = usePremiumAccess();
 
   // Favorite integration
-  const { favoriteSymbols, removeSymbol } = useFavoriteStore();
+  const { favoriteSymbols, removeSymbol } = useFavorites();
   const [showFavorites, setShowFavorites] = useState(false);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
+  // crypto / US / ID stocks come from the admin-managed DB universe for premium
+  // (single source with the cron), DEFAULT_* for free — the hook handles the
+  // premium gate + fallback. commodity & forex stay on constants (below).
+  const universe = useScreenerUniverse();
   const { data: cryptoAssets, isLoading: cryptoLoading } = useMarketData(
-    hasAccess ? TOP_CRYPTO_TICKERS : DEFAULT_CRYPTO_TICKERS,
+    universe.crypto,
   );
   const { data: usStocks, isLoading: usLoading } = useMarketData(
-    hasAccess ? TOP_US_STOCK_TICKERS : DEFAULT_US_STOCK_TICKERS,
+    universe.usStock,
   );
   const { data: idStocks, isLoading: idLoading } = useMarketData(
-    hasAccess ? TOP_ID_STOCK_TICKERS : DEFAULT_ID_STOCK_TICKERS,
+    universe.idStock,
   );
   const { data: commodities, isLoading: comLoading } = useMarketData(
     DEFAULT_COMMODITY_TICKERS,
@@ -151,13 +150,13 @@ export function AssetSignalTable() {
     queryClient.invalidateQueries({ queryKey: ["asset-data"] });
 
   const translatedAssetOptions = ASSET_TYPE_OPTIONS.map((opt) => ({
-    ...opt,
-    label: t(`common.asset_types.${opt.value}`),
+    value: opt.value,
+    label: t(opt.labelKey),
   }));
 
   const translatedSignalOptions = SIGNAL_FILTER_OPTIONS.map((opt) => ({
-    ...opt,
-    label: t(`common.signals.${opt.value}`),
+    value: opt.value,
+    label: t(opt.labelKey),
   }));
 
   // Monitor for symbols in favorites that failed to fetch
@@ -495,7 +494,7 @@ export function AssetSignalTable() {
                 colors.border,
               )}
             >
-              {SIGNAL_LABELS[signal]}
+              {t(SIGNAL_LABEL_KEYS[signal])}
             </Badge>
           );
         },
@@ -532,7 +531,7 @@ export function AssetSignalTable() {
   return (
     <>
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("market.screener")}
@@ -551,39 +550,37 @@ export function AssetSignalTable() {
             />
           </Button>
         </div>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+          {isLoading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <span>
+              {filteredData.length} {t("market.assets_found")}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Control bar section */}
       <div className="flex flex-col gap-3">
-        {/* Filters Header at the top */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <FilterGroup
-              value={assetType}
-              options={translatedAssetOptions}
-              onChange={(v) => setAssetType(v as AssetFilterType)}
-              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
-            />
+        {/* Filters */}
+        <div className="flex items-center gap-2 min-w-0">
+          <FilterGroup
+            value={assetType}
+            options={translatedAssetOptions}
+            onChange={(v) => setAssetType(v as AssetFilterType)}
+            className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+          />
 
-            <Separator orientation="vertical" className="mx-1" />
+          <Separator orientation="vertical" className="mx-1" />
 
-            <FilterGroup
-              value={signalFilter}
-              options={translatedSignalOptions}
-              onChange={(v) => setSignalFilter(v as SignalFilterType)}
-              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
-            />
-          </div>
-
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-            {isLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <span>
-                {filteredData.length} {t("market.assets_found")}
-              </span>
-            )}
-          </div>
+          <FilterGroup
+            value={signalFilter}
+            options={translatedSignalOptions}
+            onChange={(v) => setSignalFilter(v as SignalFilterType)}
+            variant="select"
+            className="flex-1 sm:flex-none"
+          />
         </div>
 
         {/* Search and Actions Group below */}

@@ -153,3 +153,45 @@ export function SkeletonTableRow() {
     </>
   );
 }
+
+
+/** Loading row for the admin auto-journal table (journal-asset-manager).
+ *  Mirrors its 7 columns: added (date+time), symbol (symbol+name), type, price,
+ *  change, status, and the right-aligned action buttons. Matches the terminal's
+ *  skeleton-row loading style. */
+export function SkeletonJournalAssetRow() {
+  return (
+    <>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+      </TableCell>
+    </>
+  );
+}

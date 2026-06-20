@@ -19,6 +19,9 @@ interface FilterGroupProps<T extends string> {
   options: readonly FilterOption<T>[];
   onChange: (value: T) => void;
   className?: string;
+  /** "tabs" (default) = segmented control on desktop; "select" forces the
+   *  dropdown on every breakpoint (mobile always renders the dropdown). */
+  variant?: "tabs" | "select";
 }
 
 export function FilterGroup<T extends string>({
@@ -26,10 +29,11 @@ export function FilterGroup<T extends string>({
   options,
   onChange,
   className,
+  variant = "tabs",
 }: FilterGroupProps<T>) {
   const isMobile = useIsMobile();
 
-  if (isMobile) {
+  if (isMobile || variant === "select") {
     return (
       <Select value={value} onValueChange={(v) => onChange(v as T)}>
         <SelectTrigger

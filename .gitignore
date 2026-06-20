@@ -30,3 +30,13 @@ dist-ssr
 .env.production
 .env.staging
 .env.development
+
+# Generated edge-function engine bundle (built from src/ via esbuild)
+supabase/functions/**/_engine.mjs
+# Supabase Edge Functions local env (holds the service/secret key)
+supabase/functions/.env
+# Supabase CLI local cache (linked project ref, pooler url, service versions)
+supabase/.temp
+
+# AI Agents
+.agent

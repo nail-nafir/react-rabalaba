@@ -135,13 +135,13 @@ export function Footer() {
             </li>
             <li>
               <Link
-                to="/pricing"
+                to="/subscription"
                 className={cn(
                   buttonVariants({ variant: "link" }),
                   "p-0 h-auto font-normal text-muted-foreground hover:text-primary transition-colors",
                 )}
               >
-                {t("common.pricing")}
+                {t("common.subscription")}
               </Link>
             </li>
           </ul>

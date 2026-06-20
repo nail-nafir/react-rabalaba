@@ -1,71 +1,17 @@
-import type { AssetFilterType } from "@/types/asset";
-
-export const ASSET_TYPE_LABELS: Record<AssetFilterType, string> = {
-  all: "All Assets",
-  favorite: "Favorites",
-  crypto: "Crypto",
-  "us-stock": "U.S Stocks",
-  "id-stock": "Indonesia Stocks",
-  commodity: "Commodities",
-  forex: "Forex",
-};
-
-export const ASSET_TYPE_OPTIONS = [
-  { value: "all" as const, label: "All Assets" },
-  { value: "crypto" as const, label: "Crypto" },
-  { value: "us-stock" as const, label: "U.S Stocks" },
-  { value: "id-stock" as const, label: "ID Stocks" },
-  { value: "commodity" as const, label: "Commodities" },
-  { value: "forex" as const, label: "Forex" },
-];
-
+/** Default/seed ticker universes per asset class. The asset-type taxonomy
+ *  (values, label keys, options) lives in @/constants/taxonomy/asset.
+ *
+ *  NOTE: the premium crypto/US/ID universes are NOT here anymore — they're
+ *  admin-managed in the `journal_assets` DB table (single source with the cron;
+ *  see use-screener-universe / use-journal-assets). These DEFAULT_* lists are the
+ *  free-tier universe + the fallback when the DB is unreadable. Commodity & forex
+ *  stay constant-driven everywhere (screener + cron). */
 export const DEFAULT_CRYPTO_TICKERS = [
   "BTC-USD",
   "ETH-USD",
   "BNB-USD",
   "SOL-USD",
   "XRP-USD",
-];
-
-export const TOP_CRYPTO_TICKERS = [
-  "BTC-USD",
-  "ETH-USD",
-  "BNB-USD",
-  "SOL-USD",
-  "DOGE-USD",
-  "SHIB-USD",
-  "ZEC-USD",
-  "WLD-USD",
-  "HYPE32196-USD",
-  "SUI20947-USD",
-  "TON11419-USD",
-  "FET-USD",
-  "ONDO-USD",
-  "SEI-USD",
-  "RENDER-USD",
-  "UNI7083-USD",
-  "PENGU34466-USD",
-  "GMT18069-USD",
-  "ENA-USD",
-  "PENDLE-USD",
-  "ARKM-USD",
-  "OP-USD",
-  "TIA-USD",
-  "ARB11841-USD",
-  "JTO-USD",
-  "JUP29210-USD",
-  "SKYAI-USD",
-  "RAY-USD",
-  "EIGEN-USD",
-  "QNT-USD",
-  "S32684-USD",
-  "MYX36410-USD",
-  "INJ-USD",
-  "LINK-USD",
-  "PEPE24478-USD",
-  "MORPHO34104-USD",
-  "XRP-USD",
-  "TRX-USD",
 ];
 
 export const DEFAULT_US_STOCK_TICKERS = [
@@ -78,26 +24,6 @@ export const DEFAULT_US_STOCK_TICKERS = [
   "TSLA",
 ];
 
-export const TOP_US_STOCK_TICKERS = [
-  "AAPL",
-  "MSFT",
-  "GOOGL",
-  "AMZN",
-  "NVDA",
-  "TSM",
-  "INTC",
-  "AMD",
-  "META",
-  "MSTR",
-  "PLTR",
-  "HOOD",
-  "MU",
-  "JPM",
-  "NOK",
-  "TSLA",
-  "QCOM",
-];
-
 export const DEFAULT_ID_STOCK_TICKERS = [
   "BBCA.JK",
   "BBRI.JK",
@@ -107,51 +33,6 @@ export const DEFAULT_ID_STOCK_TICKERS = [
   "BBNI.JK",
   "UNVR.JK",
   "ANTM.JK",
-];
-
-export const TOP_ID_STOCK_TICKERS = [
-  "BBCA.JK",
-  "BBRI.JK",
-  "BMRI.JK",
-  "DCII.JK",
-  "TLKM.JK",
-  "BRPT.JK",
-  "BREN.JK",
-  "PTRO.JK",
-  "TPIA.JK",
-  "CUAN.JK",
-  "CDIA.JK",
-  "BUMI.JK",
-  "BRMS.JK",
-  "ENRG.JK",
-  "DEWA.JK",
-  "BNBR.JK",
-  "VKTR.JK",
-  "RAJA.JK",
-  "RATU.JK",
-  "MINA.JK",
-  "UANG.JK",
-  "BUVA.JK",
-  "MORA.JK",
-  "PANI.JK",
-  "EMAS.JK",
-  "ANTM.JK",
-  "BRIS.JK",
-  "DSSA.JK",
-  "UNVR.JK",
-  "ADRO.JK",
-  "ADMR.JK",
-  "MDKA.JK",
-  "GOTO.JK",
-  "SUPA.JK",
-  "WBSA.JK",
-  "RLCO.JK",
-  "COIN.JK",
-  "SINI.JK",
-  "BUKA.JK",
-  "BKSL.JK",
-  "ARTO.JK",
-  "KETR.JK",
 ];
 
 export const DEFAULT_COMMODITY_TICKERS = [

@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
-import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
+import {
+  computePnl,
+  deriveFollowProgress,
+} from "@/features/follow-trade/lib/follow-trade-model";
+import { LifecycleBadge, TpProgress } from "./follow-status";
 import { formatPrice, formatRatio } from "@/lib/formatters";
 import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -21,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Target, Check, Loader2, Share2 } from "lucide-react";
-import { SIGNAL_COLORS } from "@/constants/signals";
+import { SIGNAL_COLORS, PALETTE, SIGNAL_LABEL_KEYS } from "@/constants";
 
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import type { TradingPlan, SignalDirection } from "@/types/asset";
@@ -58,9 +62,10 @@ export function TradeDetailDialog({
   const { t, i18n } = useTranslation();
 
   // Fetch current candle data for the symbol so the saved setup can be charted.
-  const { data: assets, isLoading: chartLoading } = useMarketData(
-    trade ? [trade.symbol] : [],
-  );
+  // Memoize the symbols array so useMarketData's input is identity-stable
+  // (a fresh [trade.symbol] each render churns the query → recharts re-mounts).
+  const symbols = useMemo(() => (trade ? [trade.symbol] : []), [trade]);
+  const { data: assets, isLoading: chartLoading } = useMarketData(symbols);
   const asset = assets?.[0];
 
   // Normalize candles from the fetched data
@@ -160,13 +165,16 @@ export function TradeDetailDialog({
   const formattedClosedDate = trade.closedAt
     ? formatTradeDate(trade.closedAt)
     : null;
-  const slReached = isClosed && trade.status === "sl";
+  // Split lifecycle (running/closed) from outcome (TP/SL). For a running trade
+  // the milestone is recomputed LIVE off the fetched candles — the stored value
+  // is stale 0 until the cron closes it (see core/auto-journal-core.ts).
+  const progress = deriveFollowProgress(trade, livePrice, candles);
   const priceLabel = isClosed
     ? t("journal.close_price")
     : t("journal.current_price");
   const chartTitle = isClosed
     ? t("journal.trade_detail")
-    : t("journal.running_position");
+    : t("journal.open_position");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,7 +191,7 @@ export function TradeDetailDialog({
                 SIGNAL_COLORS[trade.signal].border,
               )}
             >
-              {t(`journal.${trade.signal}`)}
+              {t(SIGNAL_LABEL_KEYS[trade.signal])}
             </Badge>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
@@ -217,7 +225,7 @@ export function TradeDetailDialog({
               <div className="text-right leading-tight">
                 <div
                   className={`text-xl font-bold text-mono-data ${
-                    pos ? "text-emerald-400" : "text-rose-400"
+                    pos ? PALETTE.positive.text : PALETTE.negative.text
                   }`}
                 >
                   {sign(pnl.pct)}
@@ -253,34 +261,17 @@ export function TradeDetailDialog({
                 {formattedClosedDate}
               </Badge>
             )}
-            {trade.takeProfits.length > 0 && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "font-bold uppercase tracking-wider text-[10px] rounded-md",
-                  trade.highestTpReached > 0
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : "border-border bg-muted/50 text-muted-foreground",
-                )}
-              >
-                {trade.highestTpReached > 0 && <Check className="h-3 w-3" />}
-                TP {trade.highestTpReached}/{trade.takeProfits.length}
-              </Badge>
+            {(progress.tpTotal > 0 || progress.slHit) && (
+              <TpProgress
+                reached={progress.tpReached}
+                total={progress.tpTotal}
+                slHit={progress.slHit}
+                isClosed={progress.lifecycle !== "open"}
+                size="sm"
+                variant="badge"
+              />
             )}
-            {isClosed && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "font-bold uppercase tracking-wider text-[10px] rounded-md",
-                  slReached
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                    : "border-border bg-muted/50 text-muted-foreground",
-                )}
-              >
-                {slReached && <Check className="h-3 w-3" />}
-                SL
-              </Badge>
-            )}
+            <LifecycleBadge open={progress.lifecycle === "open"} />
           </div>
         </DialogHeader>
 

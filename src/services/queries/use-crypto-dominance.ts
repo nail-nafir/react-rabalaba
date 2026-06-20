@@ -17,5 +17,6 @@ export function useCryptoDominance() {
     staleTime: 600_000, // 10 minutes (CoinGecko free tier is rate-limited)
     refetchInterval: 600_000,
     retry: 1,
+    meta: { silent: true }, // optional context; handled gracefully if it fails
   });
 }

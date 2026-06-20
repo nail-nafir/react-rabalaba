@@ -1,3 +1,5 @@
+import type { MarketRegime } from "@/constants/taxonomy/regime";
+
 /**
  * Regime engine (Layer 1) — classifies the market's behavioral state so the
  * signal engine can weight indicator categories appropriately and avoid trading
@@ -13,11 +15,9 @@
  * no-trade pre-breakout state), then trending takes priority over
  * high_volatility so a clean strong trend is not mislabeled.
  */
-export type MarketRegimeKind =
-  | "trending"
-  | "ranging"
-  | "high_volatility"
-  | "low_volatility";
+/** @deprecated Use `MarketRegime` from @/constants/taxonomy/regime — kept as an
+ *  alias so existing engine imports keep resolving. */
+export type MarketRegimeKind = MarketRegime;
 
 export interface RegimeInput {
   adx: number;

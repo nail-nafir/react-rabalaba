@@ -13,10 +13,13 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useMarketContext } from "@/services/queries/use-market-context";
+import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
 import { useMarketMomentum } from "@/services/queries/use-market-momentum";
 import { MARKET_INDICES } from "@/constants/assets";
-import { Loader2 } from "lucide-react";
+import { dominanceColor } from "@/constants";
+import { Loader2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { FearGreedBar } from "@/components/charts/fear-greed-bar";
 import { DominanceChart } from "@/components/charts/dominance-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -32,19 +35,27 @@ export function MarketSummaryRow() {
     isFetching: fgFetching,
     isLoading: fearGreedLoading,
     isError: fearGreedError,
+    refetch: refetchFearGreed,
   } = useFearGreedIndex();
   const {
     data: indices,
     isFetching: indicesFetching,
     isLoading: indicesLoading,
     isError: indicesError,
+    refetch: refetchIndices,
   } = useMarketData(MARKET_INDICES.map((i) => i.symbol));
-  const { data: marketContext, isLoading: contextLoading } = useMarketContext();
+  const { data: marketContext, isLoading: contextLoading, refetch: refetchContext } = useMarketContext();
+  const { isLoading: dominanceLoading, refetch: refetchDominance } = useCryptoDominance();
   const { momentum } = useMarketMomentum();
 
   const showEmptyState =
     (fearGreedError || (!fearGreed && !fearGreedLoading)) &&
     (indicesError || (!indices?.length && !indicesLoading));
+
+  // Crypto card: both sub-signals (dominance + F&G) are settled AND missing →
+  // one combined message instead of two separate "unavailable" placeholders.
+  const cryptoBothEmpty =
+    !marketContext?.dominance && !dominanceLoading && !fearGreed;
 
   return (
     <>
@@ -74,6 +85,22 @@ export function MarketSummaryRow() {
             <EmptyState
               title={t("market.data_unavailable")}
               description={t("market.data_unavailable_desc")}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    refetchFearGreed();
+                    refetchIndices();
+                    refetchContext();
+                    refetchDominance();
+                  }}
+                  className="gap-2 cursor-pointer font-semibold"
+                >
+                  <RotateCw className="h-3.5 w-3.5" />
+                  {t("common.retry")}
+                </Button>
+              }
             />
           </div>
         ) : (
@@ -100,31 +127,34 @@ export function MarketSummaryRow() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  {marketContext?.dominance &&
+                {cryptoBothEmpty ? (
+                  <CardContent className="flex flex-1 flex-col items-center justify-center py-6 w-full text-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {t("market.crypto_unavailable")}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => {
+                        refetchDominance();
+                        refetchFearGreed();
+                        refetchContext();
+                      }}
+                      className="text-[10px] h-7 gap-1 font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <RotateCw className="h-3 w-3" />
+                      {t("common.retry")}
+                    </Button>
+                  </CardContent>
+                ) : (
+                  <>
+                <CardContent className="flex flex-1 flex-col justify-center gap-4">
+                  {marketContext?.dominance ? (
                     (() => {
                       const { btc, eth } = marketContext.dominance;
                       const others = Math.max(0, 100 - btc - eth);
-                      const btcTw =
-                        btc <= 20
-                          ? "bg-rose-500"
-                          : btc <= 40
-                            ? "bg-orange-400"
-                            : btc <= 60
-                              ? "bg-amber-400"
-                              : btc <= 80
-                                ? "bg-lime-400"
-                                : "bg-emerald-400";
-                      const ethTw =
-                        eth <= 20
-                          ? "bg-rose-500"
-                          : eth <= 40
-                            ? "bg-orange-400"
-                            : eth <= 60
-                              ? "bg-amber-400"
-                              : eth <= 80
-                                ? "bg-lime-400"
-                                : "bg-emerald-400";
+                      const btcTw = dominanceColor(btc);
+                      const ethTw = dominanceColor(eth);
 
                       return (
                         <div className="flex items-center gap-3 w-full py-1">
@@ -164,17 +194,65 @@ export function MarketSummaryRow() {
                           </div>
                         </div>
                       );
-                    })()}
+                    })()
+                  ) : (
+                    <div className="flex flex-1 flex-col items-start justify-center py-2 gap-1.5 w-full">
+                      {dominanceLoading ? (
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin opacity-50" />
+                          <span>{t("market.loading_dominance")}</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className="text-[11px] text-muted-foreground">
+                            {t("market.dominance_unavailable")}
+                          </span>
+                          <Button
+                            variant="link"
+                            size="xs"
+                            onClick={() => {
+                              refetchDominance();
+                              refetchContext();
+                            }}
+                            className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
+                          >
+                            <RotateCw className="h-2.5 w-2.5 mr-1" />
+                            {t("common.retry")}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
                 <CardFooter className="flex-col items-stretch">
-                  {fearGreed && (
+                  {fearGreed ? (
                     <FearGreedBar
                       value={fearGreed.value}
                       label={fearGreed.label}
                       change={fearGreed.change}
                     />
+                  ) : (
+                    <div className="flex flex-col items-start py-2 gap-1.5 w-full">
+                      <span className="text-[11px] text-muted-foreground">
+                        {t("market.sentiment_unavailable")}
+                      </span>
+                      <Button
+                        variant="link"
+                        size="xs"
+                        onClick={() => {
+                          refetchFearGreed();
+                          refetchContext();
+                        }}
+                        className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
+                      >
+                        <RotateCw className="h-2.5 w-2.5 mr-1" />
+                        {t("common.retry")}
+                      </Button>
+                    </div>
                   )}
                 </CardFooter>
+                  </>
+                )}
               </Card>
             )}
 

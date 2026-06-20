@@ -1,0 +1,7 @@
+project_id = "nravncsodgcxwkdaeqcw"
+
+[functions.auto-journal]
+# Cron invokes with a Bearer publishable key (see schedule-auto-journal.sql),
+# which passes the gateway. The function writes with the auto-injected
+# service-role key. Flip to false only if you switch to a shared-secret header.
+verify_jwt = true

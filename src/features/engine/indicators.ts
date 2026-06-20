@@ -3,6 +3,7 @@
  * Used by the signal engine to compute RSI, EMA, MACD, Bollinger Bands,
  * Stochastic RSI, ADX, ATR, OBV, etc.
  */
+import type { RsiDivergence } from "@/constants/taxonomy/indicator";
 
 /**
  * Relative Strength Index (14-period by default)
@@ -550,7 +551,7 @@ export function detectRSIDivergence(
   prices: number[],
   rsiValues: number[],
   lookback = 30
-): "bullish" | "bearish" | "none" {
+): RsiDivergence {
   const pLen = prices.length;
   const rLen = rsiValues.length;
   if (pLen < lookback || rLen < lookback) return "none";

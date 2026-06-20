@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { SkeletonCalendarItem } from "@/components/shared/skeleton-card";
 import { CalendarDetailDialog } from "@/features/economic-calendar/components/calendar-detail-dialog";
 import { MiniCalendar } from "@/features/economic-calendar/components/mini-calendar";
+import { Separator } from "@/components/ui/separator";
 import type { CalendarEvent, EventImpact } from "@/types/calendar";
 
 type ImpactFilter = EventImpact | "all";
@@ -84,6 +85,8 @@ export default function CalendarPage() {
           </div>
         </div>
 
+        <Separator />
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar: Visual Calendar - Shown first on mobile */}
           <div className="w-full lg:w-80 space-y-6 order-first lg:order-last">
@@ -99,22 +102,31 @@ export default function CalendarPage() {
 
           {/* Timeline View */}
           <div className="flex-1 min-w-0 space-y-8">
-            <div className="flex flex-row items-center justify-between gap-4 border-b pb-4 mb-2 overflow-hidden">
-              <FilterGroup
-                className="shrink-0 min-w-0 sm:w-fit"
-                value={impactFilter}
-                options={impactOptions}
-                onChange={(v) => setImpactFilter(v as ImpactFilter)}
-              />
+            <div className="space-y-3">
+              {/* Section title + events count */}
+              <div className="flex flex-row items-center justify-between gap-4">
+                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  {t("calendar.agenda")}
+                </h2>
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+                  {isLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <span className="whitespace-nowrap">
+                      {filteredEvents.length} {t("calendar.events_found")}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-                {isLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <span className="whitespace-nowrap">
-                    {filteredEvents.length} {t("calendar.events_found")}
-                  </span>
-                )}
+              {/* Impact filter */}
+              <div className="border-b pb-4 overflow-hidden">
+                <FilterGroup
+                  className="shrink-0 min-w-0 sm:w-fit"
+                  value={impactFilter}
+                  options={impactOptions}
+                  onChange={(v) => setImpactFilter(v as ImpactFilter)}
+                />
               </div>
             </div>
 

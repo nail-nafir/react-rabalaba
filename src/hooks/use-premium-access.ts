@@ -1,29 +1,24 @@
-import { useCallback, useEffect } from "react";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-import { create } from "zustand";
-import {
-  encodeTrialStamp,
-  decodeTrialStamp,
-  isTrialActive,
-  trialExpiresAt,
-  trialDaysLeft,
-  parseTrialDuration,
-} from "@/lib/premium-trial";
+/**
+ * Premium entitlement — now SERVER-TRUTH, read from the `profiles` row of the
+ * authenticated user (RLS: a user can only read their own). Replaces the old
+ * forgeable localStorage grant + env trial. Free tier is the logged-out (or
+ * tier='free') state; codes are redeemed via the redeem_access_code RPC which
+ * writes the tier server-side. See [[use-auth]].
+ */
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/services/supabase/client";
+import type { ProfileRow } from "@/services/supabase/database.types";
+import { useAuth } from "@/hooks/use-auth";
+import { trialDaysLeft } from "@/lib/premium-trial";
 
-const ACCESS_KEY = import.meta.env.VITE_ACCESS_KEY;
-const ACCESS_CODE = import.meta.env.VITE_ACCESS_CODE;
-const TRIAL_CODE = import.meta.env.VITE_TRIAL_CODE;
-const TRIAL_STORE_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial` : null;
-const TRIAL_NOTIFIED_KEY = ACCESS_KEY ? `${ACCESS_KEY}_trial_notified` : null;
-
-// Trial length comes entirely from env; an unset/invalid value disables trials.
-const TRIAL_DURATION_MS = parseTrialDuration(
-  import.meta.env.VITE_TRIAL_DURATION,
-);
-const TRIAL_ENABLED = !!(TRIAL_CODE && TRIAL_STORE_KEY && TRIAL_DURATION_MS);
-
-export type AccessResult = "granted" | "trial" | "expired" | "invalid";
+export type AccessResult =
+  | "granted"
+  | "trial"
+  | "invalid"
+  | "exhausted"
+  | "already"
+  | "unauthenticated";
 
 export type LicenseTier = "free" | "trial" | "premium";
 
@@ -33,164 +28,104 @@ export interface LicenseStatus {
   expiresAt: number | null;
 }
 
-const readPermanent = (): boolean => {
-  if (!ACCESS_KEY || !ACCESS_CODE) return false;
-  const stored = localStorage.getItem(ACCESS_KEY);
-  return !!stored && atob(stored) === ACCESS_CODE;
-};
-
-const readTrial = (): boolean => {
-  if (!TRIAL_ENABLED) return false;
-  return isTrialActive(
-    decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY!)),
-    Date.now(),
-    TRIAL_DURATION_MS!,
-  );
-};
-
-// Permanent wins over trial so upgrading mid-trial resolves to premium.
-const computeStatus = (): LicenseStatus => {
-  try {
-    if (readPermanent()) {
-      return { tier: "premium", hasAccess: true, expiresAt: null };
-    }
-    const stamp = TRIAL_ENABLED
-      ? decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY!))
-      : null;
-    if (stamp != null && isTrialActive(stamp, Date.now(), TRIAL_DURATION_MS!)) {
-      return {
-        tier: "trial",
-        hasAccess: true,
-        expiresAt: trialExpiresAt(stamp, TRIAL_DURATION_MS!),
-      };
-    }
-  } catch {
-    // Corrupted storage falls through to free.
-  }
-  return { tier: "free", hasAccess: false, expiresAt: null };
-};
-
-const statusEquals = (a: LicenseStatus, b: LicenseStatus): boolean =>
-  a.tier === b.tier &&
-  a.hasAccess === b.hasAccess &&
-  a.expiresAt === b.expiresAt;
-
-interface PremiumAccessState {
-  status: LicenseStatus;
-  setStatus: (status: LicenseStatus) => void;
-}
-
-const usePremiumStore = create<PremiumAccessState>((set) => ({
-  status: computeStatus(),
-  // Skip the set when nothing changed; focus events fire constantly and a
-  // fresh object would re-render every subscriber.
-  setStatus: (status) =>
-    set((state) => (statusEquals(state.status, status) ? state : { status })),
-}));
+const FREE: LicenseStatus = { tier: "free", hasAccess: false, expiresAt: null };
 
 export function usePremiumAccess() {
-  const { t } = useTranslation();
-  const status = usePremiumStore((state) => state.status);
-  const setStatus = usePremiumStore((state) => state.setStatus);
-  const expiresAt = status.expiresAt;
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? null;
 
+  // One shared query per user (react-query dedupes across every consumer).
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile", userId],
+    enabled: !!userId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      // The hand-written Database type doesn't resolve select() shapes (yields
+      // `never`); the row is known from the schema, so assert it.
+      return data as ProfileRow | null;
+    },
+  });
+
+  // Wall-clock 'now', refreshed on an interval. Kept in state rather than read
+  // via Date.now() during render so `status` below stays a PURE derivation of
+  // its deps. Ticking it also flips an expired trial to free mid-session
+  // without waiting on the next profile refetch.
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const validateAccess = () => {
-      setStatus(computeStatus());
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
-      if (TRIAL_ENABLED && TRIAL_NOTIFIED_KEY) {
-        const trialStamp = decodeTrialStamp(
-          localStorage.getItem(TRIAL_STORE_KEY!),
-        );
-        const notifiedStamp = localStorage.getItem(TRIAL_NOTIFIED_KEY);
-        if (
-          trialStamp != null &&
-          !isTrialActive(trialStamp, Date.now(), TRIAL_DURATION_MS!) &&
-          notifiedStamp !== String(trialStamp)
-        ) {
-          toast.info(t("terminal.access_trial_expired"), {
-            id: "trial-expired",
-            duration: 5000,
-          });
-          localStorage.setItem(TRIAL_NOTIFIED_KEY, String(trialStamp));
-        }
-      }
-    };
-
-    window.addEventListener("storage", validateAccess);
-    window.addEventListener("focus", validateAccess);
-
-    // Flip an active trial to free the moment it runs out, even while the
-    // tab stays open; the grace keeps isTrialActive strictly false on fire.
-    let expiryTimer: number | undefined;
-    if (expiresAt != null) {
-      expiryTimer = window.setTimeout(
-        validateAccess,
-        Math.max(0, expiresAt - Date.now()) + 250,
-      );
+  // Effective access is computed from server fields; the stored tier never
+  // auto-flips on expiry (no cron), so a stale 'trial' past its date reads free.
+  const status = useMemo<LicenseStatus>(() => {
+    if (!userId || !profile) return FREE;
+    if (profile.tier === "premium") {
+      return { tier: "premium", hasAccess: true, expiresAt: null };
     }
-
-    setStatus(computeStatus());
-
-    // The Toaster mounts after this effect in the first commit, so toasts
-    // fired here would be dropped; defer them one tick past the commit.
-    const mountTimer = window.setTimeout(() => {
-      if (!ACCESS_KEY || !ACCESS_CODE) {
-        toast.error(t("terminal.access_config_missing"), {
-          id: "premium-access-missing",
-          duration: 5000,
-        });
+    if (profile.tier === "trial" && profile.trial_expires_at) {
+      const exp = Date.parse(profile.trial_expires_at);
+      if (Number.isFinite(exp) && exp > now) {
+        return { tier: "trial", hasAccess: true, expiresAt: exp };
       }
-      validateAccess();
-    }, 0);
-
-    return () => {
-      window.removeEventListener("storage", validateAccess);
-      window.removeEventListener("focus", validateAccess);
-      if (expiryTimer != null) window.clearTimeout(expiryTimer);
-      window.clearTimeout(mountTimer);
-    };
-  }, [t, setStatus, expiresAt]);
-
-  const checkAccess = useCallback(() => {
-    const next = computeStatus();
-    setStatus(next);
-    return next.hasAccess;
-  }, [setStatus]);
+    }
+    return FREE;
+  }, [userId, profile, now]);
 
   const grantAccess = useCallback(
-    (code: string): AccessResult => {
-      if (!ACCESS_KEY || !ACCESS_CODE) {
-        toast.error(t("terminal.access_config_missing"));
+    async (code: string): Promise<AccessResult> => {
+      let kind: string | null;
+      try {
+        // postgrest's typed rpc overload mis-resolves single-arg fns; cast args.
+        const { data, error } = await supabase.rpc("redeem_access_code", {
+          p_code: code,
+        } as never);
+        if (error) throw error;
+        kind = data as string | null;
+      } catch {
         return "invalid";
       }
-      if (code === ACCESS_CODE) {
-        localStorage.setItem(ACCESS_KEY, btoa(ACCESS_CODE));
-        setStatus(computeStatus());
-        return "granted";
+      // Pull the fresh entitlement so the gate updates immediately.
+      await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      switch (kind) {
+        case "premium":
+          return "granted";
+        case "trial":
+          return "trial";
+        case "exhausted":
+          return "exhausted";
+        case "already":
+          return "already";
+        case "unauthenticated":
+          return "unauthenticated";
+        default:
+          return "invalid";
       }
-      if (TRIAL_ENABLED && code === TRIAL_CODE) {
-        // First redeem starts the env-configured clock; never reset a stamp.
-        if (decodeTrialStamp(localStorage.getItem(TRIAL_STORE_KEY!)) == null) {
-          localStorage.setItem(TRIAL_STORE_KEY!, encodeTrialStamp(Date.now()));
-        }
-        const ok = readTrial();
-        setStatus(computeStatus());
-        return ok ? "trial" : "expired";
-      }
-      return "invalid";
     },
-    [t, setStatus],
+    [queryClient, userId],
   );
+
+  const checkAccess = useCallback(() => status.hasAccess, [status.hasAccess]);
 
   return {
     hasAccess: status.hasAccess,
     tier: status.tier,
-    expiresAt,
-    daysLeft: expiresAt != null ? trialDaysLeft(expiresAt) : null,
+    expiresAt: status.expiresAt,
+    daysLeft: status.expiresAt != null ? trialDaysLeft(status.expiresAt) : null,
+    // Manages the auto-journal universe (admin UI). Read off the same profile
+    // row already fetched above — no extra query. See [[use-journal-assets]].
+    isAdmin: !!profile?.is_admin,
+    isLoading,
     checkAccess,
     grantAccess,
-    accessCode: ACCESS_CODE || "",
-    isConfigured: !!(ACCESS_KEY && ACCESS_CODE),
+    accessCode: "",
+    isConfigured: true,
   };
 }

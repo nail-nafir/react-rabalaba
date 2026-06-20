@@ -144,5 +144,11 @@ export function adaptYahooChart(
     high24h,
     low24h,
     timestamps: result.timestamp,
+    // Quote freshness (epoch ms). The auto-journal cron uses this to reject
+    // stale snapshots instead of journaling a trade off hours-old data.
+    quoteTime:
+      typeof meta.regularMarketTime === "number"
+        ? meta.regularMarketTime * 1000
+        : undefined,
   };
 }

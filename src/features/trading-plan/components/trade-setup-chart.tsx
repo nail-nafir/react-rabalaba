@@ -8,6 +8,7 @@ import {
   formatRatio,
 } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { PALETTE, SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -50,9 +51,9 @@ const pillWidth = (key: string, price: string) =>
 
 /** color language: entry = neutral, risk(SL) = rose, profit(TP) = emerald */
 const LEVEL_COLOR: Record<LevelKind, string> = {
-  entry: "text-muted-foreground",
-  risk: "text-rose-400",
-  profit: "text-emerald-400",
+  entry: PALETTE.neutral.text,
+  risk: PALETTE.negative.text,
+  profit: PALETTE.positive.text,
 };
 
 /** Shared geometry for the combined chart pills (level badges + markers). */
@@ -175,7 +176,10 @@ export function TradeSetupChart({
     () =>
       candles
         .slice(-MAX_CANDLES)
-        .filter((c) => c.high >= model.priceMin && c.low <= model.priceMax),
+        // Fully-contained only: the model's domain encloses every in-context
+        // candle, so this keeps all of them and drops just the out-of-regime
+        // ones — a candle is never half-rendered clipped against an edge.
+        .filter((c) => c.low >= model.priceMin && c.high <= model.priceMax),
     [candles, model.priceMin, model.priceMax],
   );
 
@@ -333,7 +337,7 @@ export function TradeSetupChart({
               {candleGeo.map((g, i) => (
                 <g
                   key={i}
-                  className={g.up ? "text-emerald-400" : "text-rose-400"}
+                  className={g.up ? PALETTE.positive.text : PALETTE.negative.text}
                   opacity={
                     hoveredCandle == null || hoveredCandle === i ? 1 : 0.45
                   }
@@ -417,10 +421,7 @@ export function TradeSetupChart({
                       : "text-emerald-400";
                 const arrowH = 7;
                 const arrowHalf = 5;
-                const word =
-                  m.kind === "entry"
-                    ? t("journal.entry_marker")
-                    : t("journal.close_marker");
+                const word = m.kind === "entry" ? "ENTRY" : "CLOSED";
                 // Keep the marker badge clean: just the action word, no date /
                 // price cells (those read off the axis + level badges already).
                 const cells: PillCell[] = [{ text: word, emphasis: true }];
@@ -635,12 +636,12 @@ export function TradeSetupChart({
                     variant="outline"
                     className={cn(
                       "rounded-md text-[10px] font-semibold uppercase tracking-wider",
-                      model.signal === "short"
-                        ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
-                        : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+                      SIGNAL_COLORS[model.signal].bg,
+                      SIGNAL_COLORS[model.signal].text,
+                      SIGNAL_COLORS[model.signal].border,
                     )}
                   >
-                    {model.signal}
+                    {t(SIGNAL_LABEL_KEYS[model.signal])}
                   </Badge>
                 ) : (
                   <Badge

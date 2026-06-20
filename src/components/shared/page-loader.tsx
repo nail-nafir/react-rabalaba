@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
-import { useUIStore } from "@/store/ui-store";
+import { useAppSelector, useUIActions } from "@/store/hooks";
 
 interface PageLoaderProps {
   /**
@@ -18,7 +18,8 @@ interface PageLoaderProps {
  */
 export function PageLoader({ trigger = false }: PageLoaderProps) {
   const location = useLocation();
-  const { isPageLoading, setPageLoading } = useUIStore();
+  const isPageLoading = useAppSelector((s) => s.ui.isPageLoading);
+  const { setPageLoading } = useUIActions();
 
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);

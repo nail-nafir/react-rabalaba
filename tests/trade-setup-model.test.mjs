@@ -97,6 +97,24 @@ test("scale follows recent action + levels, ignoring old far-away candles", asyn
   assert.ok(m.priceMax > 124, "domain still encloses the furthest TP");
 });
 
+test("recent run-up above the levels is enclosed, not clipped", async () => {
+  const { buildTradeSetupModel } = await loadModule(SRC);
+  // SHORT entered after a drop: levels sit BELOW a recent high plateau (mirrors
+  // the SUI "kepotong" bug — entry 72.41, levels 67.8–73.89, price had run to ~81).
+  const plan = {
+    entry: 72.41, stopLoss: 73.89, takeProfit1: 70.77,
+    takeProfit2: 69.29, takeProfit3: 67.8, riskRewardRatio: 2,
+  };
+  // Plateau near 80 (above every level) then drift down into the levels.
+  const candles = makeCandles([78, 80, 80.5, 80.2, 79, 75, 73, 72]);
+  const m = buildTradeSetupModel(candles, plan, "short", 71.49);
+
+  const maxHigh = Math.max(...candles.map((c) => c.high));
+  const minLow = Math.min(...candles.map((c) => c.low));
+  assert.ok(m.priceMax >= maxHigh, "domain top encloses the recent high (no clip)");
+  assert.ok(m.priceMin <= minLow, "domain bottom encloses the recent low (no clip)");
+});
+
 test("R multiples increase across take-profits", async () => {
   const { buildTradeSetupModel } = await loadModule(SRC);
   const m = buildTradeSetupModel([], longPlan, "long", 100);

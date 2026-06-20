@@ -1,3 +1,4 @@
+export * from './taxonomy';
 export * from './assets';
 export * from './idx';
 export * from './signals';

@@ -198,20 +198,26 @@ export function buildTradeSetupModel(
 
   const levelPrices = levels.map((l) => l.price);
 
-  // Scale to the plan levels + current price, plus candle extremes that sit
-  // within a band around the plan's own range. Clipping out-of-band candles
-  // stops old, far-away action (e.g. a coin that has since 10x'd) from dragging
-  // the scale and opening a huge empty gap. Levels and the current price are
-  // always enclosed. Uses a recent window first to bound the work.
+  // Scale to the plan levels + current price, plus every RECENT candle whose
+  // range overlaps a band around the plan's own range. Two things matter:
+  //  • we select whole candles that overlap the band, then enclose their FULL
+  //    high/low — so an in-context candle is never half-clipped (the wick shows
+  //    in full). This fixes the "kepotong" look when recent action runs past the
+  //    levels (selecting just the extremes that fall inside the band cut wicks).
+  //  • candles entirely outside the band (a different price regime — e.g. old
+  //    action before a big move) stay excluded so they don't drag the scale and
+  //    open a huge empty gap.
+  // Band is 1.5× the level span so a normal recent run-up stays in-context;
+  // levels + current price are always enclosed.
   const recent = candles.slice(-MAX_CANDLES);
   const anchorLow = Math.min(...levelPrices, ref);
   const anchorHigh = Math.max(...levelPrices, ref);
   const span = anchorHigh - anchorLow || ref * 0.1 || 1;
-  const inBand = (p: number) => p >= anchorLow - span && p <= anchorHigh + span;
-  const candleHighs = recent.map((c) => c.high).filter(inBand);
-  const candleLows = recent.map((c) => c.low).filter(inBand);
-  const highs = [...levelPrices, ref, ...candleHighs];
-  const lows = [...levelPrices, ref, ...candleLows];
+  const bandLow = anchorLow - span * 1.5;
+  const bandHigh = anchorHigh + span * 1.5;
+  const ctx = recent.filter((c) => c.high >= bandLow && c.low <= bandHigh);
+  const highs = [...levelPrices, ref, ...ctx.map((c) => c.high)];
+  const lows = [...levelPrices, ref, ...ctx.map((c) => c.low)];
   let max = Math.max(...highs);
   let min = Math.min(...lows);
   const pad = (max - min) * 0.05 || ref * 0.02 || 1;

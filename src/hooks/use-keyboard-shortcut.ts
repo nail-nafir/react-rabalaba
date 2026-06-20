@@ -12,7 +12,7 @@ export function useKeyboardShortcut(
       if (meta && !event.metaKey) return;
       if (ctrl && !event.ctrlKey) return;
       if (shift && !event.shiftKey) return;
-      if (event.key.toLowerCase() !== key.toLowerCase()) return;
+      if (!event.key || event.key.toLowerCase() !== key.toLowerCase()) return;
 
       event.preventDefault();
       callback();

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface FearGreedBarProps {
   value: number;
@@ -8,6 +9,7 @@ interface FearGreedBarProps {
 }
 
 export function FearGreedBar({ value, label, change, className }: FearGreedBarProps) {
+  const { t } = useTranslation();
   const clampedValue = Math.min(100, Math.max(0, value));
 
   const getColor = () => {
@@ -55,7 +57,10 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
             )}
             style={change === 0 ? { color } : undefined}
           >
-            {change > 0 ? `+${change}` : change}
+            {t("market.fng_change_points", {
+              count: Math.abs(change),
+              value: change > 0 ? `+${change}` : change,
+            })}
           </span>
         )}
       </div>

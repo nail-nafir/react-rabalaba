@@ -23,10 +23,8 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-3xl bg-muted/20 ring-1 ring-border/50 animate-empty-float">
-        {icon ?? (
-          <Inbox className="h-14 w-14 text-muted-foreground/60 animate-empty-pulse" />
-        )}
+      <div className="mb-6 flex h-28 w-28 items-center justify-center rounded-3xl border border-border/50 bg-muted/20">
+        {icon ?? <Inbox className="h-14 w-14 text-muted-foreground" />}
       </div>
       <h3 className="text-sm font-medium text-foreground">{title}</h3>
       <p className="mt-2 text-sm text-muted-foreground max-w-sm">

@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useFavoriteStore } from "@/store/favorite-store";
+import { useFavorites } from "@/hooks/use-favorites";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useYahooSearch } from "@/services/queries/use-yahoo-data";
 import type { YahooSearchQuote } from "@/services/api/yahoo-finance";
@@ -25,7 +25,7 @@ interface AddTickerDialogProps {
 
 export function AddTickerDialog({ open, onOpenChange }: AddTickerDialogProps) {
   const { t } = useTranslation();
-  const { addSymbol, favoriteSymbols } = useFavoriteStore();
+  const { addSymbols, favoriteSymbols } = useFavorites();
   const [inputValue, setInputValue] = useState("");
   const [hideSuggestions, setHideSuggestions] = useState(false);
   const [pendingSymbols, setPendingSymbols] = useState<string[]>([]);
@@ -52,22 +52,22 @@ export function AddTickerDialog({ open, onOpenChange }: AddTickerDialogProps) {
     setPendingSymbols((prev) => prev.filter((s) => s !== symbol));
   };
 
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
     if (pendingSymbols.length === 0) return;
     setIsSaving(true);
 
-    const added: string[] = [];
-    for (const symbol of pendingSymbols) {
-      if (addSymbol(symbol)) {
-        added.push(symbol);
+    try {
+      const added = await addSymbols(pendingSymbols);
+      if (added.length > 0) {
+        toast.success(
+          t("market.favorites_added_bulk", { count: added.length }),
+        );
+        onOpenChange(false);
       }
-    }
-
-    setIsSaving(false);
-
-    if (added.length > 0) {
-      toast.success(t("market.favorites_added_bulk", { count: added.length }));
-      onOpenChange(false);
+    } catch {
+      toast.error(t("market.favorites_save_failed"));
+    } finally {
+      setIsSaving(false);
     }
   };
 

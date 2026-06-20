@@ -125,7 +125,7 @@ export default function LandingPage() {
                 {t("common.open_terminal")}
               </Link>
               <Link
-                to="/pricing"
+                to="/subscription"
                 className={cn(
                   buttonVariants({ variant: "secondary", size: "lg" }),
                   "rounded-xl h-11 px-8 font-bold",

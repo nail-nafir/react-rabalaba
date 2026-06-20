@@ -1,94 +1,54 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Area,
-  AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
-  Pie,
-  PieChart,
-  Rectangle,
-  Sector,
+  ComposedChart,
+  Line,
   XAxis,
   YAxis,
-  type BarShapeProps,
-  type PieSectorShapeProps,
 } from "recharts";
-import { useFollowStore } from "@/store/follow-store";
+import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import {
   buildTrackerStats,
-  type FollowStatus,
+  computePnl,
 } from "@/features/follow-trade/lib/follow-trade-model";
-import { formatRatio } from "@/lib/formatters";
+import { PALETTE } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatRatio } from "@/lib/formatters";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { cn } from "@/lib/utils";
 
-const POS = "var(--color-emerald-400)";
-const NEG = "var(--color-rose-400)";
-const STATUS_COLOR: Record<FollowStatus, string> = {
-  open: "var(--color-zinc-400)",
-  tp1: POS,
-  tp2: POS,
-  tp3: POS,
-  sl: NEG,
-  manual: "var(--color-zinc-400)",
-};
-
+const POS = PALETTE.positive.fill;
+const NEG = PALETTE.negative.fill;
 // Hoisted so the charts' margin prop keeps a stable identity — recharts
 // restarts mount animations (with setState in effect cleanup) whenever
 // data/layout prop identity changes, which can cascade into "Maximum update
 // depth exceeded" under re-render bursts (see components/charts/sparkline.tsx).
 const CHART_MARGIN = { left: 4, right: 8, top: 8 };
 
-function StatCard({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <Card className="border border-border">
-      <CardContent className="space-y-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </p>
-        <p
-          className={cn(
-            "text-2xl font-bold tabular-nums text-mono-data",
-            className,
-          )}
-        >
-          {value}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function ChartCard({
   title,
   children,
 }: {
-  title: string;
+  title?: string;
   children: React.ReactNode;
 }) {
   return (
     <Card className="border border-border">
-      <CardContent className="space-y-3">
-        <p className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          {title}
-        </p>
+      <CardContent className="flex flex-1 flex-col gap-3">
+        {title && (
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            {title}
+          </p>
+        )}
         {children}
       </CardContent>
     </Card>
@@ -97,35 +57,102 @@ function ChartCard({
 
 export function JournalDashboard() {
   const { t } = useTranslation();
-  const history = useFollowStore((s) => s.history);
-  const openCount = useFollowStore((s) => s.openTrades.length);
+  const { history, openTrades, isLoading } = useJournalTrades();
+  const openCount = openTrades.length;
 
   const stats = useMemo(
     () => buildTrackerStats(history, openCount),
     [history, openCount],
   );
 
-  // Identity-stable chart data (same constraint as CHART_MARGIN above); must
-  // sit before the early return to keep the hook order unconditional.
-  const statusData = useMemo(
-    () =>
-      stats.statusDistribution.map((s) => ({
-        key: s.status,
-        name: t(`journal.status_${s.status}`),
-        value: s.count,
-        fill: STATUS_COLOR[s.status],
-      })),
-    [stats, t],
-  );
-  const dirData = useMemo(
-    () =>
-      stats.longVsShort.map((d) => ({
-        name: t(`journal.${d.signal}`),
-        r: d.r,
-        fill: d.signal === "long" ? POS : NEG,
-      })),
-    [stats, t],
-  );
+  const chartData = useMemo(() => {
+    return stats.dailySeries.map((item) => ({
+      ...item,
+      dayPctWin: item.dayPct >= 0 ? item.dayPct : null,
+      dayPctLoss: item.dayPct < 0 ? item.dayPct : null,
+    }));
+  }, [stats.dailySeries]);
+
+  const todayStats = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodayMs = startOfToday.getTime();
+
+    // Filter trades closed today
+    const closedToday = history.filter(
+      (t) => t.status !== "open" && t.closedAt && t.closedAt >= startOfTodayMs
+    );
+
+    let totalProfitPct = 0;
+    let totalLossPct = 0;
+    let totalProfitR = 0;
+    let totalLossR = 0;
+    let winsCount = 0;
+    let lossesCount = 0;
+
+    closedToday.forEach((t) => {
+      const { pct, r } = computePnl(t, t.closePrice ?? t.entryPrice);
+      if (pct > 0) {
+        totalProfitPct += pct;
+        winsCount++;
+      } else if (pct < 0) {
+        totalLossPct += pct;
+        lossesCount++;
+      }
+      if (r > 0) {
+        totalProfitR += r;
+      } else if (r < 0) {
+        totalLossR += r;
+      }
+    });
+
+    return {
+      tradesCount: closedToday.length,
+      profitPct: totalProfitPct,
+      lossPct: totalLossPct,
+      profitR: totalProfitR,
+      lossR: totalLossR,
+      winsCount,
+      lossesCount,
+    };
+  }, [history]);
+
+
+
+
+
+
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          {t("journal.chart_equity")}
+        </h2>
+        <ChartCard>
+          {/* Mock KPI header skeleton */}
+          <div className="flex justify-between items-center pb-3 border-b border-border/40">
+            <div className="flex gap-8">
+              <div className="space-y-1">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4.5 w-24" />
+              </div>
+              <div className="space-y-1">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4.5 w-24" />
+              </div>
+            </div>
+            <div className="space-y-1 text-right">
+              <Skeleton className="h-3 w-12 ml-auto" />
+              <Skeleton className="h-4.5 w-8 ml-auto" />
+            </div>
+          </div>
+          {/* Chart area skeleton */}
+          <Skeleton className="h-55 w-full rounded-xl" />
+        </ChartCard>
+      </div>
+    );
+  }
 
   if (stats.totalFollowed === 0) {
     return (
@@ -140,21 +167,31 @@ export function JournalDashboard() {
     );
   }
 
-  const rFmt = (v: number | string | readonly (number | string)[] | undefined) => {
-    const n = Number(Array.isArray(v) ? v[0] : v);
-    return `${n >= 0 ? "+" : ""}${formatRatio(n)}R`;
-  };
   const equityConfig: ChartConfig = {
-    cumR: { label: t("journal.stat_avg_r"), color: POS },
+    dayPctWin: { label: t("journal.wins"), color: POS },
+    dayPctLoss: { label: t("journal.losses"), color: NEG },
+    cumPct: { label: t("journal.cumulative"), color: "var(--color-primary)" },
   };
-  const barConfig: ChartConfig = { r: { label: t("journal.col_pnl") } };
+  const fmtDay = (d: string) => {
+    const parts = d.split("-");
+    if (parts.length !== 3) return d;
+    const [, mm, dd] = parts;
+    return `${dd}-${mm}`;
+  };
+
+
+  const fmtFullDate = (d: string) => {
+    const parts = d.split("-");
+    if (parts.length !== 3) return d;
+    const [yy, mm, dd] = parts;
+    return `${dd}-${mm}-${yy}`;
+  };
 
   return (
-    <>
+    <div className="space-y-4">
       <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-        {t("journal.summary")}
+        {t("journal.chart_equity")}
       </h2>
-      <div className="space-y-4">
         {stats.closed === 0 ? (
           <Card className="border border-border">
             <CardContent>
@@ -166,22 +203,76 @@ export function JournalDashboard() {
           </Card>
         ) : (
           <>
-            {/* Equity curve */}
-            <ChartCard title={t("journal.chart_equity")}>
+            {/* Daily P/L bars + cumulative R line */}
+            <ChartCard>
+              {/* Core KPIs Row */}
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pb-3 border-b border-border/40 text-xs">
+                {/* Left KPIs */}
+                <div className="flex flex-wrap gap-x-8 gap-y-3">
+                  {/* KPI 1: Rasio Sukses */}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                      {t("journal.stat_winrate")}
+                    </span>
+                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                      <span className={cn(
+                        "font-mono font-extrabold text-sm",
+                        stats.winRate >= 50 ? "text-emerald-500" : "text-rose-500"
+                      )}>
+                        {stats.winRate.toFixed(0)}%
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        ({`${stats.winLoss.wins} ${t("journal.win_abbr")} / ${stats.winLoss.losses} ${t("journal.loss_abbr")}`})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* KPI: Hari Ini */}
+                  <div className="flex flex-col gap-0.5 pl-0 sm:border-l sm:border-border sm:pl-6">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                      {t("journal.today_label")}
+                    </span>
+                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                      <span className="font-mono font-extrabold text-sm text-emerald-500">
+                        {todayStats.profitPct > 0 ? "+" : ""}{todayStats.profitPct.toFixed(2)}%
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        /
+                      </span>
+                      <span className="font-mono font-extrabold text-sm text-rose-500">
+                        {todayStats.lossPct.toFixed(2)}%
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono ml-0.5">
+                        ({todayStats.profitR > 0 ? "+" : ""}{formatRatio(todayStats.profitR)} {t("journal.r_suffix")} / {formatRatio(todayStats.lossR)} {t("journal.r_suffix")})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right KPI: Transaksi */}
+                <div className="flex flex-col gap-0.5 items-end text-right">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                    {t("journal.trades")}
+                  </span>
+                  <span className="font-mono font-extrabold text-sm text-foreground">
+                    {stats.closed}
+                  </span>
+                </div>
+              </div>
+
               <ChartContainer
                 config={equityConfig}
                 className="aspect-auto h-55 w-full"
               >
-                <AreaChart
-                  data={stats.equitySeries}
-                  margin={CHART_MARGIN}
-                >
+                <ComposedChart data={chartData} margin={CHART_MARGIN}>
                   <CartesianGrid vertical={false} />
                   <XAxis
-                    dataKey="index"
+                    dataKey="date"
                     tickLine={false}
                     axisLine={false}
                     fontSize={11}
+                    minTickGap={24}
+                    tickFormatter={fmtDay}
                   />
                   <YAxis
                     tickLine={false}
@@ -190,151 +281,79 @@ export function JournalDashboard() {
                     fontSize={11}
                   />
                   <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        labelFormatter={(l) => `#${l}`}
-                        formatter={(v) => rFmt(v)}
-                      />
-                    }
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload) return null;
+                      const filteredPayload = payload.filter(
+                        (item) =>
+                          item.value !== null && item.value !== undefined,
+                      );
+                      return (
+                        <ChartTooltipContent
+                          active={active}
+                          payload={filteredPayload}
+                          label={label}
+                          className="min-w-45"
+                          labelFormatter={(l) => fmtFullDate(String(l))}
+                          formatter={(value, name, item) => {
+                            const isWin =
+                              item.dataKey === "dayPctWin" ||
+                              name === "dayPctWin";
+                            const isLoss =
+                              item.dataKey === "dayPctLoss" ||
+                              name === "dayPctLoss";
+                            const valNum = Number(value);
+                            const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}%`;
+
+                            const dotColor = isWin
+                              ? POS
+                              : isLoss
+                                ? NEG
+                                : "var(--color-cumPct)";
+
+                            const displayName = isWin
+                              ? t("journal.wins")
+                              : isLoss
+                                ? t("journal.losses")
+                                : t("journal.cumulative");
+
+                            return (
+                              <>
+                                <div
+                                  className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                                  style={{
+                                    backgroundColor: dotColor,
+                                  }}
+                                />
+                                <div className="flex flex-1 justify-between leading-none items-center gap-8">
+                                  <span className="text-muted-foreground">
+                                    {displayName}
+                                  </span>
+                                  <span className="font-mono font-medium text-foreground tabular-nums">
+                                    {formattedValue}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          }}
+                        />
+                      );
+                    }}
                   />
-                  <Area
+
+                  <Bar dataKey="dayPctWin" stackId="a" radius={4} fill={POS} />
+                  <Bar dataKey="dayPctLoss" stackId="a" radius={4} fill={NEG} />
+                  <Line
                     type="monotone"
-                    dataKey="cumR"
-                    stroke="var(--color-cumR)"
-                    fill="var(--color-cumR)"
-                    fillOpacity={0.15}
+                    dataKey="cumPct"
+                    stroke="var(--color-cumPct)"
                     strokeWidth={2}
+                    dot={false}
                   />
-                </AreaChart>
+                </ComposedChart>
               </ChartContainer>
             </ChartCard>
-
-            <div className="grid gap-4 lg:grid-cols-3">
-              {/* Status distribution */}
-              <ChartCard title={t("journal.chart_status")}>
-                <ChartContainer config={{}} className="aspect-auto h-50 w-full">
-                  <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                    <Pie
-                      data={statusData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={40}
-                      outerRadius={70}
-                      shape={(props: PieSectorShapeProps) => (
-                        <Sector
-                          {...props}
-                          fill={props.payload?.fill}
-                          stroke="var(--background)"
-                        />
-                      )}
-                    />
-                  </PieChart>
-                </ChartContainer>
-              </ChartCard>
-
-              {/* P/L by asset */}
-              <ChartCard title={t("journal.chart_per_asset")}>
-                <ChartContainer
-                  config={barConfig}
-                  className="aspect-auto h-50 w-full"
-                >
-                  <BarChart
-                    data={stats.perAsset}
-                    margin={CHART_MARGIN}
-                  >
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="symbol"
-                      tickLine={false}
-                      axisLine={false}
-                      fontSize={11}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                      fontSize={11}
-                    />
-                    <ChartTooltip
-                      content={
-                        <ChartTooltipContent formatter={(v) => rFmt(v)} />
-                      }
-                    />
-                    <Bar
-                      dataKey="r"
-                      radius={4}
-                      shape={(props: BarShapeProps) => (
-                        <Rectangle
-                          {...props}
-                          fill={(props.payload?.r ?? 0) >= 0 ? POS : NEG}
-                        />
-                      )}
-                    />
-                  </BarChart>
-                </ChartContainer>
-              </ChartCard>
-
-              {/* Long vs short */}
-              <ChartCard title="Long vs Short">
-                <ChartContainer
-                  config={barConfig}
-                  className="aspect-auto h-50 w-full"
-                >
-                  <BarChart
-                    data={dirData}
-                    margin={CHART_MARGIN}
-                  >
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      tickLine={false}
-                      axisLine={false}
-                      fontSize={11}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                      fontSize={11}
-                    />
-                    <ChartTooltip
-                      content={
-                        <ChartTooltipContent formatter={(v) => rFmt(v)} />
-                      }
-                    />
-                    <Bar
-                      dataKey="r"
-                      radius={4}
-                      shape={(props: BarShapeProps) => (
-                        <Rectangle {...props} fill={props.payload?.fill} />
-                      )}
-                    />
-                  </BarChart>
-                </ChartContainer>
-              </ChartCard>
-            </div>
           </>
         )}
-
-        {/* Summary stat cards */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label={t("journal.stat_total")}
-            value={String(stats.totalFollowed)}
-          />
-          <StatCard label={t("journal.stat_open")} value={String(stats.open)} />
-          <StatCard
-            label={t("journal.stat_winrate")}
-            value={`${Math.round(stats.winRate)}%`}
-          />
-          <StatCard
-            label={t("journal.stat_avg_r")}
-            value={`${stats.avgR >= 0 ? "+" : ""}${formatRatio(stats.avgR)}R`}
-            className={stats.avgR >= 0 ? "text-emerald-400" : "text-rose-400"}
-          />
-        </div>
-      </div>
-    </>
+    </div>
   );
 }

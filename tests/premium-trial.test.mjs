@@ -23,17 +23,19 @@ test.after(async () => {
 const SRC = "/src/lib/premium-trial.ts";
 
 test("active within the 3-day window", async () => {
-  const { isTrialActive, TRIAL_DURATION_MS } = await loadModule(SRC);
+  const { isTrialActive } = await loadModule(SRC);
+  const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
   const start = 1_000_000;
-  assert.equal(isTrialActive(start, start), true);
-  assert.equal(isTrialActive(start, start + TRIAL_DURATION_MS - 1), true);
+  assert.equal(isTrialActive(start, start, TRIAL_DURATION_MS), true);
+  assert.equal(isTrialActive(start, start + TRIAL_DURATION_MS - 1, TRIAL_DURATION_MS), true);
 });
 
 test("inactive once past the window (boundary is exclusive)", async () => {
-  const { isTrialActive, TRIAL_DURATION_MS } = await loadModule(SRC);
+  const { isTrialActive } = await loadModule(SRC);
+  const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
   const start = 1_000_000;
-  assert.equal(isTrialActive(start, start + TRIAL_DURATION_MS), false);
-  assert.equal(isTrialActive(start, start + TRIAL_DURATION_MS + 1), false);
+  assert.equal(isTrialActive(start, start + TRIAL_DURATION_MS, TRIAL_DURATION_MS), false);
+  assert.equal(isTrialActive(start, start + TRIAL_DURATION_MS + 1, TRIAL_DURATION_MS), false);
 });
 
 test("null activation is never active", async () => {

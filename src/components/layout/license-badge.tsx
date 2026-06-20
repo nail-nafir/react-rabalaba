@@ -5,7 +5,7 @@ import {
   usePremiumAccess,
   type LicenseTier,
 } from "@/hooks/use-premium-access";
-import { useUIStore } from "@/store/ui-store";
+import { useUIActions } from "@/store/hooks";
 import { cn } from "@/lib/utils";
 
 const TIER_ICONS: Record<LicenseTier, React.ElementType> = {
@@ -24,7 +24,7 @@ const TIER_STYLES: Record<LicenseTier, string> = {
 export function LicenseBadge() {
   const { t } = useTranslation();
   const { tier, daysLeft, isConfigured } = usePremiumAccess();
-  const openLicenseDialog = useUIStore((state) => state.openLicenseDialog);
+  const { openLicenseDialog } = useUIActions();
 
   if (!isConfigured) return null;
 

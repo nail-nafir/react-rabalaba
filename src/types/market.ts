@@ -1,12 +1,10 @@
-export type TrendDirection = "bullish" | "bearish" | "sideways";
+import type { TrendDirection } from "@/constants/taxonomy/trend";
+import type { MarketRegime } from "@/constants/taxonomy/regime";
 
-/** Market regime — which behavioral state the market is in. Indicators perform
- *  differently per regime, so the engine weights categories accordingly. */
-export type MarketRegime =
-  | "trending"
-  | "ranging"
-  | "high_volatility"
-  | "low_volatility";
+// Sourced from @/constants/taxonomy; re-exported so existing `@/types/market`
+// imports keep resolving unchanged.
+export type { TrendDirection } from "@/constants/taxonomy/trend";
+export type { MarketRegime } from "@/constants/taxonomy/regime";
 
 export interface MarketIndex {
   symbol: string;

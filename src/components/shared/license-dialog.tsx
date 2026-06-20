@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { useForm, useWatch, Controller } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
@@ -12,14 +12,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldError } from "@/components/ui/field";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
-import { useUIStore } from "@/store/ui-store";
+import { useAuth } from "@/hooks/use-auth";
+import { useAppSelector, useUIActions } from "@/store/hooks";
+import { takeLicenseSuccessAction } from "@/store/slices/ui-slice";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import {
   accessSchema,
   type AccessFormValues,
@@ -28,22 +29,19 @@ import { TIER_BADGE } from "@/constants/license";
 
 export function LicenseDialog() {
   const { t } = useTranslation();
-  const isOpen = useUIStore((state) => state.isLicenseDialogOpen);
-  const closeLicenseDialog = useUIStore((state) => state.closeLicenseDialog);
-  const licenseSuccessAction = useUIStore(
-    (state) => state.licenseSuccessAction,
-  );
+  const isOpen = useAppSelector((state) => state.ui.isLicenseDialogOpen);
+  const { closeLicenseDialog } = useUIActions();
   const { tier, daysLeft, grantAccess } = usePremiumAccess();
+  const { isAuthenticated } = useAuth();
   const [showCode, setShowCode] = useState(false);
 
   const form = useForm<AccessFormValues>({
     resolver: zodResolver(accessSchema),
-    defaultValues: {
-      code: "",
-    },
+    defaultValues: { code: "" },
+    shouldUnregister: true,
   });
 
-  const codeValue = useWatch({ control: form.control, name: "code" });
+  const codeValue = form.watch("code");
   const isCodeEmpty = !codeValue?.trim();
 
   const resetForm = () => {
@@ -52,11 +50,17 @@ export function LicenseDialog() {
     setShowCode(false);
   };
 
-  const onSubmit = (data: AccessFormValues) => {
-    const result = grantAccess(data.code.trim());
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      closeLicenseDialog();
+      resetForm();
+    }
+  };
+
+  const onSubmit = async (data: AccessFormValues) => {
+    const result = await grantAccess(data.code.trim());
     if (result === "granted" || result === "trial") {
-      // Capture before close: closeLicenseDialog clears the pending action.
-      const action = licenseSuccessAction;
+      const action = takeLicenseSuccessAction();
       closeLicenseDialog();
       resetForm();
       toast.success(
@@ -67,23 +71,18 @@ export function LicenseDialog() {
         ),
       );
       action?.();
-    } else {
-      form.setError("code", {
-        type: "manual",
-        message: t(
-          result === "expired"
-            ? "terminal.access_trial_expired"
+      return;
+    }
+    form.setError("code", {
+      type: "manual",
+      message: t(
+        result === "exhausted"
+          ? "license.redeem_exhausted"
+          : result === "already"
+            ? "license.redeem_already"
             : "terminal.access_dialog_invalid_code",
-        ),
-      });
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      closeLicenseDialog();
-      resetForm();
-    }
+      ),
+    });
   };
 
   const TierIcon = TIER_BADGE[tier].icon;
@@ -93,6 +92,55 @@ export function LicenseDialog() {
       : tier === "trial"
         ? t("license.status_trial", { count: daysLeft ?? 0 })
         : t("license.status_free");
+
+  const showCodeForm = tier !== "premium";
+
+  if (!isAuthenticated) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-md border border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">
+              {t("license.login_required_title")}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+              {t("license.login_required_desc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Simple Elegant Lock State Graphic Container */}
+          <div className="relative flex flex-col items-center justify-center rounded-xl border border-border bg-card/45 p-8 text-center">
+            {/* Elegant Lock Icon Frame */}
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 text-primary mb-4">
+              <Lock className="h-5 w-5" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-primary uppercase tracking-wider block">
+                {t("license.auth_required")}
+              </span>
+              <p className="text-[11px] text-muted-foreground leading-normal mx-auto">
+                {t("auth.auth_desc")}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="sm:justify-end">
+            <Link
+              to="/login"
+              onClick={() => handleOpenChange(false)}
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "text-xs font-bold cursor-pointer w-full sm:w-auto text-center flex items-center justify-center",
+              )}
+            >
+              {t("license.login_required_btn")}
+            </Link>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -106,30 +154,32 @@ export function LicenseDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
-          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("license.section_status")}
-          </span>
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                "font-bold uppercase tracking-wider text-[10px] rounded-md",
-                TIER_BADGE[tier].className,
-              )}
-            >
-              <TierIcon />
+        {/* Plan hero — current tier + status, no account identity */}
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-card/50 p-4">
+          <div
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border",
+              TIER_BADGE[tier].className,
+            )}
+          >
+            <TierIcon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <span className="block text-sm font-bold uppercase tracking-wide text-foreground">
               {t(`license.tier_${tier}`)}
-            </Badge>
-            <span className="text-xs text-muted-foreground">{statusText}</span>
+            </span>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {statusText}
+            </p>
           </div>
         </div>
 
-        {tier !== "premium" && (
+        {/* Activation form (hidden once premium) */}
+        {showCodeForm ? (
           <form
             id="license-activation-form"
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
           >
             <FieldGroup>
               <Controller
@@ -177,10 +227,10 @@ export function LicenseDialog() {
               />
             </FieldGroup>
 
-            <div className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5">
+            <div className="text-xs text-muted-foreground flex items-center gap-1.5">
               {t("terminal.access_dialog_no_access")}
               <Link
-                to="/pricing"
+                to="/subscription"
                 onClick={() => handleOpenChange(false)}
                 className={cn(
                   buttonVariants({ variant: "link", size: "xs" }),
@@ -191,21 +241,11 @@ export function LicenseDialog() {
               </Link>
             </div>
           </form>
-        )}
+        ) : null}
 
-        <DialogFooter>
-          {tier === "premium" ? (
-            <Button
-              type="button"
-              size="lg"
-              variant="secondary"
-              onClick={() => handleOpenChange(false)}
-              className="text-xs cursor-pointer"
-            >
-              {t("license.close_btn")}
-            </Button>
-          ) : (
-            <>
+        <DialogFooter className="gap-2 sm:justify-end">
+          {showCodeForm ? (
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 size="lg"
@@ -224,7 +264,17 @@ export function LicenseDialog() {
               >
                 {t("terminal.access_dialog_unlock_btn")}
               </Button>
-            </>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="lg"
+              variant="secondary"
+              onClick={() => handleOpenChange(false)}
+              className="text-xs cursor-pointer"
+            >
+              {t("license.close_btn")}
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

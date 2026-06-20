@@ -2,7 +2,8 @@ import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import { formatPrice } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { useFavoriteStore } from "@/store/favorite-store";
+import { useFavorites } from "@/hooks/use-favorites";
+import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { toast } from "sonner";
 import { runBacktest } from "@/features/engine/backtest";
 import { calibrateConfidence } from "@/features/engine/calibration";
@@ -15,7 +16,6 @@ import {
 import { enrichAsset } from "@/features/engine/enrichment";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import { TradeSetupChart } from "./trade-setup-chart";
-import { FollowSignalButton } from "@/components/shared/follow-signal-button";
 import { useShareSetup } from "../hooks/use-share-setup";
 
 import {
@@ -31,7 +31,7 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { useUIStore } from "@/store/ui-store";
+import { useAppSelector, useUIActions } from "@/store/hooks";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useMarketContext } from "@/services/queries/use-market-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
@@ -44,7 +44,18 @@ import { StrengthBar } from "@/components/charts/strength-bar";
 import { CategoryScoreChart } from "@/components/charts/category-score-chart";
 import { WinRateRing } from "@/components/charts/win-rate-ring";
 import { Badge } from "@/components/ui/badge";
-import { RISK_COLORS, REGIME_COLORS } from "@/constants/signals";
+import {
+  RISK_COLORS,
+  REGIME_COLORS,
+  REGIME_LABEL_KEYS,
+  SIGNAL_LABEL_KEYS,
+  ACCUMULATION_LABEL_KEYS,
+  INDICATOR_STATUS_COLORS,
+  PALETTE,
+  BADGE,
+  badgeClass,
+  type IndicatorStatus,
+} from "@/constants";
 import { cn } from "@/lib/utils";
 import {
   Target,
@@ -62,21 +73,14 @@ import {
   ArrowDown,
 } from "lucide-react";
 
-/** Engine flow labels are English (not i18n) — map them to locale keys. */
-const ACCUMULATION_LABEL_KEYS: Record<string, string> = {
-  "Strong accumulation": "dialog.acc_label_strong_accumulation",
-  Accumulation: "dialog.acc_label_accumulation",
-  "Neutral flow": "dialog.acc_label_neutral",
-  Distribution: "dialog.acc_label_distribution",
-  "Strong distribution": "dialog.acc_label_strong_distribution",
-};
-
 export function AssetDetailDialog() {
   const { t } = useTranslation();
-  const { isDetailDialogOpen, selectedAssetSymbol, closeDetailDialog } =
-    useUIStore();
+  const isDetailDialogOpen = useAppSelector((s) => s.ui.isDetailDialogOpen);
+  const selectedAssetSymbol = useAppSelector((s) => s.ui.selectedAssetSymbol);
+  const { closeDetailDialog, openLicenseDialog } = useUIActions();
+  const { hasAccess } = usePremiumAccess();
 
-  const { favoriteSymbols, addSymbol, removeSymbol } = useFavoriteStore();
+  const { favoriteSymbols, addSymbol, removeSymbol } = useFavorites();
   const isStarred = selectedAssetSymbol
     ? favoriteSymbols.includes(selectedAssetSymbol)
     : false;
@@ -191,6 +195,13 @@ export function AssetDetailDialog() {
               className="h-7 w-7 hover:text-amber-400 hover:bg-muted/80 flex items-center justify-center cursor-pointer transition-all duration-200"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!selectedAssetSymbol) return;
+                // Favorites are premium + login gated; route non-entitled users
+                // to the license dialog instead of a silently failing write.
+                if (!hasAccess) {
+                  openLicenseDialog();
+                  return;
+                }
                 if (isStarred) {
                   removeSymbol(selectedAssetSymbol);
                   toast.success(
@@ -218,9 +229,6 @@ export function AssetDetailDialog() {
                 )}
               />
             </Button>
-            <div className="ml-auto pr-8">
-              {asset && <FollowSignalButton asset={asset} />}
-            </div>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
             {asset?.name ?? selectedAssetSymbol} ·{" "}
@@ -275,7 +283,7 @@ export function AssetDetailDialog() {
                   REGIME_COLORS[outlook.regime].border,
                 )}
               >
-                {t(`dialog.regime_${outlook.regime}`)}
+                {t(REGIME_LABEL_KEYS[outlook.regime])}
               </Badge>
               {outlook.suppressed && (
                 <Badge
@@ -410,9 +418,9 @@ export function AssetDetailDialog() {
                               className={cn(
                                 "text-sm font-bold tabular-nums tracking-tight",
                                 backtest.expectancy > 0
-                                  ? "text-emerald-400"
+                                  ? PALETTE.positive.text
                                   : backtest.expectancy < 0
-                                    ? "text-rose-400"
+                                    ? PALETTE.negative.text
                                     : "",
                               )}
                             >
@@ -429,8 +437,8 @@ export function AssetDetailDialog() {
                               className={cn(
                                 "text-sm font-bold tabular-nums tracking-tight",
                                 backtest.profitFactor >= 1
-                                  ? "text-emerald-400"
-                                  : "text-rose-400",
+                                  ? PALETTE.positive.text
+                                  : PALETTE.negative.text,
                               )}
                             >
                               {Number.isFinite(backtest.profitFactor)
@@ -467,8 +475,8 @@ export function AssetDetailDialog() {
                                 calibration.winRate == null
                                   ? "text-muted-foreground border-muted-foreground/30"
                                   : calibration.winRate >= 0.5
-                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                    : "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                                    ? badgeClass(BADGE.positive)
+                                    : badgeClass(BADGE.negative),
                               )}
                             >
                               {calibration.winRate == null
@@ -523,7 +531,7 @@ export function AssetDetailDialog() {
                             ? "smart money is stepping back"
                             : "risk appetite is strong"}
                           . Most alt coins are leveraged beta to BTC, so{" "}
-                          {outlook.signal.toUpperCase()} here is{" "}
+                          {t(SIGNAL_LABEL_KEYS[outlook.signal])} here is{" "}
                           {(outlook.signal === "long" &&
                             marketContext.riskState === "risk_off") ||
                           (outlook.signal === "short" &&
@@ -562,7 +570,7 @@ export function AssetDetailDialog() {
                                   ? "dialog.idx_rupiah_strengthening"
                                   : "dialog.idx_rupiah_stable",
                             ),
-                            signal: outlook.signal.toUpperCase(),
+                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
                             alignment: t(
                               fightsMarket(outlook.signal, idxContext.riskState)
                                 ? "dialog.idx_fighting"
@@ -590,8 +598,8 @@ export function AssetDetailDialog() {
                               isNeutralPositioning(smartMoney.label)
                                 ? "text-muted-foreground border-muted-foreground/30"
                                 : smartMoney.positioningScore > 0
-                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                  : "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                                  ? badgeClass(BADGE.positive)
+                                  : badgeClass(BADGE.negative),
                             )}
                           >
                             {smartMoney.label}
@@ -623,9 +631,9 @@ export function AssetDetailDialog() {
                                 smartMoney.fundingRate == null
                                   ? "text-muted-foreground"
                                   : smartMoney.fundingRate > 0
-                                    ? "text-emerald-400"
+                                    ? PALETTE.positive.text
                                     : smartMoney.fundingRate < 0
-                                      ? "text-rose-400"
+                                      ? PALETTE.negative.text
                                       : "",
                               )}
                             >
@@ -646,9 +654,9 @@ export function AssetDetailDialog() {
                                 smartMoney.openInterestDelta == null
                                   ? "text-muted-foreground"
                                   : smartMoney.openInterestDelta > 0
-                                    ? "text-emerald-400"
+                                    ? PALETTE.positive.text
                                     : smartMoney.openInterestDelta < 0
-                                      ? "text-rose-400"
+                                      ? PALETTE.negative.text
                                       : "",
                               )}
                             >
@@ -694,8 +702,8 @@ export function AssetDetailDialog() {
                             isNeutralFlow(accumulation.label)
                               ? "text-muted-foreground border-muted-foreground/30"
                               : accumulation.score > 0
-                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                : "bg-rose-500/15 text-rose-400 border-rose-500/30",
+                                ? badgeClass(BADGE.positive)
+                                : badgeClass(BADGE.negative),
                           )}
                         >
                           {t(
@@ -711,9 +719,9 @@ export function AssetDetailDialog() {
                               className={cn(
                                 "text-sm font-bold tabular-nums tracking-tight",
                                 accumulation.breakdown.cmf > 0
-                                  ? "text-emerald-400"
+                                  ? PALETTE.positive.text
                                   : accumulation.breakdown.cmf < 0
-                                    ? "text-rose-400"
+                                    ? PALETTE.negative.text
                                     : "text-muted-foreground",
                               )}
                             >
@@ -730,9 +738,9 @@ export function AssetDetailDialog() {
                               className={cn(
                                 "text-sm font-bold tabular-nums tracking-tight",
                                 accumulation.breakdown.mfi > 50
-                                  ? "text-emerald-400"
+                                  ? PALETTE.positive.text
                                   : accumulation.breakdown.mfi < 50
-                                    ? "text-rose-400"
+                                    ? PALETTE.negative.text
                                     : "text-muted-foreground",
                               )}
                             >
@@ -749,9 +757,9 @@ export function AssetDetailDialog() {
                               className={cn(
                                 "text-sm font-bold tabular-nums tracking-tight",
                                 accumulation.breakdown.upDownVolume > 0
-                                  ? "text-emerald-400"
+                                  ? PALETTE.positive.text
                                   : accumulation.breakdown.upDownVolume < 0
-                                    ? "text-rose-400"
+                                    ? PALETTE.negative.text
                                     : "text-muted-foreground",
                               )}
                             >
@@ -1063,14 +1071,6 @@ function IndicatorItem({
   value: string;
   status?: string;
 }) {
-  const statusColors: Record<string, string> = {
-    bullish: "text-emerald-400",
-    bearish: "text-rose-400",
-    overbought: "text-rose-400",
-    oversold: "text-emerald-400",
-    normal: "text-foreground",
-  };
-
   return (
     <Card className="border border-border bg-muted/50 overflow-hidden">
       <CardContent>
@@ -1078,7 +1078,7 @@ function IndicatorItem({
         <div
           className={cn(
             "text-xs font-semibold text-mono-data",
-            statusColors[status ?? "normal"],
+            INDICATOR_STATUS_COLORS[(status ?? "normal") as IndicatorStatus],
           )}
         >
           {value}

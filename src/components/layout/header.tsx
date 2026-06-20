@@ -1,8 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Radio, BarChart3, Calendar, CreditCard } from "lucide-react";
-import { LanguageSwitcher } from "./language-switcher";
-import { ThemeToggle } from "./theme-toggle";
 import { LicenseBadge } from "./license-badge";
+import { UserMenu } from "./user-menu";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Button, buttonVariants } from "../ui/button";
@@ -10,7 +9,7 @@ import { Button, buttonVariants } from "../ui/button";
 const NAV_ITEMS = [
   { to: "/terminal", icon: BarChart3 },
   { to: "/calendar", icon: Calendar },
-  { to: "/pricing", icon: CreditCard },
+  { to: "/subscription", icon: CreditCard },
 ] as const;
 
 export function Header() {
@@ -51,23 +50,28 @@ export function Header() {
         {/* Center: Nav (Absolute) */}
         {location.pathname !== "/" && (
           <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2 rounded-lg border border-input bg-card p-1">
-            {NAV_ITEMS.map(({ to, icon: Icon }) => (
-              <Button
-                asChild
-                key={to}
-                variant={location.pathname === to ? "default" : "ghost"}
-                size="xs"
-                className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider",
-                  location.pathname !== to && "text-muted-foreground",
-                )}
-              >
-                <Link to={to}>
-                  <Icon className="h-3.5 w-3.5" />
-                  {t(`common.${to.replace("/", "")}`)}
-                </Link>
-              </Button>
-            ))}
+            {NAV_ITEMS.map(({ to, icon: Icon }) => {
+              const isActive =
+                location.pathname === to ||
+                location.pathname.startsWith(`${to}/`);
+              return (
+                <Button
+                  asChild
+                  key={to}
+                  variant={isActive ? "default" : "ghost"}
+                  size="xs"
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-wider",
+                    !isActive && "text-muted-foreground",
+                  )}
+                >
+                  <Link to={to}>
+                    <Icon className="h-3.5 w-3.5" />
+                    {t(`common.${to.replace("/", "")}`)}
+                  </Link>
+                </Button>
+              );
+            })}
           </nav>
         )}
 
@@ -75,8 +79,7 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end gap-3">
           <div className="flex items-center gap-2">
             <LicenseBadge />
-            <LanguageSwitcher />
-            <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
       </div>
