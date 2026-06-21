@@ -196,7 +196,7 @@ export function AuthShell({
                 </div>
                 <div>
                   <h4 className="font-semibold text-white text-xs">
-                    Auto-Journal Tracking
+                    Auto Journal Tracking
                   </h4>
                   <p className="text-[10px] text-slate-400 leading-normal">
                     Automatic tracking logs every performance metric

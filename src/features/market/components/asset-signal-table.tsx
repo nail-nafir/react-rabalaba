@@ -300,13 +300,7 @@ export function AssetSignalTable() {
               size="icon"
               className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
               onClick={() => {
-                if (hasAccess) {
-                  openDetailDialog(row.original.symbol);
-                } else {
-                  openLicenseDialog(() =>
-                    openDetailDialog(row.original.symbol),
-                  );
-                }
+                openDetailDialog(row.original.symbol);
               }}
               title={t("common.analyze")}
             >
@@ -514,7 +508,7 @@ export function AssetSignalTable() {
         enableSorting: false,
       },
     ],
-    [hasAccess, openDetailDialog, openLicenseDialog, t],
+    [openDetailDialog, t],
   );
 
   const table = useReactTable({

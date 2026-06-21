@@ -55,6 +55,7 @@
     "billed_annually": "billed annually",
     "most_popular": "Best seller",
     "get_started": "Get Access",
+    "discount_format": "{{percent}}% OFF",
     "get_started_free": "Start Now",
     "contact_sales": "Contact Team",
     "plans": {
@@ -70,7 +71,8 @@
       },
       "professional": {
         "name": "Veteran",
-        "price": "$17",
+        "price": "$7",
+        "originalPrice": "$20",
         "description": "Serious mode for those ready to go full throttle. Accurate signals, solid gains.",
         "features": [
           "Unlimited Asset Screener",
@@ -80,6 +82,7 @@
           "Advanced Trading Plan",
           "Trade Analysis (Chart Data)",
           "Auto Trade Journal",
+          "Automatic Signal Notification",
           "Integrated Community Group"
         ]
       },
@@ -97,6 +100,7 @@
           "Advanced Trading Plan",
           "Trade Analysis (Chart Data)",
           "Auto Trade Journal",
+          "Automatic Signal Notification",
           "Integrated Community Group"
         ]
       }
@@ -423,7 +427,9 @@
     "page": "Page",
     "of": "of",
     "grade": "Grade",
-    "suppressed_hint": "Strong directional lean held to NEUTRAL by the no-trade filter (choppy / counter-trend market)."
+    "suppressed_hint": "Strong directional lean held to NEUTRAL by the no-trade filter (choppy / counter-trend market).",
+    "added": "Added",
+    "status": "Status"
   },
   "footer": {
     "description": "Professional financial research terminal for multi asset analysis. Rule based signals with institutional grade data.",
@@ -548,7 +554,7 @@
     "status_open": "Open",
     "lifecycle_open": "Open",
     "lifecycle_closed": "Closed",
-    "filter_all_pnl": "All Profit/Loss",
+    "filter_all_pnl": "All Profit Loss",
     "pnl_tp": "TP Hit",
     "stat_total": "Total Followed",
     "stat_open": "Open",
@@ -618,7 +624,7 @@
     "from_n_data": "(from {{count}} trades)"
   },
   "admin": {
-    "add_asset_dialog_title": "Add Auto-Journal Asset",
+    "add_asset_dialog_title": "Add Auto Journal Asset",
     "add_asset_dialog_desc": "Symbols validate automatically with Yahoo. Changes apply on the next scheduled run with no system redeployment.",
     "empty_title": "No assets listed yet",
     "empty_filter_desc": "No results match the current search filters",
@@ -627,7 +633,7 @@
     "add_asset_already_exists": "already exists",
     "add_asset_selected": "selected",
     "add_asset_ready_to_add": "{{count}} ready to add",
-    "add_asset_toast_success": "{{count}} assets added to auto-journal universe",
+    "add_asset_toast_success": "{{count}} assets added to auto journal universe",
     "add_asset_toast_info": "{{count}} assets already in universe",
     "add_asset_toast_error": "{{count}} symbols not found on Yahoo — check format",
     "add_asset_not_found": "Symbol not found",
@@ -635,12 +641,16 @@
     "add_asset_btn_add": "Add",
     "add_asset_btn_add_with_count": "Add ({{count}})",
     "settings_btn": "Edit Settings",
-    "settings_dialog_title": "Auto-Journal Schedule Settings",
+    "settings_dialog_title": "Auto Journal Schedule Settings",
     "settings_dialog_desc": "Adjust the cron run interval and exchange market hours rules.",
     "settings_status_label": "Status",
     "settings_status_desc": "Enable or pause automated journaling completely.",
     "settings_interval_label": "Interval",
     "settings_interval_desc": "Frequency at which the cron checks and journals.",
+    "settings_interval_minutes_one": "{{count}} minute",
+    "settings_interval_minutes_other": "{{count}} minutes",
+    "settings_interval_hours_one": "{{count}} hour",
+    "settings_interval_hours_other": "{{count}} hours",
     "settings_market_hours_label": "Market hours only",
     "settings_market_hours_desc": "Skip journaling when the relevant exchange is closed.",
     "settings_overview_interval": "Journal Interval",
@@ -649,7 +659,35 @@
     "settings_overview_24h": "24h Nonstop",
     "settings_toast_success": "Schedule settings saved successfully",
     "settings_toast_error": "Failed to save schedule settings",
-    "settings_save_btn": "Save"
+    "settings_save_btn": "Save",
+    "scan_btn": "Scan Now",
+    "scan_loading": "Scanning…",
+    "scan_last_run": "{{ago}} ago",
+    "scan_never": "never",
+    "scan_paused_hint": "Enable auto journal first to run a manual scan",
+    "scan_unsaved_hint": "Save your changes first",
+    "scan_toast_success": "Scan done · {{emitted}} new signals, {{closed}} closed",
+    "scan_toast_error": "Failed to run market scan",
+    "scan_manual_title": "Manual Trigger",
+    "scan_manual_desc": "Instantly track the market movement right now to get the most updated signals.",
+    "scan_last_run_title": "Last Scan",
+    "admin_console_title": "Admin Console",
+    "admin_console_desc": "Manage the universe and auto journal cron schedules.",
+    "status_active": "Active",
+    "status_inactive": "Inactive",
+    "status_all": "All Status",
+    "action_pause": "Pause",
+    "action_activate": "Activate",
+    "action_deactivate": "Deactivate",
+    "deactivate_confirm_title": "Deactivate {{symbol}}?",
+    "activate_confirm_title": "Activate {{symbol}}?",
+    "deactivate_confirm_desc": "Cron will stop tracking {{symbol}} on the next schedule. The asset will not be deleted and can be reactivated later.",
+    "activate_confirm_desc": "Cron will start tracking {{symbol}} again on the next schedule.",
+    "delete_confirm_title": "Delete {{symbol}}?",
+    "delete_confirm_desc": "Asset {{symbol}} will be permanently deleted from the auto journal universe and will no longer be tracked.",
+    "delete_btn": "Delete",
+    "universe_title": "Auto Journal Universe",
+    "add_asset_btn": "Add Asset"
   },
   "not_found": {
     "title": "Lost Forever",

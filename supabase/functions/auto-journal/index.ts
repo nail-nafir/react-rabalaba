@@ -20,6 +20,8 @@ import {
   DEFAULT_FOREX_TICKERS,
   adaptYahooChart,
   runAutoJournal,
+  buildAutoJournalAlerts,
+  formatAlertsForDiscord,
 } from "./_engine.mjs";
 
 const RANGE = "1mo";
@@ -109,13 +111,55 @@ function isOpenInTz(tz: string, openMin: number, closeMin: number): boolean {
   return mins >= openMin && mins < closeMin;
 }
 
-Deno.serve(async () => {
+/** CORS for browser invokes (admin "Scan Sekarang"); pg_cron ignores these. */
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req: Request) => {
+  // Browser preflight (admin manual scan). pg_cron sends POST and skips this.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {
     return jsonResponse({ error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" }, 500);
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
+
+  // Manual on-demand run from the admin UI sends { force: true }: it bypasses the
+  // DUE gate (runs regardless of interval) but still respects pause. Admin-gated
+  // here because a full scan is expensive and may broadcast to Discord.
+  const { force } = (await req.json().catch(() => ({}))) as { force?: boolean };
+  if (force) {
+    const userClient = createClient(
+      url,
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization") ?? "" },
+        },
+        auth: { persistSession: false },
+      },
+    );
+    const {
+      data: { user },
+    } = await userClient.auth.getUser();
+    if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
+    const { data: profile } = await db
+      .from("profiles")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!(profile as { is_admin?: boolean } | null)?.is_admin) {
+      return jsonResponse({ error: "Forbidden" }, 403);
+    }
+  }
 
   // ── Schedule gate (journal_settings — admin-editable, data-driven) ──
   // The cron ticks at a fixed BASE cadence (*/15); we decide HERE whether this
@@ -128,15 +172,26 @@ Deno.serve(async () => {
     .eq("id", true)
     .maybeSingle();
   if (settings) {
+    // Pause is honored even for a manual force run (admin must enable first).
     if (!settings.enabled) {
       return jsonResponse({ ok: true, skipped: "disabled" });
     }
-    const lastRun = settings.last_run_at ? Date.parse(settings.last_run_at) : 0;
-    const dueMs = settings.interval_minutes * 60_000;
-    // 60s grace so a tick landing slightly early still counts as due.
-    if (Date.now() - lastRun < dueMs - 60_000) {
-      const nextInMin = Math.ceil((dueMs - (Date.now() - lastRun)) / 60_000);
-      return jsonResponse({ ok: true, skipped: "not-due", next_in_min: nextInMin });
+    // The interval/due-gate only applies to automated ticks; a manual force run
+    // scans immediately regardless of when the last run was.
+    if (!force) {
+      const lastRun = settings.last_run_at
+        ? Date.parse(settings.last_run_at)
+        : 0;
+      const dueMs = settings.interval_minutes * 60_000;
+      // 60s grace so a tick landing slightly early still counts as due.
+      if (Date.now() - lastRun < dueMs - 60_000) {
+        const nextInMin = Math.ceil((dueMs - (Date.now() - lastRun)) / 60_000);
+        return jsonResponse({
+          ok: true,
+          skipped: "not-due",
+          next_in_min: nextInMin,
+        });
+      }
     }
   }
   const marketHoursOnly = settings?.market_hours_only ?? false;
@@ -230,6 +285,18 @@ Deno.serve(async () => {
     if (!error) closed++;
   }
 
+  // Broadcast alerts to Discord (GoTrade-style: new signal / TP / SL). Best
+  // effort — a webhook failure must NEVER fail the journal run, and an unset
+  // DISCORD_WEBHOOK_URL simply means alerts are off (no-op).
+  let alerted = 0;
+  try {
+    const alerts = buildAutoJournalAlerts({ inserts, closures });
+    const message = formatAlertsForDiscord(alerts);
+    if (message && (await sendDiscord(message))) alerted = alerts.length;
+  } catch (_err) {
+    // swallow — alerts are non-critical
+  }
+
   // Stamp the run so the interval clock advances (only reached when due + ran).
   await db
     .from("journal_settings")
@@ -238,18 +305,37 @@ Deno.serve(async () => {
 
   return jsonResponse({
     ok: emitError == null,
+    forced: force === true,
     universe: universe.length,
     fetched: assets.length,
     open_before: (openRows ?? []).length,
     emitted,
     closed,
+    alerted,
     ...(emitError ? { emitError } : {}),
   });
 });
 
+/** POST a plain-content message to the configured Discord webhook. Returns true
+ *  on success. No webhook configured → returns false (alerts simply off). */
+async function sendDiscord(content: string): Promise<boolean> {
+  const webhook = Deno.env.get("DISCORD_WEBHOOK_URL");
+  if (!webhook) return false;
+  try {
+    const res = await fetch(webhook, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    });
+    return res.ok;
+  } catch (_err) {
+    return false;
+  }
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 }

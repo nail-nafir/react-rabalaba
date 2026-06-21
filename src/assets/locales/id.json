@@ -55,6 +55,7 @@
     "billed_annually": "ditagih tahunan",
     "most_popular": "Paling Laku",
     "get_started": "Ambil Akses",
+    "discount_format": "HEMAT {{percent}}%",
     "get_started_free": "Mulai Sekarang",
     "contact_sales": "Hubungi Tim",
     "plans": {
@@ -70,7 +71,8 @@
       },
       "professional": {
         "name": "Sepuh",
-        "price": "Rp250rb",
+        "price": "Rp100rb",
+        "originalPrice": "Rp300rb",
         "description": "Mode serius buat yang mau gaspol. Sinyal akurat, cuan makin mantap.",
         "features": [
           "Pemindai Aset Tanpa Batas",
@@ -80,6 +82,7 @@
           "Rencana Transaksi Canggih",
           "Analisis Transaksi (Data Grafik)",
           "Jurnal Transaksi Otomatis",
+          "Notifikasi Sinyal Otomatis",
           "Grup Komunitas Terpadu"
         ]
       },
@@ -97,6 +100,7 @@
           "Rencana Transaksi Canggih",
           "Analisis Transaksi (Data Grafik)",
           "Jurnal Transaksi Otomatis",
+          "Notifikasi Sinyal Otomatis",
           "Grup Komunitas Terpadu"
         ]
       }
@@ -423,7 +427,9 @@
     "page": "Halaman",
     "of": "dari",
     "grade": "Tingkat",
-    "suppressed_hint": "Kecondongan arah kuat yang ditahan jadi NETRAL oleh filter no-trade (pasar choppy / tren berlawanan)."
+    "suppressed_hint": "Kecondongan arah kuat yang ditahan jadi NETRAL oleh filter no-trade (pasar choppy / tren berlawanan).",
+    "added": "Ditambahkan",
+    "status": "Status"
   },
   "footer": {
     "description": "Terminal riset keuangan profesional untuk analisis multi aset. Sinyal berbasis aturan dengan data tingkat institusi.",
@@ -641,6 +647,10 @@
     "settings_status_desc": "Aktifkan atau jeda penjurnalan otomatis sepenuhnya.",
     "settings_interval_label": "Jeda waktu eksekusi",
     "settings_interval_desc": "Frekuensi eksekusi untuk memicu penjurnalan otomatis.",
+    "settings_interval_minutes_one": "{{count}} menit",
+    "settings_interval_minutes_other": "{{count}} menit",
+    "settings_interval_hours_one": "{{count}} jam",
+    "settings_interval_hours_other": "{{count}} jam",
     "settings_market_hours_label": "Jam bursa saja",
     "settings_market_hours_desc": "Lewati penjurnalan otomatis saat bursa tutup.",
     "settings_overview_interval": "Jeda Jurnal",
@@ -649,7 +659,35 @@
     "settings_overview_24h": "24 Jam Nonstop",
     "settings_toast_success": "Pengaturan jadwal berhasil disimpan",
     "settings_toast_error": "Gagal menyimpan pengaturan",
-    "settings_save_btn": "Simpan"
+    "settings_save_btn": "Simpan",
+    "scan_btn": "Scan Sekarang",
+    "scan_loading": "Memindai…",
+    "scan_last_run": "{{ago}} yang lalu",
+    "scan_never": "belum pernah",
+    "scan_paused_hint": "Aktifkan auto journal dulu untuk scan manual",
+    "scan_unsaved_hint": "Simpan perubahan dulu",
+    "scan_toast_success": "Scan selesai · {{emitted}} sinyal baru, {{closed}} ditutup",
+    "scan_toast_error": "Gagal scan market",
+    "scan_manual_title": "Pemicu Manual",
+    "scan_manual_desc": "Langsung pantau pergerakan pasar detik ini juga buat dapetin sinyal paling terbaru.",
+    "scan_last_run_title": "Pindai Terakhir",
+    "admin_console_title": "Konsol Admin",
+    "admin_console_desc": "Kelola semua aset dan jadwal rutin jurnal otomatis.",
+    "status_active": "Aktif",
+    "status_inactive": "Nonaktif",
+    "status_all": "Semua Status",
+    "action_pause": "Jeda",
+    "action_activate": "Aktifkan",
+    "action_deactivate": "Nonaktifkan",
+    "deactivate_confirm_title": "Nonaktifkan {{symbol}}?",
+    "activate_confirm_title": "Aktifkan {{symbol}}?",
+    "deactivate_confirm_desc": "Cron bakal berhenti mencatat {{symbol}} pada jadwal berikutnya. Aset tidak akan dihapus dan bisa diaktifkan lagi nanti.",
+    "activate_confirm_desc": "Cron bakal mulai mencatat {{symbol}} lagi pada jadwal berikutnya.",
+    "delete_confirm_title": "Hapus {{symbol}}?",
+    "delete_confirm_desc": "Aset {{symbol}} bakal dihapus permanen dari universe auto journal dan tidak akan dicatat lagi.",
+    "delete_btn": "Hapus",
+    "universe_title": "Universe Auto Journal",
+    "add_asset_btn": "Tambah Aset"
   },
   "not_found": {
     "title": "Nyasar Terus",

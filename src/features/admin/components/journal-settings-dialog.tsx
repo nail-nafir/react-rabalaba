@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -19,18 +21,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
-import { useJournalSettings, type JournalSettingsPatch } from "@/hooks/use-journal-settings";
+import { Loader2, Zap } from "lucide-react";
+import {
+  useJournalSettings,
+  type JournalSettingsPatch,
+} from "@/hooks/use-journal-settings";
+import { useMarketScan } from "@/hooks/use-market-scan";
 import type { JournalSettingsRow } from "@/services/supabase/database.types";
 
+/** Compact relative-time token (e.g. "12m", "3h", "2d") for the last-run line. */
+function formatAgo(iso: string | null, now: number): string | null {
+  if (!iso) return null;
+  const ms = now - Date.parse(iso);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "<1m";
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  return `${Math.floor(hr / 24)}d`;
+}
+
 // Finest = 15 min (the cron base tick); coarser options are gated in-app.
-const INTERVAL_OPTIONS = [
-  { value: 15, label: "15 menit" },
-  { value: 30, label: "30 menit" },
-  { value: 60, label: "1 jam" },
-  { value: 120, label: "2 jam" },
-  { value: 240, label: "4 jam" },
-];
+const INTERVAL_OPTIONS = [15, 30, 60, 120, 240];
 
 interface SettingRowProps {
   title: string;
@@ -73,8 +86,14 @@ function JournalSettingsForm({
 
   const [draftEnabled, setDraftEnabled] = useState(enabled);
   const [draftInterval, setDraftInterval] = useState(interval);
-  const [draftMarketHoursOnly, setDraftMarketHoursOnly] = useState(marketHoursOnly);
+  const [draftMarketHoursOnly, setDraftMarketHoursOnly] =
+    useState(marketHoursOnly);
   const [isSaving, setIsSaving] = useState(false);
+
+  const { runScan, isScanning } = useMarketScan();
+  // Seeded once (lazy) so the relative "last run" reads without an impure
+  // Date.now() in the render body; staleness across this ephemeral dialog is fine.
+  const [nowMs] = useState(() => Date.now());
 
   const hasChanges =
     draftEnabled !== enabled ||
@@ -100,64 +119,126 @@ function JournalSettingsForm({
 
   return (
     <>
-      <div className="space-y-4 py-4 divide-y divide-border/60">
-        <SettingRow
-          title={t("admin.settings_status_label")}
-          desc={t("admin.settings_status_desc")}
-        >
-          <Switch
-            checked={draftEnabled}
-            onCheckedChange={setDraftEnabled}
-            aria-label="Aktif atau jeda auto-journal"
-            className="cursor-pointer data-[state=checked]:bg-emerald-500"
-          />
-        </SettingRow>
-
-        <SettingRow
-          title={t("admin.settings_interval_label")}
-          desc={t("admin.settings_interval_desc")}
-        >
-          <Select
-            value={String(draftInterval)}
-            onValueChange={(v) => setDraftInterval(Number(v))}
+      <div className="space-y-5 py-4">
+        {/* Settings Configuration Rows */}
+        <div className="space-y-1 divide-y divide-border/60">
+          <SettingRow
+            title={t("admin.settings_status_label")}
+            desc={t("admin.settings_status_desc")}
           >
-            <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="p-1">
-              {INTERVAL_OPTIONS.map((o) => (
-                <SelectItem
-                  key={o.value}
-                  value={String(o.value)}
-                  className="uppercase tracking-wider text-[10px]"
-                >
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </SettingRow>
+            <Switch
+              checked={draftEnabled}
+              onCheckedChange={setDraftEnabled}
+              aria-label="Aktif atau jeda auto-journal"
+              className="cursor-pointer data-[state=checked]:bg-emerald-500"
+            />
+          </SettingRow>
 
-        <SettingRow
-          title={t("admin.settings_market_hours_label")}
-          desc={t("admin.settings_market_hours_desc")}
-        >
-          <Switch
-            checked={draftMarketHoursOnly}
-            onCheckedChange={setDraftMarketHoursOnly}
-            aria-label="Jurnal hanya saat jam market"
-            className="cursor-pointer"
-          />
-        </SettingRow>
+          <SettingRow
+            title={t("admin.settings_interval_label")}
+            desc={t("admin.settings_interval_desc")}
+          >
+            <Select
+              value={String(draftInterval)}
+              onValueChange={(v) => setDraftInterval(Number(v))}
+            >
+              <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="p-1">
+                {INTERVAL_OPTIONS.map((val) => {
+                  const label =
+                    val >= 60
+                      ? t("admin.settings_interval_hours", { count: val / 60 })
+                      : t("admin.settings_interval_minutes", { count: val });
+                  return (
+                    <SelectItem
+                      key={val}
+                      value={String(val)}
+                      className="uppercase tracking-wider text-[10px]"
+                    >
+                      {label}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </SettingRow>
+
+          <SettingRow
+            title={t("admin.settings_market_hours_label")}
+            desc={t("admin.settings_market_hours_desc")}
+          >
+            <Switch
+              checked={draftMarketHoursOnly}
+              onCheckedChange={setDraftMarketHoursOnly}
+              aria-label="Jurnal hanya saat jam market"
+              className="cursor-pointer"
+            />
+          </SettingRow>
+        </div>
+
+        {/* Manual Action Section - Premium UI Card */}
+        <Card className="w-full border border-border shadow-xs">
+          <CardContent className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  {t("admin.scan_manual_title")}
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[210px]">
+                  {t("admin.scan_manual_desc")}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={runScan}
+                disabled={!draftEnabled || hasChanges || isScanning || isSaving}
+                title={
+                  !draftEnabled
+                    ? t("admin.scan_paused_hint")
+                    : hasChanges
+                      ? t("admin.scan_unsaved_hint")
+                      : undefined
+                }
+                className="text-[10px] font-bold h-8 cursor-pointer shrink-0 gap-1.5"
+              >
+                {isScanning ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Zap className="h-3.5 w-3.5" />
+                )}
+                <span>
+                  {isScanning ? t("admin.scan_loading") : t("admin.scan_btn")}
+                </span>
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/50 pt-2.5">
+              <span>{t("admin.scan_last_run_title")}</span>
+              <Badge
+                variant="outline"
+                className="font-mono text-[10px] font-bold rounded-md bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400 py-0.5 px-2"
+              >
+                {settings.last_run_at
+                  ? t("admin.scan_last_run", {
+                      ago: formatAgo(settings.last_run_at, nowMs),
+                    })
+                  : t("admin.scan_never")}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <DialogFooter>
+      <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4">
         <Button
           type="button"
           onClick={handleSave}
-          size="lg"
           disabled={isSaving || !hasChanges}
-          className="text-xs font-bold cursor-pointer shrink-0"
+          className="text-xs font-bold cursor-pointer h-9 px-4 shrink-0"
         >
           {isSaving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

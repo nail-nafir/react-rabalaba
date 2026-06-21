@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
@@ -8,6 +9,7 @@ import { JournalAssetManager } from "@/features/admin/components/journal-asset-m
 /** Admin-only console for the auto-journal universe. Gated by profiles.is_admin
  *  (exposed via usePremiumAccess); non-admins are bounced to the landing page. */
 export default function AdminPage() {
+  const { t } = useTranslation();
   const { ready } = useAuth();
   const { isAdmin, isLoading } = usePremiumAccess();
 
@@ -24,11 +26,11 @@ export default function AdminPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-                Admin Console
+                {t("admin.admin_console_title")}
               </h1>
             </div>
             <p className="text-sm text-muted-foreground">
-              Kelola universe & jadwal cron auto-journal.
+              {t("admin.admin_console_desc")}
             </p>
           </div>
         </div>

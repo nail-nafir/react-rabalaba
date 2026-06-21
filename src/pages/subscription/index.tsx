@@ -82,6 +82,7 @@ export default function SubscriptionPage() {
               <SubscriptionCard
                 name={t("subscription.plans.professional.name")}
                 price={t("subscription.plans.professional.price")}
+                originalPrice={t("subscription.plans.professional.originalPrice", { defaultValue: "" }) || undefined}
                 description={t("subscription.plans.professional.description")}
                 features={
                   t("subscription.plans.professional.features", {
@@ -237,9 +238,22 @@ function PaymentCard({
   );
 }
 
+function calculateDiscountPercentage(originalStr: string, promoStr: string): number {
+  const originalVal = parseFloat(originalStr.replace(/[^\d.]/g, ""));
+  const promoVal = parseFloat(promoStr.replace(/[^\d.]/g, ""));
+  
+  if (isNaN(originalVal) || isNaN(promoVal) || originalVal === 0) {
+    return 0;
+  }
+  
+  const discount = ((originalVal - promoVal) / originalVal) * 100;
+  return Math.round(discount);
+}
+
 interface SubscriptionCardProps {
   name: string;
   price: string;
+  originalPrice?: string;
   description: string;
   features: string[];
   ctaText: string;
@@ -254,6 +268,7 @@ interface SubscriptionCardProps {
 function SubscriptionCard({
   name,
   price,
+  originalPrice,
   description,
   features,
   ctaText,
@@ -265,6 +280,10 @@ function SubscriptionCard({
   btnIcon: BtnIcon,
 }: SubscriptionCardProps) {
   const { t } = useTranslation();
+
+  const discountPercent = originalPrice 
+    ? calculateDiscountPercentage(originalPrice, price) 
+    : 0;
 
   return (
     <Card
@@ -306,19 +325,42 @@ function SubscriptionCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 w-full flex flex-col items-center space-y-6 pb-6">
-        <div className="flex items-baseline justify-center gap-1 w-full">
-          <span className="text-3xl sm:text-4xl font-black tracking-tight text-foreground font-mono-data">
-            {price}
-          </span>
-          {price !== "Custom" && price !== "Kustom" && (
-            <span className="text-muted-foreground text-xs font-semibold font-sans">
-              /{t("subscription.monthly")}
-            </span>
-          )}
-        </div>
-
-        <Separator />
+      <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 pb-6">
+        <Card className={cn(
+          "w-full transition-all duration-300 select-none border shadow-none bg-muted/50",
+          highlighted 
+            ? "border-primary/20 hover:border-primary/30" 
+            : "border-border hover:bg-muted/60"
+        )}>
+          <CardContent className="flex flex-col items-center justify-center gap-1 p-4">
+            {originalPrice && (
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="relative text-xs font-semibold text-rose-500 dark:text-rose-400 font-mono-data px-1.5 select-none">
+                  {originalPrice}
+                  <span className="absolute inset-x-0 top-1/2 h-[1.5px] bg-rose-500 dark:bg-rose-400 -translate-y-1/2" />
+                </span>
+                {discountPercent > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold rounded-md border-emerald-500/30 bg-emerald-500/15 text-emerald-400 uppercase select-none tracking-wider py-0.5 px-2"
+                  >
+                    {t("subscription.discount_format", { percent: discountPercent })}
+                  </Badge>
+                )}
+              </div>
+            )}
+            <div className="flex items-baseline justify-center gap-1 w-full">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-foreground font-mono-data">
+                {price}
+              </span>
+              {price !== "Custom" && price !== "Kustom" && (
+                <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider font-sans ml-1">
+                  /{t("subscription.monthly")}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <ul className="space-y-3.5 w-full flex-1">
           {features.map((feature, i) => (

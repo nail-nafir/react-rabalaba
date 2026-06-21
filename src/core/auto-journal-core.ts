@@ -24,6 +24,9 @@ import type {
 /** A terminal-level hit → fields to UPDATE on the existing open row. */
 export interface JournalClosure {
   id: string;
+  /** Ticker of the closed trade — carried for alerts/logging (the DB UPDATE
+   *  keys off `id` and ignores this). */
+  symbol: string;
   status: string;
   close_price: number | null;
   closed_at: string;
@@ -141,6 +144,7 @@ export function runAutoJournal(
   );
   const closures: JournalClosure[] = justClosed.map((t) => ({
     id: t.id,
+    symbol: t.symbol,
     status: t.status,
     close_price: t.closePrice ?? null,
     closed_at: t.closedAt
@@ -168,6 +172,7 @@ export function runAutoJournal(
       securedTp >= 1
         ? {
             id: t.id,
+            symbol: t.symbol,
             status: `tp${securedTp}`,
             close_price:
               t.takeProfits[securedTp - 1] ?? prices[t.symbol] ?? null,
@@ -176,6 +181,7 @@ export function runAutoJournal(
           }
         : {
             id: t.id,
+            symbol: t.symbol,
             // Reversal with no TP touched → the only true "Reversed" close.
             status: "manual",
             close_price: prices[t.symbol] ?? null,

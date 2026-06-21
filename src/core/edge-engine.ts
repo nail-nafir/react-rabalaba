@@ -27,6 +27,11 @@ export { resolveTimeframePreset } from "@/constants/timeframes";
 export { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 export { runAutoJournal } from "./auto-journal-core";
 export type { AutoJournalPlan, JournalClosure } from "./auto-journal-core";
+export {
+  buildAutoJournalAlerts,
+  formatAlertsForDiscord,
+} from "./alerts";
+export type { JournalAlert } from "./alerts";
 export type { UnifiedAsset } from "@/types/asset";
 export type { JournalTradeRow } from "@/services/supabase/database.types";
 

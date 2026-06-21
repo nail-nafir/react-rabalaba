@@ -98,6 +98,7 @@ function SortButton({
 
 /** Static status pill badge. */
 function StatusBadge({ active }: { active: boolean }) {
+  const { t } = useTranslation();
   return (
     <Badge
       variant="outline"
@@ -108,7 +109,7 @@ function StatusBadge({ active }: { active: boolean }) {
           : "border-border bg-muted/30 text-muted-foreground"
       )}
     >
-      {active ? "Aktif" : "Nonaktif"}
+      {active ? t("admin.status_active") : t("admin.status_inactive")}
     </Badge>
   );
 }
@@ -121,6 +122,7 @@ function ToggleStatusButton({
   asset: JournalAssetRow;
   onToggle: (symbol: string, active: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const active = asset.active;
   return (
@@ -129,9 +131,9 @@ function ToggleStatusButton({
         variant="link"
         size="icon"
         onClick={() => setOpen(true)}
-        aria-label={active ? `Nonaktifkan ${asset.symbol}` : `Aktifkan ${asset.symbol}`}
+        aria-label={active ? t("admin.deactivate_confirm_title", { symbol: asset.symbol }) : t("admin.activate_confirm_title", { symbol: asset.symbol })}
         className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
-        title={active ? "Jeda" : "Aktifkan"}
+        title={active ? t("admin.action_pause") : t("admin.action_activate")}
       >
         {active ? (
           <Pause className="h-4 w-4" />
@@ -154,19 +156,19 @@ function ToggleStatusButton({
             </AlertDialogMedia>
             <AlertDialogTitle>
               {active
-                ? `Nonaktifkan ${asset.symbol}?`
-                : `Aktifkan ${asset.symbol}?`}
+                ? t("admin.deactivate_confirm_title", { symbol: asset.symbol })
+                : t("admin.activate_confirm_title", { symbol: asset.symbol })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {active
-                ? `Cron berhenti menjurnal ${asset.symbol} mulai run berikutnya. Aset tetap di daftar, tinggal diaktifkan lagi kapan aja.`
-                : `Cron mulai menjurnal ${asset.symbol} lagi di run berikutnya (≤30 menit).`}
+                ? t("admin.deactivate_confirm_desc", { symbol: asset.symbol })
+                : t("admin.activate_confirm_desc", { symbol: asset.symbol })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => onToggle(asset.symbol, !active)}>
-              {active ? "Nonaktifkan" : "Aktifkan"}
+              {active ? t("admin.action_deactivate") : t("admin.action_activate")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -184,13 +186,14 @@ function DeleteButton({
   symbol: string;
   onRemove: (symbol: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
           variant="link"
           size="icon"
-          aria-label={`Hapus ${symbol}`}
+          aria-label={t("admin.delete_confirm_title", { symbol })}
           className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted"
         >
           <Trash2 className="h-4 w-4" />
@@ -201,19 +204,18 @@ function DeleteButton({
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
             <Trash2 />
           </AlertDialogMedia>
-          <AlertDialogTitle>Hapus {symbol}?</AlertDialogTitle>
+          <AlertDialogTitle>{t("admin.delete_confirm_title", { symbol })}</AlertDialogTitle>
           <AlertDialogDescription>
-            {symbol} dihapus permanen dari universe auto-journal dan cron
-            berhenti menjurnalnya. Bisa ditambah lagi kapan aja.
+            {t("admin.delete_confirm_desc", { symbol })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={() => onRemove(symbol)}
           >
-            Hapus
+            {t("admin.delete_btn")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -284,9 +286,9 @@ export function JournalAssetManager() {
     (opt) => ({ value: opt.value, label: t(opt.labelKey) }),
   );
   const statusOptions: FilterOption<StatusFilter>[] = [
-    { value: "all", label: "Semua status" },
-    { value: "active", label: "Aktif" },
-    { value: "inactive", label: "Nonaktif" },
+    { value: "all", label: t("admin.status_all") },
+    { value: "active", label: t("admin.status_active") },
+    { value: "inactive", label: t("admin.status_inactive") },
   ];
 
   const columns = useMemo<ColumnDef<JournalAssetRow>[]>(
@@ -294,7 +296,7 @@ export function JournalAssetManager() {
       {
         accessorKey: "created_at",
         header: ({ column }) => (
-          <SortButton label="Ditambahkan" column={column} />
+          <SortButton label={t("table.added")} column={column} />
         ),
         cell: ({ row }) => {
           const ts = Date.parse(row.original.created_at) / 1000;
@@ -312,7 +314,7 @@ export function JournalAssetManager() {
       },
       {
         accessorKey: "symbol",
-        header: ({ column }) => <SortButton label="Simbol" column={column} />,
+        header: ({ column }) => <SortButton label={t("table.symbol")} column={column} />,
         cell: ({ row }) => {
           const liveAsset = marketDataMap.get(row.original.symbol.toUpperCase());
           const displayName = liveAsset?.name || row.original.name;
@@ -335,7 +337,7 @@ export function JournalAssetManager() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Tipe
+            {t("table.type")}
           </span>
         ),
         cell: ({ row }) => (
@@ -350,7 +352,7 @@ export function JournalAssetManager() {
         id: "live_price",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Harga
+            {t("table.price")}
           </span>
         ),
         cell: ({ row }) => {
@@ -369,7 +371,7 @@ export function JournalAssetManager() {
         id: "live_change",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Perubahan
+            {t("table.change")}
           </span>
         ),
         cell: ({ row }) => {
@@ -385,7 +387,7 @@ export function JournalAssetManager() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Status
+            {t("table.status")}
           </span>
         ),
         cell: ({ row }) => (
@@ -423,14 +425,14 @@ export function JournalAssetManager() {
       {/* Section header */}
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          Universe Auto-Journal
+          {t("admin.universe_title")}
         </h2>
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
           {isLoading ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
             <span>
-              {activeCount} aktif / {assets.length} {t("market.assets_found")}
+              {activeCount} {t("admin.status_active").toLowerCase()} / {assets.length} {t("market.assets_found")}
             </span>
           )}
         </div>
@@ -500,7 +502,7 @@ export function JournalAssetManager() {
               className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Tambah Aset</span>
+              <span className="hidden sm:inline">{t("admin.add_asset_btn")}</span>
             </Button>
           </div>
         </div>
