@@ -189,27 +189,3 @@
 .animate-ticker:hover {
     animation-play-state: paused;
 }
-
-/* Empty state icon animation — floating + soft pulse */
-@keyframes empty-float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
-}
-
-@keyframes empty-pulse {
-    0%, 100% { opacity: 0.45; transform: scale(0.95); }
-    50% { opacity: 1; transform: scale(1.05); }
-}
-
-.animate-empty-float {
-    animation: empty-float 3s ease-in-out infinite;
-}
-
-.animate-empty-pulse {
-    animation: empty-pulse 3s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .animate-empty-float,
-    .animate-empty-pulse { animation: none; }
-}

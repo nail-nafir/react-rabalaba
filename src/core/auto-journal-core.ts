@@ -9,6 +9,7 @@ import type { UnifiedAsset } from "@/types/asset";
 import {
   buildFollowedTrade,
   applyPriceSync,
+  computePnl,
   type FollowCandle,
 } from "@/features/follow-trade/lib/follow-trade-model";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
@@ -31,6 +32,12 @@ export interface JournalClosure {
   close_price: number | null;
   closed_at: string;
   highest_tp_reached: number;
+  /** True only for a SIGNAL-REVERSAL close (vs a price TP/SL hit). Lets the UI
+   *  mark a reversal-after-TP apart from a stop-after-TP (both are status tp{n}). */
+  reversed?: boolean;
+  /** Realized P&L % at the close price. NOT persisted (DB UPDATE ignores it) —
+   *  carried only for the Discord outcome line. */
+  pnl_pct: number;
 }
 
 export interface AutoJournalPlan {
@@ -151,44 +158,42 @@ export function runAutoJournal(
       ? new Date(t.closedAt).toISOString()
       : new Date().toISOString(),
     highest_tp_reached: t.highestTpReached,
+    pnl_pct: computePnl(t, t.closePrice ?? t.entryPrice).pct,
   }));
 
   // Close 2 — signal REVERSAL (long↔short). The thesis is now actively wrong,
   // so exit. But if a TP milestone was already touched, SECURE it (close as that
   // TP at its price, mirroring the SL-after-TP rule in evaluateFollow) — the
-  // "manual"/Reversed status is ONLY for a flip that never reached any TP.
-  // Neutral does NOT close: conviction merely faded, not reversed.
+  // dedicated "reversed" status is ONLY for a flip that never reached any TP.
+  // Both carry reversed=true. Neutral does NOT close: conviction faded, not flipped.
   for (const t of stillOpen) {
     const asset = assetBySymbol.get(t.symbol);
     // Never reverse-close off a stale signal.
     if (!asset || isStaleQuote(asset, now)) continue;
     const signal = asset.outlook?.signal;
-    const reversed =
+    const isReversal =
       (t.signal === "long" && signal === "short") ||
       (t.signal === "short" && signal === "long");
-    if (!reversed) continue;
+    if (!isReversal) continue;
     const securedTp = t.highestTpReached;
-    closures.push(
+    // Secured-TP reversal closes AT that TP price (keeps the R/accounting); a
+    // flip with no TP exits at the current price.
+    const close_price =
       securedTp >= 1
-        ? {
-            id: t.id,
-            symbol: t.symbol,
-            status: `tp${securedTp}`,
-            close_price:
-              t.takeProfits[securedTp - 1] ?? prices[t.symbol] ?? null,
-            closed_at: new Date().toISOString(),
-            highest_tp_reached: securedTp,
-          }
-        : {
-            id: t.id,
-            symbol: t.symbol,
-            // Reversal with no TP touched → the only true "Reversed" close.
-            status: "manual",
-            close_price: prices[t.symbol] ?? null,
-            closed_at: new Date().toISOString(),
-            highest_tp_reached: t.highestTpReached,
-          },
-    );
+        ? (t.takeProfits[securedTp - 1] ?? prices[t.symbol] ?? null)
+        : (prices[t.symbol] ?? null);
+    closures.push({
+      id: t.id,
+      symbol: t.symbol,
+      // Secured TP keeps its tp{n}; a no-TP flip gets the dedicated "reversed"
+      // status. Both carry reversed=true so the UI/alerts mark them as reversals.
+      status: securedTp >= 1 ? `tp${securedTp}` : "reversed",
+      close_price,
+      closed_at: new Date().toISOString(),
+      highest_tp_reached: securedTp,
+      reversed: true,
+      pnl_pct: close_price != null ? computePnl(t, close_price).pct : 0,
+    });
   }
 
   return { inserts, closures };

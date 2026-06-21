@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TradeDetailDialog } from "@/features/follow-trade/components/trade-detail-dialog";
 import { cn } from "@/lib/utils";
-import { formatRatio, formatDateNumeric } from "@/lib/formatters";
+import { formatDateNumeric } from "@/lib/formatters";
 import { SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -119,17 +119,14 @@ export function TopPerformers() {
     if (items.length === 0) {
       if (isGainer) {
         return (
-          <div className="flex flex-col items-center justify-center text-center p-6 py-10 rounded-xl border border-amber-500/10 bg-amber-500/2 hover:border-amber-500/20 transition-all duration-300 hover:scale-[1.005]">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-empty-float">
-              <Shield className="h-7 w-7" />
-            </div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5">
-              {t("journal.empty_gainers_title")}
-            </h4>
-            <p className="text-xs text-muted-foreground max-w-60 leading-relaxed">
-              {t("journal.empty_gainers_desc")}
-            </p>
-          </div>
+          <EmptyState
+            title={t("journal.empty_gainers_title")}
+            description={t("journal.empty_gainers_desc")}
+            icon={
+              <Shield className="h-14 w-14 text-muted-foreground" />
+            }
+            className="py-8"
+          />
         );
       } else {
         const emptyLosersDescKey =
@@ -139,24 +136,21 @@ export function TopPerformers() {
               ? "journal.empty_losers_desc_weekly"
               : "journal.empty_losers_desc_monthly";
         return (
-          <div className="flex flex-col items-center justify-center text-center p-6 py-10 rounded-xl border border-emerald-500/10 bg-emerald-500/2 hover:border-emerald-500/20 transition-all duration-300 hover:scale-[1.005]">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 animate-empty-float">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1.5">
-              {t("journal.empty_losers_title")}
-            </h4>
-            <p className="text-xs text-muted-foreground max-w-60 leading-relaxed">
-              {t(emptyLosersDescKey)}
-            </p>
-          </div>
+          <EmptyState
+            title={t("journal.empty_losers_title")}
+            description={t(emptyLosersDescKey)}
+            icon={
+              <Sparkles className="h-14 w-14 text-muted-foreground" />
+            }
+            className="py-8"
+          />
         );
       }
     }
 
     return (
       <div className="space-y-2.5">
-        {items.map(({ trade, pct, r }, index) => {
+        {items.map(({ trade, pct }, index) => {
           const signalColor = SIGNAL_COLORS[trade.signal];
           const dateSecs = (trade.closedAt ?? trade.followedAt) / 1000;
           return (
@@ -184,8 +178,8 @@ export function TopPerformers() {
                     {index + 1}
                   </Badge>
                   <div className="min-w-0">
-                    <div className="font-bold text-sm tracking-tight text-foreground flex items-center gap-1.5">
-                      {trade.symbol}
+                    <div className="font-bold text-sm tracking-tight text-foreground flex flex-wrap items-center gap-1.5">
+                      <span>{trade.symbol}</span>
                       <Badge
                         variant="outline"
                         className={cn(
@@ -216,24 +210,8 @@ export function TopPerformers() {
                     {pct >= 0 ? "+" : ""}
                     {pct.toFixed(2)}%
                   </div>
-                  <div className="flex items-center justify-end gap-1.5 mt-1">
-                    <span
-                      className={cn(
-                        "font-mono text-[10px] leading-none font-semibold",
-                        isGainer
-                          ? "text-emerald-600/80 dark:text-emerald-400/80"
-                          : "text-rose-600/80 dark:text-rose-400/80",
-                      )}
-                    >
-                      {r >= 0 ? "+" : ""}
-                      {`${formatRatio(r)} ${t("journal.r_suffix")}`}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground font-medium">
-                      •
-                    </span>
-                    <span className="text-[9px] text-muted-foreground font-mono leading-none">
-                      {formatDateNumeric(dateSecs)}
-                    </span>
+                  <div className="text-[9px] text-muted-foreground font-mono leading-none mt-1">
+                    {formatDateNumeric(dateSecs)}
                   </div>
                 </div>
               </CardContent>
@@ -289,7 +267,7 @@ export function TopPerformers() {
               title={t("journal.empty_performers_title")}
               description={t("journal.empty_performers_desc")}
               icon={
-                <Activity className="h-14 w-14 text-muted-foreground animate-empty-float" />
+                <Activity className="h-14 w-14 text-muted-foreground" />
               }
             />
           </CardContent>

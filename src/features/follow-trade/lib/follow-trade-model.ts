@@ -38,6 +38,10 @@ export interface FollowedTrade {
   /** Monotonic milestone progress: 0 = none, 1..3 = highest TP touched. */
   highestTpReached: number;
   status: FollowStatus;
+  /** Closed by a SIGNAL REVERSAL rather than a price TP/SL hit. A reversal can
+   *  secure a TP (status tp{n}) or none (status manual); this flag is what lets
+   *  the UI mark a reversal-after-TP apart from a stop-after-TP. */
+  reversed?: boolean;
   closePrice?: number;
   closedAt?: number;
 }
@@ -176,6 +180,8 @@ export interface FollowProgress {
   tpTotal: number;
   /** Closed via stop-loss (no TP ever secured). */
   slHit: boolean;
+  /** Closed by a signal reversal (vs a price TP/SL hit). Display-only marker. */
+  reversed: boolean;
 }
 
 /**
@@ -199,6 +205,7 @@ export function deriveFollowProgress(
       tpReached: trade.highestTpReached,
       tpTotal,
       slHit: trade.status === "sl",
+      reversed: trade.reversed ?? false,
     };
   }
   const since = rawCandles
@@ -214,6 +221,7 @@ export function deriveFollowProgress(
     tpReached: Math.max(trade.highestTpReached, live.highestTpReached),
     tpTotal,
     slHit: false,
+    reversed: false,
   };
 }
 

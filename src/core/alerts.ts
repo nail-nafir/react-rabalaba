@@ -18,6 +18,8 @@ export interface JournalAlert {
   price?: number | null;
   /** TP milestone (1/2/3) for a tp_hit. */
   tpLevel?: number;
+  /** Realized P&L % for an outcome (signed). */
+  pnlPct?: number;
 }
 
 /**
@@ -38,17 +40,17 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
   }
 
   for (const c of plan.closures) {
-    if (c.status === "sl") {
-      alerts.push({ kind: "sl_hit", symbol: c.symbol, price: c.close_price });
+    const base = { symbol: c.symbol, price: c.close_price, pnlPct: c.pnl_pct };
+    // A reversal (with OR without a secured TP) is reported as "reversed" first,
+    // mirroring the journal's reversed marker. Otherwise it's a pure TP/SL hit.
+    if (c.reversed) {
+      alerts.push({ kind: "reversed", ...base });
+    } else if (c.status === "sl") {
+      alerts.push({ kind: "sl_hit", ...base });
     } else if (/^tp[123]$/.test(c.status)) {
-      alerts.push({
-        kind: "tp_hit",
-        symbol: c.symbol,
-        price: c.close_price,
-        tpLevel: Number(c.status.slice(2)),
-      });
+      alerts.push({ kind: "tp_hit", ...base, tpLevel: Number(c.status.slice(2)) });
     } else {
-      alerts.push({ kind: "reversed", symbol: c.symbol, price: c.close_price });
+      alerts.push({ kind: "reversed", ...base });
     }
   }
 
@@ -58,25 +60,40 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
 /** Discord `content` is capped at 2000 chars; stay under to avoid 400s. */
 const DISCORD_MAX = 1900;
 
-/** "RabaLaba Sensei" persona intro — the in-character framing for every drop. */
-const SENSEI_HEADER =
-  "🥋 RabaLaba Sensei memanggil....\n\n" +
-  "Wahai para muridku....\n\n" +
-  "Semalam aku bermeditasi di depan chart.\n" +
-  "Saat dupa terakhir padam, beberapa wangsit muncul.";
+/** "Wangsit Raba Laba Sensei" persona header — the in-character framing. */
+const SENSEI_HEADER = "🥋【 WANGSIT RABA LABA SENSEI HARI INI 】";
 
-const DIVIDER = "━━━━━━━━━━━━━━━━━━";
+const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━";
 
-/** Price suffix " @<num>" (omitted when there's no price). */
+/** Closing wisdom, in character. */
+const SENSEI_QUOTE =
+  '🧘‍♂️ "Semedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating minus belum tentu rebound."';
+
+/** Wrap in backticks so symbols/prices render monospace in Discord. */
+function code(s: string | number): string {
+  return `\`${s}\``;
+}
+
+/** Signed P&L like " (+120%)", " (-15%)", " (+0.28%)" — precision scales with
+ *  magnitude, trailing zeros dropped. Empty when there's no value. */
+function pctSuffix(pct?: number): string {
+  if (pct == null || !Number.isFinite(pct)) return "";
+  const abs = Math.abs(pct);
+  const digits = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
+  const v = abs.toLocaleString("en-US", { maximumFractionDigits: digits });
+  return ` (${pct >= 0 ? "+" : "-"}${v}%)`;
+}
+
+/** Price suffix " @`<num>`" (omitted when there's no price). */
 function priceSuffix(price?: number | null): string {
-  return price != null ? ` @${formatNum(price)}` : "";
+  return price != null ? ` @${code(formatNum(price))}` : "";
 }
 
 /**
- * Render alerts into a single in-character "RabaLaba Sensei" Discord message:
- * header → SINYAL (new entries) → HASIL (outcomes grouped TP / SL / reversal).
- * Dividers separate header / SINYAL / HASIL. Returns null when there's nothing
- * to say so the caller can skip the POST entirely.
+ * Render alerts into a single in-character "Wangsit Raba Laba Sensei" Discord
+ * message: header → 🚨 SINYAL (new entries) → 📢 HASIL (TP / SL / Reversed
+ * outcomes, each with realized %) → closing wisdom. Returns null when there's
+ * nothing to say so the caller can skip the POST.
  */
 export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   if (alerts.length === 0) return null;
@@ -84,50 +101,42 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   const renderSignal = (a: JournalAlert) => {
     const emoji = a.kind === "new_long" ? "🟢" : "🔴";
     const dir = a.kind === "new_long" ? "LONG" : "SHORT";
-    const parts = [`**${a.symbol}**`, dir];
+    const parts = [code(a.symbol), dir];
     if (a.grade) parts.push(`Grade ${a.grade}`);
-    if (a.entry != null) parts.push(`Entry @${formatNum(a.entry)}`);
+    if (a.entry != null) parts.push(`Entry @${code(formatNum(a.entry))}`);
     return `${emoji} ${parts.join(" • ")}`;
   };
-  // Grouped by direction: all LONG together, then SHORT, split by a blank line.
-  const longLines = alerts.filter((a) => a.kind === "new_long").map(renderSignal);
-  const shortLines = alerts
-    .filter((a) => a.kind === "new_short")
-    .map(renderSignal);
-  const signalBody = [longLines, shortLines]
-    .filter((g) => g.length > 0)
-    .map((g) => g.join("\n"))
-    .join("\n\n");
+  // LONG first, then SHORT — one line each, no blank line between.
+  const signalBody = [
+    ...alerts.filter((a) => a.kind === "new_long"),
+    ...alerts.filter((a) => a.kind === "new_short"),
+  ]
+    .map(renderSignal)
+    .join("\n");
 
-  const tpLines = alerts
-    .filter((a) => a.kind === "tp_hit")
-    .map((a) => `🎯 **${a.symbol}** → TP${a.tpLevel ?? ""}${priceSuffix(a.price)}`);
-
-  const slLines = alerts
-    .filter((a) => a.kind === "sl_hit")
-    .map((a) => `⛔ **${a.symbol}** → SL${priceSuffix(a.price)}`);
-
-  const reversedLines = alerts
-    .filter((a) => a.kind === "reversed")
-    .map((a) => `🔄 **${a.symbol}** → Reversed${priceSuffix(a.price)}`);
+  // TP, then SL, then Reversed — one line each, with the realized %.
+  const outcomeBody = [
+    ...alerts
+      .filter((a) => a.kind === "tp_hit")
+      .map(
+        (a) =>
+          `🎯 ${code(a.symbol)} ➔ TP${a.tpLevel ?? ""}${priceSuffix(a.price)}${pctSuffix(a.pnlPct)}`,
+      ),
+    ...alerts
+      .filter((a) => a.kind === "sl_hit")
+      .map((a) => `⛔ ${code(a.symbol)} ➔ SL${priceSuffix(a.price)}${pctSuffix(a.pnlPct)}`),
+    ...alerts
+      .filter((a) => a.kind === "reversed")
+      .map(
+        (a) =>
+          `🔄 ${code(a.symbol)} ➔ Reversed${priceSuffix(a.price)}${pctSuffix(a.pnlPct)}`,
+      ),
+  ].join("\n");
 
   const blocks: string[] = [SENSEI_HEADER];
-
-  // SINYAL section (new entries), LONG / SHORT groups split by a blank line.
-  if (signalBody) {
-    blocks.push(DIVIDER);
-    blocks.push("SINYAL:\n" + signalBody);
-  }
-
-  // HASIL section (outcomes), TP / SL / reversal groups split by a blank line.
-  const outcomeBody = [tpLines, slLines, reversedLines]
-    .filter((g) => g.length > 0)
-    .map((g) => g.join("\n"))
-    .join("\n\n");
-  if (outcomeBody) {
-    blocks.push(DIVIDER);
-    blocks.push("HASIL:\n" + outcomeBody);
-  }
+  if (signalBody) blocks.push(DIVIDER, "🚨 SINYAL:\n\n" + signalBody);
+  if (outcomeBody) blocks.push(DIVIDER, "📢 HASIL:\n\n" + outcomeBody);
+  blocks.push(DIVIDER, SENSEI_QUOTE);
 
   let msg = blocks.join("\n\n");
   if (msg.length > DISCORD_MAX) {
@@ -136,11 +145,28 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   return msg;
 }
 
-/** Compact price formatting that works for both BTC (65,713) and a 0.0824 alt. */
+/**
+ * Price formatting for the alert lines. Shows prices "as-is" without dropping
+ * trailing-zero decimals: whole numbers stay clean (65713), prices ≥ 1 keep a
+ * fixed 2 decimals (145.20, 28.40), and sub-1 alts scale to enough significant
+ * decimals (0.006467) without padding extra zeros. No thousands separators —
+ * they read awkwardly inside the inline-code spans.
+ */
 function formatNum(n: number): string {
   if (!Number.isFinite(n)) return "—";
+  if (Number.isInteger(n)) return n.toString();
   const abs = Math.abs(n);
-  if (abs >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-  if (abs >= 1) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  return n.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  if (abs >= 1) {
+    return n.toLocaleString("en-US", {
+      useGrouping: false,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  // Sub-1: enough decimals to stay meaningful, trailing zeros NOT padded.
+  const leadingZeros = Math.max(0, -Math.floor(Math.log10(abs)) - 1);
+  return n.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: Math.min(10, leadingZeros + 4),
+  });
 }

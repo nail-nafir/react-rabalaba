@@ -10,8 +10,8 @@ export default function NotFoundPage() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="flex flex-col items-center text-center">
-        <div className="mb-6 flex h-40 w-40 items-center justify-center rounded-4xl bg-muted/20 ring-1 ring-border/50 animate-empty-float">
-          <Binoculars className="h-24 w-24 text-muted-foreground/60 animate-empty-pulse" />
+        <div className="mb-6 flex h-40 w-40 items-center justify-center rounded-4xl bg-muted/20 ring-1 ring-border/50">
+          <Binoculars className="h-24 w-24 text-muted-foreground/60" />
         </div>
         <h1 className="text-3xl font-bold text-foreground mb-3">
           {t("not_found.title")}

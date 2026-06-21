@@ -30,6 +30,7 @@ export function rowToFollowedTrade(r: JournalTradeRow): FollowedTrade {
     followedAt: Date.parse(r.opened_at),
     highestTpReached: r.highest_tp_reached,
     status: r.status as FollowStatus,
+    reversed: r.reversed ?? false,
     closePrice: r.close_price ?? undefined,
     closedAt: r.closed_at ? Date.parse(r.closed_at) : undefined,
   };

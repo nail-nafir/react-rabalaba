@@ -150,6 +150,7 @@ export function FollowHistoryTable() {
   }, [openTrades, liveAssets]);
   const progressRef = useRef<Record<string, FollowProgress>>({});
   progressRef.current = progressBySymbol;
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilterType>("all");
@@ -164,17 +165,14 @@ export function FollowHistoryTable() {
 
   const handleLifecycleChange = (val: LifecycleFilter) => {
     setLifecycleFilter(val);
-    if (
-      val === "open" &&
-      (pnlFilter === "sl" || pnlFilter === "manual")
-    ) {
+    if (val === "open" && (pnlFilter === "sl" || pnlFilter === "reversed")) {
       setPnlFilter("all");
     }
   };
 
   const handlePnlChange = (val: PnlFilter) => {
     setPnlFilter(val);
-    if ((val === "sl" || val === "manual") && lifecycleFilter === "open") {
+    if ((val === "sl" || val === "reversed") && lifecycleFilter === "open") {
       setLifecycleFilter("all");
     }
   };
@@ -196,18 +194,23 @@ export function FollowHistoryTable() {
               deriveFollowProgress(tr, tr.entryPrice))
             : deriveFollowProgress(tr, tr.closePrice ?? tr.entryPrice);
 
+        // "reversed" is its own bucket spanning a no-TP reversal AND a
+        // reversal-after-TP. Partition: a reversed close belongs ONLY here, so
+        // "tp" keeps just the clean TP outcomes (every closed trade lands in
+        // exactly one of tp / sl / reversed).
+        const isReversed = tr.status !== "open" && !!tr.reversed;
         const isTp =
           tr.status === "open"
             ? progress.tpReached > 0
             : (tr.status === "tp1" ||
-               tr.status === "tp2" ||
-               tr.status === "tp3");
+                tr.status === "tp2" ||
+                tr.status === "tp3") &&
+              !isReversed;
         const isSl = tr.status === "open" ? progress.slHit : tr.status === "sl";
-        const isManual = tr.status === "open" ? false : tr.status === "manual";
 
         if (pnlFilter === "tp" && !isTp) return false;
         if (pnlFilter === "sl" && !isSl) return false;
-        if (pnlFilter === "manual" && !isManual) return false;
+        if (pnlFilter === "reversed" && !isReversed) return false;
       }
 
       if (
@@ -256,15 +259,13 @@ export function FollowHistoryTable() {
   );
 
   const activeLifecycleOptions =
-    pnlFilter === "sl" || pnlFilter === "manual"
+    pnlFilter === "sl" || pnlFilter === "reversed"
       ? lifecycleOptions.filter((opt) => opt.value !== "open")
       : lifecycleOptions;
 
   const activePnlOptions =
     lifecycleFilter === "open"
-      ? pnlOptions.filter(
-          (opt) => opt.value === "all" || opt.value === "tp",
-        )
+      ? pnlOptions.filter((opt) => opt.value === "all" || opt.value === "tp")
       : pnlOptions;
 
   const columns = useMemo<ColumnDef<FollowedTrade>[]>(
@@ -290,23 +291,60 @@ export function FollowHistoryTable() {
       },
       {
         id: "date",
-        // Always the OPEN time (when the trade was taken) — consistent and on the
-        // cron grid. The close time (a live-detection stamp that can be off-grid)
-        // stays in the detail dialog, so the column never shows mixed semantics.
-        accessorFn: (tr) => tr.followedAt,
+        // Sort by closedAt only — open trades (null) naturally float to bottom.
+        accessorFn: (tr) => tr.closedAt ?? 0,
         header: ({ column }) => (
           <SortButton label={t("journal.col_date")} column={column} />
         ),
         cell: ({ row }) => {
-          const ts = row.original.followedAt / 1000;
+          const tr = row.original;
+          const entrySec = tr.followedAt / 1000;
+          const closeSec =
+            tr.closedAt != null ? (tr.closedAt as number) / 1000 : null;
+          const nowSec = Date.now() / 1000;
+
+          const labelCls = "text-xs text-muted-foreground w-14 shrink-0";
+          const rowCls =
+            "text-sm font-semibold tracking-tight flex items-center gap-3";
+
           return (
-            <div className="py-1">
-              <div className="font-bold text-sm tracking-tight text-foreground">
-                {formatDateNumeric(ts)}
+            <div className="py-1 space-y-1">
+              {/* Row 1: entry date */}
+              <div className={`${rowCls} text-foreground`}>
+                <span className={labelCls}>{t("journal.entry_price")}</span>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span>{formatDateNumeric(entrySec)}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-[10px] font-normal text-muted-foreground/70">
+                    {formatClock(entrySec)}
+                  </span>
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {formatClock(ts)}
-              </div>
+
+              {/* Row 2: close date (emerald) or live now (amber) */}
+              {closeSec != null ? (
+                <div className={`${rowCls} text-emerald-400`}>
+                  <span className={labelCls}>{t("journal.close_short")}</span>
+                  <div className="flex items-baseline gap-1 font-mono">
+                    <span>{formatDateNumeric(closeSec)}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-[10px] font-normal opacity-70">
+                      {formatClock(closeSec)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className={`${rowCls} text-amber-400`}>
+                  <span className={labelCls}>{t("journal.now_short")}</span>
+                  <div className="flex items-baseline gap-1 font-mono">
+                    <span>{formatDateNumeric(nowSec)}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-[10px] font-normal opacity-70">
+                      {formatClock(nowSec)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           );
         },
@@ -316,16 +354,18 @@ export function FollowHistoryTable() {
         header: ({ column }) => (
           <SortButton label={t("table.symbol")} column={column} />
         ),
-        cell: ({ row }) => (
-          <div className="py-1">
-            <div className="font-bold text-sm tracking-tight text-foreground flex items-center gap-2">
-              {row.original.symbol}
+        cell: ({ row }) => {
+          return (
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground">
+                {row.original.symbol}
+              </div>
+              <div className="text-xs truncate max-w-50 text-muted-foreground">
+                {row.original.name}
+              </div>
             </div>
-            <div className="text-xs truncate max-w-50 text-muted-foreground">
-              {row.original.name}
-            </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         accessorKey: "assetType",
@@ -352,27 +392,50 @@ export function FollowHistoryTable() {
         ),
         cell: ({ row }) => {
           const tr = row.original;
-          // Entry → last (open: live current; closed: realized close price).
-          const last =
-            tr.status === "open"
-              ? livePriceRef.current[tr.symbol]
-              : tr.closePrice;
+          const isClosed = tr.status !== "open" && tr.closePrice != null;
+          const livePrice = livePriceRef.current[tr.symbol];
+
+          // Row 2 value: close price if done, live price if open.
+          const secondPrice = isClosed ? tr.closePrice : livePrice;
+
+          // Color for row 2:
+          // - closed → always emerald (mirrors Period column closed color)
+          // - open   → dynamic: green if live > entry, red if live < entry
+          let secondColor = "text-muted-foreground";
+          if (isClosed) {
+            secondColor = "text-emerald-400";
+          } else if (secondPrice != null) {
+            secondColor =
+              secondPrice > tr.entryPrice
+                ? "text-emerald-400"
+                : secondPrice < tr.entryPrice
+                  ? "text-rose-400"
+                  : "text-muted-foreground";
+          }
+
+          const labelCls = "text-xs text-muted-foreground w-14 shrink-0";
+          const rowCls =
+            "text-sm font-semibold tracking-tight flex items-baseline gap-3";
+
           return (
-            <div className="py-1 space-y-0.5 text-mono-data">
-              <div className="flex items-baseline gap-1.5">
-                <span className="w-11 shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                  {t("journal.entry_price")}
-                </span>
-                <span className="text-sm font-semibold text-foreground">
+            <div className="py-1 space-y-1">
+              {/* Row 1: entry price */}
+              <div className={`${rowCls} text-foreground`}>
+                <span className={labelCls}>{t("journal.entry_price")}</span>
+                <span className="font-mono">
                   {formatPrice(tr.entryPrice, tr.assetType)}
                 </span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="w-11 shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                  {t("journal.last_short")}
+
+              {/* Row 2: close or live price */}
+              <div className={`${rowCls} ${secondColor}`}>
+                <span className={labelCls}>
+                  {isClosed ? t("journal.close_short") : t("journal.now_short")}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {last != null ? formatPrice(last, tr.assetType) : "—"}
+                <span className="font-mono">
+                  {secondPrice != null
+                    ? formatPrice(secondPrice, tr.assetType)
+                    : "—"}
                 </span>
               </div>
             </div>
@@ -468,10 +531,10 @@ export function FollowHistoryTable() {
               : deriveFollowProgress(tr, tr.closePrice ?? tr.entryPrice);
           return (
             <div className="py-1 space-y-0.5">
-              <div className="flex items-baseline">
+              <div className="flex items-baseline gap-1">
                 <span
                   className={cn(
-                    "text-sm font-semibold text-mono-data leading-none",
+                    "text-sm font-semibold font-mono leading-none",
                     isWin
                       ? PALETTE.positive.textStrong
                       : PALETTE.negative.textStrong,
@@ -480,22 +543,24 @@ export function FollowHistoryTable() {
                   {pct >= 0 ? "+" : ""}
                   {pct.toFixed(2)}%
                 </span>
+                <span className="text-muted-foreground font-mono">·</span>
                 <span
                   className={cn(
-                    "text-[10px] text-mono-data leading-none ml-1.5",
+                    "text-[10px] font-mono leading-none",
                     isWin
                       ? "text-emerald-600/70 dark:text-emerald-400/70"
                       : "text-rose-600/70 dark:text-rose-400/70",
                   )}
                 >
-                  ({r >= 0 ? "+" : ""}
-                  {formatRatio(r)}R)
+                  {r >= 0 ? "+" : ""}
+                  {formatRatio(r)}R
                 </span>
               </div>
               <TpProgress
                 reached={progress.tpReached}
                 total={progress.tpTotal}
                 slHit={progress.slHit}
+                reversed={progress.reversed}
                 isClosed={tr.status !== "open"}
               />
             </div>

@@ -26,7 +26,16 @@ import {
 
 const RANGE = "1mo";
 const INTERVAL = "1h";
-const YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart";
+// Route through the app's OWN Cloudflare proxy (functions/api/yahoo) by default —
+// the SAME edge/IP the browser uses, so cron and app see byte-identical data
+// (single source of truth). The old direct `query1` path hit Yahoo from the
+// Supabase-datacenter IP and occasionally got a corrupt candle bar, which faked
+// an SL/TP touch and phantom-closed open trades. Override `YAHOO_PROXY_BASE`
+// (e.g. back to the direct query1 URL) for a graceful fallback if the proxy is
+// down — journaling keeps running instead of halting.
+const YAHOO =
+  Deno.env.get("YAHOO_PROXY_BASE") ??
+  "https://rabalaba.pages.dev/api/yahoo/v8/finance/chart";
 // Yahoo wants a real UA but no browser Origin/Referer (mirrors functions/api/yahoo).
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
@@ -280,6 +289,7 @@ Deno.serve(async (req: Request) => {
         close_price: c.close_price,
         closed_at: c.closed_at,
         highest_tp_reached: c.highest_tp_reached,
+        reversed: c.reversed ?? false,
       })
       .eq("id", c.id);
     if (!error) closed++;

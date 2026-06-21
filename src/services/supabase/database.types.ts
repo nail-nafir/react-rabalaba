@@ -25,6 +25,8 @@ export interface JournalTradeRow {
   grade: SignalTier | null;
   status: JournalStatus;
   highest_tp_reached: number;
+  /** Closed by a SIGNAL REVERSAL (vs a price TP/SL hit). DB default false. */
+  reversed: boolean;
   /** timestamptz, ISO string. */
   opened_at: string;
   closed_at: string | null;
@@ -33,11 +35,16 @@ export interface JournalTradeRow {
   updated_at: string;
 }
 
-/** Insert shape: DB defaults id/timestamps, so they're optional on write. */
+/** Insert shape: DB defaults id/timestamps/reversed, so they're optional on write. */
 export type JournalTradeInsert = Omit<
   JournalTradeRow,
-  "id" | "created_at" | "updated_at"
-> & { id?: string; created_at?: string; updated_at?: string };
+  "id" | "created_at" | "updated_at" | "reversed"
+> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+  reversed?: boolean;
+};
 
 export type JournalTradeUpdate = Partial<JournalTradeRow>;
 

@@ -6,7 +6,7 @@ import {
   computePnl,
   deriveFollowProgress,
 } from "@/features/follow-trade/lib/follow-trade-model";
-import { LifecycleBadge, TpProgress } from "./follow-status";
+import { LifecycleBadge, ReversedBadge, TpProgress } from "./follow-status";
 import { formatPrice, formatRatio } from "@/lib/formatters";
 import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -86,9 +86,9 @@ export function TradeDetailDialog({
   const isClosed = trade ? trade.status !== "open" : false;
   const livePrice = asset?.price ?? trade?.entryPrice ?? 0;
   const displayPrice = isClosed
-    ? trade?.closePrice ?? trade?.entryPrice ?? 0
+    ? (trade?.closePrice ?? trade?.entryPrice ?? 0)
     : livePrice;
-  const changePercent = isClosed ? 0 : asset?.changePercent ?? 0;
+  const changePercent = isClosed ? 0 : (asset?.changePercent ?? 0);
 
   const pnl = useMemo(() => {
     if (!trade) return { pct: 0, r: 0 };
@@ -211,7 +211,7 @@ export function TradeDetailDialog({
                   {priceLabel}
                 </p>
                 <div className="flex items-end gap-3 min-w-0">
-                  <span className="text-xl sm:text-3xl font-bold text-mono-data break-words">
+                  <span className="text-xl sm:text-3xl font-bold text-mono-data wrap-break-word">
                     {formatPrice(displayPrice, trade.assetType)}
                   </span>
                   {!isClosed && (
@@ -271,6 +271,7 @@ export function TradeDetailDialog({
                 variant="badge"
               />
             )}
+            {progress.reversed && <ReversedBadge />}
             <LifecycleBadge open={progress.lifecycle === "open"} />
           </div>
         </DialogHeader>

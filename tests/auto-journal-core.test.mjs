@@ -174,7 +174,8 @@ test("runAutoJournal: closes a long trade on signal REVERSAL to short", async ()
 
   assert.equal(closures.length, 1, "reversal → closed");
   assert.equal(closures[0].id, "AAA-id");
-  assert.equal(closures[0].status, "manual"); // reused status for a reversal close
+  assert.equal(closures[0].status, "reversed"); // dedicated status for a no-TP reversal close
+  assert.equal(closures[0].reversed, true);
   assert.equal(closures[0].close_price, 105); // exits at the current price
 });
 

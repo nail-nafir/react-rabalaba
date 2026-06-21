@@ -40,6 +40,7 @@ const PLAN = {
       close_price: 0.28,
       closed_at: "2026-06-20T00:00:00Z",
       highest_tp_reached: 1,
+      pnl_pct: 12,
     },
     {
       id: "row2",
@@ -48,6 +49,17 @@ const PLAN = {
       close_price: 9,
       closed_at: "2026-06-20T00:00:00Z",
       highest_tp_reached: 0,
+      pnl_pct: -8.3,
+    },
+    {
+      id: "row3",
+      symbol: "NEAR-USD",
+      status: "reversed",
+      close_price: 5.12,
+      closed_at: "2026-06-20T00:00:00Z",
+      highest_tp_reached: 0,
+      reversed: true,
+      pnl_pct: 0.28,
     },
   ],
 };
@@ -65,21 +77,50 @@ test("buildAutoJournalAlerts maps inserts and closures to events", async () => {
   const tp = alerts.find((a) => a.kind === "tp_hit");
   assert.equal(tp.symbol, "EIGEN-USD");
   assert.equal(tp.tpLevel, 1);
+  assert.equal(tp.pnlPct, 12);
 
   const sl = alerts.find((a) => a.kind === "sl_hit");
   assert.equal(sl.symbol, "MYX-USD");
+
+  // A reversal (with or without a TP) reports as "reversed", carrying the %.
+  const rev = alerts.find((a) => a.kind === "reversed");
+  assert.equal(rev.symbol, "NEAR-USD");
+  assert.equal(rev.pnlPct, 0.28);
 });
 
-test("formatAlertsForDiscord renders a readable message, null when empty", async () => {
+test("buildAutoJournalAlerts: a reversal-after-TP reports as reversed, not tp_hit", async () => {
+  const { buildAutoJournalAlerts } = await loadModule(ALERTS);
+  const alerts = buildAutoJournalAlerts({
+    inserts: [],
+    closures: [
+      {
+        id: "r",
+        symbol: "TON-USD",
+        status: "tp1",
+        close_price: 1.59,
+        closed_at: "2026-06-21T00:00:00Z",
+        highest_tp_reached: 1,
+        reversed: true,
+        pnl_pct: 1.75,
+      },
+    ],
+  });
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].kind, "reversed");
+});
+
+test("formatAlertsForDiscord renders the Sensei message, null when empty", async () => {
   const { buildAutoJournalAlerts, formatAlertsForDiscord } =
     await loadModule(ALERTS);
   const msg = formatAlertsForDiscord(buildAutoJournalAlerts(PLAN));
-  assert.ok(msg.includes("RabaLaba Sensei"));
-  assert.ok(msg.includes("SINYAL:"));
-  assert.ok(msg.includes("HASIL:"));
-  assert.ok(msg.includes("**BTC-USD** • LONG • Grade A • Entry @65,000"));
-  assert.ok(msg.includes("**EIGEN-USD** → TP1 @0.28"));
-  assert.ok(msg.includes("**MYX-USD** → SL @9"));
+  assert.ok(msg.includes("WANGSIT RABA LABA SENSEI"));
+  assert.ok(msg.includes("🚨 SINYAL:"));
+  assert.ok(msg.includes("📢 HASIL:"));
+  assert.ok(msg.includes("🟢 `BTC-USD` • LONG • Grade A • Entry @`65000`"));
+  assert.ok(msg.includes("🎯 `EIGEN-USD` ➔ TP1 @`0.28` (+12%)"));
+  assert.ok(msg.includes("⛔ `MYX-USD` ➔ SL @`9` (-8.3%)"));
+  assert.ok(msg.includes("🔄 `NEAR-USD` ➔ Reversed @`5.12` (+0.28%)"));
+  assert.ok(msg.includes("Semedi di depan chart")); // closing wisdom
   assert.ok(msg.includes("━")); // divider
 
   assert.equal(formatAlertsForDiscord([]), null);

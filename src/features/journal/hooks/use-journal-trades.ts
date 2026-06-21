@@ -29,9 +29,12 @@ export function useJournalTrades() {
     queryKey: ["journal-trades"],
     queryFn: fetchJournalTrades,
     enabled: hasAccess,
-    staleTime: 60_000,
-    // Surface cron updates (new emits / closes) without a manual refresh.
-    refetchInterval: 60_000,
+    staleTime: 300_000,
+    // Surface cron updates (new emits / closes) without a manual refresh. The
+    // cron itself only runs ~every 30 min, so a 5-min poll is plenty — a tighter
+    // interval just churned the table (felt like a refresh on every paginate)
+    // without ever seeing newer data.
+    refetchInterval: 300_000,
   });
 
   // Identity-stable derivations: new arrays only when the query data changes,

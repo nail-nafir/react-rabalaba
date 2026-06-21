@@ -43,14 +43,14 @@ export const REGIME_COLORS: Record<MarketRegime, BadgeColor> = {
 };
 
 /** Status badge colors. `open` = Running (amber); TP reuse long/green, SL reuses
- *  short/red, manual = neutral — all from the single SIGNAL_COLORS source. */
+ *  short/red, reversed = neutral — all from the single SIGNAL_COLORS source. */
 export const STATUS_COLORS: Record<FollowStatus, BadgeColor> = {
   open: BADGE.warning,
   tp1: SIGNAL_COLORS.long,
   tp2: SIGNAL_COLORS.long,
   tp3: SIGNAL_COLORS.long,
   sl: SIGNAL_COLORS.short,
-  manual: SIGNAL_COLORS.neutral,
+  reversed: SIGNAL_COLORS.neutral,
 };
 
 /** Trend label (plain trading term, identical in both locales today) + text

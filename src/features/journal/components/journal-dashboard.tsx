@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatRatio } from "@/lib/formatters";
+
 import {
   ChartContainer,
   ChartTooltip,
@@ -80,7 +80,7 @@ export function JournalDashboard() {
 
     // Filter trades closed today
     const closedToday = history.filter(
-      (t) => t.status !== "open" && t.closedAt && t.closedAt >= startOfTodayMs
+      (t) => t.status !== "open" && t.closedAt && t.closedAt >= startOfTodayMs,
     );
 
     let totalProfitPct = 0;
@@ -116,12 +116,6 @@ export function JournalDashboard() {
       lossesCount,
     };
   }, [history]);
-
-
-
-
-
-
 
   if (isLoading) {
     return (
@@ -179,7 +173,6 @@ export function JournalDashboard() {
     return `${dd}-${mm}`;
   };
 
-
   const fmtFullDate = (d: string) => {
     const parts = d.split("-");
     if (parts.length !== 3) return d;
@@ -192,168 +185,173 @@ export function JournalDashboard() {
       <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
         {t("journal.chart_equity")}
       </h2>
-        {stats.closed === 0 ? (
-          <Card className="border border-border">
-            <CardContent>
-              <EmptyState
-                title={t("journal.empty_dashboard_title")}
-                description={t("journal.empty_dashboard")}
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Daily P/L bars + cumulative R line */}
-            <ChartCard>
-              {/* Core KPIs Row */}
-              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pb-3 border-b border-border/40 text-xs">
-                {/* Left KPIs */}
-                <div className="flex flex-wrap gap-x-8 gap-y-3">
-                  {/* KPI 1: Rasio Sukses */}
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      {t("journal.stat_winrate")}
-                    </span>
-                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                      <span className={cn(
-                        "font-mono font-extrabold text-sm",
-                        stats.winRate >= 50 ? "text-emerald-500" : "text-rose-500"
-                      )}>
+      {stats.closed === 0 ? (
+        <Card className="border border-border">
+          <CardContent>
+            <EmptyState
+              title={t("journal.empty_dashboard_title")}
+              description={t("journal.empty_dashboard")}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Daily P/L bars + cumulative R line */}
+          <ChartCard>
+            {/* Core KPIs Row */}
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pb-3 border-b border-border/40 text-xs">
+              {/* Left KPIs */}
+              <div className="flex flex-wrap gap-x-8 gap-y-3">
+                {/* KPI 1: Rasio Sukses */}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                    {t("journal.stat_winrate")}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 whitespace-nowrap">
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className={cn(
+                          "font-mono font-extrabold text-sm",
+                          stats.winRate >= 50
+                            ? "text-emerald-500"
+                            : "text-rose-500",
+                        )}
+                      >
                         {stats.winRate.toFixed(0)}%
                       </span>
                       <span className="text-[10px] text-muted-foreground font-mono">
-                        ({`${stats.winLoss.wins} ${t("journal.win_abbr")} / ${stats.winLoss.losses} ${t("journal.loss_abbr")}`})
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* KPI: Hari Ini */}
-                  <div className="flex flex-col gap-0.5 pl-0 sm:border-l sm:border-border sm:pl-6">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      {t("journal.today_label")}
-                    </span>
-                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                      <span className="font-mono font-extrabold text-sm text-emerald-500">
-                        {todayStats.profitPct > 0 ? "+" : ""}{todayStats.profitPct.toFixed(2)}%
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        /
-                      </span>
-                      <span className="font-mono font-extrabold text-sm text-rose-500">
-                        {todayStats.lossPct.toFixed(2)}%
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-mono ml-0.5">
-                        ({todayStats.profitR > 0 ? "+" : ""}{formatRatio(todayStats.profitR)} {t("journal.r_suffix")} / {formatRatio(todayStats.lossR)} {t("journal.r_suffix")})
+                        (
+                        {`${stats.winLoss.wins} ${t("journal.win_abbr")} / ${stats.winLoss.losses} ${t("journal.loss_abbr")}`}
+                        )
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right KPI: Transaksi */}
-                <div className="flex flex-col gap-0.5 items-end text-right">
+                {/* KPI: Hari Ini */}
+                <div className="flex flex-col gap-0.5 pl-0 sm:border-l sm:border-border sm:pl-6">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                    {t("journal.trades")}
+                    {t("journal.today_label")}
                   </span>
-                  <span className="font-mono font-extrabold text-sm text-foreground">
-                    {stats.closed}
-                  </span>
+                  <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                    <span className="font-mono font-extrabold text-sm text-emerald-500">
+                      {todayStats.profitPct > 0 ? "+" : ""}
+                      {todayStats.profitPct.toFixed(2)}%
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      /
+                    </span>
+                    <span className="font-mono font-extrabold text-sm text-rose-500">
+                      {todayStats.lossPct.toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <ChartContainer
-                config={equityConfig}
-                className="aspect-auto h-55 w-full"
-              >
-                <ComposedChart data={chartData} margin={CHART_MARGIN}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={11}
-                    minTickGap={24}
-                    tickFormatter={fmtDay}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={32}
-                    fontSize={11}
-                  />
-                  <ChartTooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload) return null;
-                      const filteredPayload = payload.filter(
-                        (item) =>
-                          item.value !== null && item.value !== undefined,
-                      );
-                      return (
-                        <ChartTooltipContent
-                          active={active}
-                          payload={filteredPayload}
-                          label={label}
-                          className="min-w-45"
-                          labelFormatter={(l) => fmtFullDate(String(l))}
-                          formatter={(value, name, item) => {
-                            const isWin =
-                              item.dataKey === "dayPctWin" ||
-                              name === "dayPctWin";
-                            const isLoss =
-                              item.dataKey === "dayPctLoss" ||
-                              name === "dayPctLoss";
-                            const valNum = Number(value);
-                            const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}%`;
+              {/* Right KPI: Transaksi */}
+              <div className="flex flex-col gap-0.5 items-end text-right">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                  {t("journal.trades")}
+                </span>
+                <span className="font-mono font-extrabold text-sm text-foreground">
+                  {stats.closed}
+                </span>
+              </div>
+            </div>
 
-                            const dotColor = isWin
-                              ? POS
-                              : isLoss
-                                ? NEG
-                                : "var(--color-cumPct)";
+            <ChartContainer
+              config={equityConfig}
+              className="aspect-auto h-55 w-full"
+            >
+              <ComposedChart data={chartData} margin={CHART_MARGIN}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  minTickGap={24}
+                  tickFormatter={fmtDay}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  width={32}
+                  fontSize={11}
+                />
+                <ChartTooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload) return null;
+                    const filteredPayload = payload.filter(
+                      (item) => item.value !== null && item.value !== undefined,
+                    );
+                    return (
+                      <ChartTooltipContent
+                        active={active}
+                        payload={filteredPayload}
+                        label={label}
+                        className="min-w-45"
+                        labelFormatter={(l) => fmtFullDate(String(l))}
+                        formatter={(value, name, item) => {
+                          const isWin =
+                            item.dataKey === "dayPctWin" ||
+                            name === "dayPctWin";
+                          const isLoss =
+                            item.dataKey === "dayPctLoss" ||
+                            name === "dayPctLoss";
+                          const valNum = Number(value);
+                          const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}%`;
 
-                            const displayName = isWin
-                              ? t("journal.wins")
-                              : isLoss
-                                ? t("journal.losses")
-                                : t("journal.cumulative");
+                          const dotColor = isWin
+                            ? POS
+                            : isLoss
+                              ? NEG
+                              : "var(--color-cumPct)";
 
-                            return (
-                              <>
-                                <div
-                                  className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
-                                  style={{
-                                    backgroundColor: dotColor,
-                                  }}
-                                />
-                                <div className="flex flex-1 justify-between leading-none items-center gap-8">
-                                  <span className="text-muted-foreground">
-                                    {displayName}
-                                  </span>
-                                  <span className="font-mono font-medium text-foreground tabular-nums">
-                                    {formattedValue}
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          }}
-                        />
-                      );
-                    }}
-                  />
+                          const displayName = isWin
+                            ? t("journal.wins")
+                            : isLoss
+                              ? t("journal.losses")
+                              : t("journal.cumulative");
 
-                  <Bar dataKey="dayPctWin" stackId="a" radius={4} fill={POS} />
-                  <Bar dataKey="dayPctLoss" stackId="a" radius={4} fill={NEG} />
-                  <Line
-                    type="monotone"
-                    dataKey="cumPct"
-                    stroke="var(--color-cumPct)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </ComposedChart>
-              </ChartContainer>
-            </ChartCard>
-          </>
-        )}
+                          return (
+                            <>
+                              <div
+                                className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                                style={{
+                                  backgroundColor: dotColor,
+                                }}
+                              />
+                              <div className="flex flex-1 justify-between leading-none items-center gap-8">
+                                <span className="text-muted-foreground">
+                                  {displayName}
+                                </span>
+                                <span className="font-mono font-medium text-foreground tabular-nums">
+                                  {formattedValue}
+                                </span>
+                              </div>
+                            </>
+                          );
+                        }}
+                      />
+                    );
+                  }}
+                />
+
+                <Bar dataKey="dayPctWin" stackId="a" radius={4} fill={POS} />
+                <Bar dataKey="dayPctLoss" stackId="a" radius={4} fill={NEG} />
+                <Line
+                  type="monotone"
+                  dataKey="cumPct"
+                  stroke="var(--color-cumPct)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </ComposedChart>
+            </ChartContainer>
+          </ChartCard>
+        </>
+      )}
     </div>
   );
 }

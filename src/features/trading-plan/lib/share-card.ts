@@ -385,7 +385,7 @@ export function buildShareCardSvg(
   // 1. Type / status badges (left). A signal is a single
   // "SIGNAL" chip; a position breaks into separate pills \u2014 POSITION, its
   // lifecycle (OPEN / CLOSED), and, once closed, how it ended (TP* / SL /
-  // MANUAL) colored by realized outcome.
+  // REVERSED) colored by realized outcome.
   const pnlWin = (meta.pnlR ?? 0) >= 0;
   const neutralChip = {
     text: C.muted,
@@ -406,10 +406,10 @@ export function buildShareCardSvg(
           ...(meta.closed && meta.closeReason
             ? [
                 {
-                  // TP \u2192 \u2713, SL \u2192 \u2715 (colored by outcome); manual exit \u2192 \u21A9 stays
-                  // neutral like the position chip since it has no win/loss verdict.
-                  text: `${meta.closeReason === "MANUAL" ? "\u21A9" : pnlWin ? "\u2713" : "\u2715"} ${meta.closeReason}`,
-                  chip: meta.closeReason === "MANUAL" ? neutralChip : outcomeChip,
+                  // TP \u2192 \u2713, SL \u2192 \u2715 (colored by outcome); a no-TP reversed exit \u2192
+                  // \u21A9 stays neutral like the position chip (no win/loss verdict).
+                  text: `${meta.closeReason === "REVERSED" ? "\u21A9" : pnlWin ? "\u2713" : "\u2715"} ${meta.closeReason}`,
+                  chip: meta.closeReason === "REVERSED" ? neutralChip : outcomeChip,
                 },
               ]
             : []),

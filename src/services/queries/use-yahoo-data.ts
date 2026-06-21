@@ -28,7 +28,7 @@ export function useMarketData(symbols: string[]) {
         const result = await fetchYahooChart(symbol, range, interval);
         return adaptYahooChart(result, fearGreedValue);
       },
-      staleTime: 60_000,
+      staleTime: 300_000,
       retry: 3,
     })),
     combine: (results) => {

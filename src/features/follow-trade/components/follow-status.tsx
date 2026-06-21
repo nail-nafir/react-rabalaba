@@ -28,7 +28,11 @@ export function LifecycleBadge({
         "w-fit gap-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
         open
           ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-          : cn(PALETTE.neutral.bg, PALETTE.neutral.border, PALETTE.neutral.text),
+          : cn(
+              PALETTE.neutral.bg,
+              PALETTE.neutral.border,
+              PALETTE.neutral.text,
+            ),
         className,
       )}
     >
@@ -43,6 +47,8 @@ interface TpProgressProps {
   total: number;
   /** Stopped out (no TP secured). */
   slHit?: boolean;
+  /** Exited on a signal reversal — appends a "· Reversed" marker to the TP. */
+  reversed?: boolean;
   size?: "xs" | "sm";
   className?: string;
   isClosed?: boolean;
@@ -53,12 +59,12 @@ export function TpProgress({
   reached,
   total,
   slHit = false,
+  reversed = false,
   size = "xs",
   className,
   isClosed = false,
   variant = "text",
 }: TpProgressProps) {
-  const { t } = useTranslation();
   if (total === 0 && !slHit) {
     if (variant === "badge") return null;
     return (
@@ -67,17 +73,34 @@ export function TpProgress({
   }
 
   if (variant === "badge") {
+    // Closed reversal with no TP secured (status `reversed`): the outcome badge
+    // is empty here — the separate <ReversedBadge> beside it carries the marker,
+    // so render nothing to avoid a duplicate "Reversed" pill.
+    if (!slHit && reached === 0 && isClosed) return null;
     let colorCls: string;
     let content: string;
     if (slHit) {
-      colorCls = cn(PALETTE.negative.bg, PALETTE.negative.text, PALETTE.negative.border);
+      colorCls = cn(
+        PALETTE.negative.bg,
+        PALETTE.negative.text,
+        PALETTE.negative.border,
+      );
       content = "SL";
     } else if (reached > 0) {
-      colorCls = cn(PALETTE.positive.bg, PALETTE.positive.text, PALETTE.positive.border);
+      // Keep the TP badge clean — the reversal is shown as its OWN badge.
+      colorCls = cn(
+        PALETTE.positive.bg,
+        PALETTE.positive.text,
+        PALETTE.positive.border,
+      );
       content = `TP ${reached}/${total}`;
     } else {
-      colorCls = cn(PALETTE.neutral.bg, PALETTE.neutral.text, PALETTE.neutral.border);
-      content = isClosed ? t("journal.status_manual") : `TP 0/${total}`;
+      colorCls = cn(
+        PALETTE.neutral.bg,
+        PALETTE.neutral.text,
+        PALETTE.neutral.border,
+      );
+      content = `TP 0/${total}`;
     }
 
     return (
@@ -115,13 +138,25 @@ export function TpProgress({
     return (
       <span
         className={cn(
-          PALETTE.positive.textStrong,
-          "font-semibold text-mono-data uppercase tracking-wider",
+          "font-semibold text-mono-data uppercase tracking-wider flex items-baseline gap-1",
           labelCls,
           className,
         )}
       >
-        TP {reached}/{total}
+        <span className={PALETTE.positive.textStrong}>
+          TP {reached}/{total}
+        </span>
+        {reversed && (
+          <>
+            <span className="text-muted-foreground">·</span>
+            {/* Match the R/risk value above it (emerald) so the TP-secured row
+                reads as one uniform-toned line. The standalone no-TP REVERSED
+                below stays neutral/white. */}
+            <span className="text-emerald-600/70 dark:text-emerald-400/70">
+              REVERSED
+            </span>
+          </>
+        )}
       </span>
     );
   }
@@ -134,7 +169,29 @@ export function TpProgress({
         className,
       )}
     >
-      {isClosed ? t("journal.status_manual") : `TP 0/${total}`}
+      {isClosed ? "REVERSED" : `TP 0/${total}`}
     </span>
+  );
+}
+
+/**
+ * Standalone "Reversed" pill — shown NEXT TO the TP/SL outcome badge (not merged)
+ * so a reversal-after-TP reads as two distinct facts: it secured a TP *and* it
+ * exited on the flip. Neutral-toned to mirror the no-TP reversed-close color.
+ */
+export function ReversedBadge({ className }: { className?: string }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+        PALETTE.neutral.bg,
+        PALETTE.neutral.text,
+        PALETTE.neutral.border,
+        className,
+      )}
+    >
+      REVERSED
+    </Badge>
   );
 }
