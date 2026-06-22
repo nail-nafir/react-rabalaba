@@ -113,15 +113,16 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
   const { buildAutoJournalAlerts, formatAlertsForDiscord } =
     await loadModule(ALERTS);
   const msg = formatAlertsForDiscord(buildAutoJournalAlerts(PLAN));
-  assert.ok(msg.includes("WANGSIT RABA LABA SENSEI"));
+  assert.ok(msg.includes("🥋 WANGSIT RABA LABA SENSEI HARI INI"));
   assert.ok(msg.includes("🚨 SINYAL:"));
   assert.ok(msg.includes("📢 HASIL:"));
-  assert.ok(msg.includes("🟢 `BTC-USD` • LONG • Grade A • Entry @`65000`"));
-  assert.ok(msg.includes("🎯 `EIGEN-USD` ➔ TP1 @`0.28` (+12%)"));
-  assert.ok(msg.includes("⛔ `MYX-USD` ➔ SL @`9` (-8.3%)"));
-  assert.ok(msg.includes("🔄 `NEAR-USD` ➔ Reversed @`5.12` (+0.28%)"));
+  assert.ok(msg.includes("🧘‍♂️ PETUAH SENSEI:"));
+  assert.ok(msg.includes("🟢 **BTC-USD** • LONG • GRADE A\n↳ Entry @ `65000`"));
+  assert.ok(msg.includes("🎯 **EIGEN-USD**\n↳ TP1 @ `0.28` (+12%)"));
+  assert.ok(msg.includes("⛔ **MYX-USD**\n↳ SL @ `9` (-8.3%)"));
+  assert.ok(msg.includes("🔄 **NEAR-USD**\n↳ REVERSED @ `5.12` (+0.28%)"));
   assert.ok(msg.includes("Semedi di depan chart")); // closing wisdom
-  assert.ok(msg.includes("━")); // divider
+  assert.ok(msg.includes("────")); // divider rule
 
   assert.equal(formatAlertsForDiscord([]), null);
 });

@@ -48,7 +48,11 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
     } else if (c.status === "sl") {
       alerts.push({ kind: "sl_hit", ...base });
     } else if (/^tp[123]$/.test(c.status)) {
-      alerts.push({ kind: "tp_hit", ...base, tpLevel: Number(c.status.slice(2)) });
+      alerts.push({
+        kind: "tp_hit",
+        ...base,
+        tpLevel: Number(c.status.slice(2)),
+      });
     } else {
       alerts.push({ kind: "reversed", ...base });
     }
@@ -60,14 +64,15 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
 /** Discord `content` is capped at 2000 chars; stay under to avoid 400s. */
 const DISCORD_MAX = 1900;
 
+/** Light horizontal rule dividing the message into sections. */
+const DIVIDER = "────────────────────────────";
+
 /** "Wangsit Raba Laba Sensei" persona header — the in-character framing. */
-const SENSEI_HEADER = "🥋【 WANGSIT RABA LABA SENSEI HARI INI 】";
+const SENSEI_HEADER = "🥋 WANGSIT RABALABA SENSEI HARI INI";
 
-const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━";
-
-/** Closing wisdom, in character. */
+/** Closing wisdom, in character — rendered as a Discord blockquote. */
 const SENSEI_QUOTE =
-  '🧘‍♂️ "Semedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating minus belum tentu rebound."';
+  '> "Semedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating minus belum tentu rebound."';
 
 /** Wrap in backticks so symbols/prices render monospace in Discord. */
 function code(s: string | number): string {
@@ -84,59 +89,73 @@ function pctSuffix(pct?: number): string {
   return ` (${pct >= 0 ? "+" : "-"}${v}%)`;
 }
 
-/** Price suffix " @`<num>`" (omitted when there's no price). */
-function priceSuffix(price?: number | null): string {
-  return price != null ? ` @${code(formatNum(price))}` : "";
+/** Price tag " @ `<num>`" (omitted when there's no price). The space before the
+ *  backtick matches the new layout: "Entry @ `65713`". */
+function atPrice(price?: number | null): string {
+  return price != null ? ` @ ${code(formatNum(price))}` : "";
 }
 
 /**
  * Render alerts into a single in-character "Wangsit Raba Laba Sensei" Discord
- * message: header → 🚨 SINYAL (new entries) → 📢 HASIL (TP / SL / Reversed
- * outcomes, each with realized %) → closing wisdom. Returns null when there's
- * nothing to say so the caller can skip the POST.
+ * message: header → 🚨 SINYAL (new entries) → 📢 HASIL (TP / SL / REVERSED
+ * outcomes with realized %) → 🧘‍♂️ PETUAH SENSEI (closing wisdom), each section
+ * split by a divider rule. Each signal/outcome spans two lines (headline + ↳
+ * detail). Returns null when there's nothing to say so the caller can skip POST.
  */
 export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   if (alerts.length === 0) return null;
 
+  // New signals: "<emoji> **SYM** • DIR • GRADE X" then "↳ Entry @ `price`".
   const renderSignal = (a: JournalAlert) => {
     const emoji = a.kind === "new_long" ? "🟢" : "🔴";
     const dir = a.kind === "new_long" ? "LONG" : "SHORT";
-    const parts = [code(a.symbol), dir];
-    if (a.grade) parts.push(`Grade ${a.grade}`);
-    if (a.entry != null) parts.push(`Entry @${code(formatNum(a.entry))}`);
-    return `${emoji} ${parts.join(" • ")}`;
+    const head = [`**${a.symbol}**`, dir];
+    if (a.grade) head.push(`GRADE ${a.grade}`);
+    const entry = a.entry != null ? `\n↳ Entry${atPrice(a.entry)}` : "";
+    return `${emoji} ${head.join(" • ")}${entry}`;
   };
-  // LONG first, then SHORT — one line each, no blank line between.
+  // LONG first, then SHORT — blocks separated by a blank line.
   const signalBody = [
     ...alerts.filter((a) => a.kind === "new_long"),
     ...alerts.filter((a) => a.kind === "new_short"),
   ]
     .map(renderSignal)
-    .join("\n");
+    .join("\n\n");
 
-  // TP, then SL, then Reversed — one line each, with the realized %.
+  // Outcomes: "<emoji> **SYM**" then "↳ <result> @ `price` (±%)".
+  const renderOutcome = (
+    emoji: string,
+    symbol: string,
+    result: string,
+    price?: number | null,
+    pnl?: number,
+  ) => `${emoji} **${symbol}**\n↳ ${result}${atPrice(price)}${pctSuffix(pnl)}`;
+
+  // TP, then SL, then REVERSED — blocks separated by a blank line.
   const outcomeBody = [
     ...alerts
       .filter((a) => a.kind === "tp_hit")
-      .map(
-        (a) =>
-          `🎯 ${code(a.symbol)} ➔ TP${a.tpLevel ?? ""}${priceSuffix(a.price)}${pctSuffix(a.pnlPct)}`,
+      .map((a) =>
+        renderOutcome(
+          "🎯",
+          a.symbol,
+          `TP${a.tpLevel ?? ""}`,
+          a.price,
+          a.pnlPct,
+        ),
       ),
     ...alerts
       .filter((a) => a.kind === "sl_hit")
-      .map((a) => `⛔ ${code(a.symbol)} ➔ SL${priceSuffix(a.price)}${pctSuffix(a.pnlPct)}`),
+      .map((a) => renderOutcome("⛔", a.symbol, "SL", a.price, a.pnlPct)),
     ...alerts
       .filter((a) => a.kind === "reversed")
-      .map(
-        (a) =>
-          `🔄 ${code(a.symbol)} ➔ Reversed${priceSuffix(a.price)}${pctSuffix(a.pnlPct)}`,
-      ),
-  ].join("\n");
+      .map((a) => renderOutcome("🔄", a.symbol, "REVERSED", a.price, a.pnlPct)),
+  ].join("\n\n");
 
   const blocks: string[] = [SENSEI_HEADER];
   if (signalBody) blocks.push(DIVIDER, "🚨 SINYAL:\n\n" + signalBody);
   if (outcomeBody) blocks.push(DIVIDER, "📢 HASIL:\n\n" + outcomeBody);
-  blocks.push(DIVIDER, SENSEI_QUOTE);
+  blocks.push(DIVIDER, "🧘‍♂️ PETUAH SENSEI:\n\n" + SENSEI_QUOTE);
 
   let msg = blocks.join("\n\n");
   if (msg.length > DISCORD_MAX) {
