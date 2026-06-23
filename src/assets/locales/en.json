@@ -525,7 +525,8 @@
       "Not financial advice, just pure data and research. Always do due diligence.",
       "The pilot is in control, the terminal is the radar. All trading decisions and risks belong to the user alone.",
       "Use cold capital only. Never trade with essential funds like rent or daily needs.",
-      "Market volatility is real. Stay disciplined and keep emotions in check."
+      "Market volatility is real. Stay disciplined and keep emotions in check.",
+      "This terminal is for perpetual derivative contracts, adjust if it does not fit your needs."
     ],
     "confirm": "I have read and understood the risk disclosure",
     "agree": "Understand & Proceed",
@@ -588,7 +589,15 @@
     "timeframe_1w": "1W",
     "timeframe_1m": "1M",
     "timeframe_ytd": "YTD",
-    "timeframe_all": "ALL"
+    "timeframe_all": "ALL",
+    "filter_all_pnl": "All Profit Loss",
+    "pnl_tp": "TP Reached",
+    "status_open": "Open",
+    "status_tp1": "Take Profit 1",
+    "status_tp2": "Take Profit 2",
+    "status_tp3": "Take Profit 3",
+    "status_sl": "SL Reached",
+    "status_reversed": "REVERSED Reached"
   },
   "admin": {
     "add_asset_dialog_title": "Add Auto Journal Asset",

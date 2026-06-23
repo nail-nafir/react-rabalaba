@@ -122,7 +122,7 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
     const head = [`**${a.symbol}**`, dir];
     if (a.grade) head.push(a.grade);
     const lines = [`${emoji} ${head.join(" • ")}`];
-    if (a.entry != null) lines.push(`↳ Entry:${atPrice(a.entry)}`);
+    if (a.entry != null) lines.push(`↳ ENTRY:${atPrice(a.entry)}`);
     (a.takeProfits ?? []).forEach((tp, i) => {
       const pnl = a.entry != null ? pctFrom(a.entry, tp, isLong) : undefined;
       lines.push(`↳ TP${i + 1}:${atPrice(tp)}${pctSuffix(pnl)}`);
