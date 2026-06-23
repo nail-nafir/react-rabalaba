@@ -56,6 +56,7 @@ export interface ProfileRow {
   trial_expires_at: string | null;
   /** Manages the auto-journal universe via the admin UI (20260617000001). */
   is_admin: boolean;
+  is_owner: boolean;
   updated_at: string;
 }
 
@@ -89,6 +90,36 @@ export interface JournalSettingsRow {
   last_run_at: string | null;
   updated_at: string;
   updated_by: string | null;
+}
+
+/** Row shape returned by the admin_list_users() RPC
+ *  (mirrors 20260623000001_admin_list_users.sql). */
+export interface AdminUserRow {
+  user_id: string;
+  email: string;
+  tier: "free" | "trial" | "premium";
+  is_admin: boolean;
+  is_owner: boolean;
+  is_blocked: boolean;
+  trial_expires_at: string | null;
+  access_code: string | null;
+  access_code_kind: string | null;
+  redeemed_at: string | null;
+  email_confirmed_at: string | null;
+  last_sign_in_at: string | null;
+  created_at: string;
+}
+
+/** Row shape returned by the admin_list_access_codes() RPC
+ *  (mirrors 20260623000001_admin_list_users.sql). */
+export interface AccessCodeRow {
+  code: string;
+  kind: "full" | "trial";
+  note: string | null;
+  max_redemptions: number | null;
+  trial_days: number | null;
+  redemption_count: number;
+  created_at: string;
 }
 
 /** Per-user favorite ticker (mirrors 20260615000001_user_favorites.sql). */
@@ -145,6 +176,16 @@ export interface Database {
       redeem_access_code: {
         Args: { p_code: string };
         Returns: string;
+      };
+      /** Admin-only: returns every registered user with their entitlement + access-code. */
+      admin_list_users: {
+        Args: Record<string, never>;
+        Returns: AdminUserRow[];
+      };
+      /** Admin-only: returns every access code with its redemption count. */
+      admin_list_access_codes: {
+        Args: Record<string, never>;
+        Returns: AccessCodeRow[];
       };
     };
     Enums: Record<string, never>;

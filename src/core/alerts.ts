@@ -24,6 +24,7 @@ export interface JournalAlert {
   tpLevel?: number;
   /** Realized P&L % for an outcome (signed). */
   pnlPct?: number;
+  signal?: "long" | "short" | null;
 }
 
 /**
@@ -46,7 +47,13 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
   }
 
   for (const c of plan.closures) {
-    const base = { symbol: c.symbol, price: c.close_price, pnlPct: c.pnl_pct };
+    const base = {
+      symbol: c.symbol,
+      price: c.close_price,
+      pnlPct: c.pnl_pct,
+      grade: c.grade,
+      signal: c.signal,
+    };
     // A reversal (with OR without a secured TP) is reported as "reversed" first,
     // mirroring the journal's reversed marker. Otherwise it's a pure TP/SL hit.
     if (c.reversed) {
@@ -78,7 +85,7 @@ const SENSEI_HEADER = "🥋 WANGSIT RABALABA SENSEI";
 
 /** Closing wisdom, in character — plain quote, padded inside the quotes. */
 const SENSEI_QUOTE =
-  '"Bersemedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating loss belum tentu rebound. "';
+  '"Bersemedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating loss belum tentu rebound."';
 
 /** Signed P&L like " (+120%)", " (-15%)", " (+0.28%)" — precision scales with
  *  magnitude, trailing zeros dropped. Empty when there's no value. */
@@ -141,34 +148,25 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
     .map(renderSignal)
     .join("\n\n");
 
-  // Outcomes: "<emoji> **SYM**" then "↳ <result> @ `price` (±%)".
-  const renderOutcome = (
-    emoji: string,
-    symbol: string,
-    result: string,
-    price?: number | null,
-    pnl?: number,
-  ) => `${emoji} **${symbol}**\n↳ ${result}:${atPrice(price)}${pctSuffix(pnl)}`;
+  // Outcomes: "<emoji> **SYM** • DIR • GRADE" then "↳ <result> @ `price` (±%)".
+  const renderOutcome = (emoji: string, a: JournalAlert, result: string) => {
+    const head = [`**${a.symbol}**`];
+    if (a.signal) head.push(a.signal.toUpperCase());
+    if (a.grade) head.push(a.grade);
+    return `${emoji} ${head.join(" • ")}\n↳ ${result}:${atPrice(a.price)}${pctSuffix(a.pnlPct)}`;
+  };
 
   // TP, then SL, then REVERSED — blocks separated by a blank line.
   const outcomeBody = [
     ...alerts
       .filter((a) => a.kind === "tp_hit")
-      .map((a) =>
-        renderOutcome(
-          "🎯",
-          a.symbol,
-          `TP${a.tpLevel ?? ""}`,
-          a.price,
-          a.pnlPct,
-        ),
-      ),
+      .map((a) => renderOutcome("🎯", a, `TP${a.tpLevel ?? ""}`)),
     ...alerts
       .filter((a) => a.kind === "sl_hit")
-      .map((a) => renderOutcome("⛔", a.symbol, "SL", a.price, a.pnlPct)),
+      .map((a) => renderOutcome("⛔", a, "SL")),
     ...alerts
       .filter((a) => a.kind === "reversed")
-      .map((a) => renderOutcome("🔄", a.symbol, "REVERSED", a.price, a.pnlPct)),
+      .map((a) => renderOutcome("🔄", a, "REVERSED")),
   ].join("\n\n");
 
   const blocks: string[] = [SENSEI_HEADER];

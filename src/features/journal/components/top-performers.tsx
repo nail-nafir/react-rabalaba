@@ -167,7 +167,7 @@ export function TopPerformers() {
               key={trade.id}
               onClick={() => setSelectedTrade(trade)}
               size="sm"
-              className="hover:bg-muted/40 border border-border transition-all duration-200 cursor-pointer group hover:scale-[1.005] hover:shadow-xs"
+              className="bg-muted/50 hover:bg-muted/80 border border-border transition-all duration-200 cursor-pointer group hover:scale-[1.005] hover:shadow-xs"
             >
               <CardContent className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">

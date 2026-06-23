@@ -121,7 +121,8 @@ export function usePremiumAccess() {
     daysLeft: status.expiresAt != null ? trialDaysLeft(status.expiresAt) : null,
     // Manages the auto-journal universe (admin UI). Read off the same profile
     // row already fetched above — no extra query. See [[use-journal-assets]].
-    isAdmin: !!profile?.is_admin,
+    isAdmin: !!profile?.is_admin || !!profile?.is_owner,
+    isOwner: !!profile?.is_owner,
     isLoading,
     checkAccess,
     grantAccess,

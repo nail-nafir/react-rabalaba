@@ -1,0 +1,668 @@
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type Column,
+} from "@tanstack/react-table";
+import {
+  Plus,
+  Search,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Trash2,
+  Pencil,
+} from "lucide-react";
+import { UserDialog } from "./user-dialog";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SkeletonAdminUserRow } from "@/components/shared/skeleton-card";
+import {
+  FilterGroup,
+  type FilterOption,
+} from "@/components/shared/filter-group";
+import { useAdminUsers } from "@/hooks/use-admin-users";
+import type { AdminUserRow } from "@/services/supabase/database.types";
+import { formatDateNumeric, formatClock } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
+
+/* ── Tiny helpers (same style as journal-asset-manager) ──────────────── */
+
+type TierFilter = "all" | "premium" | "trial" | "free";
+
+function SortIcon<T>({ column }: { column: Column<T, unknown> }) {
+  const isSorted = column.getIsSorted();
+  if (isSorted === "asc")
+    return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
+  if (isSorted === "desc")
+    return <ArrowDown className="h-3.5 w-3.5 text-primary" />;
+  return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
+}
+
+function SortButton<T>({
+  label,
+  column,
+}: {
+  label: string;
+  column: Column<T, unknown>;
+}) {
+  return (
+    <Button
+      variant="link"
+      onClick={() => column.toggleSorting()}
+      className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+    >
+      {label} <SortIcon column={column} />
+    </Button>
+  );
+}
+
+/** Tier badge with colour coding: premium=emerald, trial=amber, free=muted. */
+function TierBadge({ tier }: { tier: string }) {
+  const cls =
+    tier === "premium"
+      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+      : tier === "trial"
+        ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+        : "bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground";
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "font-bold tracking-wider uppercase text-[10px] rounded-md",
+        cls,
+      )}
+    >
+      {tier}
+    </Badge>
+  );
+}
+
+/** Code-kind badge: full=emerald, trial=amber. */
+function CodeKindBadge({ kind }: { kind: string }) {
+  const cls =
+    kind === "full"
+      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+      : "bg-amber-500/15 border-amber-500/30 text-amber-400";
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "font-bold tracking-wider uppercase text-[10px] rounded-md",
+        cls,
+      )}
+    >
+      {kind}
+    </Badge>
+  );
+}
+
+/** Mask an access code, showing only the last 4 characters. */
+function maskCode(code: string): string {
+  if (code.length <= 4) return code;
+  return "●".repeat(code.length - 4) + code.slice(-4);
+}
+
+/** Format a timestamptz ISO string to DD-MM-YYYY + HH:MM; returns null if missing. */
+function formatTs(iso: string | null): { date: string; time: string } | null {
+  if (!iso) return null;
+  const ts = Date.parse(iso) / 1000;
+  if (!Number.isFinite(ts)) return null;
+  return { date: formatDateNumeric(ts), time: formatClock(ts) };
+}
+
+function DeleteUserButton({
+  user,
+  onDelete,
+}: {
+  user: AdminUserRow;
+  onDelete: (userId: string) => Promise<boolean>;
+}) {
+  const { t } = useTranslation();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const success = await onDelete(user.user_id);
+    setIsDeleting(false);
+    if (success) {
+      toast.success(
+        t("admin.users_delete_success", {
+          defaultValue: `Berhasil menghapus pengguna ${user.email}`,
+        }),
+      );
+    } else {
+      toast.error(
+        t("admin.users_delete_error", {
+          defaultValue: `Gagal menghapus pengguna ${user.email}`,
+        }),
+      );
+    }
+  };
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="link"
+          size="icon"
+          aria-label={t("admin.users_delete_confirm_title", {
+            email: user.email,
+          })}
+          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+            <Trash2 />
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {t("admin.users_delete_confirm_title", {
+              defaultValue: "Hapus Pengguna?",
+            })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("admin.users_delete_confirm_desc", {
+              email: user.email,
+              defaultValue: `Apakah Anda yakin ingin menghapus pengguna ${user.email}? Semua data terkait pengguna ini akan terhapus permanen.`,
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              t("admin.delete_btn", "Hapus")
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+
+
+/* ── Main: Users table ───────────────────────────────────────────────── */
+
+export function RegisteredUsersTable() {
+  "use no memo";
+  const { users, isLoadingUsers: isLoading, deleteUser } = useAdminUsers();
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const currentUserEmail = user?.email?.toLowerCase();
+
+  const [search, setSearch] = useState("");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "created_at", desc: true },
+  ]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<AdminUserRow | null>(null);
+
+  const tierOptions: FilterOption<TierFilter>[] = [
+    { value: "all", label: t("admin.users_tier_all") },
+    { value: "premium", label: t("admin.users_tier_premium") },
+    { value: "trial", label: t("admin.users_tier_trial") },
+    { value: "free", label: t("admin.users_tier_free") },
+  ];
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter((u) => {
+      if (tierFilter !== "all" && u.tier !== tierFilter) return false;
+      if (q && !u.email.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [users, tierFilter, search]);
+
+  const columns = useMemo<ColumnDef<AdminUserRow>[]>(
+    () => [
+      {
+        accessorKey: "created_at",
+        header: ({ column }) => (
+          <SortButton label={t("table.joined")} column={column} />
+        ),
+        cell: ({ row }) => {
+          const ts = formatTs(row.original.created_at);
+          if (!ts)
+            return <span className="text-xs text-muted-foreground">—</span>;
+          return (
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground">
+                {ts.date}
+              </div>
+              <div className="text-xs text-muted-foreground">{ts.time}</div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "email",
+        header: ({ column }) => (
+          <SortButton label={t("table.email")} column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 py-1">
+            <span
+              className={cn(
+                "font-bold text-sm tracking-tight truncate max-w-56 block",
+                row.original.is_blocked
+                  ? "text-muted-foreground/60 line-through"
+                  : "text-foreground",
+              )}
+            >
+              {row.original.email}
+            </span>
+            {row.original.is_blocked && (
+              <Badge
+                variant="outline"
+                className="rounded-md text-[9px] font-extrabold uppercase tracking-wider border-destructive/40 bg-destructive/10 text-destructive shrink-0"
+              >
+                Blocked
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "role",
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.role")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          if (row.original.is_owner) {
+            return (
+              <Badge
+                variant="outline"
+                className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-primary/15 border-primary/30 text-primary"
+              >
+                Owner
+              </Badge>
+            );
+          }
+          if (row.original.is_admin) {
+            return (
+              <Badge
+                variant="outline"
+                className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-amber-500/15 border-amber-500/30 text-amber-400"
+              >
+                Admin
+              </Badge>
+            );
+          }
+          return (
+            <Badge
+              variant="outline"
+              className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground"
+            >
+              User
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: "tier",
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.tier")}
+          </span>
+        ),
+        cell: ({ row }) => (
+          <div className="py-1">
+            <TierBadge tier={row.original.tier} />
+            {row.original.tier === "trial" && row.original.trial_expires_at && (
+              <div className="text-[10px] text-muted-foreground mt-0.5 font-medium whitespace-nowrap">
+                Exp: {formatTs(row.original.trial_expires_at)?.date}
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "access_code",
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.access_code")}
+          </span>
+        ),
+        cell: ({ row }) =>
+          row.original.access_code ? (
+            <Badge
+              variant="outline"
+              className="font-mono text-xs font-bold uppercase rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground tracking-wider px-1.5 py-0.5"
+            >
+              {maskCode(row.original.access_code)}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "access_code_kind",
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.code_type")}
+          </span>
+        ),
+        cell: ({ row }) =>
+          row.original.access_code_kind ? (
+            <CodeKindBadge kind={row.original.access_code_kind} />
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "redeemed_at",
+        header: ({ column }) => (
+          <SortButton label={t("table.redeemed")} column={column} />
+        ),
+        cell: ({ row }) => {
+          const ts = formatTs(row.original.redeemed_at);
+          if (!ts)
+            return <span className="text-xs text-muted-foreground">—</span>;
+          return (
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground">
+                {ts.date}
+              </div>
+              <div className="text-xs text-muted-foreground">{ts.time}</div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "last_sign_in_at",
+        header: ({ column }) => (
+          <SortButton label={t("table.last_login")} column={column} />
+        ),
+        cell: ({ row }) => {
+          const ts = formatTs(row.original.last_sign_in_at);
+          if (!ts)
+            return <span className="text-xs text-muted-foreground">—</span>;
+          return (
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground">
+                {ts.date}
+              </div>
+              <div className="text-xs text-muted-foreground">{ts.time}</div>
+            </div>
+          );
+        },
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        header: () => null,
+        cell: ({ row }) => {
+          const isSelf = row.original.email.toLowerCase() === currentUserEmail;
+          if (isSelf) return null;
+
+          return (
+            <div className="flex items-center justify-end gap-1">
+              <Button
+                variant="link"
+                size="icon"
+                onClick={() => {
+                  setUserToEdit(row.original);
+                  setIsEditDialogOpen(true);
+                }}
+                className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
+                title={t("common.edit", "Edit")}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <DeleteUserButton user={row.original} onDelete={deleteUser} />
+            </div>
+          );
+        },
+      },
+    ],
+    [
+      t,
+      deleteUser,
+      currentUserEmail,
+      setUserToEdit,
+      setIsEditDialogOpen,
+    ],
+  );
+
+  const table = useReactTable({
+    data: filtered,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Section header */}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          {t("admin.users_list_title")}
+        </h2>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+          {isLoading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <span>
+              {users.length} {t("admin.users_total")}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {/* Toolbar */}
+        <div className="space-y-3">
+          {/* Row 1: Filters */}
+          <div className="flex items-center gap-2 min-w-0">
+            <FilterGroup
+              value={tierFilter}
+              options={tierOptions}
+              onChange={setTierFilter}
+              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+            />
+          </div>
+
+          {/* Row 2: Search + actions */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 group">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input
+                type="text"
+                placeholder={t("admin.users_search_placeholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-9 text-sm placeholder:text-sm"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Separator orientation="vertical" className="mx-1 h-8" />
+
+            <Button
+              size="lg"
+              onClick={() => setIsAddDialogOpen(true)}
+              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">
+                {t("admin.users_add_btn", "Tambah User")}
+              </span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-md border overflow-hidden shadow-sm">
+          <Table>
+            <TableHeader className="bg-muted">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    <SkeletonAdminUserRow />
+                  </TableRow>
+                ))
+              ) : table.getRowModel().rows.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-40 text-center"
+                  >
+                    <EmptyState
+                      title={t("admin.users_empty_title")}
+                      description={
+                        search || tierFilter !== "all"
+                          ? t("admin.users_empty_filter_desc")
+                          : t("admin.users_empty_desc")
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between pt-3 border-t border-border/60">
+          <div className="text-xs text-muted-foreground">
+            {t("table.page")}{" "}
+            <span className="font-medium text-foreground">
+              {table.getPageCount() > 0
+                ? table.getState().pagination.pageIndex + 1
+                : 0}
+            </span>{" "}
+            {t("table.of")}{" "}
+            <span className="font-medium text-foreground">
+              {table.getPageCount() || 0}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="h-8 w-8 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="h-8 w-8 cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <UserDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+      <UserDialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) setUserToEdit(null);
+        }}
+        user={userToEdit}
+      />
+    </div>
+  );
+}

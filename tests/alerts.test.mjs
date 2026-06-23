@@ -41,6 +41,8 @@ const PLAN = {
       closed_at: "2026-06-20T00:00:00Z",
       highest_tp_reached: 1,
       pnl_pct: 12,
+      signal: "long",
+      grade: "A",
     },
     {
       id: "row2",
@@ -50,6 +52,8 @@ const PLAN = {
       closed_at: "2026-06-20T00:00:00Z",
       highest_tp_reached: 0,
       pnl_pct: -8.3,
+      signal: "short",
+      grade: "B",
     },
     {
       id: "row3",
@@ -60,6 +64,8 @@ const PLAN = {
       highest_tp_reached: 0,
       reversed: true,
       pnl_pct: 0.28,
+      signal: "short",
+      grade: "C",
     },
   ],
 };
@@ -124,9 +130,9 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
       "🟢 **BTC-USD** • LONG • A\n↳ Entry: `@65.000`\n↳ TP1: `@67.000` `(+3.1%)`\n↳ SL: `@63.000` `(-3.1%)`",
     ),
   );
-  assert.ok(msg.includes("🎯 **EIGEN-USD**\n↳ TP1: `@0.28` `(+12%)`"));
-  assert.ok(msg.includes("⛔ **MYX-USD**\n↳ SL: `@9` `(-8.3%)`"));
-  assert.ok(msg.includes("🔄 **NEAR-USD**\n↳ REVERSED: `@5.12` `(+0.28%)`"));
+  assert.ok(msg.includes("🎯 **EIGEN-USD** • LONG • A\n↳ TP1: `@0.28` `(+12%)`"));
+  assert.ok(msg.includes("⛔ **MYX-USD** • SHORT • B\n↳ SL: `@9` `(-8.3%)`"));
+  assert.ok(msg.includes("🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED: `@5.12` `(+0.28%)`"));
   assert.ok(msg.includes("Bersemedi di depan chart")); // closing wisdom
   assert.ok(msg.includes("━━━")); // divider rule
 

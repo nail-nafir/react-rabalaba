@@ -38,6 +38,8 @@ export interface JournalClosure {
   /** Realized P&L % at the close price. NOT persisted (DB UPDATE ignores it) —
    *  carried only for the Discord outcome line. */
   pnl_pct: number;
+  signal?: "long" | "short";
+  grade?: string | null;
 }
 
 export interface AutoJournalPlan {
@@ -159,6 +161,8 @@ export function runAutoJournal(
       : new Date().toISOString(),
     highest_tp_reached: t.highestTpReached,
     pnl_pct: computePnl(t, t.closePrice ?? t.entryPrice).pct,
+    signal: t.signal,
+    grade: t.grade ?? null,
   }));
 
   // Close 2 — signal REVERSAL (long↔short). The thesis is now actively wrong,
@@ -193,6 +197,8 @@ export function runAutoJournal(
       highest_tp_reached: securedTp,
       reversed: true,
       pnl_pct: close_price != null ? computePnl(t, close_price).pct : 0,
+      signal: t.signal,
+      grade: t.grade ?? null,
     });
   }
 

@@ -240,15 +240,6 @@ export function AddJournalAssetDialog({
         <DialogFooter>
           <Button
             type="button"
-            size="lg"
-            variant="secondary"
-            onClick={() => handleOpenChange(false)}
-            className="text-xs cursor-pointer"
-          >
-            {t("common.cancel")}
-          </Button>
-          <Button
-            type="button"
             onClick={handleSaveAll}
             size="lg"
             disabled={isSaving || pendingSymbols.length === 0}

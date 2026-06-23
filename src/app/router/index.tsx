@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { RootLayout } from '@/app/layouts/root-layout';
 import { AuthLayout } from '@/app/layouts/auth-layout';
+import { AdminLayout } from '@/app/layouts/admin-layout';
 import { ErrorBoundary } from '@/components/shared/error-boundary';
 import { PageLoader } from '@/components/shared/page-loader';
 
@@ -11,6 +12,9 @@ const TerminalPage = lazy(() => import('@/pages/terminal'));
 const CalendarPage = lazy(() => import('@/pages/calendar'));
 const SubscriptionPage = lazy(() => import('@/pages/subscription'));
 const AdminPage = lazy(() => import('@/pages/admin'));
+const AdminAssetsPage = lazy(() => import('@/pages/admin/assets'));
+const AdminUsersPage = lazy(() => import('@/pages/admin/users'));
+const AdminCodesPage = lazy(() => import('@/pages/admin/codes'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
 const AuthCallbackPage = lazy(() => import('@/pages/auth-callback'));
@@ -80,12 +84,52 @@ export const router = createBrowserRouter([
           </ErrorBoundary>
         ),
       },
+    ],
+  },
+  {
+    path: '/admin',
+    element: (
+      <ErrorBoundary>
+        <AdminLayout />
+      </ErrorBoundary>
+    ),
+    children: [
       {
-        path: '/admin',
+        index: true,
         element: (
           <ErrorBoundary>
             <Suspense fallback={<PageLoader trigger />}>
               <AdminPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'assets',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminAssetsPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminUsersPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'codes',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminCodesPage />
             </Suspense>
           </ErrorBoundary>
         ),

@@ -195,3 +195,97 @@ export function SkeletonJournalAssetRow() {
     </>
   );
 }
+
+/** Loading row for the admin registered-users table (registered-users-table).
+ *  Mirrors its 9 columns: joined (date+time), email, role, tier,
+ *  access code, code type, redeemed (date+time), last login (date+time), actions. */
+export function SkeletonAdminUserRow() {
+  return (
+    <>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5 py-1">
+          <Skeleton className="h-4 w-40" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-5 w-16 rounded-md" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-20 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-12 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+      </TableCell>
+    </>
+  );
+}
+
+/** Loading row for the admin access-codes table (registered-users-table).
+ *  Mirrors its 8 columns: created (date+time), code, type, note, max uses, used, trial days, actions. */
+export function SkeletonAccessCodeRow() {
+  return (
+    <>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-24 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-12 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-28" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-8" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-8" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-8" />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+      </TableCell>
+    </>
+  );
+}
+

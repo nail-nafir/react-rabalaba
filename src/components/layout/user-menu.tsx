@@ -38,7 +38,7 @@ const LANGUAGES = [
 export function UserMenu() {
   const { t, i18n } = useTranslation();
   const { isAuthenticated, user, signOut } = useAuth();
-  const { isAdmin } = usePremiumAccess();
+  const { isAdmin, isOwner } = usePremiumAccess();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const currentLang = i18n.language.split("-")[0];
@@ -105,7 +105,7 @@ export function UserMenu() {
                   className="text-xs cursor-pointer"
                 >
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  {t("admin.menu_label", "Admin")}
+                  {isOwner ? "Owner Console" : t("admin.menu_label", "Admin")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>

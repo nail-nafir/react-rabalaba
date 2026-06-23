@@ -228,7 +228,7 @@ function DeleteButton({
  *  add-ticker dialog); the list is a terminal-style sortable/paginated table
  *  with asset-type + status filters. Changes hit the next cron run (≤30 min),
  *  NO rebuild/redeploy. */
-export function JournalAssetManager() {
+export function JournalAssetsTable() {
   "use no memo";
   const { t } = useTranslation();
   const { assets, isLoading, toggleActive, removeAsset } = useJournalAssets();
@@ -256,9 +256,10 @@ export function JournalAssetManager() {
   const [search, setSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilterType>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  // No default sort — rows show in the hook's order (asset_type, symbol); the
-  // column headers are still click-to-sort.
-  const [sorting, setSorting] = useState<SortingState>([]);
+  // Default sorting based on date added (created_at) descending.
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "created_at", desc: true },
+  ]);
 
   const activeCount = useMemo(
     () => assets.filter((a) => a.active).length,
@@ -272,9 +273,9 @@ export function JournalAssetManager() {
       if (statusFilter === "active" && !a.active) return false;
       if (statusFilter === "inactive" && a.active) return false;
       if (
-        q &&
-        !a.symbol.toLowerCase().includes(q) &&
-        !(a.name?.toLowerCase().includes(q) ?? false)
+          q &&
+          !a.symbol.toLowerCase().includes(q) &&
+          !(a.name?.toLowerCase().includes(q) ?? false)
       )
         return false;
       return true;
@@ -425,7 +426,7 @@ export function JournalAssetManager() {
       {/* Section header */}
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          {t("admin.universe_title")}
+          {t("admin.asset_list_title")}
         </h2>
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
           {isLoading ? (

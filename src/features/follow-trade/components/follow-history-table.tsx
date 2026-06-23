@@ -151,7 +151,9 @@ export function FollowHistoryTable() {
   const progressRef = useRef<Record<string, FollowProgress>>({});
   progressRef.current = progressBySymbol;
 
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "date", desc: false },
+  ]);
   const [search, setSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilterType>("all");
   const [dirFilter, setDirFilter] = useState<DirFilter>("all");
