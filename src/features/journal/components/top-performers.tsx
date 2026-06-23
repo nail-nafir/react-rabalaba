@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Activity, Shield, Sparkles } from "lucide-react";
-
 import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
 import { FilterGroup } from "@/components/shared/filter-group";
@@ -18,41 +17,55 @@ import { EmptyState } from "@/components/shared/empty-state";
 export function TopPerformers() {
   const { t } = useTranslation();
   const { history, isLoading } = useJournalTrades();
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  type TopPerformerPeriod = "1D" | "1W" | "1M" | "YTD" | "ALL";
+
+  const [period, setPeriod] = useState<TopPerformerPeriod>("1D");
   const [selectedTrade, setSelectedTrade] = useState<FollowedTrade | null>(
     null,
   );
 
   const periodOptions = [
-    { value: "daily" as const, label: t("journal.period_daily") },
-    { value: "weekly" as const, label: t("journal.period_weekly") },
-    { value: "monthly" as const, label: t("journal.period_monthly") },
+    { value: "1D" as const, label: t("journal.timeframe_1d") },
+    { value: "1W" as const, label: t("journal.timeframe_1w") },
+    { value: "1M" as const, label: t("journal.timeframe_1m") },
+    { value: "YTD" as const, label: t("journal.timeframe_ytd") },
+    { value: "ALL" as const, label: t("journal.timeframe_all") },
   ];
-
-  // Calculate start timestamp for each period in client timezone
-  const getPeriodStart = (selectedPeriod: "daily" | "weekly" | "monthly") => {
-    const now = new Date();
-    if (selectedPeriod === "daily") {
-      const d = new Date(now);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    } else if (selectedPeriod === "weekly") {
-      const d = new Date(now);
-      const day = d.getDay(); // 0 = Sun, 1 = Mon, ...
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday is start of week
-      d.setDate(diff);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    } else {
-      // monthly
-      const d = new Date(now.getFullYear(), now.getMonth(), 1);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    }
-  };
-
   const { gainers, losers, allProfitStats, allLossStats } = useMemo(() => {
-    const periodStart = getPeriodStart(period);
+    const now = new Date();
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+
+    let periodStart: number;
+    switch (period) {
+      case "1D": {
+        periodStart = d.getTime();
+        break;
+      }
+      case "1W": {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        d.setDate(diff);
+        periodStart = d.getTime();
+        break;
+      }
+      case "1M": {
+        d.setDate(d.getDate() - 29);
+        periodStart = d.getTime();
+        break;
+      }
+      case "YTD": {
+        const ytd = new Date(now.getFullYear(), 0, 1);
+        ytd.setHours(0, 0, 0, 0);
+        periodStart = ytd.getTime();
+        break;
+      }
+      case "ALL":
+      default: {
+        periodStart = 0;
+        break;
+      }
+    }
 
     // Filter closed trades in the selected period
     const filteredTrades = history.filter(
@@ -122,26 +135,22 @@ export function TopPerformers() {
           <EmptyState
             title={t("journal.empty_gainers_title")}
             description={t("journal.empty_gainers_desc")}
-            icon={
-              <Shield className="h-14 w-14 text-muted-foreground" />
-            }
+            icon={<Shield className="h-14 w-14 text-muted-foreground" />}
             className="py-8"
           />
         );
       } else {
         const emptyLosersDescKey =
-          period === "daily"
+          period === "1D"
             ? "journal.empty_losers_desc_daily"
-            : period === "weekly"
+            : period === "1W"
               ? "journal.empty_losers_desc_weekly"
               : "journal.empty_losers_desc_monthly";
         return (
           <EmptyState
             title={t("journal.empty_losers_title")}
             description={t(emptyLosersDescKey)}
-            icon={
-              <Sparkles className="h-14 w-14 text-muted-foreground" />
-            }
+            icon={<Sparkles className="h-14 w-14 text-muted-foreground" />}
             className="py-8"
           />
         );
@@ -225,7 +234,7 @@ export function TopPerformers() {
   const renderSkeleton = () => (
     <div className="space-y-2.5">
       {Array.from({ length: 3 }).map((_, i) => (
-        <Card key={i} size="sm" className="border border-border bg-card/30">
+        <Card key={i} size="sm" className="border border-border">
           <CardContent className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Skeleton className="h-7 w-7 rounded-full shrink-0" />
@@ -266,9 +275,7 @@ export function TopPerformers() {
             <EmptyState
               title={t("journal.empty_performers_title")}
               description={t("journal.empty_performers_desc")}
-              icon={
-                <Activity className="h-14 w-14 text-muted-foreground" />
-              }
+              icon={<Activity className="h-14 w-14 text-muted-foreground" />}
             />
           </CardContent>
         </Card>
@@ -285,9 +292,9 @@ export function TopPerformers() {
                   <div className="flex items-baseline gap-1 whitespace-nowrap">
                     <span
                       className={cn(
-                        "font-mono font-extrabold text-xs",
+                        "font-mono font-bold leading-none tabular-nums text-xs",
                         gainerStats && gainerStats.totalPct > 0
-                          ? "text-emerald-500"
+                          ? "text-emerald-600 dark:text-emerald-400"
                           : "text-muted-foreground",
                       )}
                     >
@@ -303,8 +310,10 @@ export function TopPerformers() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-right">
-                  <span className="text-xs font-mono font-extrabold text-emerald-500">
-                    {allProfitStats.totalPct > 0 ? `+${allProfitStats.totalPct.toFixed(2)}%` : "0.00%"}
+                  <span className="text-xs font-mono font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {allProfitStats.totalPct > 0
+                      ? `+${allProfitStats.totalPct.toFixed(2)}%`
+                      : "0.00%"}
                   </span>
                   <span className="text-[9px] text-muted-foreground font-mono leading-none">
                     {t("journal.from_n_data", { count: allProfitStats.count })}
@@ -326,9 +335,9 @@ export function TopPerformers() {
                   <div className="flex items-baseline gap-1 whitespace-nowrap">
                     <span
                       className={cn(
-                        "font-mono font-extrabold text-xs",
+                        "font-mono font-bold leading-none tabular-nums text-xs",
                         loserStats && loserStats.totalPct < 0
-                          ? "text-rose-500"
+                          ? "text-rose-600 dark:text-rose-400"
                           : "text-muted-foreground",
                       )}
                     >
@@ -344,8 +353,10 @@ export function TopPerformers() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-right">
-                  <span className="text-xs font-mono font-extrabold text-rose-500">
-                    {allLossStats.totalPct < 0 ? `${allLossStats.totalPct.toFixed(2)}%` : "0.00%"}
+                  <span className="text-xs font-mono font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
+                    {allLossStats.totalPct < 0
+                      ? `${allLossStats.totalPct.toFixed(2)}%`
+                      : "0.00%"}
                   </span>
                   <span className="text-[9px] text-muted-foreground font-mono leading-none">
                     {t("journal.from_n_data", { count: allLossStats.count })}

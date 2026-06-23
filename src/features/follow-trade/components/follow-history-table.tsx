@@ -619,7 +619,7 @@ export function FollowHistoryTable() {
           </Button>
         </div>
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest shrink-0">
-          {filtered.length} {t("journal.trades")}
+          {filtered.length} {t("journal.transactions")}
         </div>
       </div>
 

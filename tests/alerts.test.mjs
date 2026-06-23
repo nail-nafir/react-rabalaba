@@ -73,6 +73,8 @@ test("buildAutoJournalAlerts maps inserts and closures to events", async () => {
   assert.equal(newLong.symbol, "BTC-USD");
   assert.equal(newLong.grade, "A");
   assert.equal(newLong.entry, 65000);
+  assert.deepEqual(newLong.takeProfits, [67000]);
+  assert.equal(newLong.stopLoss, 63000);
 
   const tp = alerts.find((a) => a.kind === "tp_hit");
   assert.equal(tp.symbol, "EIGEN-USD");
@@ -113,16 +115,20 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
   const { buildAutoJournalAlerts, formatAlertsForDiscord } =
     await loadModule(ALERTS);
   const msg = formatAlertsForDiscord(buildAutoJournalAlerts(PLAN));
-  assert.ok(msg.includes("🥋 WANGSIT RABA LABA SENSEI HARI INI"));
+  assert.ok(msg.includes("🥋 WANGSIT RABALABA SENSEI"));
   assert.ok(msg.includes("🚨 SINYAL:"));
   assert.ok(msg.includes("📢 HASIL:"));
-  assert.ok(msg.includes("🧘‍♂️ PETUAH SENSEI:"));
-  assert.ok(msg.includes("🟢 **BTC-USD** • LONG • GRADE A\n↳ Entry @ `65000`"));
-  assert.ok(msg.includes("🎯 **EIGEN-USD**\n↳ TP1 @ `0.28` (+12%)"));
-  assert.ok(msg.includes("⛔ **MYX-USD**\n↳ SL @ `9` (-8.3%)"));
-  assert.ok(msg.includes("🔄 **NEAR-USD**\n↳ REVERSED @ `5.12` (+0.28%)"));
-  assert.ok(msg.includes("Semedi di depan chart")); // closing wisdom
-  assert.ok(msg.includes("────")); // divider rule
+  assert.ok(msg.includes("🧘 PETUAH SENSEI"));
+  assert.ok(
+    msg.includes(
+      "🟢 **BTC-USD** • LONG • A\n↳ Entry: `@65.000`\n↳ TP1: `@67.000` `(+3.1%)`\n↳ SL: `@63.000` `(-3.1%)`",
+    ),
+  );
+  assert.ok(msg.includes("🎯 **EIGEN-USD**\n↳ TP1: `@0.28` `(+12%)`"));
+  assert.ok(msg.includes("⛔ **MYX-USD**\n↳ SL: `@9` `(-8.3%)`"));
+  assert.ok(msg.includes("🔄 **NEAR-USD**\n↳ REVERSED: `@5.12` `(+0.28%)`"));
+  assert.ok(msg.includes("Bersemedi di depan chart")); // closing wisdom
+  assert.ok(msg.includes("━━━")); // divider rule
 
   assert.equal(formatAlertsForDiscord([]), null);
 });

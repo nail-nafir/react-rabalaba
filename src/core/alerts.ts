@@ -14,6 +14,10 @@ export interface JournalAlert {
   grade?: string | null;
   /** Entry price for a new signal. */
   entry?: number;
+  /** TP target prices (TP1..TP3) for a new signal. */
+  takeProfits?: number[];
+  /** Stop-loss price for a new signal. */
+  stopLoss?: number;
   /** Close price for an outcome (TP/SL/reversal). */
   price?: number | null;
   /** TP milestone (1/2/3) for a tp_hit. */
@@ -36,6 +40,8 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
       symbol: ins.symbol,
       grade: ins.grade,
       entry: ins.entry_price,
+      takeProfits: ins.take_profits,
+      stopLoss: ins.stop_loss,
     });
   }
 
@@ -65,19 +71,14 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
 const DISCORD_MAX = 1900;
 
 /** Light horizontal rule dividing the message into sections. */
-const DIVIDER = "────────────────────────────";
+const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━";
 
 /** "Wangsit Raba Laba Sensei" persona header — the in-character framing. */
-const SENSEI_HEADER = "🥋 WANGSIT RABALABA SENSEI HARI INI";
+const SENSEI_HEADER = "🥋 WANGSIT RABALABA SENSEI";
 
-/** Closing wisdom, in character — rendered as a Discord blockquote. */
+/** Closing wisdom, in character — plain quote, padded inside the quotes. */
 const SENSEI_QUOTE =
-  '> "Semedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating minus belum tentu rebound."';
-
-/** Wrap in backticks so symbols/prices render monospace in Discord. */
-function code(s: string | number): string {
-  return `\`${s}\``;
-}
+  '"Bersemedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating loss belum tentu rebound. "';
 
 /** Signed P&L like " (+120%)", " (-15%)", " (+0.28%)" — precision scales with
  *  magnitude, trailing zeros dropped. Empty when there's no value. */
@@ -86,13 +87,20 @@ function pctSuffix(pct?: number): string {
   const abs = Math.abs(pct);
   const digits = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
   const v = abs.toLocaleString("en-US", { maximumFractionDigits: digits });
-  return ` (${pct >= 0 ? "+" : "-"}${v}%)`;
+  return ` \`(${pct >= 0 ? "+" : "-"}${v}%)\``;
 }
 
-/** Price tag " @ `<num>`" (omitted when there's no price). The space before the
- *  backtick matches the new layout: "Entry @ `65713`". */
+/** Price tag " @`<num>`" (omitted when there's no price). The layout puts the
+ *  backtick flush against the @: "Entry @`65713`". */
 function atPrice(price?: number | null): string {
-  return price != null ? ` @ ${code(formatNum(price))}` : "";
+  return price != null ? ` \`@${formatNum(price)}\`` : "";
+}
+
+/** Direction-aware % of a target price from entry: a TP reads positive and an SL
+ *  negative for BOTH longs and shorts (a short profits as price falls). */
+function pctFrom(entry: number, target: number, isLong: boolean): number {
+  const raw = ((target - entry) / entry) * 100;
+  return isLong ? raw : -raw;
 }
 
 /**
@@ -105,14 +113,25 @@ function atPrice(price?: number | null): string {
 export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   if (alerts.length === 0) return null;
 
-  // New signals: "<emoji> **SYM** • DIR • GRADE X" then "↳ Entry @ `price`".
+  // New signals: "<emoji> **SYM** • DIR • GRADE" then the Entry / TP1..TP3 / SL
+  // ladder, each on its own "↳" line with a direction-aware % from entry.
   const renderSignal = (a: JournalAlert) => {
-    const emoji = a.kind === "new_long" ? "🟢" : "🔴";
-    const dir = a.kind === "new_long" ? "LONG" : "SHORT";
+    const isLong = a.kind === "new_long";
+    const emoji = isLong ? "🟢" : "🔴";
+    const dir = isLong ? "LONG" : "SHORT";
     const head = [`**${a.symbol}**`, dir];
-    if (a.grade) head.push(`GRADE ${a.grade}`);
-    const entry = a.entry != null ? `\n↳ Entry${atPrice(a.entry)}` : "";
-    return `${emoji} ${head.join(" • ")}${entry}`;
+    if (a.grade) head.push(a.grade);
+    const lines = [`${emoji} ${head.join(" • ")}`];
+    if (a.entry != null) lines.push(`↳ Entry:${atPrice(a.entry)}`);
+    (a.takeProfits ?? []).forEach((tp, i) => {
+      const pnl = a.entry != null ? pctFrom(a.entry, tp, isLong) : undefined;
+      lines.push(`↳ TP${i + 1}:${atPrice(tp)}${pctSuffix(pnl)}`);
+    });
+    if (a.stopLoss != null && a.entry != null) {
+      const pnl = pctFrom(a.entry, a.stopLoss, isLong);
+      lines.push(`↳ SL:${atPrice(a.stopLoss)}${pctSuffix(pnl)}`);
+    }
+    return lines.join("\n");
   };
   // LONG first, then SHORT — blocks separated by a blank line.
   const signalBody = [
@@ -129,7 +148,7 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
     result: string,
     price?: number | null,
     pnl?: number,
-  ) => `${emoji} **${symbol}**\n↳ ${result}${atPrice(price)}${pctSuffix(pnl)}`;
+  ) => `${emoji} **${symbol}**\n↳ ${result}:${atPrice(price)}${pctSuffix(pnl)}`;
 
   // TP, then SL, then REVERSED — blocks separated by a blank line.
   const outcomeBody = [
@@ -155,7 +174,7 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   const blocks: string[] = [SENSEI_HEADER];
   if (signalBody) blocks.push(DIVIDER, "🚨 SINYAL:\n\n" + signalBody);
   if (outcomeBody) blocks.push(DIVIDER, "📢 HASIL:\n\n" + outcomeBody);
-  blocks.push(DIVIDER, "🧘‍♂️ PETUAH SENSEI:\n\n" + SENSEI_QUOTE);
+  blocks.push(DIVIDER, "🧘 PETUAH SENSEI\n\n" + SENSEI_QUOTE);
 
   let msg = blocks.join("\n\n");
   if (msg.length > DISCORD_MAX) {
@@ -173,19 +192,26 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
  */
 function formatNum(n: number): string {
   if (!Number.isFinite(n)) return "—";
-  if (Number.isInteger(n)) return n.toString();
-  const abs = Math.abs(n);
-  if (abs >= 1) {
-    return n.toLocaleString("en-US", {
-      useGrouping: false,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+
+  let formatted: string;
+  if (Number.isInteger(n)) {
+    formatted = n.toLocaleString("en-US", { useGrouping: true });
+  } else {
+    const abs = Math.abs(n);
+    if (abs >= 1) {
+      formatted = n.toLocaleString("en-US", {
+        useGrouping: true,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } else {
+      // Sub-1: enough decimals to stay meaningful, trailing zeros NOT padded.
+      const leadingZeros = Math.max(0, -Math.floor(Math.log10(abs)) - 1);
+      formatted = n.toLocaleString("en-US", {
+        useGrouping: true,
+        maximumFractionDigits: Math.min(10, leadingZeros + 4),
+      });
+    }
   }
-  // Sub-1: enough decimals to stay meaningful, trailing zeros NOT padded.
-  const leadingZeros = Math.max(0, -Math.floor(Math.log10(abs)) - 1);
-  return n.toLocaleString("en-US", {
-    useGrouping: false,
-    maximumFractionDigits: Math.min(10, leadingZeros + 4),
-  });
+  return formatted.replace(/,/g, ".");
 }

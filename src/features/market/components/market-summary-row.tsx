@@ -16,7 +16,6 @@ import { useMarketContext } from "@/services/queries/use-market-context";
 import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
 import { useMarketMomentum } from "@/services/queries/use-market-momentum";
 import { MARKET_INDICES } from "@/constants/assets";
-import { dominanceColor } from "@/constants";
 import { Loader2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import { PercentageChange } from "@/components/shared/percentage-change";
 import { Sparkline } from "@/components/charts/sparkline";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import type { TrendDirection } from "@/types/market";
-import { cn } from "@/lib/utils";
 
 export function MarketSummaryRow() {
   const { t } = useTranslation();
@@ -153,57 +151,57 @@ export function MarketSummaryRow() {
                     (() => {
                       const { btc, eth } = marketContext.dominance;
                       const others = Math.max(0, 100 - btc - eth);
-                      const btcTw = dominanceColor(btc);
-                      const ethTw = dominanceColor(eth);
+                      const getColor = (val: number) => {
+                        if (val <= 20) return "var(--color-rose-400)";
+                        if (val <= 40) return "var(--color-orange-400)";
+                        if (val <= 60) return "var(--color-amber-400)";
+                        if (val <= 80) return "var(--color-lime-400)";
+                        return "var(--color-emerald-400)";
+                      };
+                      const btcColor = getColor(btc);
+                      const ethColor = getColor(eth);
 
                       return (
-                        <div className="flex items-center gap-3 w-full py-1">
-                          <div className="shrink-0">
+                        <div className="flex flex-col items-center w-full py-1 gap-1">
+                          <div className="relative shrink-0" style={{ width: 50, height: 50 }}>
                             <DominanceChart
                               btc={btc}
                               eth={eth}
                               others={others}
+                              width={50}
+                              height={50}
                             />
                           </div>
-                          <div className="flex flex-col items-start gap-1 flex-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                              Dominance
-                            </span>
+                          <div className="flex justify-center gap-x-4 text-[11px] text-[#71717a] font-normal">
                             <div className="flex items-center gap-1.5">
                               <span
-                                className={cn(
-                                  "h-1.5 w-1.5 rounded-full shrink-0",
-                                  btcTw,
-                                )}
+                                className="h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: btcColor }}
                               />
-                              <span className="text-xs font-bold text-mono-data tabular-nums leading-none">
-                                BTC {btc.toFixed(1)}%
-                              </span>
+                              <span className="text-zinc-400">BTC</span>
+                              <span className="font-mono text-zinc-200 font-bold">{btc.toFixed(1)}%</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span
-                                className={cn(
-                                  "h-1.5 w-1.5 rounded-full shrink-0",
-                                  ethTw,
-                                )}
+                                className="h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: ethColor }}
                               />
-                              <span className="text-xs font-bold text-mono-data tabular-nums leading-none">
-                                ETH {eth.toFixed(1)}%
-                              </span>
+                              <span className="text-zinc-400">ETH</span>
+                              <span className="font-mono text-zinc-200 font-bold">{eth.toFixed(1)}%</span>
                             </div>
                           </div>
                         </div>
                       );
                     })()
                   ) : (
-                    <div className="flex flex-1 flex-col items-start justify-center py-2 gap-1.5 w-full">
+                    <div className="flex flex-1 flex-col items-center justify-center py-2 gap-1.5 w-full">
                       {dominanceLoading ? (
                         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                           <Loader2 className="h-3.5 w-3.5 animate-spin opacity-50" />
                           <span>{t("market.loading_dominance")}</span>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-start gap-1.5">
+                        <div className="flex flex-col items-center gap-1.5">
                           <span className="text-[11px] text-muted-foreground">
                             {t("market.dominance_unavailable")}
                           </span>
