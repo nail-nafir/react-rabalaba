@@ -288,19 +288,14 @@ export function AccessCodesTable() {
     <div className="space-y-4">
       {/* Section header */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-            {t("admin.codes_list_title")}
-          </h2>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-            {isLoadingCodes ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <span>
-                {accessCodes.length} {t("admin.codes_col_code").toLowerCase()}
-              </span>
-            )}
-          </div>
+        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+          {isLoadingCodes ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <span>
+              {accessCodes.length} {t("admin.codes_col_code").toLowerCase()}
+            </span>
+          )}
         </div>
 
         <Button

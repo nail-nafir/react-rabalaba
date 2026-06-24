@@ -100,6 +100,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
 
     if (result === "added") {
       toast.success(t("admin.codes_add_toast_success", {
+        code,
         defaultValue: `Berhasil menambahkan kode akses ${code}`
       }));
       onOpenChange(false);
@@ -110,6 +111,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
       });
     } else {
       toast.error(t("admin.codes_add_toast_error", {
+        code,
         defaultValue: `Gagal menambahkan kode akses ${code}`
       }));
     }
@@ -181,11 +183,11 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                     </label>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                        <SelectValue placeholder="Pilih Tipe" />
+                        <SelectValue placeholder={t("admin.codes_form_type_placeholder", "Pilih Tipe")} />
                       </SelectTrigger>
                       <SelectContent className="p-1">
-                        <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">Full</SelectItem>
-                        <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">Trial</SelectItem>
+                        <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_full", "Full")}</SelectItem>
+                        <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_trial", "Trial")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -202,7 +204,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                     </label>
                     <Input
                       {...field}
-                      placeholder="∞ (Unlimited)"
+                      placeholder={t("admin.codes_form_max_uses_placeholder", "∞ (Unlimited)")}
                       type="text"
                       className="h-8 placeholder:text-sm text-sm"
                     />
@@ -228,7 +230,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                     </label>
                     <Input
                       {...field}
-                      placeholder="Jumlah hari trial (cth: 30)"
+                      placeholder={t("admin.codes_form_trial_days_placeholder", "Jumlah hari trial (cth: 30)")}
                       type="text"
                       className="h-8 placeholder:text-sm text-sm"
                     />
@@ -253,7 +255,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                   </label>
                   <Input
                     {...field}
-                    placeholder="Catatan opsional (cth: Promo Juni 2026)"
+                    placeholder={t("admin.codes_form_note_placeholder", "Catatan opsional (cth: Promo Juni 2026)")}
                     className="h-8 placeholder:text-sm text-sm"
                   />
                 </div>

@@ -1,3 +1,4 @@
+import { type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,9 +18,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarRail,
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -27,12 +37,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { Button } from "@/components/ui/button";
 
 import { Separator } from "@/components/ui/separator";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,6 +66,7 @@ import {
   PanelLeft,
   ChevronUp,
   KeyRound,
+  LineChart,
 } from "lucide-react";
 
 const LANGUAGES = [
@@ -81,7 +97,17 @@ export function AdminLayout() {
     toast.success(t("auth.logout_success"));
   };
 
-  const navItems = [
+  const consoleTitle = isOwner
+    ? t("admin.owner_console_title", "Pemilik")
+    : t("admin.admin_console_title", "Dashboard Admin");
+
+  const overviewItem = {
+    to: "/admin/summary",
+    label: t("admin.menu_summary", "Summary"),
+    icon: LineChart,
+  };
+
+  const managementItems = [
     {
       to: "/admin/assets",
       label: t("admin.menu_assets", "Manajemen Aset"),
@@ -99,40 +125,92 @@ export function AdminLayout() {
     },
   ];
 
+  const navItems = [overviewItem, ...managementItems];
+
+  // Breadcrumb leaf: resolve the active nav label from the current route.
+  const activeNav = navItems.find((item) =>
+    location.pathname.startsWith(item.to),
+  );
+  const currentLabel =
+    activeNav?.label ?? t("admin.console_label", "Dashboard");
+
   return (
     <TooltipProvider>
-      <SidebarProvider>
-      <div className="flex h-screen w-full bg-background overflow-hidden">
-        {/* Sidebar */}
-        <Sidebar className="border-r border-border bg-card">
-          {/* Header */}
-          <SidebarHeader className="h-16 px-4 flex flex-row items-center justify-start border-b border-border">
-            <Link to="/terminal" className="flex items-center gap-2.5 hover:opacity-90 group py-1">
-              <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-primary via-primary/80 to-primary/60 text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-primary/30">
-                <Radio className="h-4 w-4 relative z-10" />
-                <div className="absolute inset-0 rounded-lg border border-white/20 z-0" />
-              </div>
-              <div className="flex flex-col -space-y-0.5">
-                <span className="text-[13px] font-black tracking-tighter uppercase text-foreground leading-none">
-                  Raba<span className="text-primary">Laba</span>
-                </span>
-                <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
-                  Console
-                </span>
-              </div>
-            </Link>
+      <SidebarProvider
+        className="h-svh overflow-hidden"
+        style={{ "--sidebar-width": "17rem" } as CSSProperties}
+      >
+        {/* Floating Sidebar (collapses to an icon rail) */}
+        <Sidebar variant="floating" collapsible="icon">
+          {/* Brand */}
+          <SidebarHeader className="h-16 border-b border-sidebar-border pb-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  size="lg"
+                  asChild
+                  tooltip={consoleTitle}
+                  className="group/brand gap-2.5 hover:bg-transparent"
+                >
+                  <Link to="/terminal">
+                    <div className="relative flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary via-primary/80 to-primary/60 text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-300 group-hover/brand:scale-110 group-hover/brand:shadow-primary/30">
+                      <Radio className="size-4 relative z-10" />
+                      <div className="absolute inset-0 rounded-lg border border-white/20 z-0" />
+                    </div>
+                    <div className="flex flex-col -space-y-0.5 leading-none">
+                      <span className="text-[13px] font-black tracking-tighter uppercase text-foreground leading-none">
+                        Raba<span className="text-primary">Laba</span>
+                      </span>
+                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
+                        {t("admin.console_label", "Dashboard")}
+                      </span>
+                    </div>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarHeader>
 
           {/* Navigation Links */}
-          <SidebarContent className="py-4">
+          <SidebarContent className="py-2 flex flex-col gap-2">
+            {/* Overview / Stats Group */}
             <SidebarGroup>
-              <SidebarGroupLabel className="px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Navigation
+              <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {t("admin.nav_group_overview", "Ikhtisar")}
               </SidebarGroupLabel>
               <SidebarGroupContent className="mt-1">
                 <SidebarMenu>
-                  {navItems.map((item) => {
-                    const isActive = location.pathname === item.to;
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname.startsWith(overviewItem.to)}
+                      tooltip={overviewItem.label}
+                      className={cn(
+                        "gap-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+                        location.pathname.startsWith(overviewItem.to)
+                          ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Link to={overviewItem.to}>
+                        <overviewItem.icon className="size-4 shrink-0" />
+                        <span>{overviewItem.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Management Group */}
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {t("admin.nav_group_management", "Manajemen")}
+              </SidebarGroupLabel>
+              <SidebarGroupContent className="mt-1">
+                <SidebarMenu className="gap-1">
+                  {managementItems.map((item) => {
+                    const isActive = location.pathname.startsWith(item.to);
                     return (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton
@@ -140,14 +218,14 @@ export function AdminLayout() {
                           isActive={isActive}
                           tooltip={item.label}
                           className={cn(
-                            "w-full justify-start gap-3 h-10 px-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer",
-                            isActive 
-                              ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10" 
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                            "gap-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+                            isActive
+                              ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground",
                           )}
                         >
                           <Link to={item.to}>
-                            <item.icon className="h-4 w-4 shrink-0" />
+                            <item.icon className="size-4 shrink-0" />
                             <span>{item.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -157,55 +235,39 @@ export function AdminLayout() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
-            {/* Quick Links Group */}
-            <SidebarGroup className="mt-2">
-              <SidebarGroupLabel className="px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Utilities
-              </SidebarGroupLabel>
-              <SidebarGroupContent className="mt-1">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      className="w-full justify-start gap-3 h-10 px-3 text-sm font-medium rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200 cursor-pointer"
-                    >
-                      <Link to="/terminal">
-                        <ArrowLeft className="h-4 w-4 shrink-0" />
-                        <span>{t("not_found.action", "Kembali ke Beranda")}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
           </SidebarContent>
 
           {/* Footer with settings + profile */}
-          <SidebarFooter className="p-4 border-t border-border bg-card/50">
+          <SidebarFooter className="border-t border-sidebar-border">
             <SidebarMenu>
               <SidebarMenuItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
                       size="lg"
-                      className="w-full h-12 flex items-center justify-between gap-3 px-3 rounded-lg border border-accent-foreground/10 hover:bg-accent/50 cursor-pointer"
+                      tooltip={consoleTitle}
+                      className="gap-2.5 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/80 text-foreground border border-accent-foreground/10">
-                          <User className="h-4 w-4" />
-                        </div>
-                        <div className="flex flex-col text-left min-w-0">
-                          <span className="text-xs font-bold text-foreground truncate">
-                            {isOwner ? "Owner Console" : "Admin Console"}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground truncate">{user?.email}</span>
-                        </div>
+                      <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border">
+                        <User className="size-4" />
                       </div>
-                      <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex flex-col text-left min-w-0 flex-1">
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {consoleTitle}
+                        </span>
+                        <span className="text-xs font-bold text-foreground truncate">
+                          {user?.email}
+                        </span>
+                      </div>
+                      <ChevronUp className="size-4 text-muted-foreground shrink-0" />
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 align-end side-top text-foreground" align="end" side="top">
+                  <DropdownMenuContent
+                    className="w-(--radix-dropdown-menu-trigger-width) min-w-56 text-foreground"
+                    align="end"
+                    side="top"
+                    sideOffset={8}
+                  >
                     <DropdownMenuLabel className="flex flex-col gap-0.5">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         {t("auth.account_label")}
@@ -214,62 +276,6 @@ export function AdminLayout() {
                         {user?.email}
                       </span>
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-
-                    {/* Language Selection */}
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-                        <Languages className="h-4 w-4 text-muted-foreground mr-2" />
-                        {t("common.language")}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuRadioGroup
-                          value={currentLang}
-                          onValueChange={(v) => i18n.changeLanguage(v)}
-                        >
-                          {LANGUAGES.map((lang) => (
-                            <DropdownMenuRadioItem
-                              key={lang.value}
-                              value={lang.value}
-                              className="text-xs cursor-pointer"
-                            >
-                              {lang.label}
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-
-                    {/* Theme Selection */}
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-                        {theme === 'dark' ? (
-                          <Moon className="h-4 w-4 text-muted-foreground mr-2" />
-                        ) : theme === 'light' ? (
-                          <Sun className="h-4 w-4 text-muted-foreground mr-2" />
-                        ) : (
-                          <Laptop className="h-4 w-4 text-muted-foreground mr-2" />
-                        )}
-                        {t("common.theme")}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuRadioGroup
-                          value={theme}
-                          onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
-                        >
-                          <DropdownMenuRadioItem value="light" className="text-xs cursor-pointer">
-                            {t("common.theme_light")}
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="dark" className="text-xs cursor-pointer">
-                            {t("common.theme_dark")}
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="system" className="text-xs cursor-pointer">
-                            {t("common.theme_system")}
-                          </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
@@ -284,24 +290,134 @@ export function AdminLayout() {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarFooter>
+
+          <SidebarRail />
         </Sidebar>
 
         {/* Main Content Area */}
-        <SidebarInset className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+        <SidebarInset className="flex flex-col min-w-0 overflow-hidden bg-background">
           {/* Dashboard Header Bar */}
-          <header className="h-16 border-b border-border flex items-center justify-between px-4 sm:px-6 shrink-0 bg-card/20 backdrop-blur-xs">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="cursor-pointer">
-                <PanelLeft className="h-4 w-4" />
-              </SidebarTrigger>
-              <Separator orientation="vertical" className="h-4" />
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Console</span>
-                <span className="text-xs text-muted-foreground/50">/</span>
-                <span className="text-xs font-bold text-foreground capitalize">
-                  {location.pathname.split("/").pop() || "Dashboard"}
-                </span>
-              </div>
+          <header className="h-18 border-b border-border flex items-center gap-4 px-4 sm:px-6 shrink-0 bg-card/20 backdrop-blur-xs">
+            <SidebarTrigger className="cursor-pointer">
+              <PanelLeft className="h-4 w-4" />
+            </SidebarTrigger>
+            <Separator
+              orientation="vertical"
+              className="h-6 data-vertical:self-center"
+            />
+            <Breadcrumb>
+              <BreadcrumbList>
+                {location.pathname === "/admin/summary" ? (
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
+                      {t("admin.console_label", "Dashboard")}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                ) : (
+                  <>
+                    <BreadcrumbItem className="hidden sm:block">
+                      <BreadcrumbLink asChild>
+                        <Link
+                          to="/admin/summary"
+                          className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
+                        >
+                          {t("admin.console_label", "Dashboard")}
+                        </Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="hidden sm:block" />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
+                        {currentLabel}
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
+
+            {/* Right Side Controls: Language, Theme & User Switchers */}
+            <div className="ml-auto flex items-center gap-2">
+              {/* Back to Terminal Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="text-xs cursor-pointer items-center gap-1.5 text-muted-foreground hover:text-foreground hidden md:flex h-8 rounded-lg"
+              >
+                <Link to="/terminal">
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>
+                    {t("admin.back_to_terminal", "Kembali ke Terminal")}
+                  </span>
+                </Link>
+              </Button>
+
+              <Separator
+                orientation="vertical"
+                className="h-6 data-vertical:self-center hidden md:block"
+              />
+
+              {/* Language Selector Dropdown */}
+              <Select
+                value={currentLang}
+                onValueChange={(v) => i18n.changeLanguage(v)}
+              >
+                <SelectTrigger className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg">
+                  <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" align="end" className="p-1">
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem
+                      key={lang.value}
+                      value={lang.value}
+                      className="uppercase tracking-wider text-[10px] cursor-pointer"
+                    >
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Theme Selector Dropdown */}
+              <Select
+                value={theme}
+                onValueChange={(v) =>
+                  setTheme(v as "light" | "dark" | "system")
+                }
+              >
+                <SelectTrigger className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg">
+                  {theme === "dark" ? (
+                    <Moon className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                  ) : theme === "light" ? (
+                    <Sun className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                  ) : (
+                    <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                  )}
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" align="end" className="p-1">
+                  <SelectItem
+                    value="light"
+                    className="uppercase tracking-wider text-[10px] cursor-pointer"
+                  >
+                    {t("common.theme_light")}
+                  </SelectItem>
+                  <SelectItem
+                    value="dark"
+                    className="uppercase tracking-wider text-[10px] cursor-pointer"
+                  >
+                    {t("common.theme_dark")}
+                  </SelectItem>
+                  <SelectItem
+                    value="system"
+                    className="uppercase tracking-wider text-[10px] cursor-pointer"
+                  >
+                    {t("common.theme_system")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </header>
 
@@ -312,8 +428,7 @@ export function AdminLayout() {
             </div>
           </main>
         </SidebarInset>
-      </div>
-    </SidebarProvider>
-  </TooltipProvider>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

@@ -8,7 +8,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.users_list_title", "Daftar Pengguna Terdaftar")}
+          {t("admin.users_list_title", "Pengguna Terdaftar")}
         </h1>
         <p className="text-sm text-muted-foreground">
           {t("admin.admin_console_users_desc", "Kelola pengguna terdaftar, tingkat tier, dan penggunaan kode akses premium.") || "Kelola pengguna terdaftar dan pantau kode akses premium yang ditukarkan."}

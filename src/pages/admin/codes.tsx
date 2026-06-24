@@ -8,7 +8,7 @@ export default function AdminCodesPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.codes_list_title", "Daftar Kode Akses")}
+          {t("admin.codes_list_title", "Kode Akses")}
         </h1>
         <p className="text-sm text-muted-foreground">
           {t(

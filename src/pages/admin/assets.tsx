@@ -8,7 +8,7 @@ export default function AdminAssetsPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.asset_list_title", "Daftar Aset Jurnal")}
+          {t("admin.asset_list_title", "Aset Jurnal")}
         </h1>
         <p className="text-sm text-muted-foreground">
           {t("admin.admin_console_desc", "Kelola semua aset dan jadwal rutin jurnal otomatis.")}

@@ -64,6 +64,7 @@ import { cn } from "@/lib/utils";
 /* ── Tiny helpers (same style as journal-asset-manager) ──────────────── */
 
 type TierFilter = "all" | "premium" | "trial" | "free";
+type RoleFilter = "all" | "member" | "admin" | "owner";
 
 function SortIcon<T>({ column }: { column: Column<T, unknown> }) {
   const isSorted = column.getIsSorted();
@@ -225,8 +226,6 @@ function DeleteUserButton({
   );
 }
 
-
-
 /* ── Main: Users table ───────────────────────────────────────────────── */
 
 export function RegisteredUsersTable() {
@@ -237,6 +236,7 @@ export function RegisteredUsersTable() {
   const currentUserEmail = user?.email?.toLowerCase();
 
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const [sorting, setSorting] = useState<SortingState>([
     { id: "created_at", desc: true },
@@ -244,6 +244,13 @@ export function RegisteredUsersTable() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<AdminUserRow | null>(null);
+
+  const roleOptions: FilterOption<RoleFilter>[] = [
+    { value: "all", label: t("admin.users_role_all") },
+    { value: "owner", label: t("admin.users_role_owner") },
+    { value: "admin", label: t("admin.users_role_admin") },
+    { value: "member", label: t("admin.users_role_member") },
+  ];
 
   const tierOptions: FilterOption<TierFilter>[] = [
     { value: "all", label: t("admin.users_tier_all") },
@@ -256,10 +263,16 @@ export function RegisteredUsersTable() {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
       if (tierFilter !== "all" && u.tier !== tierFilter) return false;
+      if (roleFilter !== "all") {
+        const isOwner = u.is_owner;
+        const isAdmin = u.is_admin;
+        const role = isOwner ? "owner" : isAdmin ? "admin" : "member";
+        if (role !== roleFilter) return false;
+      }
       if (q && !u.email.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [users, tierFilter, search]);
+  }, [users, tierFilter, roleFilter, search]);
 
   const columns = useMemo<ColumnDef<AdminUserRow>[]>(
     () => [
@@ -319,32 +332,21 @@ export function RegisteredUsersTable() {
           </span>
         ),
         cell: ({ row }) => {
-          if (row.original.is_owner) {
-            return (
-              <Badge
-                variant="outline"
-                className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-primary/15 border-primary/30 text-primary"
-              >
-                Owner
-              </Badge>
-            );
-          }
-          if (row.original.is_admin) {
-            return (
-              <Badge
-                variant="outline"
-                className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-amber-500/15 border-amber-500/30 text-amber-400"
-              >
-                Admin
-              </Badge>
-            );
-          }
+          const isOwner = row.original.is_owner;
+          const isAdmin = row.original.is_admin;
+          const role = isOwner ? "owner" : isAdmin ? "admin" : "member";
+          const badgeClass =
+            role === "owner"
+              ? "bg-primary/15 border-primary/30 text-primary"
+              : role === "admin"
+                ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                : "bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground";
           return (
             <Badge
               variant="outline"
-              className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground"
+              className={`font-bold tracking-wider uppercase text-[10px] rounded-md ${badgeClass}`}
             >
-              User
+              {t(`admin.users_role_${role}`)}
             </Badge>
           );
         },
@@ -469,13 +471,7 @@ export function RegisteredUsersTable() {
         },
       },
     ],
-    [
-      t,
-      deleteUser,
-      currentUserEmail,
-      setUserToEdit,
-      setIsEditDialogOpen,
-    ],
+    [t, deleteUser, currentUserEmail, setUserToEdit, setIsEditDialogOpen],
   );
 
   const table = useReactTable({
@@ -491,33 +487,36 @@ export function RegisteredUsersTable() {
 
   return (
     <div className="space-y-4">
-      {/* Section header */}
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          {t("admin.users_list_title")}
-        </h2>
-        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-          {isLoading ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <span>
-              {users.length} {t("admin.users_total")}
-            </span>
-          )}
-        </div>
-      </div>
-
       <div className="space-y-3">
         {/* Toolbar */}
         <div className="space-y-3">
           {/* Row 1: Filters */}
           <div className="flex items-center gap-2 min-w-0">
             <FilterGroup
+              value={roleFilter}
+              options={roleOptions}
+              onChange={setRoleFilter}
+              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+            />
+
+            <Separator orientation="vertical" className="mx-1 h-8" />
+
+            <FilterGroup
               value={tierFilter}
               options={tierOptions}
               onChange={setTierFilter}
-              className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+              variant="select"
+              className="flex-1 sm:flex-none"
             />
+            <div className="ml-auto text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+              {isLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <span>
+                  {users.length} {t("admin.users_total")}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Row 2: Search + actions */}

@@ -143,6 +143,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       if (success) {
         toast.success(
           t("admin.users_edit_toast_success", {
+            email: user.email,
             defaultValue: `Berhasil mengubah pengguna ${user.email}`,
           }),
         );
@@ -150,6 +151,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       } else {
         toast.error(
           t("admin.users_edit_toast_error", {
+            email: user.email,
             defaultValue: `Gagal mengubah pengguna ${user.email}`,
           }),
         );
@@ -181,6 +183,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       if (result === "added") {
         toast.success(
           t("admin.users_add_toast_success_single", {
+            email,
             defaultValue: `Berhasil menambahkan pengguna ${email}`,
           }),
         );
@@ -196,6 +199,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       } else {
         toast.error(
           t("admin.users_add_toast_error_single", {
+            email,
             defaultValue: `Gagal menambahkan pengguna ${email}`,
           }),
         );
@@ -304,30 +308,30 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                 render={({ field }) => (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Kasta
+                      {t("table.tier")}
                     </label>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                        <SelectValue placeholder="Pilih Kasta" />
+                        <SelectValue placeholder={t("admin.users_form_tier_placeholder", "Pilih Kasta")} />
                       </SelectTrigger>
                       <SelectContent className="p-1">
                         <SelectItem
                           value="free"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Free
+                          {t("admin.users_tier_free")}
                         </SelectItem>
                         <SelectItem
                           value="trial"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Trial
+                          {t("admin.users_tier_trial")}
                         </SelectItem>
                         <SelectItem
                           value="premium"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Premium
+                          {t("admin.users_tier_premium")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -341,30 +345,30 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                 render={({ field }) => (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Role
+                      {t("table.role")}
                     </label>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                        <SelectValue placeholder="Pilih Role" />
+                        <SelectValue placeholder={t("admin.users_form_role_placeholder", "Pilih Role")} />
                       </SelectTrigger>
                       <SelectContent className="p-1">
                         <SelectItem
                           value="user"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          User
+                          {t("admin.users_role_member")}
                         </SelectItem>
                         <SelectItem
                           value="admin"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Admin
+                          {t("admin.users_role_admin")}
                         </SelectItem>
                         <SelectItem
                           value="owner"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Owner
+                          {t("admin.users_role_owner")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -380,7 +384,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                 render={({ field, fieldState }) => (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Masa Berlaku Trial (Opsional)
+                      {t("admin.users_form_trial_label", "Masa Berlaku Trial (Opsional)")}
                     </label>
                     <Input
                       {...field}
@@ -405,27 +409,27 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                 render={({ field }) => (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Status Akun
+                      {t("admin.users_form_status_label", "Status Akun")}
                     </label>
                     <Select
                       value={field.value ? "blocked" : "active"}
                       onValueChange={(val) => field.onChange(val === "blocked")}
                     >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                        <SelectValue placeholder="Pilih Status" />
+                        <SelectValue placeholder={t("admin.users_form_status_placeholder", "Pilih Status")} />
                       </SelectTrigger>
                       <SelectContent className="p-1">
                         <SelectItem
                           value="active"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Aktif
+                          {t("admin.users_form_status_active", "Aktif")}
                         </SelectItem>
                         <SelectItem
                           value="blocked"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          Diblokir
+                          {t("admin.users_form_status_blocked", "Diblokir")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -438,13 +442,13 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
               <Card className="mt-4 bg-muted/50">
                 <CardContent className="space-y-2.5 text-xs text-muted-foreground">
                   <h4 className="font-bold text-foreground text-[10px] uppercase tracking-wider mb-1">
-                    Metadata Pengguna
+                    {t("admin.users_form_metadata_title", "Metadata Pengguna")}
                   </h4>
                   <Separator className="my-2" />
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Kode Akses
+                        {t("table.access_code")}
                       </span>
                       <span className="text-foreground font-mono">
                         {user.access_code ? user.access_code : "—"}
@@ -452,7 +456,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </div>
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Tipe Kode
+                        {t("table.code_type")}
                       </span>
                       <span className="text-foreground uppercase font-bold text-[10px]">
                         {user.access_code_kind ? user.access_code_kind : "—"}
@@ -460,7 +464,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </div>
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Ditebus Pada
+                        {t("table.redeemed")}
                       </span>
                       <span className="text-foreground">
                         {formatTs(user.redeemed_at)}
@@ -468,7 +472,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </div>
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Tanggal Bergabung
+                        {t("table.joined")}
                       </span>
                       <span className="text-foreground">
                         {formatTs(user.created_at)}
@@ -476,7 +480,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </div>
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Login Terakhir
+                        {t("table.last_login")}
                       </span>
                       <span className="text-foreground">
                         {formatTs(user.last_sign_in_at)}
@@ -484,7 +488,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </div>
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        Konfirmasi Email
+                        {t("admin.users_form_metadata_email_confirmed", "Konfirmasi Email")}
                       </span>
                       <span className="text-foreground">
                         {formatTs(user.email_confirmed_at)}

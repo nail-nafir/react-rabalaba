@@ -15,6 +15,7 @@ const AdminPage = lazy(() => import('@/pages/admin'));
 const AdminAssetsPage = lazy(() => import('@/pages/admin/assets'));
 const AdminUsersPage = lazy(() => import('@/pages/admin/users'));
 const AdminCodesPage = lazy(() => import('@/pages/admin/codes'));
+const AdminSystemPage = lazy(() => import('@/pages/admin/summary'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
 const AuthCallbackPage = lazy(() => import('@/pages/auth-callback'));
@@ -130,6 +131,16 @@ export const router = createBrowserRouter([
           <ErrorBoundary>
             <Suspense fallback={<PageLoader trigger />}>
               <AdminCodesPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'summary',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminSystemPage />
             </Suspense>
           </ErrorBoundary>
         ),

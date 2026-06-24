@@ -57,6 +57,7 @@ import {
   type FilterOption,
 } from "@/components/shared/filter-group";
 import { useJournalAssets } from "@/hooks/use-journal-assets";
+import { useAdminUsers } from "@/hooks/use-admin-users";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import type { JournalAssetRow } from "@/services/supabase/database.types";
 import { ASSET_TYPE_OPTIONS } from "@/constants";
@@ -232,6 +233,17 @@ export function JournalAssetsTable() {
   "use no memo";
   const { t } = useTranslation();
   const { assets, isLoading, toggleActive, removeAsset } = useJournalAssets();
+  const { users } = useAdminUsers();
+
+  const userEmailMap = useMemo(() => {
+    const map = new Map<string, string>();
+    users.forEach((u) => {
+      if (u.user_id && u.email) {
+        map.set(u.user_id, u.email);
+      }
+    });
+    return map;
+  }, [users]);
 
   // Load live asset metadata (specifically names) from Yahoo query cache / live data.
   // This populates names for seeded rows (which default to NULL in the migration script).
@@ -310,6 +322,24 @@ export function JournalAssetsTable() {
                 {formatClock(ts)}
               </div>
             </div>
+          );
+        },
+      },
+      {
+        accessorKey: "created_by",
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.added_by")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          const userId = row.original.created_by;
+          const email = userId ? userEmailMap.get(userId) : null;
+          return (
+            <span className="text-xs text-muted-foreground">
+              {email ?? "—"}
+            </span>
           );
         },
       },
@@ -407,7 +437,7 @@ export function JournalAssetsTable() {
         ),
       },
     ],
-    [t, toggleActive, removeAsset, marketDataMap],
+    [t, toggleActive, removeAsset, marketDataMap, userEmailMap],
   );
 
   const table = useReactTable({
@@ -423,22 +453,6 @@ export function JournalAssetsTable() {
 
   return (
     <div className="space-y-4">
-      {/* Section header */}
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          {t("admin.asset_list_title")}
-        </h2>
-        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-          {isLoading ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <span>
-              {activeCount} {t("admin.status_active").toLowerCase()} / {assets.length} {t("market.assets_found")}
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* List — terminal-style table */}
       <div className="space-y-3">
         {/* Toolbar */}
@@ -461,6 +475,15 @@ export function JournalAssetsTable() {
               variant="select"
               className="flex-1 sm:flex-none"
             />
+            <div className="ml-auto text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
+              {isLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <span>
+                  {activeCount} {t("admin.status_active").toLowerCase()} / {assets.length} {t("market.assets_found")}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Row 2: Search + actions */}

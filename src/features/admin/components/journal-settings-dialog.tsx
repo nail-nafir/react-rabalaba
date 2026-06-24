@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -179,14 +179,14 @@ function JournalSettingsForm({
         </div>
 
         {/* Manual Action Section - Premium UI Card */}
-        <Card className="w-full border border-border shadow-xs">
+        <Card className="w-full border border-border shadow-xs bg-muted/50">
           <CardContent className="space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="text-xs font-bold text-foreground uppercase tracking-wider">
                   {t("admin.scan_manual_title")}
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[210px]">
+                <p className="text-[10px] text-muted-foreground leading-relaxed max-w-52">
                   {t("admin.scan_manual_desc")}
                 </p>
               </div>
@@ -215,21 +215,20 @@ function JournalSettingsForm({
                 </span>
               </Button>
             </div>
-
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/50 pt-2.5">
-              <span>{t("admin.scan_last_run_title")}</span>
-              <Badge
-                variant="outline"
-                className="font-mono text-[10px] font-bold rounded-md bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400 py-0.5 px-2"
-              >
-                {settings.last_run_at
-                  ? t("admin.scan_last_run", {
-                      ago: formatAgo(settings.last_run_at, nowMs),
-                    })
-                  : t("admin.scan_never")}
-              </Badge>
-            </div>
           </CardContent>
+          <CardFooter className="flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/50 px-4 py-2.5">
+            <span>{t("admin.scan_last_run_title")}</span>
+            <Badge
+              variant="outline"
+              className="font-mono text-[10px] font-bold rounded-md bg-amber-500/15 border-amber-500/30 text-amber-400 py-0.5 px-2"
+            >
+              {settings.last_run_at
+                ? t("admin.scan_last_run", {
+                    ago: formatAgo(settings.last_run_at, nowMs),
+                  })
+                : t("admin.scan_never")}
+            </Badge>
+          </CardFooter>
         </Card>
       </div>
 

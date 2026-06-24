@@ -105,7 +105,9 @@ export function UserMenu() {
                   className="text-xs cursor-pointer"
                 >
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  {isOwner ? "Owner Console" : t("admin.menu_label", "Admin")}
+                  {isOwner
+                    ? t("admin.owner_console_title", "Dashboard Pemilik")
+                    : t("admin.admin_console_title", "Dashboard Admin")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
