@@ -55,8 +55,9 @@ import { type SignalFilterType } from "@/store/slices/filter-slice";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
-import { useMarketContext } from "@/services/queries/use-market-context";
+import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
+import { useUsContext } from "@/services/queries/use-us-context";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
 import { enrichAsset } from "@/features/engine/enrichment";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
@@ -134,13 +135,17 @@ export function AssetSignalTable() {
     isLoading: favoriteLoading,
   } = useMarketData(favoriteSymbols);
 
-  // Top-down market context (BTC regime + sentiment), shared & cached.
-  const { data: marketContext, isLoading: marketContextLoading } =
-    useMarketContext();
+  // Top-down crypto context (BTC regime + sentiment), shared & cached.
+  const { data: cryptoContext, isLoading: cryptoContextLoading } =
+    useCryptoContext();
 
   // Top-down IDX context (IHSG regime + rupiah pressure) for id-stocks —
   // subscribes to the same ^JKSE/USDIDR=X cache entries, zero extra fetches.
   const { data: idxContext, isLoading: idxContextLoading } = useIdxContext();
+
+  // Top-down US context (S&P 500 regime + VIX/DXY) for us-stocks — subscribes
+  // to the same ^GSPC cache entry; only ^VIX/DX-Y.NYB are new fetches.
+  const { data: usContext, isLoading: usContextLoading } = useUsContext();
 
   // Refresh the whole screener: invalidate every asset-data query at once
   // (all asset types + favorites share the ["asset-data", ...] key).
@@ -214,19 +219,20 @@ export function AssetSignalTable() {
 
   // Enrichment pass over the full universe (where cross-asset data exists),
   // via the shared enrichAsset chain (same one the detail dialog uses):
-  // context de-rate (BTC for crypto / IHSG for id-stock) → flow nudge
-  // (smart-money / accumulation). computeSignal stays pure & per-asset; this
-  // layer never mutates cache data.
+  // context de-rate (BTC for crypto / IHSG for id-stock / S&P 500 for us-stock)
+  // → flow nudge (smart-money / accumulation). computeSignal stays pure &
+  // per-asset; this layer never mutates cache data.
   const enrichedAssets = useMemo<UnifiedAsset[]>(() => {
     if (allAssets.length === 0) return allAssets;
     return allAssets.map((asset) =>
       enrichAsset(asset, {
-        marketContext: marketContext ?? undefined,
+        cryptoContext: cryptoContext ?? undefined,
         idxContext: idxContext ?? undefined,
+        usContext: usContext ?? undefined,
         smartMoney: smartMoney[asset.symbol],
       }),
     );
-  }, [allAssets, marketContext, idxContext, smartMoney]);
+  }, [allAssets, cryptoContext, idxContext, usContext, smartMoney]);
 
   // Tahan SATU skeleton sampai SEMUA sumber screener selesai initial load:
   // base assets (semua kategori) + market context BTC + smart-money crypto —
@@ -245,8 +251,9 @@ export function AssetSignalTable() {
   const smartMoneyGating = cryptoForSmartMoney.length > 0 && smartMoneyPending;
   const isLoading =
     baseInitialLoading ||
-    marketContextLoading ||
+    cryptoContextLoading ||
     idxContextLoading ||
+    usContextLoading ||
     smartMoneyGating;
 
   const displayFavCount = useMemo(() => {

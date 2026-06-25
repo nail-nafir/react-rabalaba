@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs",
+    "gate:compare": "node scripts/gate-compare.mjs",
     "build:edge": "esbuild src/core/edge-engine.ts --bundle --format=esm --platform=neutral --alias:@=./src --outfile=supabase/functions/auto-journal/_engine.mjs",
     "deploy:edge": "npm run build:edge && npx supabase functions deploy auto-journal --project-ref nravncsodgcxwkdaeqcw",
     "preview": "vite preview"

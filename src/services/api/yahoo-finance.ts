@@ -96,6 +96,78 @@ export async function fetchYahooChart(
   return data?.chart?.result?.[0] ?? null;
 }
 
+/** A Yahoo numeric field — quoteSummary wraps numbers as { raw, fmt }. */
+interface YahooRaw {
+  raw?: number;
+  fmt?: string;
+}
+
+/** Raw quoteSummary (v10) modules we request — a subset. Every field is
+ *  optional: Yahoo omits modules it can't serve, and the v10 endpoint is
+ *  sometimes gated behind a crumb, so all consumers must degrade gracefully. */
+export interface YahooQuoteSummaryResult {
+  summaryDetail?: {
+    trailingPE?: YahooRaw;
+    beta?: YahooRaw;
+    dividendYield?: YahooRaw;
+  };
+  defaultKeyStatistics?: {
+    trailingEps?: YahooRaw;
+    priceToBook?: YahooRaw;
+    forwardPE?: YahooRaw;
+  };
+  financialData?: {
+    debtToEquity?: YahooRaw;
+    recommendationKey?: string;
+    targetMeanPrice?: YahooRaw;
+    currentPrice?: YahooRaw;
+  };
+  recommendationTrend?: {
+    trend?: Array<{
+      period?: string;
+      strongBuy?: number;
+      buy?: number;
+      hold?: number;
+      sell?: number;
+      strongSell?: number;
+    }>;
+  };
+  calendarEvents?: {
+    earnings?: {
+      earningsDate?: YahooRaw[];
+    };
+  };
+}
+
+const QUOTE_SUMMARY_MODULES = [
+  "summaryDetail",
+  "defaultKeyStatistics",
+  "financialData",
+  "recommendationTrend",
+  "calendarEvents",
+].join(",");
+
+/**
+ * Fetch fundamentals + analyst data (quoteSummary v10) for one symbol. Slow-
+ * moving data — cache it for hours. Returns null when unavailable (the v10
+ * endpoint is gated behind a crumb on some Yahoo edges) so every caller stays
+ * graceful: no fundamentals simply means no fundamental overlay, never an error.
+ */
+export async function fetchYahooQuoteSummary(
+  symbol: string,
+): Promise<YahooQuoteSummaryResult | null> {
+  const url = `${BASE_URL}/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${QUOTE_SUMMARY_MODULES}`;
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch {
+    return null; // network/CORS/proxy down → graceful
+  }
+  if (!response.ok) return null;
+  const data = await response.json().catch(() => null);
+  return data?.quoteSummary?.result?.[0] ?? null;
+}
+
 /**
  * Search for assets by keyword (symbol or name).
  */

@@ -27,6 +27,15 @@ export { resolveTimeframePreset } from "@/constants/timeframes";
 export { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 export { runAutoJournal } from "./auto-journal-core";
 export type { AutoJournalPlan, JournalClosure } from "./auto-journal-core";
+// Index-aware journaling: the cron derives the same top-down contexts the app
+// does, then runAutoJournal enriches + gates emissions with them.
+export { enrichAsset } from "@/features/engine/enrichment";
+export { buildEngineContexts } from "./context-pipeline";
+export type { EngineContexts } from "./context-pipeline";
+export {
+  benchmarkSymbolsFor,
+  ALL_BENCHMARK_SYMBOLS,
+} from "@/constants/benchmarks";
 export {
   buildAutoJournalAlerts,
   formatAlertsForDiscord,

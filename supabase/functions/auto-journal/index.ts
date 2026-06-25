@@ -18,7 +18,9 @@ import {
   EDGE_UNIVERSE,
   DEFAULT_COMMODITY_TICKERS,
   DEFAULT_FOREX_TICKERS,
+  ALL_BENCHMARK_SYMBOLS,
   adaptYahooChart,
+  buildEngineContexts,
   runAutoJournal,
   buildAutoJournalAlerts,
   formatAlertsForDiscord,
@@ -260,14 +262,33 @@ Deno.serve(async (req: Request) => {
     universeRows = universeRows.filter((r) => isMarketOpen(r.asset_type));
   }
   const universe: string[] = universeRows.map((r) => r.symbol);
+  const universeSet = new Set(universe);
 
-  // Fetch + adapt the whole universe (batched, fault-tolerant).
-  const assets = (await mapPool(universe, FETCH_CONCURRENCY, loadAsset))
-    .filter((a) => a != null);
+  // Context/benchmark symbols (BTC / IHSG+USDIDR / S&P+VIX+DXY) drive the
+  // top-down de-rate so each asset is judged against its OWN index. Some are
+  // already journaled (BTC, USDIDR); the rest (^JKSE, ^GSPC, ^VIX, DX-Y.NYB) are
+  // CONTEXT-ONLY — fetched for the regime read but never journaled themselves.
+  const contextOnly = ALL_BENCHMARK_SYMBOLS.filter(
+    (s: string) => !universeSet.has(s),
+  );
+
+  // Fetch + adapt the universe + context-only symbols (batched, fault-tolerant).
+  const fetched = (
+    await mapPool([...universe, ...contextOnly], FETCH_CONCURRENCY, loadAsset)
+  ).filter((a) => a != null);
+  const assetBySymbol = new Map(fetched.map((a) => [a.symbol, a]));
+
+  // Only the journaled universe is eligible for emit/sync; context-only
+  // benchmarks are excluded so an index can never become a journaled trade.
+  const assets = fetched.filter((a) => universeSet.has(a.symbol));
+
+  // Top-down contexts, computed once (same derive* the app uses).
+  const contexts = buildEngineContexts(assetBySymbol);
 
   // Pure decision core (unit-tested): what to INSERT and what to CLOSE.
   const { inserts, closures } = runAutoJournal(assets, openRows ?? [], {
     recentClosed: recentClosed ?? [],
+    contexts,
   });
 
   // Apply EMITs. 23505 = an overlapping run already inserted → non-fatal.

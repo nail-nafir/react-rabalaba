@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMarketData } from "./use-yahoo-data";
-import { useMarketContext } from "./use-market-context";
-import { applyMarketContext } from "@/features/engine/market-context";
+import { useCryptoContext } from "./use-crypto-context";
+import { applyCryptoContext } from "@/features/engine/crypto-context";
 import { useScreenerUniverse } from "@/hooks/use-screener-universe";
 import type { Breadth } from "@/types/market";
 
@@ -21,7 +21,7 @@ export function useMarketMomentum(): {
   // handles the gate + fallback). Same per-symbol cache the screener uses.
   const { crypto: cryptoTickers } = useScreenerUniverse();
   const { data: crypto, isLoading } = useMarketData(cryptoTickers);
-  const { data: ctx } = useMarketContext();
+  const { data: ctx } = useCryptoContext();
 
   const momentum = useMemo<Breadth | null>(() => {
     if (!crypto || crypto.length === 0) return null;
@@ -31,7 +31,7 @@ export function useMarketMomentum(): {
     for (const asset of crypto) {
       if (!asset.outlook) continue;
       const outlook = ctx
-        ? applyMarketContext(asset.outlook, asset, ctx)
+        ? applyCryptoContext(asset.outlook, asset, ctx)
         : asset.outlook;
       total += 1;
       if (outlook.trend === "bullish") bullish += 1;

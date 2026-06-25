@@ -12,7 +12,7 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
-import { useMarketContext } from "@/services/queries/use-market-context";
+import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
 import { useMarketMomentum } from "@/services/queries/use-market-momentum";
 import { MARKET_INDICES } from "@/constants/assets";
@@ -42,7 +42,7 @@ export function MarketSummaryRow() {
     isError: indicesError,
     refetch: refetchIndices,
   } = useMarketData(MARKET_INDICES.map((i) => i.symbol));
-  const { data: marketContext, isLoading: contextLoading, refetch: refetchContext } = useMarketContext();
+  const { data: marketContext, isLoading: contextLoading, refetch: refetchContext } = useCryptoContext();
   const { isLoading: dominanceLoading, refetch: refetchDominance } = useCryptoDominance();
   const { momentum } = useMarketMomentum();
 

@@ -65,26 +65,26 @@ function makeCtx(overrides = {}) {
   };
 }
 
-test("deriveRiskState: BTC score drives risk on/off, sentiment breaks ties", async () => {
-  const { deriveRiskState } = await loadModule(
-    "/src/features/engine/market-context.ts",
+test("deriveCryptoRiskState: BTC score drives risk on/off, sentiment breaks ties", async () => {
+  const { deriveCryptoRiskState } = await loadModule(
+    "/src/features/engine/crypto-context.ts",
   );
-  assert.equal(deriveRiskState(-0.5), "risk_off");
-  assert.equal(deriveRiskState(0.5), "risk_on");
-  assert.equal(deriveRiskState(0.05), "neutral");
+  assert.equal(deriveCryptoRiskState(-0.5), "risk_off");
+  assert.equal(deriveCryptoRiskState(0.5), "risk_on");
+  assert.equal(deriveCryptoRiskState(0.05), "neutral");
   // BTC indecisive → sentiment extremes break the tie
-  assert.equal(deriveRiskState(0.1, 15), "risk_off");
-  assert.equal(deriveRiskState(0.1, 90), "risk_on");
+  assert.equal(deriveCryptoRiskState(0.1, 15), "risk_off");
+  assert.equal(deriveCryptoRiskState(0.1, 90), "risk_on");
 });
 
-test("applyMarketContext de-rates a crypto LONG that fights risk-off (immutably)", async () => {
-  const { applyMarketContext } = await loadModule(
-    "/src/features/engine/market-context.ts",
+test("applyCryptoContext de-rates a crypto LONG that fights risk-off (immutably)", async () => {
+  const { applyCryptoContext } = await loadModule(
+    "/src/features/engine/crypto-context.ts",
   );
   const outlook = makeOutlook({ signal: "long", directionScore: 0.8, strength: 80, tier: "A" });
   const ctx = makeCtx({ riskState: "risk_off", btcDirectionScore: -0.6 });
 
-  const out = applyMarketContext(outlook, { assetType: "crypto", symbol: "SOL-USD" }, ctx);
+  const out = applyCryptoContext(outlook, { assetType: "crypto", symbol: "SOL-USD" }, ctx);
 
   assert.ok(out.directionScore < 0.8, "directionScore de-rated");
   assert.ok(out.strength < 80, "strength de-rated");
@@ -94,29 +94,29 @@ test("applyMarketContext de-rates a crypto LONG that fights risk-off (immutably)
   assert.equal(outlook.reasons.warnings.length, 0);
 });
 
-test("applyMarketContext leaves aligned, BTC-self, and non-crypto unchanged", async () => {
-  const { applyMarketContext } = await loadModule(
-    "/src/features/engine/market-context.ts",
+test("applyCryptoContext leaves aligned, BTC-self, and non-crypto unchanged", async () => {
+  const { applyCryptoContext } = await loadModule(
+    "/src/features/engine/crypto-context.ts",
   );
   const longOutlook = makeOutlook({ signal: "long" });
 
   // Aligned: LONG during risk-on → untouched.
   const ctxOn = makeCtx({ riskState: "risk_on", btcDirectionScore: 0.6 });
   assert.equal(
-    applyMarketContext(longOutlook, { assetType: "crypto", symbol: "SOL-USD" }, ctxOn).strength,
+    applyCryptoContext(longOutlook, { assetType: "crypto", symbol: "SOL-USD" }, ctxOn).strength,
     80,
   );
 
   // BTC itself defines the context → untouched even in risk-off.
   const ctxOff = makeCtx({ riskState: "risk_off" });
   assert.equal(
-    applyMarketContext(longOutlook, { assetType: "crypto", symbol: "BTC-USD" }, ctxOff).strength,
+    applyCryptoContext(longOutlook, { assetType: "crypto", symbol: "BTC-USD" }, ctxOff).strength,
     80,
   );
 
   // Non-crypto isn't BTC beta → untouched.
   assert.equal(
-    applyMarketContext(longOutlook, { assetType: "us-stock", symbol: "AAPL" }, ctxOff).strength,
+    applyCryptoContext(longOutlook, { assetType: "us-stock", symbol: "AAPL" }, ctxOff).strength,
     80,
   );
 });

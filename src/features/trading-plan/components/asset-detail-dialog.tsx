@@ -7,7 +7,7 @@ import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { toast } from "sonner";
 import { runBacktest } from "@/features/engine/backtest";
 import { calibrateConfidence } from "@/features/engine/calibration";
-import { fightsMarket } from "@/features/engine/market-context";
+import { fightsBenchmark } from "@/features/engine/benchmark-derate";
 import { isNeutralPositioning } from "@/features/engine/smart-money";
 import {
   isNeutralFlow,
@@ -33,8 +33,10 @@ import {
 } from "@/components/ui/card";
 import { useAppSelector, useUIActions } from "@/store/hooks";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
-import { useMarketContext } from "@/services/queries/use-market-context";
+import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
+import { useUsContext } from "@/services/queries/use-us-context";
+import { useFundamentals } from "@/services/queries/use-fundamentals";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
 import { useQueryClient } from "@tanstack/react-query";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -92,9 +94,14 @@ export function AssetDetailDialog() {
 
   // Apply the same enrichment the screener uses (shared enrichAsset chain),
   // so conviction / tier shown here is consistent: context de-rate (BTC for
-  // crypto / IHSG for id-stock) + flow nudge (smart-money / accumulation).
-  const { data: marketContext } = useMarketContext();
+  // crypto / IHSG for id-stock / S&P 500 for us-stock) + flow nudge
+  // (smart-money / accumulation).
+  const { data: marketContext } = useCryptoContext();
   const { data: idxContext } = useIdxContext();
+  const { data: usContext } = useUsContext();
+  // Fundamentals/analyst overlay (stocks only) — one extra fetch for the open
+  // asset; cached a day. Null when unavailable (graceful).
+  const { data: fundamentals } = useFundamentals(asset?.symbol, asset?.assetType);
   const smAssets = useMemo(() => (asset ? [asset] : []), [asset]);
   const { data: smartMoneyMap, isUnavailable: smartMoneyUnavailable } =
     useSmartMoney(smAssets);
@@ -119,15 +126,19 @@ export function AssetDetailDialog() {
     () =>
       asset
         ? enrichAsset(asset, {
-            marketContext: marketContext ?? undefined,
+            cryptoContext: marketContext ?? undefined,
             idxContext: idxContext ?? undefined,
+            usContext: usContext ?? undefined,
             smartMoney,
+            fundamentals: fundamentals ?? undefined,
           })
         : undefined,
-    [asset, marketContext, idxContext, smartMoney],
+    [asset, marketContext, idxContext, usContext, smartMoney, fundamentals],
   );
   const outlook = enriched?.outlook ?? undefined;
   const accumulation = enriched?.accumulation;
+  const relativeStrength = enriched?.relativeStrength;
+  const assetFundamentals = enriched?.fundamentals;
   const tradingPlan = asset?.tradingPlan;
 
   // Normalized OHLC candles (shared by the chart, backtest and share card).
@@ -517,28 +528,33 @@ export function AssetDetailDialog() {
                     <Card className="border border-border bg-muted/50">
                       <CardContent className="space-y-1">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Market Context
+                          {t("dialog.crypto_context")}
                         </CardTitle>
                         <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                          BTC is{" "}
-                          {marketContext.riskState === "risk_on"
-                            ? "risk-on"
-                            : marketContext.riskState === "risk_off"
-                              ? "risk-off"
-                              : "neutral"}{" "}
-                          (score {marketContext.btcDirectionScore.toFixed(2)}),{" "}
-                          {marketContext.riskState === "risk_off"
-                            ? "smart money is stepping back"
-                            : "risk appetite is strong"}
-                          . Most alt coins are leveraged beta to BTC, so{" "}
-                          {t(SIGNAL_LABEL_KEYS[outlook.signal])} here is{" "}
-                          {(outlook.signal === "long" &&
-                            marketContext.riskState === "risk_off") ||
-                          (outlook.signal === "short" &&
-                            marketContext.riskState === "risk_on")
-                            ? "fighting the current"
-                            : "aligned with the market flow"}
-                          .
+                          {t("dialog.crypto_context_desc", {
+                            riskState: t(
+                              marketContext.riskState === "risk_off"
+                                ? "dialog.crypto_risk_off"
+                                : marketContext.riskState === "risk_on"
+                                  ? "dialog.crypto_risk_on"
+                                  : "dialog.crypto_risk_neutral",
+                            ),
+                            score: marketContext.btcDirectionScore.toFixed(2),
+                            flow: t(
+                              marketContext.riskState === "risk_off"
+                                ? "dialog.crypto_flow_risk_off"
+                                : "dialog.crypto_flow_risk_on",
+                            ),
+                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
+                            alignment: t(
+                              fightsBenchmark(
+                                outlook.signal,
+                                marketContext.riskState,
+                              )
+                                ? "dialog.crypto_fighting"
+                                : "dialog.crypto_aligned",
+                            ),
+                          })}
                         </CardDescription>
                       </CardContent>
                     </Card>
@@ -572,9 +588,47 @@ export function AssetDetailDialog() {
                             ),
                             signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
                             alignment: t(
-                              fightsMarket(outlook.signal, idxContext.riskState)
+                              fightsBenchmark(
+                                outlook.signal,
+                                idxContext.riskState,
+                              )
                                 ? "dialog.idx_fighting"
                                 : "dialog.idx_aligned",
+                            ),
+                          })}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                {/* US context: how this setup sits vs the S&P-500-led regime. */}
+                {usContext &&
+                  outlook.signal !== "neutral" &&
+                  asset?.assetType === "us-stock" && (
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-1">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.us_context")}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                          {t("dialog.us_context_desc", {
+                            riskState: t(
+                              usContext.riskState === "risk_off"
+                                ? "dialog.us_risk_off"
+                                : usContext.riskState === "risk_on"
+                                  ? "dialog.us_risk_on"
+                                  : "dialog.us_risk_neutral",
+                            ),
+                            score: usContext.spxDirectionScore.toFixed(2),
+                            vix:
+                              typeof usContext.vixLevel === "number"
+                                ? `, VIX ${usContext.vixLevel.toFixed(1)}`
+                                : "",
+                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
+                            alignment: t(
+                              fightsBenchmark(outlook.signal, usContext.riskState)
+                                ? "dialog.us_fighting"
+                                : "dialog.us_aligned",
                             ),
                           })}
                         </CardDescription>
@@ -776,6 +830,152 @@ export function AssetDetailDialog() {
                           days: accumulation.daysAnalyzed,
                         })}
                       </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Relative strength: excess return vs the asset's OWN index
+                    (id→IHSG, us→S&P, crypto→BTC). Leadership confirms a trade. */}
+                {relativeStrength && (
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.rs_title", {
+                            benchmark: relativeStrength.benchmark ?? "Benchmark",
+                          })}
+                        </CardTitle>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                            relativeStrength.label === "outperform"
+                              ? badgeClass(BADGE.positive)
+                              : relativeStrength.label === "underperform"
+                                ? badgeClass(BADGE.negative)
+                                : "text-muted-foreground border-muted-foreground/30",
+                          )}
+                        >
+                          {t(`dialog.rs_${relativeStrength.label}`)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-stretch gap-3">
+                        {(["r1w", "r1m"] as const).map((key) => {
+                          const v = relativeStrength[key];
+                          return (
+                            <Card key={key} className="flex-1 border-border border">
+                              <CardContent>
+                                <div
+                                  className={cn(
+                                    "text-sm font-bold tabular-nums tracking-tight",
+                                    typeof v !== "number"
+                                      ? "text-muted-foreground"
+                                      : v > 0
+                                        ? PALETTE.positive.text
+                                        : v < 0
+                                          ? PALETTE.negative.text
+                                          : "text-muted-foreground",
+                                  )}
+                                >
+                                  {typeof v === "number"
+                                    ? `${v > 0 ? "+" : ""}${v.toFixed(1)}%`
+                                    : "—"}
+                                </div>
+                                <CardDescription className="text-[10px] text-muted-foreground">
+                                  {t(key === "r1w" ? "dialog.rs_1w" : "dialog.rs_1m")}
+                                </CardDescription>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Fundamentals + analyst overlay (stocks only). Valuation,
+                    consensus, and the next earnings date — context, not a
+                    trigger. Hidden when Yahoo's v10 endpoint is unavailable. */}
+                {assetFundamentals && (
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.fund_title")}
+                        </CardTitle>
+                        {typeof assetFundamentals.analystScore === "number" && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                              assetFundamentals.analystScore > 0.1
+                                ? badgeClass(BADGE.positive)
+                                : assetFundamentals.analystScore < -0.1
+                                  ? badgeClass(BADGE.negative)
+                                  : "text-muted-foreground border-muted-foreground/30",
+                            )}
+                          >
+                            {assetFundamentals.recommendationKey ??
+                              t(
+                                assetFundamentals.analystScore > 0
+                                  ? "dialog.fund_bullish"
+                                  : "dialog.fund_bearish",
+                              )}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-stretch gap-3">
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                              {typeof assetFundamentals.trailingPE === "number"
+                                ? assetFundamentals.trailingPE.toFixed(1)
+                                : "—"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              P/E
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                              {typeof assetFundamentals.priceToBook === "number"
+                                ? assetFundamentals.priceToBook.toFixed(1)
+                                : "—"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              P/B
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                        <Card className="flex-1 border-border border">
+                          <CardContent>
+                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                              {typeof assetFundamentals.debtToEquity === "number"
+                                ? `${(assetFundamentals.debtToEquity / 100).toFixed(1)}×`
+                                : "—"}
+                            </div>
+                            <CardDescription className="text-[10px] text-muted-foreground">
+                              D/E
+                            </CardDescription>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      {typeof assetFundamentals.nextEarningsMs === "number" && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("dialog.fund_next_earnings", {
+                            date: new Date(
+                              assetFundamentals.nextEarningsMs,
+                            ).toLocaleDateString(),
+                          })}
+                          {typeof assetFundamentals.analystCount === "number"
+                            ? ` • ${t("dialog.fund_analysts", {
+                                count: assetFundamentals.analystCount,
+                              })}`
+                            : ""}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 )}

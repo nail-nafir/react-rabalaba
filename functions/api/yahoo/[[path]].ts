@@ -1,38 +1,119 @@
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+/** Yahoo's v10 quoteSummary (fundamentals/analyst) is gated behind a per-session
+ *  cookie + matching "crumb" token — everything else (v8 chart, v1 search) is
+ *  open. We fetch a cookie/crumb pair once, cache it per isolate, and refresh on
+ *  a 401. Cache is in-memory (warm isolate); a cold start just re-fetches. */
+let crumbCache: { cookie: string; crumb: string; at: number } | null = null;
+const CRUMB_TTL_MS = 30 * 60 * 1000;
+
+/** Join Set-Cookie entries into a `name=value; name=value` Cookie header. */
+function cookieHeaderFrom(res: Response): string {
+  const getSetCookie = (res.headers as unknown as {
+    getSetCookie?: () => string[];
+  }).getSetCookie;
+  const list = getSetCookie
+    ? getSetCookie.call(res.headers)
+    : res.headers.get("set-cookie")
+      ? [res.headers.get("set-cookie") as string]
+      : [];
+  return list
+    .map((c) => c.split(";")[0])
+    .filter(Boolean)
+    .join("; ");
+}
+
+/** Obtain (and cache) a matching cookie + crumb pair. */
+async function getCrumb(force = false): Promise<{ cookie: string; crumb: string } | null> {
+  if (
+    !force &&
+    crumbCache &&
+    Date.now() - crumbCache.at < CRUMB_TTL_MS &&
+    crumbCache.crumb
+  ) {
+    return crumbCache;
+  }
+  try {
+    // 1) Seed a session cookie (A1/A3). fc.yahoo.com may 404 but still sets it.
+    const seed = await fetch("https://fc.yahoo.com/", {
+      headers: { "User-Agent": UA },
+    });
+    const cookie = cookieHeaderFrom(seed);
+    if (!cookie) return null;
+    // 2) Exchange the cookie for a crumb (plain-text body).
+    const crumbRes = await fetch(
+      "https://query1.finance.yahoo.com/v1/test/getcrumb",
+      { headers: { "User-Agent": UA, Cookie: cookie } },
+    );
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb || crumb.includes("<")) return null; // HTML = failed, not a crumb
+    crumbCache = { cookie, crumb, at: Date.now() };
+    return crumbCache;
+  } catch {
+    return null;
+  }
+}
+
 export const onRequest: PagesFunction = async (context) => {
   const url = new URL(context.request.url);
-  const yahooUrl = `https://query1.finance.yahoo.com${url.pathname.replace('/api/yahoo', '')}${url.search}`;
+  const path = url.pathname.replace("/api/yahoo", "");
+  const needsCrumb = path.includes("/quoteSummary");
 
-  const modifiedHeaders = new Headers(context.request.headers);
-  
-  // Yahoo hates these headers from browsers
-  modifiedHeaders.delete('Origin');
-  modifiedHeaders.delete('Referer');
-  
-  // Set a believable User-Agent
-  modifiedHeaders.set(
-    'User-Agent',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-  );
+  const baseHeaders = new Headers(context.request.headers);
+  // Yahoo hates these headers from browsers.
+  baseHeaders.delete("Origin");
+  baseHeaders.delete("Referer");
+  baseHeaders.set("User-Agent", UA);
+
+  const body =
+    context.request.method !== "GET" && context.request.method !== "HEAD"
+      ? await context.request.blob()
+      : null;
+
+  /** Build the upstream URL + headers, optionally with crumb credentials. */
+  const upstream = (creds: { cookie: string; crumb: string } | null) => {
+    const u = new URL(`https://query1.finance.yahoo.com${path}`);
+    u.search = url.search;
+    const headers = new Headers(baseHeaders);
+    if (creds) {
+      u.searchParams.set("crumb", creds.crumb);
+      headers.set("Cookie", creds.cookie); // overwrite any app cookie
+    }
+    return { url: u.toString(), headers };
+  };
 
   try {
-    const response = await fetch(yahooUrl, {
+    let creds = needsCrumb ? await getCrumb() : null;
+    let target = upstream(creds);
+    let response = await fetch(target.url, {
       method: context.request.method,
-      headers: modifiedHeaders,
-      body: context.request.method !== 'GET' && context.request.method !== 'HEAD' 
-        ? await context.request.blob() 
-        : null,
+      headers: target.headers,
+      body,
     });
 
-    // Return the response back to our app
+    // Stale/invalid crumb → refresh once and retry.
+    if (needsCrumb && response.status === 401) {
+      creds = await getCrumb(true);
+      if (creds) {
+        target = upstream(creds);
+        response = await fetch(target.url, {
+          method: context.request.method,
+          headers: target.headers,
+          body,
+        });
+      }
+    }
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: response.headers,
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to proxy to Yahoo' }), {
+  } catch {
+    return new Response(JSON.stringify({ error: "Failed to proxy to Yahoo" }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 };

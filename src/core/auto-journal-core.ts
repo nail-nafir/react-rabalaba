@@ -12,6 +12,11 @@ import {
   computePnl,
   type FollowCandle,
 } from "@/features/follow-trade/lib/follow-trade-model";
+import { enrichAsset } from "@/features/engine/enrichment";
+import {
+  passesEmissionGate,
+  type EngineContexts,
+} from "./context-pipeline";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import {
   followedTradeToInsert,
@@ -59,6 +64,11 @@ export interface RunAutoJournalOptions {
   now?: number;
   /** Recently-closed trades, used to enforce the re-entry cooldown. */
   recentClosed?: RecentClose[];
+  /** Top-down contexts (BTC/IHSG/S&P). When supplied, each emission candidate
+   *  is enriched (index-aware de-rate) and run through the emission gate so a
+   *  weak counter-trend call against its own index is NOT journaled. Omitted →
+   *  legacy behavior (emit the raw per-asset signal, no context). */
+  contexts?: EngineContexts;
 }
 
 /** A quote older than this is STALE — a hours-old cached/forward-filled snapshot,
@@ -105,14 +115,23 @@ export function runAutoJournal(
   };
 
   // EMIT: a fresh long/short with a plan, and no open trade for the symbol yet.
-  // Guarded: skip STALE snapshots (the wrong-direction bug) and symbols still in
-  // their post-close re-entry cooldown (the duplicate-loser churn).
+  // Guarded: skip STALE snapshots (the wrong-direction bug), counter-trend calls
+  // that don't clear the emission gate (don't trade against the index), and
+  // symbols still in their post-close re-entry cooldown (duplicate-loser churn).
   const inserts: JournalTradeInsert[] = [];
   for (const asset of assets) {
     if (openSymbols.has(asset.symbol)) continue;
     if (isStaleQuote(asset, now)) continue;
-    const trade = buildFollowedTrade(asset);
+    // Enrich with the asset's OWN-index context so the journaled call is
+    // index-aware: the de-rate the app shows now actually shapes what's called.
+    const enriched = options.contexts
+      ? enrichAsset(asset, options.contexts)
+      : asset;
+    const trade = buildFollowedTrade(enriched);
     if (!trade) continue;
+    if (options.contexts && !passesEmissionGate(trade, options.contexts)) {
+      continue;
+    }
     if (inCooldown(trade.symbol, trade.signal)) continue;
     inserts.push(followedTradeToInsert(trade));
   }

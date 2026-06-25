@@ -100,9 +100,9 @@ export const RISK_RULES = {
   MEDIUM_MIN_CONFIDENCE: 50,
 };
 
-/** Top-down market-context gating. Most alts are leveraged beta to BTC, so a
+/** Top-down crypto-context gating. Most alts are leveraged beta to BTC, so a
  *  setup that fights the BTC-led risk state is de-rated (not hidden). */
-export const MARKET_CONTEXT = {
+export const CRYPTO_CONTEXT = {
   /** |btcDirectionScore| at/above which BTC is decisively risk-on / risk-off. */
   RISK_SCORE_THRESHOLD: 0.3,
   /** Multiplier applied to directionScore & strength when a setup fights the
@@ -113,7 +113,7 @@ export const MARKET_CONTEXT = {
   EXTREME_GREED: 80,
 };
 
-/** Top-down IDX-context gating. Mirrors MARKET_CONTEXT with IHSG in BTC's
+/** Top-down IDX-context gating. Mirrors CRYPTO_CONTEXT with IHSG in BTC's
  *  seat: .JK stocks are beta to IHSG flow, so a setup that fights the
  *  IHSG-led risk state is de-rated (not hidden). */
 export const IDX_CONTEXT = {
@@ -126,6 +126,80 @@ export const IDX_CONTEXT = {
    *  + = rupiah weakening = foreign-outflow pressure (risk-off). The rupiah
    *  is ONLY a tiebreak; IHSG stays the primary driver. */
   RUPIAH_PRESSURE_1W_PCT: 1.0,
+};
+
+/** Top-down US-context gating. Mirrors IDX_CONTEXT with the S&P 500 in IHSG's
+ *  seat: US stocks are beta to the index, so a setup that fights the S&P-led
+ *  risk state is de-rated (not hidden). When the S&P is indecisive, VIX and the
+ *  Dollar Index break the tie (both are ONLY tiebreaks; the S&P stays primary). */
+export const US_CONTEXT = {
+  /** |spxDirectionScore| at/above which the S&P 500 is decisively risk-on/off. */
+  RISK_SCORE_THRESHOLD: 0.3,
+  /** Multiplier applied to directionScore & strength when a setup fights the
+   *  prevailing US risk state. <1 = de-rate. */
+  COUNTER_MARKET_DERATE: 0.6,
+  /** VIX spot level at/above which fear is elevated (risk-off lean). The classic
+   *  "complacency below 20, fear above" line. */
+  VIX_RISK_OFF_LEVEL: 20,
+  /** VIX spot level at/below which complacency reigns (risk-on lean). */
+  VIX_RISK_ON_LEVEL: 15,
+  /** |VIX ~1-week % change| that confirms a fear move when the level is mid-range
+   *  (+ = fear rising = risk-off). */
+  VIX_PRESSURE_1W_PCT: 10.0,
+  /** |DXY ~1-week % change| that breaks the tie (+ = USD strengthening =
+   *  risk-off pressure for equities/risk assets). */
+  DXY_PRESSURE_1W_PCT: 1.0,
+};
+
+/** Fundamentals + analyst overlay for stocks (us-stock & id-stock). Conservative
+ *  by design: event-risk de-rate near earnings, a small analyst-consensus nudge,
+ *  and valuation caution flags. Never flips a signal. */
+export const FUNDAMENTALS = {
+  /** Trading days BEFORE the next earnings date that count as the blackout
+   *  window — event risk is high, so a directional call is de-rated + flagged. */
+  EARNINGS_BLACKOUT_DAYS: 5,
+  /** Multiplier applied to directionScore & strength inside the blackout. */
+  EARNINGS_DERATE: 0.85,
+  /** Max conviction multiplier from analyst consensus (±). Small — analysts lag
+   *  price and are a soft confirmation, not a driver. */
+  ANALYST_MAX_ADJ: 0.08,
+  /** |analystScore| below this is treated as no consensus (no nudge). */
+  ANALYST_MIN_SCORE: 0.2,
+  /** Debt/equity (as Yahoo reports it, ~percent) above which a caution flag is
+   *  raised on a LONG. Approximate — phrased as caution, not a hard rule. */
+  HIGH_DEBT_TO_EQUITY: 200,
+  /** Trailing P/E above which valuation is flagged rich on a LONG. */
+  HIGH_TRAILING_PE: 60,
+};
+
+/** Relative strength vs the asset's own benchmark (id→IHSG, us→S&P, crypto→BTC).
+ *  Excess return = asset window return − benchmark window return. A leader
+ *  (outperforming in an aligned direction) gets a small conviction boost; a
+ *  laggard gets dampened. Bounded and secondary — it never flips a signal. */
+export const RELATIVE_STRENGTH = {
+  /** |excess %| within this band over the chosen window reads as "inline"
+   *  (no meaningful leadership either way). */
+  INLINE_BAND_PCT: 1.0,
+  /** Excess % that maps to a full-magnitude (±1) relative-strength score —
+   *  beyond this the nudge saturates. */
+  SCALE_PCT: 5.0,
+  /** Max conviction multiplier from relative strength (±). Smaller than flow
+   *  (ACCUMULATION/SMART_MONEY) because it's a secondary, slower read. */
+  MAX_CONVICTION_ADJ: 0.1,
+};
+
+/** Auto-journal emission gate. The cron now enriches each candidate with its
+ *  top-down context (BTC/IHSG/S&P) BEFORE emitting, so a call that fights its
+ *  benchmark is de-rated first. This gate then decides whether such a
+ *  counter-trend call is strong enough to still be journaled. */
+export const JOURNAL_EMISSION = {
+  /** When a journaled call fights its benchmark risk state, only emit it if its
+   *  POST-context strength still clears this bar — i.e. the setup was strong
+   *  enough that even after the de-rate it remains a high-conviction call.
+   *  Counter-trend calls below this are skipped (don't trade against the index).
+   *  Aligned calls and classes with no benchmark (commodity/forex) are
+   *  unaffected. Tunable via `npm run gate:compare`. */
+  COUNTER_TREND_MIN_STRENGTH: 60,
 };
 
 /** Accumulation/distribution flow scoring for equities (US & ID stocks).

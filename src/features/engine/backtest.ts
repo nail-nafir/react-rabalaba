@@ -1,6 +1,6 @@
 import type { AssetType, SignalDirection, SignalTier } from "@/types/asset";
 import type { MarketRegime } from "@/types/market";
-import { computeSignal } from "./signals";
+import { computeSignal, type Outlook } from "./signals";
 import { computeTradingPlan } from "./trading-plan";
 import { buildSignalSeriesFromCandles } from "@/services/adapters/yahoo-candles";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
@@ -209,9 +209,22 @@ export function runBacktest(
     assetType?: AssetType;
     timeframe?: TimeframePresetKey;
     exitMode?: ExitMode;
+    /** Optional gate: return false to BLOCK an otherwise-valid entry. Lets a
+     *  harness model the journal's context emission-gate without touching the
+     *  exit model. Receives the entry signal + the decision bar. */
+    entryFilter?: (args: {
+      outlook: Outlook;
+      barIndex: number;
+      timestamp: number;
+    }) => boolean;
   } = {},
 ): { metrics: BacktestMetrics; trades: BacktestTrade[] } {
-  const { assetType, timeframe = "swing", exitMode = "scaleOut" } = options;
+  const {
+    assetType,
+    timeframe = "swing",
+    exitMode = "scaleOut",
+    entryFilter,
+  } = options;
   const warmup = TIMEFRAME_PRESETS[timeframe].signalProfile.minCandles;
   const costRate = costRateFor(assetType);
 
@@ -240,7 +253,10 @@ export function runBacktest(
     }
 
     // 2. Enter a new position while flat, filled at the next bar's open.
-    if (!open && outlook.signal !== "neutral") {
+    const entryAllowed =
+      !entryFilter ||
+      entryFilter({ outlook, barIndex: i, timestamp: candles[i].timestamp });
+    if (!open && outlook.signal !== "neutral" && entryAllowed) {
       const plan = computeTradingPlan(
         outlook,
         nextBar.open,

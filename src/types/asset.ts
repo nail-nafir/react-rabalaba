@@ -73,12 +73,40 @@ export interface Accumulation {
   reliable: boolean;
 }
 
-/** Performance vs the IHSG benchmark in percentage points (display-only,
- *  Phase 2). r-windows are trading days (1w = 5, 1m ≈ 21). */
+/** Excess performance vs the asset's OWN benchmark in percentage points
+ *  (id-stock → IHSG, us-stock → S&P 500, crypto → BTC). r-windows are trading
+ *  days (1w = 5, 1m ≈ 21). Drives a bounded conviction nudge + display. */
 export interface RelativeStrength {
+  /** Asset 1-week % return minus the benchmark's. + = outperforming. */
   r1w?: number;
+  /** Asset 1-month % return minus the benchmark's. + = outperforming. */
   r1m?: number;
   label: RelativeStrengthLabel;
+  /** Benchmark display name (e.g. "IHSG", "S&P 500", "BTC"). */
+  benchmark?: string;
+}
+
+/** Fundamentals + analyst overlay for stocks (us-stock & id-stock), from Yahoo
+ *  quoteSummary (v10). Slow-moving, fetched per-asset and cached for hours; all
+ *  fields optional because the endpoint is gated on some Yahoo edges. Used for
+ *  conservative warnings + a bounded analyst nudge — never flips a signal. */
+export interface Fundamentals {
+  /** Trailing price/earnings. */
+  trailingPE?: number;
+  /** Price/book. */
+  priceToBook?: number;
+  /** Debt/equity as Yahoo reports it (a percentage, e.g. 47.6 = 0.476×). */
+  debtToEquity?: number;
+  /** Analyst consensus score [-1..1]: + bullish, from the latest
+   *  recommendationTrend period (strongBuy..strongSell weighted). */
+  analystScore?: number;
+  /** Number of analysts behind analystScore. */
+  analystCount?: number;
+  /** Yahoo's recommendationKey, e.g. "buy", "hold". */
+  recommendationKey?: string;
+  /** Next earnings date (epoch ms), when known — drives the pre-earnings
+   *  blackout. */
+  nextEarningsMs?: number;
 }
 
 /** OHLC-only speculative/"gorengan" heuristics for Indonesian stocks
@@ -128,8 +156,11 @@ export interface UnifiedAsset {
   smartMoney?: SmartMoney;
   /** OHLCV accumulation/distribution read (equities only), when derivable. */
   accumulation?: Accumulation;
-  /** Return vs IHSG (id-stock only, display-only, Phase 2). */
+  /** Excess return vs the asset's own benchmark (id→IHSG, us→S&P, crypto→BTC),
+   *  when derivable. */
   relativeStrength?: RelativeStrength;
+  /** Fundamentals + analyst overlay (stocks only), when available. */
+  fundamentals?: Fundamentals;
   /** Speculative/"gorengan" risk heuristics (id-stock only, Phase 2). */
   speculativeRisk?: SpeculativeRisk;
 }

@@ -204,8 +204,8 @@ test("enrichAsset us-stock: accumulation applies (general flow read, not id-only
     ...candleSeries(flowCandles),
   });
 
-  // marketContext (BTC) is supplied to prove it never touches a US stock.
-  const out = enrichAsset(asset, { marketContext: makeMarketCtx() });
+  // cryptoContext (BTC) is supplied to prove it never touches a US stock.
+  const out = enrichAsset(asset, { cryptoContext: makeMarketCtx() });
 
   assert.ok(out.accumulation, "flow read attached to a US stock");
   assert.equal(out.accumulation.daysAnalyzed, 21);
@@ -216,14 +216,14 @@ test("enrichAsset us-stock: accumulation applies (general flow read, not id-only
     out.outlook.reasons.warnings.some((w) => w.includes("Accumulation flow")),
     "flow nudge ran for the US stock",
   );
-  // No crypto cross-wiring: BTC market-context must not attach to a US stock.
+  // No crypto cross-wiring: BTC crypto-context must not attach to a US stock.
   assert.equal(out.smartMoney, undefined);
 });
 
-test("enrichAsset crypto: result is identical to the legacy applyMarketContext → applySmartMoney chain", async () => {
+test("enrichAsset crypto: result is identical to the legacy applyCryptoContext → applySmartMoney chain", async () => {
   const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
-  const { applyMarketContext } = await loadModule(
-    "/src/features/engine/market-context.ts",
+  const { applyCryptoContext } = await loadModule(
+    "/src/features/engine/crypto-context.ts",
   );
   const { applySmartMoney } = await loadModule(
     "/src/features/engine/smart-money.ts",
@@ -244,15 +244,15 @@ test("enrichAsset crypto: result is identical to the legacy applyMarketContext �
     fundingRate: 0.0001,
   };
 
-  const out = enrichAsset(asset, { marketContext: ctx, smartMoney: sm });
-  const legacy = applySmartMoney(applyMarketContext(asset.outlook, asset, ctx), sm);
+  const out = enrichAsset(asset, { cryptoContext: ctx, smartMoney: sm });
+  const legacy = applySmartMoney(applyCryptoContext(asset.outlook, asset, ctx), sm);
 
   assert.deepEqual(out.outlook, legacy);
   assert.equal(out.smartMoney, sm, "positioning attached");
   assert.equal(out.accumulation, undefined, "no id-stock extras on crypto");
 });
 
-test("enrichAsset: idxContext never touches crypto, marketContext never touches id-stock", async () => {
+test("enrichAsset: idxContext never touches crypto, cryptoContext never touches id-stock", async () => {
   const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
 
   // Crypto with ONLY idxContext supplied → nothing applies, same reference.
@@ -263,16 +263,17 @@ test("enrichAsset: idxContext never touches crypto, marketContext never touches 
   });
   assert.equal(enrichAsset(crypto, { idxContext: makeIdxCtx() }), crypto);
 
-  // id-stock without candles, with ONLY marketContext → same reference.
+  // id-stock without candles, with ONLY cryptoContext → same reference.
   const idStock = makeAsset({ outlook: makeOutlook({ signal: "long" }) });
-  assert.equal(enrichAsset(idStock, { marketContext: makeMarketCtx() }), idStock);
+  assert.equal(enrichAsset(idStock, { cryptoContext: makeMarketCtx() }), idStock);
 });
 
 test("enrichAsset: same-reference passthrough when nothing applies", async () => {
   const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
 
-  // US stock with NO candle history: accumulation can't be derived and no
-  // top-down context layer targets us-stock, so the asset passes through.
+  // US stock with NO candle history: accumulation can't be derived and only
+  // crypto/idx contexts are supplied (neither targets us-stock; usContext is
+  // omitted), so the asset passes through unchanged.
   const usStock = makeAsset({
     symbol: "AAPL",
     assetType: "us-stock",
@@ -280,7 +281,7 @@ test("enrichAsset: same-reference passthrough when nothing applies", async () =>
   });
   assert.equal(
     enrichAsset(usStock, {
-      marketContext: makeMarketCtx(),
+      cryptoContext: makeMarketCtx(),
       idxContext: makeIdxCtx(),
     }),
     usStock,
@@ -315,7 +316,7 @@ test("enrichAsset commodity & forex: passthrough — no accumulation, no smartMo
     });
 
     const out = enrichAsset(asset, {
-      marketContext: makeMarketCtx(),
+      cryptoContext: makeMarketCtx(),
       idxContext: makeIdxCtx(),
     });
 
