@@ -65,8 +65,12 @@ import {
   User,
   PanelLeft,
   ChevronUp,
-  KeyRound,
   LineChart,
+  ShieldAlert,
+  KeyRound,
+  Crown,
+  Wallet,
+  Mail,
 } from "lucide-react";
 
 const LANGUAGES = [
@@ -122,6 +126,26 @@ export function AdminLayout() {
       to: "/admin/codes",
       label: t("admin.menu_codes", "Kode Akses"),
       icon: KeyRound,
+    },
+    {
+      to: "/admin/invitations",
+      label: t("admin.menu_invitations", "Undangan"),
+      icon: Mail,
+    },
+    {
+      to: "/admin/plans",
+      label: t("admin.menu_plans", "Paket Langganan"),
+      icon: Crown,
+    },
+    {
+      to: "/admin/payments",
+      label: t("admin.menu_payments", "Metode Pembayaran"),
+      icon: Wallet,
+    },
+    {
+      to: "/admin/disclaimer",
+      label: t("admin.menu_disclaimer", "Disclaimer"),
+      icon: ShieldAlert,
     },
   ];
 

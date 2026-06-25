@@ -24,6 +24,8 @@ export interface JournalAlert {
   tpLevel?: number;
   /** Realized P&L % for an outcome (signed). */
   pnlPct?: number;
+  /** Hold time in ms for an outcome (entry → close), for the DURATION line. */
+  durationMs?: number;
   signal?: "long" | "short" | null;
 }
 
@@ -51,6 +53,7 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
       symbol: c.symbol,
       price: c.close_price,
       pnlPct: c.pnl_pct,
+      durationMs: c.duration_ms,
       grade: c.grade,
       signal: c.signal,
     };
@@ -103,6 +106,27 @@ function atPrice(price?: number | null): string {
   return price != null ? ` \`@${formatNum(price)}\`` : "";
 }
 
+/** Hold time as an uppercase Indonesian span, scoped by the largest unit so the
+ *  precision stays proportional to the magnitude:
+ *    ≥ 1 day  → "3 HARI 8 JAM"     (days + hours)
+ *    ≥ 1 hour → "5 JAM 17 MENIT"   (hours + minutes)
+ *    ≥ 1 min  → "42 MENIT"         (minutes only)
+ *    < 1 min  → "18 DETIK"         (seconds only)
+ *  Empty when there's no duration. Pure arithmetic (no Date) so this module
+ *  stays edge-bundle safe. */
+function formatDuration(ms?: number): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "";
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (days > 0) return `${days} HARI ${hours} JAM`;
+  if (hours > 0) return `${hours} JAM ${minutes} MENIT`;
+  if (minutes > 0) return `${minutes} MENIT`;
+  return `${seconds} DETIK`;
+}
+
 /** Direction-aware % of a target price from entry: a TP reads positive and an SL
  *  negative for BOTH longs and shorts (a short profits as price falls). */
 function pctFrom(entry: number, target: number, isLong: boolean): number {
@@ -153,7 +177,13 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
     const head = [`**${a.symbol}**`];
     if (a.signal) head.push(a.signal.toUpperCase());
     if (a.grade) head.push(a.grade);
-    return `${emoji} ${head.join(" • ")}\n↳ ${result}:${atPrice(a.price)}${pctSuffix(a.pnlPct)}`;
+    const lines = [
+      `${emoji} ${head.join(" • ")}`,
+      `↳ ${result}:${atPrice(a.price)}${pctSuffix(a.pnlPct)}`,
+    ];
+    const duration = formatDuration(a.durationMs);
+    if (duration) lines.push(`↳ DURATION: \`${duration}\``);
+    return lines.join("\n");
   };
 
   // TP, then SL, then REVERSED — blocks separated by a blank line.

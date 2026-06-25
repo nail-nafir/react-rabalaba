@@ -43,6 +43,9 @@ export interface JournalClosure {
   /** Realized P&L % at the close price. NOT persisted (DB UPDATE ignores it) —
    *  carried only for the Discord outcome line. */
   pnl_pct: number;
+  /** Hold time in ms (entry → close). NOT persisted — carried only for the
+   *  Discord DURATION line. */
+  duration_ms?: number;
   signal?: "long" | "short";
   grade?: string | null;
 }
@@ -180,6 +183,7 @@ export function runAutoJournal(
       : new Date().toISOString(),
     highest_tp_reached: t.highestTpReached,
     pnl_pct: computePnl(t, t.closePrice ?? t.entryPrice).pct,
+    duration_ms: Math.max(0, (t.closedAt ?? now) - t.followedAt),
     signal: t.signal,
     grade: t.grade ?? null,
   }));
@@ -216,6 +220,7 @@ export function runAutoJournal(
       highest_tp_reached: securedTp,
       reversed: true,
       pnl_pct: close_price != null ? computePnl(t, close_price).pct : 0,
+      duration_ms: Math.max(0, now - t.followedAt),
       signal: t.signal,
       grade: t.grade ?? null,
     });

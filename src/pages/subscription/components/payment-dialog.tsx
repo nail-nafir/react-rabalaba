@@ -9,7 +9,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { usePaymentMethods } from "@/hooks/use-payment-methods";
+import { pickLocale } from "@/lib/localized";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -17,7 +20,13 @@ interface PaymentDialogProps {
 }
 
 export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const { methods, isLoading } = usePaymentMethods();
+
+  // Channels are admin-editable; the beneficiary follows the rows (all share one).
+  const active = methods.filter((m) => m.active);
+  const beneficiary = active.find((m) => m.account_name)?.account_name ?? "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -33,65 +42,62 @@ export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
 
         <div className="space-y-3 my-2">
           {/* Beneficiary Header Card */}
-          <div className="p-3 bg-muted/40 border border-border/80 rounded-xl flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
-              {t("payment.dialog.beneficiary")}
-            </span>
-            <span className="text-xs font-bold text-foreground">
-              Nailul Firdaus
-            </span>
-          </div>
+          {beneficiary && (
+            <div className="p-3 bg-muted/40 border border-border/80 rounded-xl flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
+                {t("payment.dialog.beneficiary")}
+              </span>
+              <span className="text-xs font-bold text-foreground">
+                {beneficiary}
+              </span>
+            </div>
+          )}
 
-          {/* List of Payment Methods */}
+          {/* List of Payment Methods (admin-managed) */}
           <div className="space-y-2 max-h-62.5 overflow-y-auto pr-1">
-            {[
-              { name: "BCA", value: "3450927189" },
-              { name: "BNI", value: "1868303386" },
-              { name: "SEABANK", value: "901623541860" },
-              { name: "JAGO", value: "109072419650" },
-              {
-                name: "E-Wallet",
-                desc: "ShopeePay, GoPay, DANA, OVO, LinkAja",
-                value: "081288070110",
-              },
-              {
-                name: "BEP20 (USDT)",
-                desc: "Jaringan BNB Smart Chain",
-                value: "0x02319a99c28794b9400f0598d7581575ccb5236f",
-              },
-            ].map((item) => (
-              <div
-                key={item.name}
-                className="group relative overflow-hidden border border-border hover:border-primary/50 hover:bg-muted/20 p-3 rounded-xl flex items-center justify-between gap-3 transition-all duration-200"
-              >
-                <div className="min-w-0 space-y-0.5">
-                  <span className="text-xs font-bold text-foreground tracking-wide">
-                    {item.name}
-                  </span>
-                  {item.desc && (
-                    <p className="text-[10px] text-muted-foreground truncate leading-relaxed">
-                      {item.desc}
-                    </p>
-                  )}
-                  <p className="text-[11px] font-mono font-mono-data text-foreground/80 break-all select-all">
-                    {item.value}
-                  </p>
-                </div>
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => {
-                    navigator.clipboard.writeText(item.value);
-                    toast.success(t("payment.dialog.copied"), {
-                      description: `${item.name}: ${item.value}`,
-                    });
-                  }}
-                  className="shrink-0 h-7 w-7 rounded-lg hover:bg-muted border border-transparent hover:border-border cursor-pointer transition-all active:scale-95"
-                >
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
+            {isLoading && active.length === 0 ? (
+              <div className="flex h-24 items-center justify-center">
+                <Spinner className="h-5 w-5 text-muted-foreground" />
               </div>
-            ))}
+            ) : (
+              active.map((item) => {
+                const desc = pickLocale(item.note, lang) as string | undefined;
+                const value = item.account_no ?? "";
+                return (
+                  <div
+                    key={item.id}
+                    className="group relative overflow-hidden border border-border hover:border-primary/50 hover:bg-muted/20 p-3 rounded-xl flex items-center justify-between gap-3 transition-all duration-200"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <span className="text-xs font-bold text-foreground tracking-wide">
+                        {item.name}
+                      </span>
+                      {desc && (
+                        <p className="text-[10px] text-muted-foreground truncate leading-relaxed">
+                          {desc}
+                        </p>
+                      )}
+                      <p className="text-[11px] font-mono font-mono-data text-foreground/80 break-all select-all">
+                        {value}
+                      </p>
+                    </div>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => {
+                        navigator.clipboard.writeText(value);
+                        toast.success(t("payment.dialog.copied"), {
+                          description: `${item.name}: ${value}`,
+                        });
+                      }}
+                      className="shrink-0 h-7 w-7 rounded-lg hover:bg-muted border border-transparent hover:border-border cursor-pointer transition-all active:scale-95"
+                    >
+                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

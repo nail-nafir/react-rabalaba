@@ -61,6 +61,7 @@ import type { AdminUserRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
+
 /* ── Tiny helpers (same style as journal-asset-manager) ──────────────── */
 
 type TierFilter = "all" | "premium" | "trial" | "free";
@@ -444,6 +445,40 @@ export function RegisteredUsersTable() {
         },
       },
       {
+        accessorKey: "disclaimer_agreed_at",
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("table.disclaimer", "Penafian Risiko")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          const ts = formatTs(row.original.disclaimer_agreed_at);
+          if (!ts)
+            return (
+              <Badge
+                variant="outline"
+                className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-rose-500/15 border-rose-500/30 text-rose-400"
+              >
+                {t("admin.users_disclaimer_pending", "Belum")}
+              </Badge>
+            );
+          return (
+            <div className="py-1">
+              <Badge
+                variant="outline"
+                className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+              >
+                v{row.original.disclaimer_version ?? "?"}
+              </Badge>
+              <div className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                {ts.date}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
         id: "actions",
         enableSorting: false,
         header: () => null,
@@ -508,15 +543,6 @@ export function RegisteredUsersTable() {
               variant="select"
               className="flex-1 sm:flex-none"
             />
-            <div className="ml-auto text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-              {isLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <span>
-                  {users.length} {t("admin.users_total")}
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Row 2: Search + actions */}

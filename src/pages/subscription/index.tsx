@@ -30,13 +30,37 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
+import { pickLocale } from "@/lib/localized";
 import { PaymentDialog } from "./components/payment-dialog";
 
+/** lucide icon names stored on a plan row → component. Falls back to Terminal. */
+const ICON_MAP: Record<string, React.ElementType> = { Terminal, Zap, Shield };
+
+/** Each cta_kind maps to a CTA label + icon (labels stay static in i18n). */
+function ctaConfig(kind: string): { labelKey: string; icon: React.ElementType } {
+  switch (kind) {
+    case "payment":
+      return { labelKey: "subscription.get_started", icon: CreditCard };
+    case "license":
+      return { labelKey: "license.activate_btn", icon: KeyRound };
+    case "contact":
+      return { labelKey: "subscription.contact_sales", icon: Send };
+    default:
+      return { labelKey: "subscription.get_started_free", icon: Play };
+  }
+}
+
 export default function SubscriptionPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const { openLicenseDialog } = useUIActions();
   const { isConfigured } = usePremiumAccess();
+  const { plans, isLoading } = useSubscriptionPlans();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+
+  const activePlans = plans.filter((p) => p.active);
 
   return (
     <div className="w-full py-6 sm:py-10 bg-background relative overflow-hidden">
@@ -62,58 +86,44 @@ export default function SubscriptionPage() {
           {/* Subscription Tiers Section */}
           <section className="space-y-3 pb-6 md:pb-10">
             <div className="grid grid-cols-1 md:grid-cols-3 pt-12 md:pt-16 gap-8 md:gap-10 w-full items-stretch">
-              {/* Basic Plan */}
-              <SubscriptionCard
-                name={t("subscription.plans.basic.name")}
-                price={t("subscription.plans.basic.price")}
-                description={t("subscription.plans.basic.description")}
-                features={
-                  t("subscription.plans.basic.features", {
-                    returnObjects: true,
-                  }) as string[]
-                }
-                ctaText={t("subscription.get_started_free")}
-                ctaLink="/terminal"
-                icon={Terminal}
-                btnIcon={Play}
-              />
-
-              {/* Pro Plan */}
-              <SubscriptionCard
-                name={t("subscription.plans.professional.name")}
-                price={t("subscription.plans.professional.price")}
-                originalPrice={t("subscription.plans.professional.originalPrice", { defaultValue: "" }) || undefined}
-                description={t("subscription.plans.professional.description")}
-                features={
-                  t("subscription.plans.professional.features", {
-                    returnObjects: true,
-                  }) as string[]
-                }
-                ctaText={t("subscription.get_started")}
-                ctaLink="https://t.me/nailnafir"
-                isExternal
-                icon={Zap}
-                highlighted
-                onCtaClick={() => setIsPaymentDialogOpen(true)}
-                btnIcon={CreditCard}
-              />
-
-              {/* Ultimate Plan */}
-              <SubscriptionCard
-                name={t("subscription.plans.ultimate.name")}
-                price={t("subscription.plans.ultimate.price")}
-                description={t("subscription.plans.ultimate.description")}
-                features={
-                  t("subscription.plans.ultimate.features", {
-                    returnObjects: true,
-                  }) as string[]
-                }
-                ctaText={t("subscription.contact_sales")}
-                ctaLink="https://t.me/nailnafir"
-                isExternal
-                icon={Shield}
-                btnIcon={Send}
-              />
+              {isLoading && activePlans.length === 0
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <PlanSkeleton key={i} highlighted={i === 1} />
+                  ))
+                : activePlans.map((plan) => {
+                    const cfg = ctaConfig(plan.cta_kind);
+                    const isExternal =
+                      !!plan.cta_link && /^https?:\/\//.test(plan.cta_link);
+                    const onCtaClick =
+                      plan.cta_kind === "payment"
+                        ? () => setIsPaymentDialogOpen(true)
+                        : plan.cta_kind === "license"
+                          ? () => openLicenseDialog()
+                          : undefined;
+                    return (
+                      <SubscriptionCard
+                        key={plan.slug}
+                        name={pickLocale(plan.name, lang, "") as string}
+                        price={pickLocale(plan.price, lang, "") as string}
+                        originalPrice={
+                          (pickLocale(plan.original_price, lang) as
+                            | string
+                            | undefined) || undefined
+                        }
+                        description={
+                          pickLocale(plan.description, lang, "") as string
+                        }
+                        features={pickLocale(plan.features, lang, []) as string[]}
+                        ctaText={t(cfg.labelKey)}
+                        ctaLink={plan.cta_link ?? "#"}
+                        isExternal={isExternal}
+                        icon={ICON_MAP[plan.icon ?? ""] ?? Terminal}
+                        highlighted={plan.highlighted}
+                        onCtaClick={onCtaClick}
+                        btnIcon={cfg.icon}
+                      />
+                    );
+                  })}
             </div>
           </section>
 
@@ -234,6 +244,28 @@ function PaymentCard({
           </CardDescription>
         </div>
       </CardContent>
+    </Card>
+  );
+}
+
+/** Loading placeholder shaped like a SubscriptionCard while plans fetch. */
+function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
+  return (
+    <Card
+      className={cn(
+        "relative h-full flex flex-col items-center gap-6 p-6 border border-border",
+        highlighted && "md:scale-110",
+      )}
+    >
+      <Skeleton className="h-12 w-12 rounded-xl" />
+      <Skeleton className="h-5 w-24" />
+      <Skeleton className="h-14 w-full rounded-xl" />
+      <div className="w-full space-y-3 flex-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-3 w-full" />
+        ))}
+      </div>
+      <Skeleton className="h-10 w-full" />
     </Card>
   );
 }

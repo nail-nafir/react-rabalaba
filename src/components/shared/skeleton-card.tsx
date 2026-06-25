@@ -250,6 +250,102 @@ export function SkeletonAdminUserRow() {
   );
 }
 
+/** Loading row for the admin payment-methods table (payment-methods-table).
+ *  Mirrors its 5 columns: method (name), category, account, status, actions. */
+export function SkeletonPaymentMethodRow() {
+  return (
+    <>
+      <TableCell>
+        <Skeleton className="h-4 w-28 py-1" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+      </TableCell>
+    </>
+  );
+}
+
+/** Loading row for the admin subscription-plans table (subscription-plans-table).
+ *  Mirrors its 6 columns: plan (name), tier, price, highlight, active, actions. */
+export function SkeletonSubscriptionPlanRow() {
+  return (
+    <>
+      <TableCell>
+        <Skeleton className="h-4 w-28 py-1" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-20" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+      </TableCell>
+    </>
+  );
+}
+
+/** Loading row for the admin invitations table (invitations-table).
+ *  Mirrors its 6 columns: invite (code+recipient), type, uses, expires (date+time), status, actions. */
+export function SkeletonInvitationRow() {
+  return (
+    <>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-10" />
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+      </TableCell>
+    </>
+  );
+}
+
 /** Loading row for the admin access-codes table (registered-users-table).
  *  Mirrors its 8 columns: created (date+time), code, type, note, max uses, used, trial days, actions. */
 export function SkeletonAccessCodeRow() {

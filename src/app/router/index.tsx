@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { RootLayout } from '@/app/layouts/root-layout';
 import { AuthLayout } from '@/app/layouts/auth-layout';
@@ -15,6 +15,11 @@ const AdminPage = lazy(() => import('@/pages/admin'));
 const AdminAssetsPage = lazy(() => import('@/pages/admin/assets'));
 const AdminUsersPage = lazy(() => import('@/pages/admin/users'));
 const AdminCodesPage = lazy(() => import('@/pages/admin/codes'));
+const AdminInvitationsPage = lazy(() => import('@/pages/admin/invitations'));
+const AdminPlansPage = lazy(() => import('@/pages/admin/plans'));
+const AdminPaymentsPage = lazy(() => import('@/pages/admin/payments'));
+const AdminDisclaimerPage = lazy(() => import('@/pages/admin/disclaimer'));
+const InvitePage = lazy(() => import('@/pages/invite'));
 const AdminSystemPage = lazy(() => import('@/pages/admin/summary'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
@@ -85,6 +90,16 @@ export const router = createBrowserRouter([
           </ErrorBoundary>
         ),
       },
+      {
+        path: '/invite/:code',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <InvitePage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
     ],
   },
   {
@@ -131,6 +146,50 @@ export const router = createBrowserRouter([
           <ErrorBoundary>
             <Suspense fallback={<PageLoader trigger />}>
               <AdminCodesPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'billing',
+        element: <Navigate to="/admin/codes" replace />,
+      },
+      {
+        path: 'plans',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminPlansPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'payments',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminPaymentsPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'disclaimer',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminDisclaimerPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'invitations',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminInvitationsPage />
             </Suspense>
           </ErrorBoundary>
         ),

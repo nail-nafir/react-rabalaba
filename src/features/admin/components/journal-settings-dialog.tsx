@@ -142,10 +142,14 @@ function JournalSettingsForm({
               value={String(draftInterval)}
               onValueChange={(v) => setDraftInterval(Number(v))}
             >
-              <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px]">
+              <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="p-1">
+              <SelectContent
+                align="start"
+                position="popper"
+                className="p-1"
+              >
                 {INTERVAL_OPTIONS.map((val) => {
                   const label =
                     val >= 60
@@ -155,7 +159,7 @@ function JournalSettingsForm({
                     <SelectItem
                       key={val}
                       value={String(val)}
-                      className="uppercase tracking-wider text-[10px]"
+                      className="uppercase tracking-wider text-[10px] cursor-pointer"
                     >
                       {label}
                     </SelectItem>

@@ -38,7 +38,7 @@ export function FilterGroup<T extends string>({
       <Select value={value} onValueChange={(v) => onChange(v as T)}>
         <SelectTrigger
           className={cn(
-            "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8",
+            "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8 cursor-pointer",
             className,
           )}
         >
@@ -49,7 +49,7 @@ export function FilterGroup<T extends string>({
             <SelectItem
               key={option.value}
               value={option.value}
-              className="uppercase tracking-wider text-[10px]"
+              className="uppercase tracking-wider text-[10px] cursor-pointer"
             >
               {option.label}
             </SelectItem>

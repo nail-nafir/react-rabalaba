@@ -41,6 +41,7 @@ const PLAN = {
       closed_at: "2026-06-20T00:00:00Z",
       highest_tp_reached: 1,
       pnl_pct: 12,
+      duration_ms: (86400 + 9 * 3600) * 1000, // 1 day 9 hours
       signal: "long",
       grade: "A",
     },
@@ -52,6 +53,7 @@ const PLAN = {
       closed_at: "2026-06-20T00:00:00Z",
       highest_tp_reached: 0,
       pnl_pct: -8.3,
+      duration_ms: 32 * 60 * 1000, // 32 minutes
       signal: "short",
       grade: "B",
     },
@@ -64,6 +66,7 @@ const PLAN = {
       highest_tp_reached: 0,
       reversed: true,
       pnl_pct: 0.28,
+      duration_ms: 52 * 1000, // 52 seconds
       signal: "short",
       grade: "C",
     },
@@ -127,12 +130,25 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
   assert.ok(msg.includes("🧘 PETUAH SENSEI"));
   assert.ok(
     msg.includes(
-      "🟢 **BTC-USD** • LONG • A\n↳ Entry: `@65.000`\n↳ TP1: `@67.000` `(+3.1%)`\n↳ SL: `@63.000` `(-3.1%)`",
+      "🟢 **BTC-USD** • LONG • A\n↳ ENTRY: `@65.000`\n↳ TP1: `@67.000` `(+3.1%)`\n↳ SL: `@63.000` `(-3.1%)`",
     ),
   );
-  assert.ok(msg.includes("🎯 **EIGEN-USD** • LONG • A\n↳ TP1: `@0.28` `(+12%)`"));
-  assert.ok(msg.includes("⛔ **MYX-USD** • SHORT • B\n↳ SL: `@9` `(-8.3%)`"));
-  assert.ok(msg.includes("🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED: `@5.12` `(+0.28%)`"));
+  // Each outcome carries the realized P&L line then a DURATION line.
+  assert.ok(
+    msg.includes(
+      "🎯 **EIGEN-USD** • LONG • A\n↳ TP1: `@0.28` `(+12%)`\n↳ DURATION: `1 HARI 9 JAM`",
+    ),
+  );
+  assert.ok(
+    msg.includes(
+      "⛔ **MYX-USD** • SHORT • B\n↳ SL: `@9` `(-8.3%)`\n↳ DURATION: `32 MENIT`",
+    ),
+  );
+  assert.ok(
+    msg.includes(
+      "🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED: `@5.12` `(+0.28%)`\n↳ DURATION: `52 DETIK`",
+    ),
+  );
   assert.ok(msg.includes("Bersemedi di depan chart")); // closing wisdom
   assert.ok(msg.includes("━━━")); // divider rule
 

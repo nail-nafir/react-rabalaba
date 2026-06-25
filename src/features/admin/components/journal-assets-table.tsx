@@ -24,7 +24,6 @@ import {
   Play,
   Pause,
   Settings,
-  Loader2,
 } from "lucide-react";
 import {
   Table,
@@ -273,11 +272,6 @@ export function JournalAssetsTable() {
     { id: "created_at", desc: true },
   ]);
 
-  const activeCount = useMemo(
-    () => assets.filter((a) => a.active).length,
-    [assets],
-  );
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return assets.filter((a) => {
@@ -475,15 +469,6 @@ export function JournalAssetsTable() {
               variant="select"
               className="flex-1 sm:flex-none"
             />
-            <div className="ml-auto text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-              {isLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <span>
-                  {activeCount} {t("admin.status_active").toLowerCase()} / {assets.length} {t("market.assets_found")}
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Row 2: Search + actions */}

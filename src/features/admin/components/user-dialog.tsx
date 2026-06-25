@@ -271,7 +271,10 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
               name="email"
               control={form.control}
               render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="space-y-1">
+                <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[invalid=true]/field:text-destructive">
+                    {t("table.email")}
+                  </label>
                   <div className="relative">
                     <Input
                       {...field}
@@ -314,7 +317,11 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_tier_placeholder", "Pilih Kasta")} />
                       </SelectTrigger>
-                      <SelectContent className="p-1">
+                      <SelectContent
+                        align="start"
+                        position="popper"
+                        className="p-1"
+                      >
                         <SelectItem
                           value="free"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
@@ -351,7 +358,11 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_role_placeholder", "Pilih Role")} />
                       </SelectTrigger>
-                      <SelectContent className="p-1">
+                      <SelectContent
+                        align="start"
+                        position="popper"
+                        className="p-1"
+                      >
                         <SelectItem
                           value="user"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
@@ -418,7 +429,11 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_status_placeholder", "Pilih Status")} />
                       </SelectTrigger>
-                      <SelectContent className="p-1">
+                      <SelectContent
+                        align="start"
+                        position="popper"
+                        className="p-1"
+                      >
                         <SelectItem
                           value="active"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"

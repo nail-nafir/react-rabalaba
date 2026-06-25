@@ -6,6 +6,8 @@
  */
 import type { FollowStatus, FollowSignal } from "@/constants/taxonomy/status";
 import type { SignalTier } from "@/constants/taxonomy/tier";
+// Type-only (erased) — keeps this module runtime-pure for the Cron Worker.
+import type { Localized } from "@/lib/localized";
 
 /** FollowStatus mirrored in the DB. 'open' = live (UI: "RUNNING TRADE"). */
 export type JournalStatus = FollowStatus;
@@ -108,6 +110,9 @@ export interface AdminUserRow {
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
   created_at: string;
+  /** Latest disclaimer version this user accepted + when (null = never). */
+  disclaimer_version: number | null;
+  disclaimer_agreed_at: string | null;
 }
 
 /** Row shape returned by the admin_list_access_codes() RPC
@@ -120,6 +125,113 @@ export interface AccessCodeRow {
   trial_days: number | null;
   redemption_count: number;
   created_at: string;
+}
+
+/** A subscription plan card — admin-editable, PUBLIC-read (the /subscription page
+ *  is anonymous). Copy fields are bilingual JSONB ({ en, id }). The cron never
+ *  touches this; it's display config. Mirrors 20260625000001_subscription.sql. */
+export interface SubscriptionPlanRow {
+  slug: string;
+  sort_order: number;
+  name: Localized;
+  description: Localized;
+  price: Localized;
+  original_price: Localized | null;
+  features: Localized<string[]>;
+  /** lucide icon name rendered via ICON_MAP on the page (e.g. 'Zap'). */
+  icon: string | null;
+  highlighted: boolean;
+  /** Drives the card CTA: open PaymentDialog / open LicenseDialog / external link. */
+  cta_kind: "link" | "payment" | "license" | "contact";
+  cta_link: string | null;
+  active: boolean;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/** Insert shape: DB defaults updated_at; the hook stamps updated_by. */
+export type SubscriptionPlanInsert = Omit<
+  SubscriptionPlanRow,
+  "updated_at" | "updated_by"
+> & {
+  updated_at?: string;
+  updated_by?: string | null;
+};
+
+/** A payment channel shown on /subscription + inside the PaymentDialog.
+ *  Public-read, admin-write. Mirrors 20260625000001_subscription.sql. */
+export interface PaymentMethodRow {
+  id: string;
+  sort_order: number;
+  category: "bank" | "ewallet" | "qris" | "crypto";
+  name: string;
+  account_no: string | null;
+  account_name: string | null;
+  /** Optional bilingual sub-label (e.g. "BNB Smart Chain network"). */
+  note: Localized | null;
+  icon: string | null;
+  active: boolean;
+  updated_at: string;
+}
+
+/** Insert shape: DB defaults id/updated_at. */
+export type PaymentMethodInsert = Omit<PaymentMethodRow, "id" | "updated_at"> & {
+  id?: string;
+  updated_at?: string;
+};
+
+/** Risk disclaimer clauses — a SINGLETON row (id always true), VERSIONED so an
+ *  admin edit re-prompts everyone. Public-read, admin-write. Bilingual JSONB.
+ *  Mirrors 20260625000002_disclaimer.sql. */
+export interface DisclaimerRow {
+  id: boolean;
+  version: number;
+  title: Localized;
+  description: Localized;
+  points: Localized<string[]>;
+  confirm_label: Localized;
+  agree_label: Localized;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/** Record that a LOGGED-IN user accepted a disclaimer version (hybrid: anonymous
+ *  visitors keep the localStorage flag). Mirrors 20260625000002_disclaimer.sql. */
+export interface DisclaimerAgreementRow {
+  user_id: string;
+  version: number;
+  agreed_at: string;
+}
+
+export type DisclaimerAgreementInsert = Omit<
+  DisclaimerAgreementRow,
+  "agreed_at"
+> & { agreed_at?: string };
+
+/** An admin-issued invitation that grants premium/trial when claimed at
+ *  /invite/:code. The table is LOCKED (RLS, no policies) — reached only through
+ *  the SECURITY DEFINER RPCs. `redemption_count` is computed by
+ *  admin_list_invitations(). Mirrors 20260625000003_invitations.sql. */
+export interface InvitationRow {
+  code: string;
+  kind: "full" | "trial";
+  trial_days: number | null;
+  max_redemptions: number | null;
+  recipient_label: string | null;
+  expires_at: string | null;
+  revoked: boolean;
+  redemption_count: number;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Pre-claim preview returned by peek_invitation() — never leaks the code list. */
+export interface InvitationPeek {
+  valid: boolean;
+  kind: "full" | "trial" | null;
+  trial_days: number | null;
+  /** When !valid: 'invalid'|'expired'|'revoked'|'exhausted'. */
+  reason: string | null;
 }
 
 /** Per-user favorite ticker (mirrors 20260615000001_user_favorites.sql). */
@@ -163,6 +275,26 @@ export interface Database {
         Insert: Partial<JournalSettingsRow>;
         Update: Partial<JournalSettingsRow>;
       };
+      subscription_plans: {
+        Row: SubscriptionPlanRow;
+        Insert: SubscriptionPlanInsert;
+        Update: Partial<SubscriptionPlanRow>;
+      };
+      payment_methods: {
+        Row: PaymentMethodRow;
+        Insert: PaymentMethodInsert;
+        Update: Partial<PaymentMethodRow>;
+      };
+      disclaimer: {
+        Row: DisclaimerRow;
+        Insert: Partial<DisclaimerRow>;
+        Update: Partial<DisclaimerRow>;
+      };
+      disclaimer_agreements: {
+        Row: DisclaimerAgreementRow;
+        Insert: DisclaimerAgreementInsert;
+        Update: Partial<DisclaimerAgreementRow>;
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -186,6 +318,43 @@ export interface Database {
       admin_list_access_codes: {
         Args: Record<string, never>;
         Returns: AccessCodeRow[];
+      };
+      /** Anon-safe preview of an invitation for the /invite/:code page. */
+      peek_invitation: {
+        Args: { p_code: string };
+        Returns: InvitationPeek;
+      };
+      /** Claim an invitation for the authed caller; writes profiles.tier.
+       *  Returns 'premium'|'trial'|'invalid'|'expired'|'revoked'|'exhausted'|'already'|'unauthenticated'. */
+      redeem_invitation: {
+        Args: { p_code: string };
+        Returns: string;
+      };
+      /** Admin-only: mint an invitation, server-generated code returned. */
+      admin_create_invitation: {
+        Args: {
+          p_kind: string;
+          p_trial_days: number | null;
+          p_max_redemptions: number | null;
+          p_recipient_label: string | null;
+          p_expires_at: string | null;
+        };
+        Returns: string;
+      };
+      /** Admin-only: every invitation with its redemption count. */
+      admin_list_invitations: {
+        Args: Record<string, never>;
+        Returns: InvitationRow[];
+      };
+      /** Admin-only: flip an invitation's revoked flag. */
+      admin_revoke_invitation: {
+        Args: { p_code: string; p_revoked: boolean };
+        Returns: boolean;
+      };
+      /** Admin-only: permanently delete an invitation (redemptions cascade). */
+      admin_delete_invitation: {
+        Args: { p_code: string };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2, Key } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -136,7 +136,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-foreground">
-              {t("admin.codes_add_dialog_title", "Tambah Kode Akses Baru")}
+              {t("admin.codes_add_dialog_title", "Tambah Kode Akses")}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
               {t("admin.codes_add_dialog_desc", "Buat kode akses premium baru untuk dibagikan ke pengguna.")}
@@ -148,20 +148,18 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
               name="code"
               control={form.control}
               render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="space-y-1">
-                  <div className="relative">
-                    <Input
-                      {...field}
-                      placeholder={t("admin.codes_add_code_placeholder", "KODE-AKSES-PREMIUM")}
-                      autoFocus
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="pr-10 placeholder:text-sm text-sm uppercase font-mono"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Key className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
+                <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[invalid=true]/field:text-destructive">
+                    {t("admin.codes_col_code", "Kode")}
+                  </label>
+                  <Input
+                    {...field}
+                    placeholder={t("admin.codes_add_code_placeholder", "KODE-AKSES-PREMIUM")}
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="placeholder:text-sm text-sm uppercase font-mono"
+                  />
                   {fieldState.invalid && (
                     <FieldError
                       errors={[fieldState.error]}
@@ -185,7 +183,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.codes_form_type_placeholder", "Pilih Tipe")} />
                       </SelectTrigger>
-                      <SelectContent className="p-1">
+                       <SelectContent align="start" position="popper" className="p-1">
                         <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_full", "Full")}</SelectItem>
                         <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_trial", "Trial")}</SelectItem>
                       </SelectContent>

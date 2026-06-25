@@ -3,25 +3,16 @@ import { useTranslation } from "react-i18next";
 import {
   useReactTable,
   getCoreRowModel,
-  getSortedRowModel,
   getPaginationRowModel,
   flexRender,
   type ColumnDef,
-  type SortingState,
-  type Column,
 } from "@tanstack/react-table";
 import {
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   ChevronLeft,
   ChevronRight,
-  Loader2,
-  Plus,
   Eye,
   EyeOff,
 } from "lucide-react";
-import { AddAccessCodeDialog } from "./add-access-code-dialog";
 import { DeleteAccessCodeDialog } from "./delete-access-code-dialog";
 import { ValidatePasswordDialog } from "./validate-password-dialog";
 import {
@@ -43,44 +34,16 @@ import { cn } from "@/lib/utils";
 
 /* ── Tiny helpers ────────────────────────────────────────────────────── */
 
-function SortIcon<T>({ column }: { column: Column<T, unknown> }) {
-  const isSorted = column.getIsSorted();
-  if (isSorted === "asc")
-    return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
-  if (isSorted === "desc")
-    return <ArrowDown className="h-3.5 w-3.5 text-primary" />;
-  return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
-}
-
-function SortButton<T>({
-  label,
-  column,
-}: {
-  label: string;
-  column: Column<T, unknown>;
-}) {
-  return (
-    <Button
-      variant="link"
-      onClick={() => column.toggleSorting()}
-      className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
-    >
-      {label} <SortIcon column={column} />
-    </Button>
-  );
-}
-
 function CodeKindBadge({ kind }: { kind: string }) {
-  const cls =
-    kind === "full"
-      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-      : "bg-amber-500/15 border-amber-500/30 text-amber-400";
+  const isFull = kind === "full";
   return (
     <Badge
       variant="outline"
       className={cn(
-        "font-bold tracking-wider uppercase text-[10px] rounded-md",
-        cls,
+        "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+        isFull
+          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
       )}
     >
       {kind}
@@ -107,13 +70,9 @@ export function AccessCodesTable() {
   "use no memo";
   const { accessCodes, isLoadingCodes, deleteAccessCode } = useAdminUsers();
   const { t } = useTranslation();
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "created_at", desc: true },
-  ]);
   const [revealedCodes, setRevealedCodes] = useState<Record<string, boolean>>(
     {},
   );
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [codeToReveal, setCodeToReveal] = useState<string | null>(null);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
@@ -121,8 +80,11 @@ export function AccessCodesTable() {
     () => [
       {
         accessorKey: "created_at",
-        header: ({ column }) => (
-          <SortButton label={t("admin.codes_col_created")} column={column} />
+        enableSorting: false,
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.codes_col_created")}
+          </span>
         ),
         cell: ({ row }) => {
           const ts = formatTs(row.original.created_at);
@@ -151,7 +113,7 @@ export function AccessCodesTable() {
           return (
             <Badge
               variant="outline"
-              className="font-mono text-xs font-bold uppercase rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground tracking-wider px-1.5 py-0.5"
+              className="font-mono text-xs font-bold uppercase rounded-md bg-muted/50 border-border text-muted-foreground tracking-wider px-1.5 py-0.5"
             >
               {isRevealed ? row.original.code : maskCode(row.original.code)}
             </Badge>
@@ -191,7 +153,7 @@ export function AccessCodesTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs font-semibold text-foreground">
+          <span className="text-xs font-semibold text-foreground font-mono">
             {row.original.max_redemptions ?? "∞"}
           </span>
         ),
@@ -205,7 +167,7 @@ export function AccessCodesTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs font-semibold text-foreground">
+          <span className="text-xs font-semibold text-foreground font-mono">
             {row.original.redemption_count}
           </span>
         ),
@@ -219,7 +181,7 @@ export function AccessCodesTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground font-mono">
             {row.original.trial_days ?? "—"}
           </span>
         ),
@@ -276,38 +238,13 @@ export function AccessCodesTable() {
   const table = useReactTable({
     data: accessCodes,
     columns,
-    state: { sorting },
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
     <div className="space-y-4">
-      {/* Section header */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-          {isLoadingCodes ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <span>
-              {accessCodes.length} {t("admin.codes_col_code").toLowerCase()}
-            </span>
-          )}
-        </div>
-
-        <Button
-          size="sm"
-          onClick={() => setIsAddDialogOpen(true)}
-          className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0 h-8"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span>{t("admin.codes_add_btn", "Tambah Kode")}</span>
-        </Button>
-      </div>
-
       {/* Table */}
       <div className="rounded-md border overflow-hidden shadow-sm">
         <Table>
@@ -400,10 +337,7 @@ export function AccessCodesTable() {
         </div>
       )}
 
-      <AddAccessCodeDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-      />
+
 
       <ValidatePasswordDialog
         open={isPasswordDialogOpen}
