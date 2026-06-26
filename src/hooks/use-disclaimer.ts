@@ -32,7 +32,7 @@ function readLocalVersion(): number {
 }
 
 export function useDisclaimer() {
-  const { user } = useAuth();
+  const { user, ready: authReady } = useAuth();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
 
@@ -76,8 +76,18 @@ export function useDisclaimer() {
 
   const currentVersion = clauses?.version ?? 0;
   const acceptedVersion = userId ? (agreedVersion ?? 0) : localVersion;
-  // Only prompt once clauses have loaded and the visitor is behind.
-  const needsAgreement = !!clauses && currentVersion > acceptedVersion;
+  // Only decide once the visitor's acceptance status is actually known —
+  // otherwise the gate flashes open for a frame and then closes:
+  //   1. auth must be resolved (`authReady`); before that a logged-in user is
+  //      momentarily seen as anonymous and judged against localStorage;
+  //   2. for a logged-in user, their agreement query must have returned
+  //      (`agreedVersion !== undefined`); while it loads we'd otherwise read it
+  //      as 0 (not-yet-agreed) and prompt someone who already agreed.
+  const acceptanceResolved =
+    authReady && (userId ? agreedVersion !== undefined : true);
+  // Only prompt once clauses have loaded, status is known, and they're behind.
+  const needsAgreement =
+    !!clauses && acceptanceResolved && currentVersion > acceptedVersion;
 
   const agree = useCallback(async () => {
     if (!clauses) return;

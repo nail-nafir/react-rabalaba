@@ -6,7 +6,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2, Copy, CheckCircle2, Calendar as CalendarIcon, X } from "lucide-react";
+import {
+  Loader2,
+  Copy,
+  CheckCircle2,
+  Calendar as CalendarIcon,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
 import { useForm, Controller } from "react-hook-form";
@@ -30,7 +36,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useAdminInvitations } from "@/hooks/use-admin-invitations";
 import { cn } from "@/lib/utils";
@@ -43,10 +53,9 @@ interface AddInvitationDialogProps {
 
 interface InviteFormProps {
   origin: string;
-  onClose: () => void;
 }
 
-function InviteForm({ origin, onClose }: InviteFormProps) {
+function InviteFormContent({ origin }: InviteFormProps) {
   const { t, i18n } = useTranslation();
   const { createInvitation } = useAdminInvitations();
 
@@ -55,26 +64,37 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
 
   const schema = useMemo(() => {
-    return z.object({
-      kind: z.enum(["full", "trial"]),
-      trialDays: z.string().trim(),
-      maxRedemptions: z
-        .string()
-        .trim()
-        .refine((val) => !val || /^\d+$/.test(val), {
-          message: t("admin.codes_add_invalid_number", "Harus berupa angka positif"),
-        }),
-      recipient: z.string().trim(),
-      expiresAt: z.date().optional(),
-    }).refine((data) => {
-      if (data.kind === "trial") {
-        return /^\d+$/.test(data.trialDays) && Number(data.trialDays) > 0;
-      }
-      return true;
-    }, {
-      message: t("admin.codes_add_invalid_number", "Harus berupa angka positif"),
-      path: ["trialDays"],
-    });
+    return z
+      .object({
+        kind: z.enum(["full", "trial"]),
+        trialDays: z.string().trim(),
+        maxRedemptions: z
+          .string()
+          .trim()
+          .refine((val) => !val || /^\d+$/.test(val), {
+            message: t(
+              "admin.codes_add_invalid_number",
+              "Harus berupa angka positif",
+            ),
+          }),
+        recipient: z.string().trim(),
+        expiresAt: z.date().optional(),
+      })
+      .refine(
+        (data) => {
+          if (data.kind === "trial") {
+            return /^\d+$/.test(data.trialDays) && Number(data.trialDays) > 0;
+          }
+          return true;
+        },
+        {
+          message: t(
+            "admin.codes_add_invalid_number",
+            "Harus berupa angka positif",
+          ),
+          path: ["trialDays"],
+        },
+      );
   }, [t]);
 
   type InviteFormValues = z.infer<typeof schema>;
@@ -91,7 +111,12 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
     },
   });
 
-  const { control, handleSubmit, watch, formState: { isValid } } = form;
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { isValid },
+  } = form;
   const kindValue = watch("kind");
 
   const onSubmit = async (data: InviteFormValues) => {
@@ -107,7 +132,9 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
     if (code) {
       setCreatedCode(code);
     } else {
-      toast.error(t("admin.invitations.create_error", "Gagal membuat undangan"));
+      toast.error(
+        t("admin.invitations.create_error", "Gagal membuat undangan"),
+      );
     }
   };
 
@@ -116,8 +143,20 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
   if (createdCode) {
     const url = `${origin}/invite/${createdCode}`;
     return (
-      <>
-        <div className="space-y-4 py-2">
+      <DialogContent className="sm:max-w-md border border-border text-foreground min-w-0">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-foreground">
+            {t("admin.invitations.add_title", "Buat Undangan")}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+            {t(
+              "admin.invitations.add_desc",
+              "Buat link undangan yang memberi akses premium atau trial saat diklaim.",
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2 min-w-0">
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
               <CheckCircle2 className="h-6 w-6" />
@@ -126,10 +165,13 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
               {t("admin.invitations.created_title", "Undangan dibuat!")}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t("admin.invitations.created_desc", "Bagikan link ini ke calon member.")}
+              {t(
+                "admin.invitations.created_desc",
+                "Bagikan link ini ke calon member.",
+              )}
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2.5">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2.5 min-w-0">
             <span className="flex-1 truncate font-mono text-[11px] text-foreground select-all">
               {url}
             </span>
@@ -138,7 +180,9 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
               variant="ghost"
               onClick={() => {
                 navigator.clipboard.writeText(url);
-                toast.success(t("admin.invitations.link_copied", "Link undangan disalin"));
+                toast.success(
+                  t("admin.invitations.link_copied", "Link undangan disalin"),
+                );
               }}
               className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
             >
@@ -146,162 +190,207 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
             </Button>
           </div>
         </div>
-        <DialogFooter className="gap-2">
+
+        <DialogFooter>
           <Button
-            variant="outline"
             onClick={() => setCreatedCode(null)}
             size="lg"
-            className="text-xs font-bold cursor-pointer"
+            className="text-xs font-bold cursor-pointer shrink-0"
           >
             {t("admin.invitations.create_another", "Buat Lagi")}
           </Button>
-          <Button onClick={onClose} size="lg" className="text-xs font-bold cursor-pointer">
-            {t("common.done", "Selesai")}
-          </Button>
         </DialogFooter>
-      </>
+      </DialogContent>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2">
+    <DialogContent className="sm:max-w-md border border-border text-foreground min-w-0">
+      <DialogHeader>
+        <DialogTitle className="text-lg font-bold text-foreground">
+          {t("admin.invitations.add_title", "Buat Undangan")}
+        </DialogTitle>
+        <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+          {t(
+            "admin.invitations.add_desc",
+            "Buat link undangan yang memberi akses premium atau trial saat diklaim.",
+          )}
+        </DialogDescription>
+      </DialogHeader>
+
+      <form
+        id="add-invitation-form"
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-4 min-w-0"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <Controller
+              name="kind"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("admin.invitations.field_kind", "Tipe")}
+                  </Label>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      align="start"
+                      position="popper"
+                      className="p-1"
+                    >
+                      <SelectItem
+                        value="full"
+                        className="uppercase tracking-wider text-[10px] cursor-pointer"
+                      >
+                        {t("license.tier_premium", "Premium")}
+                      </SelectItem>
+                      <SelectItem
+                        value="trial"
+                        className="uppercase tracking-wider text-[10px] cursor-pointer"
+                      >
+                        {t("license.tier_trial", "Trial")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            />
+            <Controller
+              name="maxRedemptions"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("admin.invitations.field_max", "Maksimal Pakai")}
+                  </Label>
+                  <Input
+                    {...field}
+                    type="text"
+                    placeholder={t(
+                      "admin.codes_form_max_uses_placeholder",
+                      "∞ (Unlimited)",
+                    )}
+                    className="h-8 text-sm placeholder:text-sm"
+                  />
+                </div>
+              )}
+            />
+          </div>
+
+          {kindValue === "trial" && (
+            <Controller
+              name="trialDays"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("admin.invitations.field_trial_days", "Hari Trial")}
+                  </Label>
+                  <Input
+                    {...field}
+                    type="text"
+                    className="h-8 text-sm placeholder:text-sm"
+                  />
+                </div>
+              )}
+            />
+          )}
+
           <Controller
-            name="kind"
+            name="expiresAt"
             control={control}
             render={({ field }) => (
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t("admin.invitations.field_kind", "Tipe")}
+                  {t(
+                    "admin.invitations.field_expires",
+                    "Kadaluarsa (opsional)",
+                  )}
                 </Label>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start" position="popper" className="p-1">
-                    <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">
-                      {t("license.tier_premium", "Premium")}
-                    </SelectItem>
-                    <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">
-                      {t("license.tier_trial", "Trial")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative w-full">
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className={cn(
+                          "w-full h-8 justify-start text-left font-normal text-sm cursor-pointer pr-8",
+                          !field.value && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {field.value ? (
+                          format(field.value, "dd MMM yyyy", {
+                            locale: currentLocale,
+                          })
+                        ) : (
+                          <span>
+                            {t(
+                              "admin.invitations.select_date",
+                              "Pilih tanggal",
+                            )}
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          setCalendarOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {field.value && (
+                    <button
+                      type="button"
+                      onClick={() => field.onChange(undefined)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer animate-in fade-in zoom-in-95 duration-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           />
+
           <Controller
-            name="maxRedemptions"
+            name="recipient"
             control={control}
             render={({ field }) => (
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t("admin.invitations.field_max", "Maksimal Pakai")}
+                  {t(
+                    "admin.invitations.field_recipient",
+                    "Untuk Siapa (opsional)",
+                  )}
                 </Label>
                 <Input
                   {...field}
-                  type="text"
-                  placeholder={t("admin.codes_form_max_uses_placeholder", "∞ (Unlimited)")}
+                  placeholder={t(
+                    "admin.invitations.field_recipient_ph",
+                    "cth: Budi / promo Juni",
+                  )}
                   className="h-8 text-sm placeholder:text-sm"
                 />
               </div>
             )}
           />
         </div>
-
-        {kindValue === "trial" && (
-          <Controller
-            name="trialDays"
-            control={control}
-            render={({ field }) => (
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t("admin.invitations.field_trial_days", "Hari Trial")}
-                </Label>
-                <Input
-                  {...field}
-                  type="text"
-                  className="h-8 text-sm placeholder:text-sm"
-                />
-              </div>
-            )}
-          />
-        )}
-
-        <Controller
-          name="expiresAt"
-          control={control}
-          render={({ field }) => (
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {t("admin.invitations.field_expires", "Kadaluarsa (opsional)")}
-              </Label>
-              <div className="relative w-full">
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      type="button"
-                      className={cn(
-                        "w-full h-8 justify-start text-left font-normal text-sm cursor-pointer pr-8",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      {field.value ? (
-                        format(field.value, "dd MMM yyyy", { locale: currentLocale })
-                      ) : (
-                        <span>{t("admin.invitations.select_date", "Pilih tanggal")}</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={(date) => {
-                        field.onChange(date);
-                        setCalendarOpen(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-                {field.value && (
-                  <button
-                    type="button"
-                    onClick={() => field.onChange(undefined)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer animate-in fade-in zoom-in-95 duration-100"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="recipient"
-          control={control}
-          render={({ field }) => (
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {t("admin.invitations.field_recipient", "Untuk Siapa (opsional)")}
-              </Label>
-              <Input
-                {...field}
-                placeholder={t("admin.invitations.field_recipient_ph", "cth: Budi / promo Juni")}
-                className="h-8 text-sm placeholder:text-sm"
-              />
-            </div>
-          )}
-        />
-      </div>
+      </form>
 
       <DialogFooter>
         <Button
           type="submit"
+          form="add-invitation-form"
           size="lg"
           disabled={saving || !isValid}
           className="text-xs font-bold cursor-pointer shrink-0"
@@ -313,25 +402,18 @@ function InviteForm({ origin, onClose }: InviteFormProps) {
           )}
         </Button>
       </DialogFooter>
-    </form>
+    </DialogContent>
   );
 }
 
-export function AddInvitationDialog({ open, onOpenChange, origin }: AddInvitationDialogProps) {
-  const { t } = useTranslation();
+export function AddInvitationDialog({
+  open,
+  onOpenChange,
+  origin,
+}: AddInvitationDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border border-border text-foreground">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.invitations.add_title", "Buat Undangan")}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t("admin.invitations.add_desc", "Buat link undangan yang memberi akses premium atau trial saat diklaim.")}
-          </DialogDescription>
-        </DialogHeader>
-        {open && <InviteForm key="invite-form" origin={origin} onClose={() => onOpenChange(false)} />}
-      </DialogContent>
+      {open && <InviteFormContent key="invite-form" origin={origin} />}
     </Dialog>
   );
 }

@@ -459,18 +459,51 @@ export function JournalDashboard() {
     let tp1 = 0;
     let tp2 = 0;
     let tp3 = 0;
-    let reversed = 0;
+    // A no-TP reversal close still realizes a P/L, so split it by R-sign into a
+    // win/loss bucket — this is what buildTrackerStats already counts in the
+    // center win-rate. Use r >= 0 (vs the model's r > 0) so the slice total
+    // stays equal to stats.closed; a flat r === 0 (effectively impossible with
+    // float prices) lands in the profit bucket rather than being dropped.
+    let reversedWin = 0;
+    let reversedLoss = 0;
 
     filteredHistory.forEach((t) => {
       if (t.status === "sl") sl++;
       else if (t.status === "tp1") tp1++;
       else if (t.status === "tp2") tp2++;
       else if (t.status === "tp3") tp3++;
-      else if (t.status === "reversed") reversed++;
+      else if (t.status === "reversed") {
+        const { r } = computePnl(t, t.closePrice ?? t.entryPrice);
+        if (r >= 0) reversedWin++;
+        else reversedLoss++;
+      }
     });
 
-    return [
+    // Ordered so the loss family (red) and win family (green) read cohesively
+    // around the donut, with reversals hatched to stay distinct from clean
+    // TP/SL exits.
+    const data: {
+      name: string;
+      value: number;
+      fill: string;
+      patternId?: string;
+      striped?: boolean;
+    }[] = [
       { name: t("journal.outcome_sl"), value: sl, fill: NEG },
+      {
+        name: t("journal.outcome_reversed_loss"),
+        value: reversedLoss,
+        fill: NEG,
+        patternId: "reversal-loss",
+        striped: true,
+      },
+      {
+        name: t("journal.outcome_reversed_win"),
+        value: reversedWin,
+        fill: POS,
+        patternId: "reversal-win",
+        striped: true,
+      },
       {
         name: t("journal.outcome_tp1"),
         value: tp1,
@@ -486,12 +519,8 @@ export function JournalDashboard() {
         value: tp3,
         fill: "rgba(16, 185, 129, 1)",
       },
-      {
-        name: t("journal.outcome_reversed"),
-        value: reversed,
-        fill: PALETTE.neutral.fill,
-      },
     ];
+    return data;
   }, [filteredHistory, t]);
 
   const pieData = useMemo(
@@ -566,9 +595,13 @@ export function JournalDashboard() {
       label: t("journal.outcome_tp3"),
       color: "rgba(16, 185, 129, 1)",
     },
-    [t("journal.outcome_reversed")]: {
-      label: t("journal.outcome_reversed"),
-      color: PALETTE.neutral.fill,
+    [t("journal.outcome_reversed_win")]: {
+      label: t("journal.outcome_reversed_win"),
+      color: POS,
+    },
+    [t("journal.outcome_reversed_loss")]: {
+      label: t("journal.outcome_reversed_loss"),
+      color: NEG,
     },
   };
 
@@ -770,6 +803,50 @@ export function JournalDashboard() {
                         className="h-full w-full"
                       >
                         <PieChart>
+                          <defs>
+                            <pattern
+                              id="reversal-win"
+                              patternUnits="userSpaceOnUse"
+                              width="6"
+                              height="6"
+                              patternTransform="rotate(45)"
+                            >
+                              <rect
+                                width="6"
+                                height="6"
+                                fill="rgba(16, 185, 129, 0.3)"
+                              />
+                              <line
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="6"
+                                stroke="rgba(16, 185, 129, 1)"
+                                strokeWidth={2.5}
+                              />
+                            </pattern>
+                            <pattern
+                              id="reversal-loss"
+                              patternUnits="userSpaceOnUse"
+                              width="6"
+                              height="6"
+                              patternTransform="rotate(45)"
+                            >
+                              <rect
+                                width="6"
+                                height="6"
+                                fill="rgba(239, 68, 68, 0.3)"
+                              />
+                              <line
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="6"
+                                stroke={NEG}
+                                strokeWidth={2.5}
+                              />
+                            </pattern>
+                          </defs>
                           <Pie
                             data={BACKGROUND_RING}
                             cx="50%"
@@ -791,7 +868,14 @@ export function JournalDashboard() {
                             strokeWidth={0}
                           >
                             {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  entry.patternId
+                                    ? `url(#${entry.patternId})`
+                                    : entry.fill
+                                }
+                              />
                             ))}
                           </Pie>
                           <ChartTooltip
@@ -843,7 +927,14 @@ export function JournalDashboard() {
                           >
                             <span
                               className="h-1.5 w-1.5 rounded-full shrink-0 group-hover:scale-125 transition-transform"
-                              style={{ backgroundColor: d.fill }}
+                              style={
+                                d.striped
+                                  ? {
+                                      backgroundImage: `repeating-linear-gradient(45deg, ${d.fill} 0 1.5px, transparent 1.5px 3px)`,
+                                      backgroundColor: "transparent",
+                                    }
+                                  : { backgroundColor: d.fill }
+                              }
                             />
                             <span className="transition-colors dark:opacity-60">
                               {d.name}

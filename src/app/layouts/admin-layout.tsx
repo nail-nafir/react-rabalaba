@@ -367,11 +367,11 @@ export function AdminLayout() {
                 variant="ghost"
                 size="sm"
                 asChild
-                className="text-xs cursor-pointer items-center gap-1.5 text-muted-foreground hover:text-foreground hidden md:flex h-8 rounded-lg"
+                className="text-xs cursor-pointer flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground h-8 w-8 md:w-auto md:px-3 rounded-lg"
               >
                 <Link to="/terminal">
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  <span>
+                  <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden md:inline">
                     {t("admin.back_to_terminal", "Kembali ke Terminal")}
                   </span>
                 </Link>
@@ -379,7 +379,7 @@ export function AdminLayout() {
 
               <Separator
                 orientation="vertical"
-                className="h-6 data-vertical:self-center hidden md:block"
+                className="h-6 data-vertical:self-center"
               />
 
               {/* Language Selector Dropdown */}
@@ -387,9 +387,11 @@ export function AdminLayout() {
                 value={currentLang}
                 onValueChange={(v) => i18n.changeLanguage(v)}
               >
-                <SelectTrigger className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg">
-                  <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-                  <SelectValue />
+                <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
+                  <Languages className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
+                  <span className="hidden sm:inline">
+                    <SelectValue />
+                  </span>
                 </SelectTrigger>
                 <SelectContent position="popper" align="end" className="p-1">
                   {LANGUAGES.map((lang) => (
@@ -411,15 +413,17 @@ export function AdminLayout() {
                   setTheme(v as "light" | "dark" | "system")
                 }
               >
-                <SelectTrigger className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg">
+                <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                   {theme === "dark" ? (
-                    <Moon className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                    <Moon className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
                   ) : theme === "light" ? (
-                    <Sun className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                    <Sun className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
                   ) : (
-                    <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                    <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
                   )}
-                  <SelectValue />
+                  <span className="hidden sm:inline">
+                    <SelectValue />
+                  </span>
                 </SelectTrigger>
                 <SelectContent position="popper" align="end" className="p-1">
                   <SelectItem
