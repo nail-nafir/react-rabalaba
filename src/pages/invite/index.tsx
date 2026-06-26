@@ -116,8 +116,8 @@ export default function InvitePage() {
         </Shell>
       );
     }
-    // Non-success outcomes (already / expired / revoked / exhausted / invalid / error)
-    const alreadyHadIt = result === "already";
+    // Non-success outcomes (already / already_premium / expired / revoked / exhausted / invalid / error)
+    const alreadyHadIt = result === "already" || result === "already_premium";
     return (
       <Shell>
         <CardHeader className="flex flex-col items-center text-center gap-3 pt-8">
@@ -131,9 +131,11 @@ export default function InvitePage() {
             {alreadyHadIt ? <CheckCircle2 className="h-8 w-8" /> : <XCircle className="h-8 w-8" />}
           </div>
           <CardTitle className="text-xl font-bold">
-            {alreadyHadIt
-              ? t("invite.already_title", "Sudah Diklaim")
-              : t("invite.invalid_title", "Undangan Tidak Berlaku")}
+            {result === "already_premium"
+              ? t("invite.already_premium_title", "Sudah Premium")
+              : alreadyHadIt
+                ? t("invite.already_title", "Sudah Diklaim")
+                : t("invite.invalid_title", "Undangan Tidak Berlaku")}
           </CardTitle>
           <CardDescription className="text-xs leading-relaxed">
             {t(`invite.reason_${result}`, t("invite.invalid_desc", "Undangan ini tidak bisa dipakai lagi."))}

@@ -20,6 +20,7 @@ export type ClaimResult =
   | "revoked"
   | "exhausted"
   | "already"
+  | "already_premium"
   | "unauthenticated"
   | "error";
 
