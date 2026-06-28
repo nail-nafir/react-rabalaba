@@ -20,8 +20,11 @@ export interface JournalAlert {
   stopLoss?: number;
   /** Close price for an outcome (TP/SL/reversal). */
   price?: number | null;
-  /** TP milestone (1/2/3) for a tp_hit. */
+  /** TP milestone (1/2/3) for a tp_hit; for a `reversed` outcome, the TP level
+   *  SECURED before the flip (0 = none). */
   tpLevel?: number;
+  /** Total TP levels the plan had — lets a reversal read "TP 2/3 secured". */
+  tpTotal?: number;
   /** Realized P&L % for an outcome (signed). */
   pnlPct?: number;
   /** Hold time in ms for an outcome (entry → close), for the DURATION line. */
@@ -58,9 +61,16 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
       signal: c.signal,
     };
     // A reversal (with OR without a secured TP) is reported as "reversed" first,
-    // mirroring the journal's reversed marker. Otherwise it's a pure TP/SL hit.
+    // mirroring the journal's reversed marker. It carries the SECURED TP level
+    // (highest_tp_reached) + total so the line can read "TP 2/3 secured" vs no
+    // TP, like the trade-detail badge. Otherwise it's a pure TP/SL hit.
     if (c.reversed) {
-      alerts.push({ kind: "reversed", ...base });
+      alerts.push({
+        kind: "reversed",
+        ...base,
+        tpLevel: c.highest_tp_reached,
+        tpTotal: c.tp_total,
+      });
     } else if (c.status === "sl") {
       alerts.push({ kind: "sl_hit", ...base });
     } else if (/^tp[123]$/.test(c.status)) {
@@ -70,7 +80,12 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
         tpLevel: Number(c.status.slice(2)),
       });
     } else {
-      alerts.push({ kind: "reversed", ...base });
+      alerts.push({
+        kind: "reversed",
+        ...base,
+        tpLevel: c.highest_tp_reached,
+        tpTotal: c.tp_total,
+      });
     }
   }
 
@@ -125,6 +140,17 @@ function formatDuration(ms?: number): string {
   if (hours > 0) return `${hours} JAM ${minutes} MENIT`;
   if (minutes > 0) return `${minutes} MENIT`;
   return `${seconds} DETIK`;
+}
+
+/** Outcome label for a SIGNAL-REVERSAL close, spelling out whether a TP was
+ *  secured before the flip — mirroring the trade-detail badge ("TP 2/3" +
+ *  "Reversed"). `secured` is highest_tp_reached (0 = none); `total` the plan's
+ *  TP count. → "REVERSED (TP 2/3)" when a TP was banked, else "REVERSED (TANPA
+ *  TP)". Falls back to "REVERSED (TP n)" when the total is unknown. */
+function reversedLabel(secured?: number, total?: number): string {
+  const n = secured ?? 0;
+  if (n < 1) return "REVERSED (TANPA TP)";
+  return total ? `REVERSED (TP ${n}/${total})` : `REVERSED (TP ${n})`;
 }
 
 /** Direction-aware % of a target price from entry: a TP reads positive and an SL
@@ -196,12 +222,165 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
       .map((a) => renderOutcome("⛔", a, "SL")),
     ...alerts
       .filter((a) => a.kind === "reversed")
-      .map((a) => renderOutcome("🔄", a, "REVERSED")),
+      .map((a) => renderOutcome("🔄", a, reversedLabel(a.tpLevel, a.tpTotal))),
   ].join("\n\n");
 
   const blocks: string[] = [SENSEI_HEADER];
   if (signalBody) blocks.push(DIVIDER, "🚨 SINYAL:\n\n" + signalBody);
   if (outcomeBody) blocks.push(DIVIDER, "📢 HASIL:\n\n" + outcomeBody);
+  blocks.push(DIVIDER, "🧘 PETUAH SENSEI\n\n" + SENSEI_QUOTE);
+
+  let msg = blocks.join("\n\n");
+  if (msg.length > DISCORD_MAX) {
+    msg = msg.slice(0, DISCORD_MAX - 20) + "\n… (truncated)";
+  }
+  return msg;
+}
+
+/** One closed trade in the end-of-day recap (realized, direction-aware %). */
+export interface DailySummaryClosed {
+  symbol: string;
+  signal?: "long" | "short" | null;
+  grade?: string | null;
+  /** tp1 | tp2 | tp3 | sl | reversed */
+  status: string;
+  /** Closed by a SIGNAL REVERSAL (vs a price TP/SL hit). A secured-TP reversal
+   *  has status `tp{n}` AND reversed=true, so this flag — not status — is what
+   *  marks it in the recap. */
+  reversed?: boolean;
+  /** TP level secured (highest_tp_reached) + plan's TP total, for the reversal
+   *  label "REVERSED (TP 2/3)". */
+  tpReached?: number;
+  tpTotal?: number;
+  pnlPct: number;
+  durationMs?: number;
+}
+
+/** A signal opened today. */
+export interface DailySummaryEmitted {
+  symbol: string;
+  signal?: "long" | "short" | null;
+  grade?: string | null;
+}
+
+/** A still-open position; `floatingPct` is omitted when no live price was had. */
+export interface DailySummaryOpen {
+  symbol: string;
+  signal?: "long" | "short" | null;
+  grade?: string | null;
+  floatingPct?: number;
+}
+
+/** The fully-prepared payload for the daily recap. The caller (edge function)
+ *  builds this from the DB + live prices; this module stays PURE (no Date —
+ *  `dateLabel` is pre-formatted by the caller). */
+export interface DailySummaryInput {
+  /** WIB date label, pre-formatted by the caller, e.g. "29 Jun 2026". */
+  dateLabel: string;
+  closed: DailySummaryClosed[];
+  emitted: DailySummaryEmitted[];
+  open: DailySummaryOpen[];
+}
+
+/** Outcome → label/emoji, mirroring the per-event alert vocabulary. A reversal
+ *  (flagged, regardless of its persisted tp{n}/reversed status) spells out the
+ *  secured TP, like the trade-detail badge. */
+function dailyResultLabel(c: DailySummaryClosed): string {
+  if (c.reversed) return reversedLabel(c.tpReached, c.tpTotal);
+  if (/^tp[123]$/.test(c.status)) return `TP${c.status.slice(2)}`;
+  if (c.status === "sl") return "SL";
+  return "REVERSED";
+}
+function dailyOutcomeEmoji(c: DailySummaryClosed): string {
+  if (c.reversed || c.status === "reversed") return "🔄";
+  if (/^tp[123]$/.test(c.status)) return "🎯";
+  if (c.status === "sl") return "⛔";
+  return "🔄";
+}
+
+/** "**SYM** • DIR • GRADE" — the shared headline used across recap lines. */
+function dailyHead(item: {
+  symbol: string;
+  signal?: "long" | "short" | null;
+  grade?: string | null;
+}): string {
+  const parts = [`**${item.symbol}**`];
+  if (item.signal) parts.push(item.signal.toUpperCase());
+  if (item.grade) parts.push(item.grade);
+  return parts.join(" • ");
+}
+
+/** Inline signed % like "`(+12%)`" (pctSuffix without its leading space). */
+function inlinePct(pct?: number): string {
+  return pctSuffix(pct).trim();
+}
+
+/**
+ * Render the END-OF-DAY recap into one in-character "Wangsit RabaLaba Sensei"
+ * Discord message: 📊 REKAP (counts, win-rate, total/avg P&L, best & worst) →
+ * 📢 CLOSED (per-outcome one-liners, sorted by realized %) → 🚨 SINYAL BARU
+ * (today's entries) → 🟡 MASIH OPEN (floating %, biggest first) → 🧘 PETUAH
+ * SENSEI. Returns null only when the day was completely empty (nothing closed,
+ * emitted, or open) so the caller can skip the POST. PURE (no fetch/DB/Date).
+ */
+export function formatDailySummaryForDiscord(
+  input: DailySummaryInput,
+): string | null {
+  const { dateLabel, closed, emitted, open } = input;
+  if (closed.length === 0 && emitted.length === 0 && open.length === 0) {
+    return null;
+  }
+
+  const wins = closed.filter((c) => c.pnlPct > 0).length;
+  const losses = closed.filter((c) => c.pnlPct < 0).length;
+  const winRate = closed.length > 0 ? Math.round((wins / closed.length) * 100) : 0;
+  const totalPct = closed.reduce((s, c) => s + (c.pnlPct ?? 0), 0);
+  const avgPct = closed.length > 0 ? totalPct / closed.length : 0;
+  const ranked = [...closed].sort((a, b) => b.pnlPct - a.pnlPct);
+  const best = ranked[0];
+  const worst = ranked[ranked.length - 1];
+
+  // 📊 REKAP — the at-a-glance scoreboard.
+  const recap = [`📊 REKAP • ${dateLabel}`, ""];
+  recap.push(`✅ DITUTUP: ${closed.length} (${wins} Laba / ${losses} Rugi) • RASIO LABA RUGI: \`${winRate}%\``);
+  if (closed.length > 0) {
+    recap.push(`💰 TOTAL: ${inlinePct(totalPct)} • RATA-RATA: ${inlinePct(avgPct)}`);
+    recap.push(`👑 TERBAIK: **${best.symbol}** ${inlinePct(best.pnlPct)} • 🥀 TERBURUK: **${worst.symbol}** ${inlinePct(worst.pnlPct)}`);
+  }
+  recap.push(`🚨 SINYAL BARU: ${emitted.length} • 🟡 MASIH TERBUKA: ${open.length}`);
+
+  // 📢 CLOSED — one line per outcome, best realized % first.
+  const closedBody = ranked
+    .map((c) => {
+      const head = dailyHead(c);
+      const label = dailyResultLabel(c);
+      const dur = formatDuration(c.durationMs);
+      const durTag = dur ? ` · \`${dur}\`` : "";
+      return `${dailyOutcomeEmoji(c)} ${head} — ${label} ${inlinePct(c.pnlPct)}${durTag}`;
+    })
+    .join("\n");
+
+  // 🚨 SINYAL BARU — LONG first, then SHORT.
+  const emittedBody = [
+    ...emitted.filter((e) => e.signal !== "short"),
+    ...emitted.filter((e) => e.signal === "short"),
+  ]
+    .map((e) => `${e.signal === "short" ? "🔴" : "🟢"} ${dailyHead(e)}`)
+    .join("\n");
+
+  // 🟡 MASIH OPEN — biggest floating gain first; rows without a live price last.
+  const openBody = [...open]
+    .sort((a, b) => (b.floatingPct ?? -Infinity) - (a.floatingPct ?? -Infinity))
+    .map((o) => {
+      const pct = o.floatingPct != null ? ` ${inlinePct(o.floatingPct)}` : "";
+      return `${o.signal === "short" ? "🔴" : "🟢"} ${dailyHead(o)}${pct}`;
+    })
+    .join("\n");
+
+  const blocks: string[] = [SENSEI_HEADER, DIVIDER, recap.join("\n")];
+  if (closedBody) blocks.push(DIVIDER, "📢 DITUTUP HARI INI:\n\n" + closedBody);
+  if (emittedBody) blocks.push(DIVIDER, "🚨 SINYAL BARU:\n\n" + emittedBody);
+  if (openBody) blocks.push(DIVIDER, "🟡 MASIH TERBUKA:\n\n" + openBody);
   blocks.push(DIVIDER, "🧘 PETUAH SENSEI\n\n" + SENSEI_QUOTE);
 
   let msg = blocks.join("\n\n");

@@ -1,10 +1,8 @@
 import { Crown, Hourglass, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import {
-  usePremiumAccess,
-  type LicenseTier,
-} from "@/hooks/use-premium-access";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePremiumAccess, type LicenseTier } from "@/hooks/use-premium-access";
 import { useUIActions } from "@/store/hooks";
 import { cn } from "@/lib/utils";
 
@@ -18,15 +16,22 @@ const TIER_STYLES: Record<LicenseTier, string> = {
   free: "text-muted-foreground",
   trial:
     "border-amber-500/50! bg-amber-500/10! text-amber-600 dark:text-amber-400 hover:bg-amber-500/20!",
-  premium: "border-primary/50! bg-primary/10! text-primary hover:bg-primary/20!",
+  premium:
+    "border-primary/50! bg-primary/10! text-primary hover:bg-primary/20!",
 };
 
 export function LicenseBadge() {
   const { t } = useTranslation();
-  const { tier, daysLeft, isConfigured } = usePremiumAccess();
+  const { tier, daysLeft, isConfigured, isResolving } = usePremiumAccess();
   const { openLicenseDialog } = useUIActions();
 
   if (!isConfigured) return null;
+
+  // While the entitlement is still resolving, show a placeholder instead of the
+  // default 'free' badge — otherwise it flashes 'free' then snaps to 'premium'.
+  if (isResolving) {
+    return <Skeleton className="h-8 w-22 rounded-md" />;
+  }
 
   const Icon = TIER_ICONS[tier];
   const tierLabel = t(`license.tier_${tier}`);

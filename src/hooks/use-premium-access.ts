@@ -31,7 +31,7 @@ export interface LicenseStatus {
 const FREE: LicenseStatus = { tier: "free", hasAccess: false, expiresAt: null };
 
 export function usePremiumAccess() {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? null;
 
@@ -124,6 +124,11 @@ export function usePremiumAccess() {
     isAdmin: !!profile?.is_admin || !!profile?.is_owner,
     isOwner: !!profile?.is_owner,
     isLoading,
+    // Entitlement not yet known: auth still resolving, OR a logged-in user whose
+    // profile row is still in-flight. Lets the UI show a placeholder instead of
+    // flashing the default 'free' state and snapping to 'premium' once it loads.
+    // A logged-out (ready, no user) state is NOT resolving — it's settled free.
+    isResolving: !ready || (!!userId && isLoading),
     checkAccess,
     grantAccess,
     accessCode: "",

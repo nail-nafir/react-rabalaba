@@ -120,6 +120,35 @@ test("buildAutoJournalAlerts: a reversal-after-TP reports as reversed, not tp_hi
   assert.equal(alerts[0].kind, "reversed");
 });
 
+test("a reversal that secured a TP spells out the TP level (badge-style)", async () => {
+  const { buildAutoJournalAlerts, formatAlertsForDiscord } =
+    await loadModule(ALERTS);
+  const alerts = buildAutoJournalAlerts({
+    inserts: [],
+    closures: [
+      {
+        id: "r",
+        symbol: "TON-USD",
+        status: "tp2", // secured-TP reversal keeps its tp{n} status
+        close_price: 1.59,
+        closed_at: "2026-06-21T00:00:00Z",
+        highest_tp_reached: 2,
+        tp_total: 3,
+        reversed: true,
+        pnl_pct: 8.4,
+        duration_ms: 3 * 3600 * 1000,
+        signal: "long",
+        grade: "A",
+      },
+    ],
+  });
+  const rev = alerts.find((a) => a.kind === "reversed");
+  assert.equal(rev.tpLevel, 2);
+  assert.equal(rev.tpTotal, 3);
+  const msg = formatAlertsForDiscord(alerts);
+  assert.ok(msg.includes("↳ REVERSED (TP 2/3): `@1.59` `(+8.4%)`"));
+});
+
 test("formatAlertsForDiscord renders the Sensei message, null when empty", async () => {
   const { buildAutoJournalAlerts, formatAlertsForDiscord } =
     await loadModule(ALERTS);
@@ -144,9 +173,10 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
       "⛔ **MYX-USD** • SHORT • B\n↳ SL: `@9` `(-8.3%)`\n↳ DURATION: `32 MENIT`",
     ),
   );
+  // A reversal with NO secured TP spells that out (mirrors the no-TP badge).
   assert.ok(
     msg.includes(
-      "🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED: `@5.12` `(+0.28%)`\n↳ DURATION: `52 DETIK`",
+      "🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED (TANPA TP): `@5.12` `(+0.28%)`\n↳ DURATION: `52 DETIK`",
     ),
   );
   assert.ok(msg.includes("Bersemedi di depan chart")); // closing wisdom

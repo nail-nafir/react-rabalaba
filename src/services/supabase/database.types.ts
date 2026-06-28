@@ -90,6 +90,12 @@ export interface JournalSettingsRow {
   market_hours_only: boolean;
   /** timestamptz ISO string; null until the first run stamps it. */
   last_run_at: string | null;
+  /** End-of-day Discord recap (see 20260629000001_journal_daily_summary.sql). */
+  daily_summary_enabled: boolean;
+  /** WIB hour (0..23) at/after which the recap is sent; 23 = end of day. */
+  daily_summary_hour: number;
+  /** timestamptz ISO string; null until the first recap is sent. */
+  daily_summary_last_sent_at: string | null;
   updated_at: string;
   updated_by: string | null;
 }

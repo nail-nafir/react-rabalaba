@@ -39,8 +39,15 @@ export {
 export {
   buildAutoJournalAlerts,
   formatAlertsForDiscord,
+  formatDailySummaryForDiscord,
 } from "./alerts";
-export type { JournalAlert } from "./alerts";
+export type {
+  JournalAlert,
+  DailySummaryInput,
+  DailySummaryClosed,
+  DailySummaryEmitted,
+  DailySummaryOpen,
+} from "./alerts";
 export type { UnifiedAsset } from "@/types/asset";
 export type { JournalTradeRow } from "@/services/supabase/database.types";
 

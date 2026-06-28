@@ -17,7 +17,14 @@ const QUERY_KEY = ["journal-settings"] as const;
 
 /** The admin-editable subset (id/last_run_at/updated_* are server-managed). */
 export type JournalSettingsPatch = Partial<
-  Pick<JournalSettingsRow, "enabled" | "interval_minutes" | "market_hours_only">
+  Pick<
+    JournalSettingsRow,
+    | "enabled"
+    | "interval_minutes"
+    | "market_hours_only"
+    | "daily_summary_enabled"
+    | "daily_summary_hour"
+  >
 >;
 
 export function useJournalSettings() {

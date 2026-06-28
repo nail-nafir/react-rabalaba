@@ -113,14 +113,14 @@ export function AdminLayout() {
 
   const managementItems = [
     {
-      to: "/admin/assets",
-      label: t("admin.menu_assets", "Manajemen Aset"),
-      icon: Database,
-    },
-    {
       to: "/admin/users",
       label: t("admin.menu_users", "Manajemen User"),
       icon: Users,
+    },
+    {
+      to: "/admin/assets",
+      label: t("admin.menu_assets", "Manajemen Aset"),
+      icon: Database,
     },
     {
       to: "/admin/codes",
@@ -160,6 +160,9 @@ export function AdminLayout() {
 
   return (
     <TooltipProvider>
+      {/* Top progress bar on route change — same primary loader as the public
+          layout, which the admin shell was missing. */}
+      <PageLoader />
       <SidebarProvider
         className="h-svh overflow-hidden"
         style={{ "--sidebar-width": "17rem" } as CSSProperties}

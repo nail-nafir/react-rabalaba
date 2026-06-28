@@ -37,6 +37,9 @@ export interface JournalClosure {
   close_price: number | null;
   closed_at: string;
   highest_tp_reached: number;
+  /** Total TP levels the plan had — lets a reversal alert read "TP 2/3 secured"
+   *  vs "no TP", mirroring the trade-detail badge. NOT persisted. */
+  tp_total?: number;
   /** True only for a SIGNAL-REVERSAL close (vs a price TP/SL hit). Lets the UI
    *  mark a reversal-after-TP apart from a stop-after-TP (both are status tp{n}). */
   reversed?: boolean;
@@ -182,6 +185,7 @@ export function runAutoJournal(
       ? new Date(t.closedAt).toISOString()
       : new Date().toISOString(),
     highest_tp_reached: t.highestTpReached,
+    tp_total: t.takeProfits.length,
     pnl_pct: computePnl(t, t.closePrice ?? t.entryPrice).pct,
     duration_ms: Math.max(0, (t.closedAt ?? now) - t.followedAt),
     signal: t.signal,
@@ -218,6 +222,7 @@ export function runAutoJournal(
       close_price,
       closed_at: new Date().toISOString(),
       highest_tp_reached: securedTp,
+      tp_total: t.takeProfits.length,
       reversed: true,
       pnl_pct: close_price != null ? computePnl(t, close_price).pct : 0,
       duration_ms: Math.max(0, now - t.followedAt),

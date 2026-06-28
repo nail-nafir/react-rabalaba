@@ -45,6 +45,10 @@ function formatAgo(iso: string | null, now: number): string | null {
 // Finest = 15 min (the cron base tick); coarser options are gated in-app.
 const INTERVAL_OPTIONS = [15, 30, 60, 120, 240];
 
+// WIB hours offered for the end-of-day recap (evening → midnight). 0 = midnight,
+// which recaps the FULL previous day (true end of day).
+const SUMMARY_HOUR_OPTIONS = [18, 19, 20, 21, 22, 23, 0];
+
 interface SettingRowProps {
   title: string;
   desc: string;
@@ -83,11 +87,15 @@ function JournalSettingsForm({
   const enabled = settings.enabled ?? true;
   const interval = settings.interval_minutes ?? 30;
   const marketHoursOnly = settings.market_hours_only ?? false;
+  const summaryEnabled = settings.daily_summary_enabled ?? false;
+  const summaryHour = settings.daily_summary_hour ?? 23;
 
   const [draftEnabled, setDraftEnabled] = useState(enabled);
   const [draftInterval, setDraftInterval] = useState(interval);
   const [draftMarketHoursOnly, setDraftMarketHoursOnly] =
     useState(marketHoursOnly);
+  const [draftSummaryEnabled, setDraftSummaryEnabled] = useState(summaryEnabled);
+  const [draftSummaryHour, setDraftSummaryHour] = useState(summaryHour);
   const [isSaving, setIsSaving] = useState(false);
 
   const { runScan, isScanning } = useMarketScan();
@@ -98,7 +106,9 @@ function JournalSettingsForm({
   const hasChanges =
     draftEnabled !== enabled ||
     draftInterval !== interval ||
-    draftMarketHoursOnly !== marketHoursOnly;
+    draftMarketHoursOnly !== marketHoursOnly ||
+    draftSummaryEnabled !== summaryEnabled ||
+    draftSummaryHour !== summaryHour;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -107,6 +117,8 @@ function JournalSettingsForm({
         enabled: draftEnabled,
         interval_minutes: draftInterval,
         market_hours_only: draftMarketHoursOnly,
+        daily_summary_enabled: draftSummaryEnabled,
+        daily_summary_hour: draftSummaryHour,
       });
       toast.success(t("admin.settings_toast_success"));
       onClose();
@@ -179,6 +191,43 @@ function JournalSettingsForm({
               aria-label="Jurnal hanya saat jam market"
               className="cursor-pointer"
             />
+          </SettingRow>
+
+          <SettingRow
+            title={t("admin.settings_summary_label")}
+            desc={t("admin.settings_summary_desc")}
+          >
+            <Switch
+              checked={draftSummaryEnabled}
+              onCheckedChange={setDraftSummaryEnabled}
+              aria-label="Kirim rangkuman harian ke Discord"
+              className="cursor-pointer data-[state=checked]:bg-emerald-500"
+            />
+          </SettingRow>
+
+          <SettingRow
+            title={t("admin.settings_summary_time_label")}
+            desc={t("admin.settings_summary_time_desc")}
+          >
+            <Select
+              value={String(draftSummaryHour)}
+              onValueChange={(v) => setDraftSummaryHour(Number(v))}
+            >
+              <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px] cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start" position="popper" className="p-1">
+                {SUMMARY_HOUR_OPTIONS.map((h) => (
+                  <SelectItem
+                    key={h}
+                    value={String(h)}
+                    className="uppercase tracking-wider text-[10px] cursor-pointer"
+                  >
+                    {`${String(h).padStart(2, "0")}:00 WIB`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </SettingRow>
         </div>
 
