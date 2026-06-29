@@ -43,11 +43,11 @@ function formatAgo(iso: string | null, now: number): string | null {
 }
 
 // Finest = 15 min (the cron base tick); coarser options are gated in-app.
-const INTERVAL_OPTIONS = [15, 30, 60, 120, 240];
+const INTERVAL_OPTIONS = [15, 30, 60, 240];
 
-// WIB hours offered for the end-of-day recap (evening → midnight). 0 = midnight,
-// which recaps the FULL previous day (true end of day).
-const SUMMARY_HOUR_OPTIONS = [18, 19, 20, 21, 22, 23, 0];
+// WIB hours offered for the end-of-day recap (late evening → midnight). 0 =
+// midnight, which recaps the FULL previous day (true end of day).
+const SUMMARY_HOUR_OPTIONS = [22, 23, 0];
 
 interface SettingRowProps {
   title: string;
