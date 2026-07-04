@@ -60,21 +60,51 @@ export function adaptYahooChart(
   const effectiveFearGreed =
     assetType === "crypto" ? fearGreedValue : undefined;
 
-  // IMPORTANT: For daily percentage change, we MUST use previousClose (yesterday's close)
-  // instead of chartPreviousClose (which is the close before the requested range start).
-  const previousClose =
+  // Normalize candles ONCE — reused for change%, signal computation and UI.
+  const candles = quote ? normalizeYahooCandles(quote, result.timestamp) : [];
+
+  // Daily change baseline is CONVENTION-DEPENDENT per market:
+  //  - equities/forex/commodities: vs the previous SESSION close (Yahoo's
+  //    previousClose — never chartPreviousClose, which is the close before the
+  //    requested range start, i.e. potentially a month old).
+  //  - crypto trades 24/7, so its convention is a ROLLING 24h window (what
+  //    Binance/CoinGecko show). Yahoo's previousClose for crypto is the last
+  //    UTC-midnight close (a 0-24h-old baseline, understating/overstating the
+  //    move) and for some young coins it's outright garbage (near-zero →
+  //    +1,000,000% readings). Derive it from the candle record instead: the
+  //    last close at/before 24h ago, falling back to the meta chain only when
+  //    the candles don't reach back that far.
+  const metaPreviousClose =
     meta.previousClose ??
     meta.regularMarketPreviousClose ??
     meta.chartPreviousClose ??
     currentPrice;
 
+  let previousClose = metaPreviousClose;
+  if (assetType === "crypto") {
+    const refSec =
+      typeof meta.regularMarketTime === "number"
+        ? meta.regularMarketTime
+        : candles.length > 0
+          ? candles[candles.length - 1].timestamp
+          : null;
+    if (refSec != null) {
+      const target = refSec - 24 * 60 * 60;
+      let rolling: number | null = null;
+      for (const candle of candles) {
+        if (candle.timestamp > target) break;
+        if (Number.isFinite(candle.close) && candle.close > 0) {
+          rolling = candle.close;
+        }
+      }
+      if (rolling != null) previousClose = rolling;
+    }
+  }
+
   const changePercent =
     previousClose > 0
       ? ((currentPrice - previousClose) / previousClose) * 100
       : 0;
-
-  // Normalize candles ONCE — reused for both signal computation and UI rendering.
-  const candles = quote ? normalizeYahooCandles(quote, result.timestamp) : [];
 
   let outlook: Outlook | null = null;
   let tradingPlan: TradingPlan | null = null;

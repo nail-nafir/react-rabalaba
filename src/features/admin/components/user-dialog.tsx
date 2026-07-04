@@ -495,10 +495,10 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </div>
                     <div>
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                        {t("table.last_login")}
+                        {t("table.last_access")}
                       </span>
                       <span className="text-foreground">
-                        {formatTs(user.last_sign_in_at)}
+                        {formatTs(user.last_active_at)}
                       </span>
                     </div>
                     <div>

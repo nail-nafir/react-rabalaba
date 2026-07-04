@@ -41,6 +41,9 @@ export {
   formatAlertsForDiscord,
   formatDailySummaryForDiscord,
 } from "./alerts";
+// WIB calendar-window math for the daily/weekly/monthly Discord recaps.
+export { recapWindow } from "./period-summary";
+export type { RecapPeriod, RecapWindow } from "./period-summary";
 export type {
   JournalAlert,
   DailySummaryInput,
@@ -50,6 +53,30 @@ export type {
 } from "./alerts";
 export type { UnifiedAsset } from "@/types/asset";
 export type { JournalTradeRow } from "@/services/supabase/database.types";
+// Asset auto-discovery: the pure ranking/mapping/plan/format core the daily
+// asset-discovery cron wires fetch + DB around (same split as auto-journal).
+export {
+  parseCgTrending,
+  parseBinance24h,
+  parseYahooScreener,
+  parseYahooSearch,
+  binancePerpBase,
+  rankCryptoCandidates,
+  rankUsCandidates,
+  rankIdCandidates,
+  pickYahooCryptoSymbol,
+  dedupeCandidates,
+  planDiscovery,
+  formatDiscoveryForDiscord,
+} from "./asset-discovery-core";
+export type {
+  DiscoveryMarket,
+  DiscoveryReason,
+  RawCandidate,
+  ExistingAssetLite,
+  ValidatedCandidate,
+  DiscoveryPlan,
+} from "./asset-discovery-core";
 
 import {
   DEFAULT_CRYPTO_TICKERS,

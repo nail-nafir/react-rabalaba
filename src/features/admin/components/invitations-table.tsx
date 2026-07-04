@@ -262,8 +262,8 @@ export function InvitationsTable() {
               )}
             >
               {isTrial
-                ? `${inv.kind}${inv.trial_days ? ` ${inv.trial_days}` : ""}`
-                : inv.kind}
+                ? `${t("license.tier_trial", "Trial")}${inv.trial_days ? ` ${inv.trial_days}` : ""}`
+                : t("license.tier_premium", "Premium")}
             </Badge>
           );
         },

@@ -1,13 +1,20 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import {
+  useMarketData,
+  usePeriodCandles,
+} from "@/services/queries/use-yahoo-data";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import {
   computePnl,
   deriveFollowProgress,
 } from "@/features/follow-trade/lib/follow-trade-model";
+import {
+  computeTradeChartWindow,
+  fitTradeWindowCandles,
+} from "@/features/follow-trade/lib/trade-chart-window";
 import { LifecycleBadge, ReversedBadge, TpProgress } from "./follow-status";
-import { formatPrice, formatRatio } from "@/lib/formatters";
+import { formatPrice, formatRatio, formatDayMonth, formatClock } from "@/lib/formatters";
 import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { cn } from "@/lib/utils";
@@ -24,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Check, Loader2, Share2 } from "lucide-react";
+import { Target, Loader2, Share2 } from "lucide-react";
 import { SIGNAL_COLORS, PALETTE, SIGNAL_LABEL_KEYS } from "@/constants";
 
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
@@ -46,9 +53,12 @@ function buildPlanFromTrade(trade: FollowedTrade): TradingPlan {
   return {
     entry: trade.entryPrice,
     stopLoss: trade.stopLoss,
-    takeProfit1: trade.takeProfits[0] ?? trade.entryPrice,
-    takeProfit2:
-      trade.takeProfits[1] ?? trade.takeProfits[0] ?? trade.entryPrice,
+    // A trade may carry fewer than 3 TPs (or none). TradingPlan requires
+    // takeProfit1/2 as numbers, so missing ones become NaN — non-finite levels
+    // are dropped by buildTradeSetupModel, instead of fabricating fake TP
+    // levels at the entry price (which rendered "+0.0R" TP cards).
+    takeProfit1: trade.takeProfits[0] ?? Number.NaN,
+    takeProfit2: trade.takeProfits[1] ?? Number.NaN,
     takeProfit3: trade.takeProfits[2],
     riskRewardRatio: trade.riskRewardRatio,
   };
@@ -61,29 +71,49 @@ export function TradeDetailDialog({
 }: TradeDetailDialogProps) {
   const { t, i18n } = useTranslation();
 
-  // Fetch current candle data for the symbol so the saved setup can be charted.
-  // Memoize the symbols array so useMarketData's input is identity-stable
-  // (a fresh [trade.symbol] each render churns the query → recharts re-mounts).
-  const symbols = useMemo(() => (trade ? [trade.symbol] : []), [trade]);
-  const { data: assets, isLoading: chartLoading } = useMarketData(symbols);
+  const isClosed = trade ? trade.status !== "open" : false;
+
+  // OPEN trades chart the live recent window (and need the live price), so
+  // they go through useMarketData. Memoize the symbols array so its input is
+  // identity-stable (a fresh [trade.symbol] each render churns the query).
+  const symbols = useMemo(
+    () => (trade && !isClosed ? [trade.symbol] : []),
+    [trade, isClosed],
+  );
+  const { data: assets, isLoading: liveLoading } = useMarketData(symbols);
   const asset = assets?.[0];
 
-  // Normalize candles from the fetched data
+  // CLOSED trades chart ONE continuous series from before entry up to now:
+  // the default frame centers on the trade, and panning right reaches the
+  // current market — no separate "current" mode.
+  const chartWindow = useMemo(
+    () =>
+      trade && isClosed && trade.closedAt != null
+        ? computeTradeChartWindow(trade.followedAt, trade.closedAt)
+        : null,
+    [trade, isClosed],
+  );
+  const { data: periodCandles, isLoading: periodLoading } = usePeriodCandles(
+    trade && isClosed ? trade.symbol : null,
+    chartWindow,
+  );
+
   const candles = useMemo(
     () =>
-      asset?.quoteIndicators
-        ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps)
-        : [],
-    [asset],
+      isClosed
+        ? (periodCandles ?? [])
+        : asset?.quoteIndicators
+          ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps)
+          : [],
+    [isClosed, periodCandles, asset],
   );
+  const chartLoading = isClosed ? periodLoading : liveLoading;
 
   // Build the trading plan from the running/saved setup data
   const tradingPlan = useMemo(
     () => (trade ? buildPlanFromTrade(trade) : null),
     [trade],
   );
-
-  const isClosed = trade ? trade.status !== "open" : false;
   const livePrice = asset?.price ?? trade?.entryPrice ?? 0;
   const displayPrice = isClosed
     ? (trade?.closePrice ?? trade?.entryPrice ?? 0)
@@ -127,6 +157,21 @@ export function TradeDetailDialog({
 
   const { isSharing, shareSetup } = useShareSetup();
 
+  // The share card is a static image — it can't zoom, so hand it the default
+  // frame (whole trade centered) instead of the full fetched range the
+  // interactive chart pans through.
+  const shareCandles = useMemo(
+    () =>
+      isClosed && chartWindow
+        ? fitTradeWindowCandles(
+            candles,
+            chartWindow.focusStart,
+            chartWindow.focusEnd,
+          )
+        : candles,
+    [isClosed, chartWindow, candles],
+  );
+
   const handleShare = () => {
     if (!trade) return;
     if (!tradingPlan) return;
@@ -138,7 +183,7 @@ export function TradeDetailDialog({
       grade: trade.grade,
       currentPrice: displayPrice,
       assetType: trade.assetType,
-      candles,
+      candles: shareCandles,
       tradingPlan,
       isPosition: true,
       closed: isClosed,
@@ -153,14 +198,10 @@ export function TradeDetailDialog({
   if (!trade) return null;
 
   const signal: SignalDirection = trade.signal;
-  const formatTradeDate = (timestamp: number) =>
-    new Date(timestamp).toLocaleDateString(i18n.language, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatTradeDate = (timestamp: number) => {
+    const sec = timestamp / 1000;
+    return `${formatDayMonth(sec, i18n.language)} ${formatClock(sec)}`;
+  };
   const formattedFollowedDate = formatTradeDate(trade.followedAt);
   const formattedClosedDate = trade.closedAt
     ? formatTradeDate(trade.closedAt)
@@ -247,18 +288,16 @@ export function TradeDetailDialog({
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             <Badge
               variant="outline"
-              className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 gap-1"
+              className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono"
             >
-              <Check className="h-3 w-3 shrink-0" />
-              {formattedFollowedDate}
+              {t("journal.datetime_entry")} {formattedFollowedDate}
             </Badge>
             {formattedClosedDate && (
               <Badge
                 variant="outline"
-                className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 gap-1"
+                className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono"
               >
-                <Check className="h-3 w-3 shrink-0" />
-                {formattedClosedDate}
+                {t("journal.datetime_closed")} {formattedClosedDate}
               </Badge>
             )}
             {(progress.tpTotal > 0 || progress.slHit) && (
@@ -271,7 +310,9 @@ export function TradeDetailDialog({
                 variant="badge"
               />
             )}
-            {progress.reversed && <ReversedBadge />}
+            {progress.reversed && (
+              <ReversedBadge reversedPnl={pos ? "profit" : "loss"} />
+            )}
             <LifecycleBadge open={progress.lifecycle === "open"} />
           </div>
         </DialogHeader>
@@ -279,53 +320,54 @@ export function TradeDetailDialog({
         <div className="flex flex-col space-y-6">
           <Separator />
 
-          {chartLoading ? (
-            <div className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("dialog.loading")}
-            </div>
-          ) : tradingPlan && candles.length > 0 ? (
-            <>
-              {/* Trading Plan Chart — uses the saved setup, not the live signal */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">{chartTitle}</h3>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={handleShare}
-                      disabled={isSharing}
-                      title={t("dialog.share")}
-                      aria-label={t("dialog.share")}
-                    >
-                      {isSharing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Share2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <TradeSetupChart
-                  candles={candles}
-                  plan={tradingPlan}
-                  signal={signal}
-                  assetType={trade.assetType}
-                  currentPrice={displayPrice}
-                  markers={markers}
-                />
+          {/* Trading Plan Chart — uses the saved setup, not the live signal.
+              The header (title + window toggle + share) stays mounted through
+              loading/empty states so the toggle can't strand the user in a
+              mode with no way back. */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">{chartTitle}</h3>
               </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-              {t("dialog.not_enough_data")}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleShare}
+                  disabled={isSharing || chartLoading || candles.length === 0}
+                  title={t("dialog.share")}
+                  aria-label={t("dialog.share")}
+                >
+                  {isSharing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
-          )}
+
+            {chartLoading ? (
+              <div className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("dialog.loading")}
+              </div>
+            ) : tradingPlan && candles.length > 0 ? (
+              <TradeSetupChart
+                candles={candles}
+                plan={tradingPlan}
+                signal={signal}
+                assetType={trade.assetType}
+                currentPrice={displayPrice}
+                markers={markers}
+              />
+            ) : (
+              <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
+                {t("dialog.not_enough_data")}
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

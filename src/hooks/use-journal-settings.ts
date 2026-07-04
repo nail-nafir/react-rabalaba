@@ -24,6 +24,11 @@ export type JournalSettingsPatch = Partial<
     | "market_hours_only"
     | "daily_summary_enabled"
     | "daily_summary_hour"
+    | "weekly_summary_enabled"
+    | "monthly_summary_enabled"
+    | "discovery_enabled"
+    | "discovery_max_per_market"
+    | "discovery_prune_days"
   >
 >;
 

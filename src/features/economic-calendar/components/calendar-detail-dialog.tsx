@@ -69,7 +69,7 @@ export function CalendarDetailDialog({
                     IMPACT_LEVELS[event.impact].badge,
                   )}
                 >
-                  {event.impact}
+                  {t(IMPACT_LEVELS[event.impact].labelKey)}
                 </Badge>
               </DialogDescription>
             </DialogHeader>

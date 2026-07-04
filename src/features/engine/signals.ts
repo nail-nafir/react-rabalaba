@@ -19,6 +19,7 @@ import {
   generateSentimentAnalysis,
   fearGreedContextWarning,
 } from "./sentiment";
+import type { AnalysisParam, AnalysisText } from "./analysis-text";
 import type {
   AssetType,
   SignalDirection,
@@ -132,10 +133,10 @@ export interface Outlook {
     fibLevels: { 0.382: number; 0.5: number; 0.618: number };
   };
   analysis: {
-    trend: string;
-    volume: string;
-    momentum: string;
-    sentiment: string;
+    trend: AnalysisText;
+    volume: AnalysisText;
+    momentum: AnalysisText;
+    sentiment: AnalysisText;
   };
 }
 
@@ -839,10 +840,9 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
       fibLevels: EMPTY_FIB_LEVELS,
     },
     analysis: {
-      trend: "No valid price data available. Signal stays neutral.",
-      volume:
-        "Volume data not available for this asset. Signal based on price action and momentum only.",
-      momentum: "Momentum cannot be evaluated without valid price history.",
+      trend: { key: "analysis.trend.no_data" },
+      volume: { key: "analysis.volume.unavailable" },
+      momentum: { key: "analysis.momentum.no_data" },
       sentiment: generateSentimentAnalysis(fearGreedValue),
     },
   };
@@ -985,19 +985,36 @@ function generateTrendAnalysis(
   plusDI: number,
   minusDI: number,
   dataQuality: SignalDataQuality,
-): string {
-  const adxStrength =
-    adx > 25 ? "strong" : adx > 20 ? "developing" : "weak/absent";
-  const readinessText = dataQuality.ready
+): AnalysisText {
+  const adxStrength: AnalysisParam = {
+    tkey:
+      adx > 25
+        ? "analysis.trend.adx_strong"
+        : adx > 20
+          ? "analysis.trend.adx_developing"
+          : "analysis.trend.adx_weak",
+  };
+  const readiness: AnalysisParam = dataQuality.ready
     ? ""
-    : " Data sample is not deep enough for trade-grade conviction, so the engine stays conservative.";
+    : { tkey: "analysis.trend.not_ready" };
+
+  const params: Record<string, AnalysisParam> = {
+    close: close.toFixed(2),
+    ema20: ema20.toFixed(2),
+    ema50: ema50.toFixed(2),
+    adx: adx.toFixed(1),
+    plusDI: plusDI.toFixed(1),
+    minusDI: minusDI.toFixed(1),
+    adxStrength,
+    readiness,
+  };
 
   if (trend === "bullish") {
-    return `Price is trading above EMA20 ($${ema20.toFixed(2)}) and EMA50 ($${ema50.toFixed(2)}) with both EMAs in bullish alignment. ADX at ${adx.toFixed(1)} indicates ${adxStrength} trend strength, and +DI (${plusDI.toFixed(1)}) is above -DI (${minusDI.toFixed(1)}). The trend structure supports upside continuation.${readinessText}`;
+    return { key: "analysis.trend.bullish", params };
   } else if (trend === "bearish") {
-    return `Price is trading below EMA20 ($${ema20.toFixed(2)}) and EMA50 ($${ema50.toFixed(2)}) with both EMAs in bearish alignment. ADX at ${adx.toFixed(1)} indicates ${adxStrength} trend strength, and -DI (${minusDI.toFixed(1)}) is above +DI (${plusDI.toFixed(1)}). The trend structure favors further downside.${readinessText}`;
+    return { key: "analysis.trend.bearish", params };
   }
-  return `Price at $${close.toFixed(2)} does not have confirmed EMA/DMI directional agreement. EMA20 is $${ema20.toFixed(2)}, EMA50 is $${ema50.toFixed(2)}, and ADX at ${adx.toFixed(1)} indicates ${adxStrength} trend strength. Market is likely ranging or transitional.${readinessText}`;
+  return { key: "analysis.trend.sideways", params };
 }
 
 function generateVolumeAnalysis(
@@ -1006,26 +1023,28 @@ function generateVolumeAnalysis(
   spike: boolean,
   obvTrend: ObvTrend,
   volumeReliable: boolean,
-): string {
+): AnalysisText {
   if (!volumeReliable) {
-    return "Volume data is missing or unreliable for this asset (frequent zero-volume candles). Volume spike and OBV confirmation are disabled; signal is based on price action and momentum only.";
+    return { key: "analysis.volume.unreliable" };
   }
   if (current === 0 && ma === 0) {
-    return "Volume data not available for this asset. Signal based on price action and momentum only.";
+    return { key: "analysis.volume.unavailable" };
   }
 
   const ratio = ma > 0 ? (current / ma).toFixed(1) : "0.0";
-  const obvText =
-    obvTrend === "rising"
-      ? "OBV is rising, confirming volume supports the move."
-      : obvTrend === "falling"
-        ? "OBV is declining, suggesting volume diverges from price action."
-        : "OBV is flat — no strong volume conviction.";
+  const obv: AnalysisParam = {
+    tkey:
+      obvTrend === "rising"
+        ? "analysis.volume.obv_rising"
+        : obvTrend === "falling"
+          ? "analysis.volume.obv_falling"
+          : "analysis.volume.obv_flat",
+  };
 
-  if (spike) {
-    return `Volume is ${ratio}x above the 20-period average — volume spike detected, suggesting strong conviction behind the current price action. ${obvText}`;
-  }
-  return `Volume is at ${ratio}x the 20-period average. No significant volume spike detected. ${obvText}`;
+  return {
+    key: spike ? "analysis.volume.spike" : "analysis.volume.normal",
+    params: { ratio, obv },
+  };
 }
 
 function generateMomentumAnalysis(
@@ -1034,30 +1053,58 @@ function generateMomentumAnalysis(
   stochRSI: number,
   bb: { percentB: number },
   rsiDivergence: RsiDivergence,
-): string {
-  const rsiStatus =
-    rsi > 70 ? "overbought" : rsi < 30 ? "oversold" : "neutral territory";
-  const macdStatus =
-    macd.histogram > 0
-      ? "positive (bullish momentum)"
-      : macd.histogram < 0
-        ? "negative (bearish momentum)"
-        : "near zero";
-  const stochStatus =
-    stochRSI > 80 ? "overbought" : stochRSI < 20 ? "oversold" : "neutral";
-  const bbPosition =
-    bb.percentB > 0.8
-      ? "near upper band"
-      : bb.percentB < 0.2
-        ? "near lower band"
-        : "mid-range";
+): AnalysisText {
+  const rsiStatus: AnalysisParam = {
+    tkey:
+      rsi > 70
+        ? "analysis.momentum.rsi_overbought"
+        : rsi < 30
+          ? "analysis.momentum.rsi_oversold"
+          : "analysis.momentum.rsi_neutral",
+  };
+  const macdStatus: AnalysisParam = {
+    tkey:
+      macd.histogram > 0
+        ? "analysis.momentum.macd_positive"
+        : macd.histogram < 0
+          ? "analysis.momentum.macd_negative"
+          : "analysis.momentum.macd_zero",
+  };
+  const stochStatus: AnalysisParam = {
+    tkey:
+      stochRSI > 80
+        ? "analysis.momentum.stoch_overbought"
+        : stochRSI < 20
+          ? "analysis.momentum.stoch_oversold"
+          : "analysis.momentum.stoch_neutral",
+  };
+  const bbPosition: AnalysisParam = {
+    tkey:
+      bb.percentB > 0.8
+        ? "analysis.momentum.bb_upper"
+        : bb.percentB < 0.2
+          ? "analysis.momentum.bb_lower"
+          : "analysis.momentum.bb_mid",
+  };
+  const div: AnalysisParam =
+    rsiDivergence === "bullish"
+      ? { tkey: "analysis.momentum.div_bullish" }
+      : rsiDivergence === "bearish"
+        ? { tkey: "analysis.momentum.div_bearish" }
+        : "";
 
-  let divText = "";
-  if (rsiDivergence === "bullish") {
-    divText = " Bullish Divergence detected (reversal potential).";
-  } else if (rsiDivergence === "bearish") {
-    divText = " Bearish Divergence detected (exhaustion risk).";
-  }
-
-  return `RSI at ${rsi.toFixed(1)} indicates ${rsiStatus}.${divText} MACD histogram is ${macdStatus} (${macd.histogram.toFixed(2)}). StochRSI at ${stochRSI.toFixed(1)} is ${stochStatus}. Price is ${bbPosition} within Bollinger Bands (%B: ${(bb.percentB * 100).toFixed(0)}%).`;
+  return {
+    key: "analysis.momentum.summary",
+    params: {
+      rsi: rsi.toFixed(1),
+      rsiStatus,
+      div,
+      macdStatus,
+      macdHist: macd.histogram.toFixed(2),
+      stochRSI: stochRSI.toFixed(1),
+      stochStatus,
+      bbPosition,
+      percentB: (bb.percentB * 100).toFixed(0),
+    },
+  };
 }

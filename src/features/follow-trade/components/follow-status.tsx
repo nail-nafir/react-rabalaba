@@ -49,6 +49,10 @@ interface TpProgressProps {
   slHit?: boolean;
   /** Exited on a signal reversal — appends a "· Reversed" marker to the TP. */
   reversed?: boolean;
+  /** For a NO-TP reversal close, whether it realized a profit or loss — colors
+   *  the standalone REVERSED marker green/red to match the donut's Reversal
+   *  Profit / Loss slices. Omit for the neutral (uncolored) marker. */
+  reversedPnl?: "profit" | "loss";
   size?: "xs" | "sm";
   className?: string;
   isClosed?: boolean;
@@ -60,6 +64,7 @@ export function TpProgress({
   total,
   slHit = false,
   reversed = false,
+  reversedPnl,
   size = "xs",
   className,
   isClosed = false,
@@ -161,10 +166,19 @@ export function TpProgress({
     );
   }
 
+  // No-TP reversal close → REVERSED, tinted green/red by its realized P/L so it
+  // reads as the donut's Reversal Profit / Loss. Open & still flat → muted.
+  const reversedTone =
+    reversedPnl === "profit"
+      ? PALETTE.positive.textStrong
+      : reversedPnl === "loss"
+        ? PALETTE.negative.textStrong
+        : "text-muted-foreground/60";
   return (
     <span
       className={cn(
-        "text-muted-foreground/60 font-semibold text-mono-data uppercase tracking-wider",
+        "font-semibold text-mono-data uppercase tracking-wider",
+        isClosed ? reversedTone : "text-foreground",
         labelCls,
         className,
       )}
@@ -179,15 +193,29 @@ export function TpProgress({
  * so a reversal-after-TP reads as two distinct facts: it secured a TP *and* it
  * exited on the flip. Neutral-toned to mirror the no-TP reversed-close color.
  */
-export function ReversedBadge({ className }: { className?: string }) {
+export function ReversedBadge({
+  reversedPnl,
+  className,
+}: {
+  /** Tints the pill green/red by the reversal's realized P/L, mirroring the
+   *  donut's Reversal Profit / Loss. Omit for the neutral pill. */
+  reversedPnl?: "profit" | "loss";
+  className?: string;
+}) {
+  const tone =
+    reversedPnl === "profit"
+      ? PALETTE.positive
+      : reversedPnl === "loss"
+        ? PALETTE.negative
+        : PALETTE.neutral;
   return (
     <Badge
       variant="outline"
       className={cn(
         "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
-        PALETTE.neutral.bg,
-        PALETTE.neutral.text,
-        PALETTE.neutral.border,
+        tone.bg,
+        tone.text,
+        tone.border,
         className,
       )}
     >

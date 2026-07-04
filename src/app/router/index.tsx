@@ -20,7 +20,7 @@ const AdminPlansPage = lazy(() => import('@/pages/admin/plans'));
 const AdminPaymentsPage = lazy(() => import('@/pages/admin/payments'));
 const AdminDisclaimerPage = lazy(() => import('@/pages/admin/disclaimer'));
 const InvitePage = lazy(() => import('@/pages/invite'));
-const AdminSystemPage = lazy(() => import('@/pages/admin/summary'));
+const AdminSystemPage = lazy(() => import('@/pages/admin/statistics'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
 const AuthCallbackPage = lazy(() => import('@/pages/auth-callback'));
@@ -195,7 +195,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'summary',
+        path: 'statistics',
         element: (
           <ErrorBoundary>
             <Suspense fallback={<PageLoader trigger />}>

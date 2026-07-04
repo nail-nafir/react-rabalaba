@@ -39,7 +39,10 @@ import { PaymentDialog } from "./components/payment-dialog";
 const ICON_MAP: Record<string, React.ElementType> = { Terminal, Zap, Shield };
 
 /** Each cta_kind maps to a CTA label + icon (labels stay static in i18n). */
-function ctaConfig(kind: string): { labelKey: string; icon: React.ElementType } {
+function ctaConfig(kind: string): {
+  labelKey: string;
+  icon: React.ElementType;
+} {
   switch (kind) {
     case "payment":
       return { labelKey: "subscription.get_started", icon: CreditCard };
@@ -113,7 +116,9 @@ export default function SubscriptionPage() {
                         description={
                           pickLocale(plan.description, lang, "") as string
                         }
-                        features={pickLocale(plan.features, lang, []) as string[]}
+                        features={
+                          pickLocale(plan.features, lang, []) as string[]
+                        }
                         ctaText={t(cfg.labelKey)}
                         ctaLink={plan.cta_link ?? "#"}
                         isExternal={isExternal}
@@ -164,7 +169,7 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Manual Activation Notice Dashboard Bar */}
-            <Card className="relative border border-border ring-0 items-center justify-center text-center w-full mx-auto shadow-sm">
+            <Card className="relative border border-border ring-0 items-center justify-center text-center w-full mx-auto shadow-sm p-6">
               {/* Visual gradient glow element */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none -z-10" />
 
@@ -231,15 +236,15 @@ function PaymentCard({
 }) {
   return (
     <Card className="group relative overflow-hidden border border-border hover:border-primary hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ring-0">
-      <CardContent className="flex items-center gap-4">
-        <div className="h-10 w-10 shrink-0 rounded-xl bg-muted text-foreground flex items-center justify-center transition-all duration-300 shadow-sm group-hover:bg-muted/80">
-          <Icon className="h-4 w-4" />
+      <CardContent className="flex flex-col items-center justify-center text-center gap-3">
+        <div className="h-10 w-10 shrink-0 rounded-xl bg-muted text-foreground flex items-center justify-center transition-all duration-300 shadow-sm group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20 border border-transparent">
+          <Icon className="h-5 w-5" />
         </div>
-        <div className="min-w-0 space-y-0.5">
+        <div className="space-y-1.5">
           <CardTitle className="text-xs font-bold tracking-wide uppercase text-foreground/90 group-hover:text-foreground transition-colors">
             {name}
           </CardTitle>
-          <CardDescription className="text-[10px] text-muted-foreground truncate leading-relaxed">
+          <CardDescription className="text-[10px] text-muted-foreground leading-relaxed max-w-45 mx-auto">
             {desc}
           </CardDescription>
         </div>
@@ -253,31 +258,102 @@ function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
   return (
     <Card
       className={cn(
-        "relative h-full flex flex-col items-center gap-6 p-6 border border-border",
-        highlighted && "md:scale-110",
+        "relative transition-all duration-300 h-full flex flex-col",
+        highlighted
+          ? "border border-primary shadow-2xl shadow-primary/10 md:scale-110 z-20 overflow-visible ring-0"
+          : "border border-border shadow-sm overflow-hidden ring-0",
       )}
     >
-      <Skeleton className="h-12 w-12 rounded-xl" />
-      <Skeleton className="h-5 w-24" />
-      <Skeleton className="h-14 w-full rounded-xl" />
-      <div className="w-full space-y-3 flex-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-3 w-full" />
-        ))}
-      </div>
-      <Skeleton className="h-10 w-full" />
+      {highlighted && (
+        <div className="absolute top-0 right-0 left-0 h-0.5 bg-linear-to-r from-transparent via-primary to-transparent" />
+      )}
+
+      {highlighted && (
+        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-shimmer shadow-md shadow-primary/25 border-0 z-30 opacity-50">
+          <Skeleton className="h-2.5 w-16 bg-primary-foreground/20" />
+        </Badge>
+      )}
+
+      <CardHeader className="space-y-4 flex flex-col items-center w-full p-6">
+        <div
+          className={cn(
+            "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-md",
+            highlighted
+              ? "bg-primary text-primary-foreground shadow-primary/20 scale-110"
+              : "bg-muted text-foreground",
+          )}
+        >
+          <Skeleton
+            className={cn(
+              "h-6 w-6 rounded-md",
+              highlighted
+                ? "bg-primary-foreground/25"
+                : "bg-muted-foreground/20",
+            )}
+          />
+        </div>
+        <div className="text-center space-y-1.5 w-full flex flex-col items-center">
+          <CardTitle className="text-lg font-bold tracking-tight uppercase w-full flex justify-center">
+            <Skeleton className="h-5 w-24" />
+          </CardTitle>
+          <div className="w-full min-h-10 flex flex-col items-center justify-center gap-1.5 px-2">
+            <Skeleton className="h-3 w-5/6" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 pb-6">
+        <Card
+          className={cn(
+            "w-full transition-all duration-300 select-none border shadow-none bg-muted/50",
+            highlighted ? "border-primary/20" : "border-border",
+          )}
+        >
+          <CardContent className="flex flex-col items-center justify-center gap-1 p-4">
+            <div className="flex items-center gap-2 mb-0.5 min-h-4.5">
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div className="flex items-baseline justify-center gap-1 w-full h-10">
+              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <ul className="space-y-3.5 w-full flex-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <li
+              key={i}
+              className="flex items-start gap-3 text-xs leading-normal"
+            >
+              <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 mt-0.5 opacity-40">
+                <Check className="h-2.5 w-2.5 stroke-[3px]" />
+              </div>
+              <Skeleton className="h-3 flex-1 mt-0.5" />
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+
+      <CardFooter>
+        <Skeleton className="h-9 w-full rounded-md" />
+      </CardFooter>
     </Card>
   );
 }
 
-function calculateDiscountPercentage(originalStr: string, promoStr: string): number {
+function calculateDiscountPercentage(
+  originalStr: string,
+  promoStr: string,
+): number {
   const originalVal = parseFloat(originalStr.replace(/[^\d.]/g, ""));
   const promoVal = parseFloat(promoStr.replace(/[^\d.]/g, ""));
-  
+
   if (isNaN(originalVal) || isNaN(promoVal) || originalVal === 0) {
     return 0;
   }
-  
+
   const discount = ((originalVal - promoVal) / originalVal) * 100;
   return Math.round(discount);
 }
@@ -313,8 +389,8 @@ function SubscriptionCard({
 }: SubscriptionCardProps) {
   const { t } = useTranslation();
 
-  const discountPercent = originalPrice 
-    ? calculateDiscountPercentage(originalPrice, price) 
+  const discountPercent = originalPrice
+    ? calculateDiscountPercentage(originalPrice, price)
     : 0;
 
   return (
@@ -358,12 +434,14 @@ function SubscriptionCard({
       </CardHeader>
 
       <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 pb-6">
-        <Card className={cn(
-          "w-full transition-all duration-300 select-none border shadow-none bg-muted/50",
-          highlighted 
-            ? "border-primary/20 hover:border-primary/30" 
-            : "border-border hover:bg-muted/60"
-        )}>
+        <Card
+          className={cn(
+            "w-full transition-all duration-300 select-none border shadow-none bg-muted/50",
+            highlighted
+              ? "border-primary/20 hover:border-primary/30"
+              : "border-border hover:bg-muted/60",
+          )}
+        >
           <CardContent className="flex flex-col items-center justify-center gap-1 p-4">
             {originalPrice && (
               <div className="flex items-center gap-2 mb-0.5">
@@ -376,7 +454,9 @@ function SubscriptionCard({
                     variant="outline"
                     className="text-[10px] font-bold rounded-md border-emerald-500/30 bg-emerald-500/15 text-emerald-400 uppercase select-none tracking-wider py-0.5 px-2"
                   >
-                    {t("subscription.discount_format", { percent: discountPercent })}
+                    {t("subscription.discount_format", {
+                      percent: discountPercent,
+                    })}
                   </Badge>
                 )}
               </div>

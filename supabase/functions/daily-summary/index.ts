@@ -1,32 +1,36 @@
 /**
- * daily-summary — end-of-day Discord recap of the auto-journal (Supabase Edge
- * Function), a sibling to auto-journal/index.ts.
+ * daily-summary — periodic Discord recaps of the auto-journal (Supabase Edge
+ * Function), a sibling to auto-journal/index.ts. One function, THREE recap
+ * kinds riding the same hourly pg_cron tick:
  *
- * Triggered by pg_cron hourly (at :00). Each tick it reads the SAME singleton
- * journal_settings row and decides whether to send the recap: it fires once per
- * send day, at/after the admin-configured WIB hour (daily_summary_hour). The
- * recap summarizes the WIB calendar day ENDING at the send time — so hour 0
- * (midnight) sends at 00:00 WIB and recaps the FULL previous day, while hour 23
- * recaps today up to 23:00. Changing the hour or pausing is pure data, no cron
- * edit, no redeploy (same spirit as auto-journal's interval gate). The recap
- * covers trades CLOSED today (win-rate, total/avg P&L, best & worst), signals
- * EMITTED today, and still-OPEN positions with live floating P&L.
+ *   daily   — the WIB calendar day ending at the send time (hour 0 = full
+ *             previous day, hour 23 = today up to 23:00)
+ *   weekly  — the Monday-start WIB week, sent on its last WIB day (with hour 0
+ *             that is Monday 00:00, recapping the FULL completed week)
+ *   monthly — the WIB calendar month, sent on its last WIB day (hour 0 = the
+ *             1st at 00:00, recapping the FULL completed month)
  *
- * Pure formatting (formatDailySummaryForDiscord) + P&L (computePnl) + the Yahoo
- * adapter are the SAME code the app uses, bundled to ./_engine.mjs by
- * `npm run build:edge`.
+ * Each tick reads the SAME singleton journal_settings row: per-kind enable
+ * flags (daily/weekly/monthly_summary_enabled), one shared send hour
+ * (daily_summary_hour) and per-kind atomic send-once stamps. Changing any of
+ * it is pure data — no cron edit, no redeploy. Window math is the PURE
+ * recapWindow (src/core/period-summary, unit-tested); formatting
+ * (formatDailySummaryForDiscord) + P&L (computePnl) + the Yahoo adapter are
+ * the SAME code the app uses, bundled to ./_engine.mjs by `npm run build:edge`.
  */
 import { createClient } from "@supabase/supabase-js";
 import {
   adaptYahooChart,
   computePnl,
   formatDailySummaryForDiscord,
+  recapWindow,
 } from "./_engine.mjs";
 
 const RANGE = "5d";
 const INTERVAL = "1h";
 // Indonesia (WIB) is a fixed UTC+7 with no DST — a constant offset is exact.
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Same Cloudflare proxy / single-source-of-truth path as the auto-journal cron.
 const YAHOO =
@@ -35,6 +39,26 @@ const YAHOO =
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const FETCH_CONCURRENCY = 8;
+
+type RecapKind = "daily" | "weekly" | "monthly";
+
+const KINDS: RecapKind[] = ["daily", "weekly", "monthly"];
+
+/** journal_settings column names per recap kind. */
+const KIND_COLUMNS: Record<RecapKind, { enabled: string; stamp: string }> = {
+  daily: {
+    enabled: "daily_summary_enabled",
+    stamp: "daily_summary_last_sent_at",
+  },
+  weekly: {
+    enabled: "weekly_summary_enabled",
+    stamp: "weekly_summary_last_sent_at",
+  },
+  monthly: {
+    enabled: "monthly_summary_enabled",
+    stamp: "monthly_summary_last_sent_at",
+  },
+};
 
 async function fetchChart(symbol: string) {
   const url = `${YAHOO}/${encodeURIComponent(symbol)}?range=${RANGE}&interval=${INTERVAL}&includePrePost=false&_=${Date.now()}`;
@@ -52,7 +76,7 @@ async function loadAsset(symbol: string) {
   try {
     const chart = await fetchChart(symbol);
     return chart ? adaptYahooChart(chart) : null;
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -75,6 +99,39 @@ async function mapPool<T, R>(
     Array.from({ length: Math.min(limit, items.length) }, worker),
   );
   return out;
+}
+
+/** WIB date as dd-MM-yyyy (e.g. 29-06-2026). */
+function wibDayLabel(ms: number): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(new Date(ms));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("day")}-${get("month")}-${get("year")}`;
+}
+
+/** Header qualifier + period label per kind — the formatter renders it as
+ *  "🗓️ REKAP {label}", so daily stays the bare date (unchanged look) while
+ *  weekly/monthly read "REKAP MINGGUAN {start} s/d {end}" / "REKAP BULANAN JUNI 2026". */
+function recapLabel(
+  kind: RecapKind,
+  refMs: number,
+  startMs: number,
+  endMs: number,
+): string {
+  if (kind === "daily") return wibDayLabel(refMs);
+  if (kind === "weekly") {
+    return `MINGGUAN ${wibDayLabel(startMs)} s/d ${wibDayLabel(endMs - DAY_MS)}`;
+  }
+  const month = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(startMs));
+  return `BULANAN ${month.toUpperCase()}`;
 }
 
 const corsHeaders = {
@@ -112,9 +169,16 @@ Deno.serve(async (req: Request) => {
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
 
-  // Manual on-demand recap from the admin UI sends { force: true }: bypasses the
-  // hour/dedup gate (sends immediately) but still respects the enabled flag.
-  const { force } = (await req.json().catch(() => ({}))) as { force?: boolean };
+  // Manual on-demand recap sends { force: true, kind?: "daily"|"weekly"|"monthly" }:
+  // bypasses the hour/dedup gate (sends that kind immediately, covering the
+  // period IN PROGRESS) but still respects that kind's enabled flag.
+  const body = (await req.json().catch(() => ({}))) as {
+    force?: boolean;
+    kind?: string;
+  };
+  const force = body.force === true;
+  const forceKind: RecapKind =
+    body.kind === "weekly" || body.kind === "monthly" ? body.kind : "daily";
   if (force) {
     const userClient = createClient(
       url,
@@ -143,90 +207,82 @@ Deno.serve(async (req: Request) => {
   // ── Settings gate (same singleton row as auto-journal) ──
   const { data: settings } = await db
     .from("journal_settings")
-    .select("daily_summary_enabled, daily_summary_hour, daily_summary_last_sent_at")
+    .select("*")
     .eq("id", true)
     .maybeSingle();
-  const s = settings as {
-    daily_summary_enabled?: boolean;
-    daily_summary_hour?: number;
-    daily_summary_last_sent_at?: string | null;
-  } | null;
+  const s = (settings ?? {}) as Record<string, unknown>;
+  const isEnabled = (kind: RecapKind) => s[KIND_COLUMNS[kind].enabled] === true;
+  const prevStamp = (kind: RecapKind) =>
+    (s[KIND_COLUMNS[kind].stamp] as string | null | undefined) ?? null;
 
-  if (!s?.daily_summary_enabled) {
+  if (force ? !isEnabled(forceKind) : !KINDS.some(isEnabled)) {
     return jsonResponse({ ok: true, skipped: "disabled" });
   }
 
-  // WIB day boundary: floor "now" to WIB midnight, expressed back as a UTC instant.
+  // WIB clock refs — identical to the original daily math. The report window
+  // is anchored to (now − 10 min) so an hour-0 send resolves to the period
+  // that JUST ended; the 10-min back-off absorbs cron/cold-start lag.
   const nowMs = Date.now();
   const wib = new Date(nowMs + WIB_OFFSET_MS);
   const wibHour = wib.getUTCHours();
-  // Dedup key: WIB-midnight of the SEND day (now) — one recap per send day.
-  const sendDayMidnightUtcMs =
+  const sendDayMidnightIso = new Date(
     Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()) -
-    WIB_OFFSET_MS;
-  // Report window = the WIB CALENDAR DAY that is ending at the send time. Take
-  // the day of (now − 10 min) so a 00:00 send recaps the FULL previous day
-  // (midnight is the new day's start), while a 23:00 send recaps today. The
-  // 10-min back-off absorbs cron/cold-start lag without crossing an hour. Bounds
-  // are the report day's own midnights (NOT `now`), so the window is exact
-  // regardless of when within the hour the tick actually lands.
-  const reportRefMs = nowMs - 10 * 60_000;
-  const reportRef = new Date(reportRefMs + WIB_OFFSET_MS);
-  const reportMidnightUtcMs =
-    Date.UTC(
-      reportRef.getUTCFullYear(),
-      reportRef.getUTCMonth(),
-      reportRef.getUTCDate(),
-    ) - WIB_OFFSET_MS;
-  const cutoffIso = new Date(reportMidnightUtcMs).toISOString();
-  const reportEndIso = new Date(
-    reportMidnightUtcMs + 24 * 60 * 60 * 1000,
+      WIB_OFFSET_MS,
   ).toISOString();
-  const targetHour = s.daily_summary_hour ?? 23;
-  const lastSentMs = s.daily_summary_last_sent_at
-    ? Date.parse(s.daily_summary_last_sent_at)
-    : 0;
-  const alreadySentToday = lastSentMs >= sendDayMidnightUtcMs;
+  const reportRefMs = nowMs - 10 * 60_000;
+  const targetHour = (s.daily_summary_hour as number | undefined) ?? 23;
 
-  // Automated tick: fire only DURING the configured WIB hour (exact match, one
-  // hourly tick), once per send day. Exact (not >=) so targetHour 0 means
-  // "midnight" — it fires at the 00:00 tick recapping the previous day, instead
-  // of firing immediately whenever enabled. (A missed cron tick at exactly that
-  // hour skips the day; pg_cron is reliable enough that this is acceptable.)
-  if (!force) {
+  // ── Which recap kinds fire on THIS tick ──
+  // Automated tick: only DURING the configured WIB hour (exact match, one
+  // hourly tick), each kind only on its period's last WIB day, each claimed
+  // atomically on its OWN stamp so a duplicate tick can never double-send and
+  // one kind's claim never blocks another's.
+  interface DueRecap {
+    kind: RecapKind;
+    startMs: number;
+    endMs: number;
+  }
+  const due: DueRecap[] = [];
+  if (force) {
+    const w = recapWindow(forceKind, reportRefMs);
+    due.push({ kind: forceKind, startMs: w.startMs, endMs: w.endMs });
+  } else {
     if (wibHour !== targetHour) {
       return jsonResponse({ ok: true, skipped: "not-yet", wib_hour: wibHour });
     }
-    if (alreadySentToday) {
+    for (const kind of KINDS) {
+      if (!isEnabled(kind)) continue;
+      const w = recapWindow(kind, reportRefMs);
+      if (!w.isSendDay) continue;
+      // Atomic send-once claim (same pattern as before, per-kind column): the
+      // conditional UPDATE flips the stamp past the send-day boundary and
+      // returns the row only to the FIRST caller. Runs BEFORE the slow Yahoo
+      // fetch + Discord POST; a failed send releases it below.
+      const stampCol = KIND_COLUMNS[kind].stamp;
+      const { data: claimed } = await db
+        .from("journal_settings")
+        .update({ [stampCol]: new Date().toISOString() })
+        .eq("id", true)
+        .or(`${stampCol}.is.null,${stampCol}.lt.${sendDayMidnightIso}`)
+        .select("id");
+      if (claimed && claimed.length > 0) {
+        due.push({ kind, startMs: w.startMs, endMs: w.endMs });
+      }
+    }
+    if (due.length === 0) {
       return jsonResponse({ ok: true, skipped: "already-sent" });
     }
   }
 
-  // Trades CLOSED and OPENED within the report day's [midnight, midnight) window.
+  // ── Shared state: open positions + live prices, fetched ONCE per tick ──
   const cols =
     "id,symbol,signal,grade,status,reversed,entry_price,stop_loss,take_profits,highest_tp_reached,close_price,opened_at,closed_at";
-  const { data: closedRows } = await db
-    .from("journal_trades")
-    .select(cols)
-    .neq("status", "open")
-    .gte("closed_at", cutoffIso)
-    .lt("closed_at", reportEndIso);
-  const { data: emittedRows } = await db
-    .from("journal_trades")
-    .select(cols)
-    .gte("opened_at", cutoffIso)
-    .lt("opened_at", reportEndIso);
   const { data: openRows } = await db
     .from("journal_trades")
     .select(cols)
     .eq("status", "open");
-
-  const closedT = (closedRows ?? []) as TradeRow[];
-  const emittedT = (emittedRows ?? []) as TradeRow[];
   const openT = (openRows ?? []) as TradeRow[];
 
-  // Live prices for open positions → floating P&L. A symbol that fails to fetch
-  // simply shows without a %, never failing the recap.
   const priceBySymbol = new Map<string, number>();
   if (openT.length > 0) {
     const symbols = [...new Set(openT.map((r) => r.symbol))];
@@ -246,83 +302,101 @@ Deno.serve(async (req: Request) => {
       r.close_price ?? r.entry_price,
     ).pct;
 
-  // Report-day date as dd-MM-yyyy (e.g. 29-06-2026) — the day being summarized,
-  // which for a 00:00 send is yesterday.
-  const dp = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Jakarta",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).formatToParts(new Date(reportRefMs));
-  const dpart = (type: string) => dp.find((p) => p.type === type)?.value ?? "";
-  const dateLabel = `${dpart("day")}-${dpart("month")}-${dpart("year")}`;
-
-  const summary = formatDailySummaryForDiscord({
-    dateLabel,
-    closed: closedT.map((r) => ({
+  const openInput = openT.map((r) => {
+    const price = priceBySymbol.get(r.symbol);
+    return {
       symbol: r.symbol,
       signal: r.signal,
       grade: r.grade,
-      status: r.status,
-      reversed: r.reversed ?? false,
-      tpReached: r.highest_tp_reached,
-      tpTotal: r.take_profits?.length,
-      pnlPct: realizedPct(r),
-      durationMs:
-        r.closed_at != null
-          ? Date.parse(r.closed_at) - Date.parse(r.opened_at)
+      floatingPct:
+        price != null
+          ? computePnl(
+              {
+                signal: r.signal,
+                entryPrice: r.entry_price,
+                stopLoss: r.stop_loss,
+              },
+              price,
+            ).pct
           : undefined,
-    })),
-    emitted: emittedT.map((r) => ({
-      symbol: r.symbol,
-      signal: r.signal,
-      grade: r.grade,
-    })),
-    open: openT.map((r) => {
-      const price = priceBySymbol.get(r.symbol);
-      return {
+    };
+  });
+
+  // ── Build + send each due recap (sequential; one failure never blocks the rest) ──
+  const results: Record<string, unknown>[] = [];
+  for (const item of due) {
+    const startIso = new Date(item.startMs).toISOString();
+    const endIso = new Date(item.endMs).toISOString();
+    const { data: closedRows } = await db
+      .from("journal_trades")
+      .select(cols)
+      .neq("status", "open")
+      .gte("closed_at", startIso)
+      .lt("closed_at", endIso);
+    const { data: emittedRows } = await db
+      .from("journal_trades")
+      .select(cols)
+      .gte("opened_at", startIso)
+      .lt("opened_at", endIso);
+    const closedT = (closedRows ?? []) as TradeRow[];
+    const emittedT = (emittedRows ?? []) as TradeRow[];
+
+    const summary = formatDailySummaryForDiscord({
+      dateLabel: recapLabel(item.kind, reportRefMs, item.startMs, item.endMs),
+      closed: closedT.map((r) => ({
         symbol: r.symbol,
         signal: r.signal,
         grade: r.grade,
-        floatingPct:
-          price != null
-            ? computePnl(
-                {
-                  signal: r.signal,
-                  entryPrice: r.entry_price,
-                  stopLoss: r.stop_loss,
-                },
-                price,
-              ).pct
+        status: r.status,
+        reversed: r.reversed ?? false,
+        tpReached: r.highest_tp_reached,
+        tpTotal: r.take_profits?.length,
+        pnlPct: realizedPct(r),
+        durationMs:
+          r.closed_at != null
+            ? Date.parse(r.closed_at) - Date.parse(r.opened_at)
             : undefined,
-      };
-    }),
-  });
+      })),
+      emitted: emittedT.map((r) => ({
+        symbol: r.symbol,
+        signal: r.signal,
+        grade: r.grade,
+      })),
+      open: openInput,
+    });
 
-  // Empty day → mark done (don't re-check). Otherwise POST, stamp only on success
-  // so an unset/failing webhook is retried on the next tick.
-  let sent = false;
-  if (summary == null) {
-    sent = true;
-  } else {
-    sent = await sendDiscord(summary);
-  }
-  if (sent) {
-    await db
-      .from("journal_settings")
-      .update({ daily_summary_last_sent_at: new Date().toISOString() })
-      .eq("id", true);
+    // Empty period → nothing to POST (the claim already marked it done).
+    const sent = summary == null ? true : await sendDiscord(summary);
+    const stampCol = KIND_COLUMNS[item.kind].stamp;
+    if (force) {
+      // The force path skips the claim above (admin "send now"), so stamp on
+      // success here to keep the automated tick's dedup honest.
+      if (sent) {
+        await db
+          .from("journal_settings")
+          .update({ [stampCol]: new Date().toISOString() })
+          .eq("id", true);
+      }
+    } else if (!sent) {
+      // Non-force: the claim already stamped now(). A failed webhook releases
+      // it (restore the previous stamp) so the next hourly tick retries.
+      await db
+        .from("journal_settings")
+        .update({ [stampCol]: prevStamp(item.kind) })
+        .eq("id", true);
+    }
+
+    results.push({
+      kind: item.kind,
+      sent,
+      empty: summary == null,
+      closed: closedT.length,
+      emitted: emittedT.length,
+      open: openT.length,
+    });
   }
 
-  return jsonResponse({
-    ok: true,
-    forced: force === true,
-    sent,
-    empty: summary == null,
-    closed: closedT.length,
-    emitted: emittedT.length,
-    open: openT.length,
-  });
+  return jsonResponse({ ok: true, forced: force, results });
 });
 
 /** POST a plain-content message to the configured Discord webhook (reuses the
@@ -337,7 +411,7 @@ async function sendDiscord(content: string): Promise<boolean> {
       body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
     });
     return res.ok;
-  } catch (_err) {
+  } catch {
     return false;
   }
 }

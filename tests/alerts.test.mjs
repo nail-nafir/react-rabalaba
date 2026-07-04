@@ -93,13 +93,13 @@ test("buildAutoJournalAlerts maps inserts and closures to events", async () => {
   const sl = alerts.find((a) => a.kind === "sl_hit");
   assert.equal(sl.symbol, "MYX-USD");
 
-  // A reversal (with or without a TP) reports as "reversed", carrying the %.
+  // A no-TP reversal reports as "reversed", carrying the realized %.
   const rev = alerts.find((a) => a.kind === "reversed");
   assert.equal(rev.symbol, "NEAR-USD");
   assert.equal(rev.pnlPct, 0.28);
 });
 
-test("buildAutoJournalAlerts: a reversal-after-TP reports as reversed, not tp_hit", async () => {
+test("buildAutoJournalAlerts: a reversal-after-TP reports AS its TP (tp_hit)", async () => {
   const { buildAutoJournalAlerts } = await loadModule(ALERTS);
   const alerts = buildAutoJournalAlerts({
     inserts: [],
@@ -117,10 +117,11 @@ test("buildAutoJournalAlerts: a reversal-after-TP reports as reversed, not tp_hi
     ],
   });
   assert.equal(alerts.length, 1);
-  assert.equal(alerts[0].kind, "reversed");
+  assert.equal(alerts[0].kind, "tp_hit");
+  assert.equal(alerts[0].tpLevel, 1);
 });
 
-test("a reversal that secured a TP spells out the TP level (badge-style)", async () => {
+test("a reversal that secured a TP is reported AS that TP (🎯), not a reversal", async () => {
   const { buildAutoJournalAlerts, formatAlertsForDiscord } =
     await loadModule(ALERTS);
   const alerts = buildAutoJournalAlerts({
@@ -142,11 +143,15 @@ test("a reversal that secured a TP spells out the TP level (badge-style)", async
       },
     ],
   });
-  const rev = alerts.find((a) => a.kind === "reversed");
-  assert.equal(rev.tpLevel, 2);
-  assert.equal(rev.tpTotal, 3);
+  // Folds into the TP outcome — mirrors the donut/table bucketing.
+  const tp = alerts.find((a) => a.kind === "tp_hit");
+  assert.equal(tp.tpLevel, 2);
+  assert.equal(
+    alerts.some((a) => a.kind === "reversed"),
+    false,
+  );
   const msg = formatAlertsForDiscord(alerts);
-  assert.ok(msg.includes("↳ REVERSED (TP 2/3): `@1.59` `(+8.4%)`"));
+  assert.ok(msg.includes("↳ TP2: `@1.59` `(+8.4%)`"));
 });
 
 test("formatAlertsForDiscord renders the Sensei message, null when empty", async () => {
@@ -173,10 +178,10 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
       "⛔ **MYX-USD** • SHORT • B\n↳ SL: `@9` `(-8.3%)`\n↳ DURATION: `32 MENIT`",
     ),
   );
-  // A reversal with NO secured TP spells that out (mirrors the no-TP badge).
+  // A no-TP reversal reads as REVERSED PROFIT / LOSS by realized P&L (🔄 kept).
   assert.ok(
     msg.includes(
-      "🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED (TANPA TP): `@5.12` `(+0.28%)`\n↳ DURATION: `52 DETIK`",
+      "🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED PROFIT: `@5.12` `(+0.28%)`\n↳ DURATION: `52 DETIK`",
     ),
   );
   assert.ok(msg.includes("Bersemedi di depan chart")); // closing wisdom

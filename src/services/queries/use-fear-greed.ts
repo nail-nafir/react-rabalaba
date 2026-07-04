@@ -20,8 +20,8 @@ export function useFearGreedIndex() {
         change: value - prevValue,
       };
     },
-    staleTime: 300_000, // 5 minutes
-    refetchInterval: 300_000,
+    staleTime: 86_400_000, // 1 day (alternative.me F&G is a daily index)
+    refetchInterval: 86_400_000,
     retry: 1,
     meta: { silent: true }, // optional context; the summary row degrades gracefully
   });

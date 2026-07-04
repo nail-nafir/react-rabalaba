@@ -1,4 +1,4 @@
-import { formatPrice, formatRatio, formatDayMonth, formatDateNumeric, formatClock } from "@/lib/formatters";
+import { formatPrice, formatRatio, formatDayMonth, formatDateNumeric, formatClock, formatVolume } from "@/lib/formatters";
 import type { AssetType } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
@@ -183,7 +183,9 @@ export function buildShareCardSvg(
   const PAD = 26; // uniform inner padding from the card border (all sides)
   const left = px0 + PAD;
   const right = px1 - PAD;
-  const top = panelY + PAD;
+  // Extra top room: the OHLC legend strip sits INSIDE the panel above the plot
+  // (mirrors the web, where it's in the chart card above the candles).
+  const top = panelY + PAD + 22;
   const bottom = panelY + panelH - PAD - 18; // leave room for the date labels
   // Right price column auto-sizes to the widest [KEY | price] pill, so candles
   // fill the rest of the width (mirrors the web renderer).
@@ -201,11 +203,9 @@ export function buildShareCardSvg(
   const y = (price: number) =>
     top + (1 - priceToRatio(price, model.priceMin, model.priceMax)) * chartH;
 
-  // Use the same window as the web chart for consistency — fully-contained only,
-  // so a candle is never half-rendered clipped against an edge in the share image.
-  const view = meta.candles
-    .slice(-MAX_CANDLES)
-    .filter((c) => c.low >= model.priceMin && c.high <= model.priceMax);
+  // Use the same window as the web chart for consistency — the model's price
+  // domain encloses every candle here, so the full window always renders.
+  const view = meta.candles.slice(-MAX_CANDLES);
   const slot = view.length ? (projX - left) / view.length : 0;
   const candles = view
     .map((c, i) => {
@@ -227,6 +227,34 @@ export function buildShareCardSvg(
     return `<rect x="${left}" y="${n(yt)}" width="${n(projX - left)}" height="${n(h)}" fill="${fill}"/>`;
   };
 
+  // Exchange-style brand watermark: big, faint, single-color, centered behind
+  // the candles — mirrors the web renderer.
+  const watermark = `<text x="${n((left + projX) / 2)}" y="${n((top + bottom) / 2)}" fill="${C.text}" opacity="0.06" font-size="66" font-weight="900" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" letter-spacing="0.02em">RABALABA</text>`;
+
+  // OHLC legend strip above the chart: the LATEST visible candle (a static
+  // share can't hover), so it matches the web's idle legend reading.
+  const legend = (() => {
+    if (!view.length) return "";
+    const c = view[view.length - 1];
+    const up = c.close >= c.open;
+    const dir = up ? C.emerald : C.rose;
+    const chg = c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
+    const vol = c.volume > 0 ? formatVolume(c.volume) : "—";
+    const stat = (label: string, value: string, fill: string) =>
+      `<tspan dx="16" fill="${C.muted}">${label}</tspan><tspan dx="4" fill="${fill}">${esc(value)}</tspan>`;
+    return (
+      `<text x="${left}" y="${top - 20}" font-family="${FONT_MONO}" font-size="15" dominant-baseline="central">` +
+      `<tspan fill="${C.muted}">${esc(formatDayMonth(c.timestamp, meta.locale))} ${esc(formatClock(c.timestamp))}</tspan>` +
+      `<tspan dx="6" fill="${dir}">${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%</tspan>` +
+      stat("OPEN", formatPrice(c.open, meta.assetType), C.text) +
+      stat("HIGH", formatPrice(c.high, meta.assetType), C.emerald) +
+      stat("LOW", formatPrice(c.low, meta.assetType), C.rose) +
+      stat("CLOSE", formatPrice(c.close, meta.assetType), dir) +
+      stat("VOLUME", vol, C.text) +
+      `</text>`
+    );
+  })();
+
   // Price axis: horizontal gridlines + candle price labels near the candles.
   const priceAxis = priceTicks(model.priceMin, model.priceMax)
     .map((p) => {
@@ -242,7 +270,7 @@ export function buildShareCardSvg(
           const cx = left + (idx + 0.5) * slot;
           const anchor =
             i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle";
-          return `<line x1="${n(cx)}" y1="${top}" x2="${n(cx)}" y2="${bottom}" stroke="${C.border}" stroke-width="1" opacity="0.5"/><text x="${n(cx)}" y="${bottom + 18}" fill="${C.muted}" font-size="15" text-anchor="${anchor}" font-family="${FONT_MONO}">${esc(formatDayMonth(view[idx].timestamp))}</text>`;
+          return `<line x1="${n(cx)}" y1="${top}" x2="${n(cx)}" y2="${bottom}" stroke="${C.border}" stroke-width="1" opacity="0.5"/><text x="${n(cx)}" y="${bottom + 18}" fill="${C.muted}" font-size="15" text-anchor="${anchor}" font-family="${FONT_MONO}">${esc(formatDayMonth(view[idx].timestamp, meta.locale))}</text>`;
         })
         .join("")
     : "";
@@ -535,6 +563,8 @@ ${headerRightSide}
 
 <!-- Chart panel (flat card background, matches web) -->
 <rect x="${px0}" y="${panelY}" width="${px1 - px0}" height="${panelH}" rx="14" fill="${C.card}" stroke="${C.border}"/>
+${legend}
+${watermark}
 ${zoneRect(model.profitZone.from, model.profitZone.to, C.emeraldFill)}
 ${zoneRect(model.riskZone.from, model.riskZone.to, C.roseFill)}
 ${priceAxis}
@@ -611,7 +641,10 @@ export async function shareOrDownloadPng(
     canShare?: (data?: ShareData) => boolean;
   };
   if (typeof nav.share === "function" && nav.canShare?.({ files: [file] })) {
-    await nav.share({ files: [file], title: filename });
+    // Share ONLY the file — passing a `title` alongside makes macOS's share
+    // sheet attach a text/preview item too, which pastes as a second image
+    // (e.g. into WhatsApp). Files-only keeps it to exactly one image.
+    await nav.share({ files: [file] });
     return "shared";
   }
   const url = URL.createObjectURL(blob);

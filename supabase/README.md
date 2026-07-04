@@ -23,8 +23,8 @@
 | Path | 🇮🇩 Peran | 🇬🇧 Role |
 |------|----------|---------|
 | `migrations/*.sql` | Cetak biru skema (tabel, RLS, function, trigger). Di-replay berurutan. | Schema blueprint (tables, RLS, functions, triggers). Replayed in order. |
-| `schedule-auto-journal.sql` | **Bukan** migration. Wiring pg_cron — jalan **paling akhir** (butuh function + Vault). | **Not** a migration. pg_cron wiring — runs **last** (needs function + Vault). |
-| `functions/auto-journal/` | Edge Function: `index.ts` (handler) + `_engine.mjs` (engine hasil bundle) + `deno.json`. | Edge Function: `index.ts` (handler) + `_engine.mjs` (bundled engine) + `deno.json`. |
+| `schedule-*.sql` | **Bukan** migration. Wiring pg_cron per function (auto-journal / daily-summary / asset-discovery) — jalan **paling akhir** (butuh function + Vault). | **Not** migrations. pg_cron wiring per function (auto-journal / daily-summary / asset-discovery) — runs **last** (needs functions + Vault). |
+| `functions/<nama>/` | Edge Function (auto-journal, daily-summary, asset-discovery): `index.ts` (handler) + `_engine.mjs` (engine hasil bundle) + `deno.json`. | Edge Functions (auto-journal, daily-summary, asset-discovery): `index.ts` (handler) + `_engine.mjs` (bundled engine) + `deno.json`. |
 | `functions/.env` | Env **lokal** untuk `functions serve` saja (gitignored). | **Local-only** env for `functions serve` (gitignored). |
 | `config.toml` | Config function (`verify_jwt = true`). | Function config (`verify_jwt = true`). |
 
@@ -94,13 +94,15 @@ where user_id = (select id from auth.users where email = 'nf.nailulfirdaus@gmail
 🇬🇧 `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` are **auto-injected on deploy** — do NOT set them via `supabase secrets set`. There are no other function secrets.
 
 ```bash
-npm run deploy:edge   # = build:edge (bundle _engine.mjs) + supabase functions deploy auto-journal
+npm run deploy:edge        # = build:edge (bundle _engine.mjs) + deploy auto-journal
+npm run deploy:summary     # deploy daily-summary
+npm run deploy:discovery   # deploy asset-discovery (auto universe curation)
 ```
 
-### Step 5 — Jadwalkan cron / Schedule the cron (MANUAL)
+### Step 5 — Jadwalkan cron / Schedule the crons (MANUAL)
 
-🇮🇩 Buka `schedule-auto-journal.sql`, **paste publishable key** di placeholder `auto_journal_bearer`, lalu jalankan seluruh file di SQL Editor. Dia: enable `pg_cron`+`pg_net`, simpan URL+bearer di Vault, dan `cron.schedule('auto-journal-30m', ...)`.
-🇬🇧 Open `schedule-auto-journal.sql`, **paste the publishable key** into the `auto_journal_bearer` placeholder, then run the whole file in the SQL Editor. It: enables `pg_cron`+`pg_net`, stashes URL+bearer in Vault, and runs `cron.schedule('auto-journal-30m', ...)`.
+🇮🇩 Buka `schedule-auto-journal.sql`, **paste publishable key** di placeholder `auto_journal_bearer`, lalu jalankan seluruh file di SQL Editor. Dia: enable `pg_cron`+`pg_net`, simpan URL+bearer di Vault, dan `cron.schedule('auto-journal-30m', ...)`. Lanjutkan dengan `schedule-daily-summary.sql` dan `schedule-asset-discovery.sql` (keduanya reuse bearer yang sama dari Vault).
+🇬🇧 Open `schedule-auto-journal.sql`, **paste the publishable key** into the `auto_journal_bearer` placeholder, then run the whole file in the SQL Editor. It: enables `pg_cron`+`pg_net`, stashes URL+bearer in Vault, and runs `cron.schedule('auto-journal-30m', ...)`. Then run `schedule-daily-summary.sql` and `schedule-asset-discovery.sql` (both reuse the same Vault bearer).
 
 > 🇮🇩 Bearer = **publishable** key (memang publik); cukup buat lolos gateway. Function tetap nulis pakai service-role.
 > 🇬🇧 Bearer = the **publishable** key (it's public anyway); enough to pass the gateway. The function still writes with the service-role key.

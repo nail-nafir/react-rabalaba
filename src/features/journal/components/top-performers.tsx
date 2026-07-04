@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 export function TopPerformers() {
   const { t } = useTranslation();
   const { history, isLoading } = useJournalTrades();
-  type TopPerformerPeriod = "1D" | "1W" | "1M" | "YTD" | "ALL";
+  type TopPerformerPeriod = "1D" | "1W" | "1M" | "ALL";
 
   const [period, setPeriod] = useState<TopPerformerPeriod>("1D");
   const [selectedTrade, setSelectedTrade] = useState<FollowedTrade | null>(
@@ -28,7 +28,6 @@ export function TopPerformers() {
     { value: "1D" as const, label: t("journal.timeframe_1d") },
     { value: "1W" as const, label: t("journal.timeframe_1w") },
     { value: "1M" as const, label: t("journal.timeframe_1m") },
-    { value: "YTD" as const, label: t("journal.timeframe_ytd") },
     { value: "ALL" as const, label: t("journal.timeframe_all") },
   ];
   const { gainers, losers, allProfitStats, allLossStats } = useMemo(() => {
@@ -52,12 +51,6 @@ export function TopPerformers() {
       case "1M": {
         d.setDate(d.getDate() - 29);
         periodStart = d.getTime();
-        break;
-      }
-      case "YTD": {
-        const ytd = new Date(now.getFullYear(), 0, 1);
-        ytd.setHours(0, 0, 0, 0);
-        periodStart = ytd.getTime();
         break;
       }
       case "ALL":

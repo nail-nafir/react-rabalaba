@@ -59,11 +59,14 @@ export interface ProfileRow {
   /** Manages the auto-journal universe via the admin UI (20260617000001). */
   is_admin: boolean;
   is_owner: boolean;
+  /** timestamptz ISO string; when the user last hit the backend (activity ping). */
+  last_active_at: string | null;
   updated_at: string;
 }
 
 /** A symbol in the auto-journal (cron) universe — the runtime source of truth
- *  that replaces the bundled EDGE_UNIVERSE (mirrors 20260617000001_journal_assets.sql). */
+ *  that replaces the bundled EDGE_UNIVERSE (mirrors 20260617000001_journal_assets.sql,
+ *  discovery columns from 20260702000001_asset_discovery.sql). */
 export interface JournalAssetRow {
   symbol: string;
   name: string | null;
@@ -72,13 +75,26 @@ export interface JournalAssetRow {
   sort_order: number | null;
   created_by: string | null;
   created_at: string;
+  /** 'admin' rows are never auto-touched; 'auto' rows belong to discovery
+   *  (refreshed / reactivated / pruned by the asset-discovery cron). */
+  source: "admin" | "auto";
+  /** Which discovery feed surfaced it (e.g. 'coingecko-trending'); null on admin rows. */
+  discovery_reason: string | null;
+  /** timestamptz ISO string; refreshed every run the symbol is still trending. */
+  last_discovered_at: string | null;
 }
 
-/** Insert shape: DB defaults active/created_at, so they're optional on write. */
+/** Insert shape: DB defaults active/created_at/source, so they're optional on write. */
 export type JournalAssetInsert = Omit<
   JournalAssetRow,
-  "active" | "created_at"
-> & { active?: boolean; created_at?: string };
+  "active" | "created_at" | "source" | "discovery_reason" | "last_discovered_at"
+> & {
+  active?: boolean;
+  created_at?: string;
+  source?: "admin" | "auto";
+  discovery_reason?: string | null;
+  last_discovered_at?: string | null;
+};
 
 /** Auto-journal schedule config — a SINGLETON row (id is always true). Mirrors
  *  20260617000002_journal_settings.sql. The edge function reads it each cron
@@ -92,10 +108,24 @@ export interface JournalSettingsRow {
   last_run_at: string | null;
   /** End-of-day Discord recap (see 20260629000001_journal_daily_summary.sql). */
   daily_summary_enabled: boolean;
-  /** WIB hour (0..23) at/after which the recap is sent; 23 = end of day. */
+  /** WIB hour (0..23) at which every recap kind is sent; 23 = end of day. */
   daily_summary_hour: number;
   /** timestamptz ISO string; null until the first recap is sent. */
   daily_summary_last_sent_at: string | null;
+  /** Weekly/monthly Discord recaps (see 20260702000002_journal_periodic_summary.sql):
+   *  same hour as the daily recap, sent on the period's last WIB day. */
+  weekly_summary_enabled: boolean;
+  monthly_summary_enabled: boolean;
+  weekly_summary_last_sent_at: string | null;
+  monthly_summary_last_sent_at: string | null;
+  /** Asset auto-discovery (see 20260702000001_asset_discovery.sql). */
+  discovery_enabled: boolean;
+  /** Max NEW symbols each market (crypto/US/ID) may add per run (1..20). */
+  discovery_max_per_market: number;
+  /** Auto rows not rediscovered for this many days get deactivated (3..90). */
+  discovery_prune_days: number;
+  /** timestamptz ISO string; null until the first discovery run stamps it. */
+  discovery_last_run_at: string | null;
   updated_at: string;
   updated_by: string | null;
 }
@@ -115,6 +145,8 @@ export interface AdminUserRow {
   redeemed_at: string | null;
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
+  /** timestamptz ISO string; when the user last hit the backend (activity ping). */
+  last_active_at: string | null;
   created_at: string;
   /** Latest disclaimer version this user accepted + when (null = never). */
   disclaimer_version: number | null;
@@ -314,6 +346,11 @@ export interface Database {
       redeem_access_code: {
         Args: { p_code: string };
         Returns: string;
+      };
+      /** Stamp the caller's profiles.last_active_at = now() (activity ping). */
+      touch_last_active: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
       /** Admin-only: returns every registered user with their entitlement + access-code. */
       admin_list_users: {

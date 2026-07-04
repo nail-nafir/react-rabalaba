@@ -198,31 +198,21 @@ export function buildTradeSetupModel(
 
   const levelPrices = levels.map((l) => l.price);
 
-  // Scale to the plan levels + current price, plus every RECENT candle whose
-  // range overlaps a band around the plan's own range. Two things matter:
-  //  • we select whole candles that overlap the band, then enclose their FULL
-  //    high/low — so an in-context candle is never half-clipped (the wick shows
-  //    in full). This fixes the "kepotong" look when recent action runs past the
-  //    levels (selecting just the extremes that fall inside the band cut wicks).
-  //  • candles entirely outside the band (a different price regime — e.g. old
-  //    action before a big move) stay excluded so they don't drag the scale and
-  //    open a huge empty gap.
-  // Band is 1.5× the level span so a normal recent run-up stays in-context;
-  // levels + current price are always enclosed.
+  // Scale to the plan levels + current price + EVERY rendered candle's full
+  // high/low. The domain always encloses the whole visible window, so no
+  // candle is ever clipped or dropped — closed trades whose saved levels sit
+  // in an old price regime still render the full recent window (uniform with
+  // open positions), just zoomed out to fit both the candles and the levels.
   const recent = candles.slice(-MAX_CANDLES);
-  const anchorLow = Math.min(...levelPrices, ref);
-  const anchorHigh = Math.max(...levelPrices, ref);
-  const span = anchorHigh - anchorLow || ref * 0.1 || 1;
-  const bandLow = anchorLow - span * 1.5;
-  const bandHigh = anchorHigh + span * 1.5;
-  const ctx = recent.filter((c) => c.high >= bandLow && c.low <= bandHigh);
-  const highs = [...levelPrices, ref, ...ctx.map((c) => c.high)];
-  const lows = [...levelPrices, ref, ...ctx.map((c) => c.low)];
+  const highs = [...levelPrices, ref, ...recent.map((c) => c.high)];
+  const lows = [...levelPrices, ref, ...recent.map((c) => c.low)];
   let max = Math.max(...highs);
   let min = Math.min(...lows);
   const pad = (max - min) * 0.05 || ref * 0.02 || 1;
   max += pad;
-  min -= pad;
+  // Prices can't go negative: when the padded floor undershoots 0 (tiny candle
+  // lows against a wide level span), pin it so the axis never shows "$-…".
+  min = Math.max(0, min - pad);
 
   const furthestTp = tps.length ? tps[tps.length - 1] : plan.entry;
 

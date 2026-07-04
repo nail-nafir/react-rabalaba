@@ -14,8 +14,8 @@ export function useCryptoDominance() {
   return useQuery<Dominance>({
     queryKey: ["dominance"],
     queryFn: fetchDominance,
-    staleTime: 600_000, // 10 minutes (CoinGecko free tier is rate-limited)
-    refetchInterval: 600_000,
+    staleTime: 1_800_000, // 30 minutes (CoinGecko free tier is rate-limited)
+    refetchInterval: 1_800_000,
     retry: 1,
     meta: { silent: true }, // optional context; handled gracefully if it fails
   });

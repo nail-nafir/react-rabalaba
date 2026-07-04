@@ -12,6 +12,8 @@
  * which keeps this concern isolated and trivially testable.
  */
 
+import type { AnalysisText } from "./analysis-text";
+
 /** Net direction the score is leaning (sign of the regime-weighted score). */
 export type SentimentBias = "bullish" | "bearish" | "neutral";
 
@@ -44,20 +46,20 @@ export function fearGreedContextWarning(
 }
 
 /**
- * Human-readable sentiment narrative for the detail dialog. Maps the F&G index
- * (0-100) into a qualitative band with an actionable note. Unchanged from the
- * previous inline implementation.
+ * Sentiment narrative for the detail dialog, as a localizable descriptor. Maps
+ * the F&G index (0-100) into a qualitative band with an actionable note; the
+ * render layer resolves the `analysis.sentiment.*` key into the active language.
  */
-export function generateSentimentAnalysis(fearGreed?: number): string {
+export function generateSentimentAnalysis(fearGreed?: number): AnalysisText {
   if (fearGreed === undefined || fearGreed === null)
-    return "Market sentiment data unavailable. Consider external indicators for sentiment confirmation.";
+    return { key: "analysis.sentiment.unavailable" };
   if (fearGreed <= 20)
-    return `Fear & Greed Index at ${fearGreed} (Extreme Fear). Market may be approaching a contrarian buy opportunity.`;
+    return { key: "analysis.sentiment.extreme_fear", params: { value: fearGreed } };
   if (fearGreed <= 40)
-    return `Fear & Greed Index at ${fearGreed} (Fear). Cautious market conditions. Watch for capitulation or reversal signals.`;
+    return { key: "analysis.sentiment.fear", params: { value: fearGreed } };
   if (fearGreed <= 60)
-    return `Fear & Greed Index at ${fearGreed} (Neutral). Balanced market sentiment. Follow technical signals for direction.`;
+    return { key: "analysis.sentiment.neutral", params: { value: fearGreed } };
   if (fearGreed <= 80)
-    return `Fear & Greed Index at ${fearGreed} (Greed). Optimistic market. Trend may continue but watch for overextension.`;
-  return `Fear & Greed Index at ${fearGreed} (Extreme Greed). Elevated risk of pullback. Consider tightening stops.`;
+    return { key: "analysis.sentiment.greed", params: { value: fearGreed } };
+  return { key: "analysis.sentiment.extreme_greed", params: { value: fearGreed } };
 }

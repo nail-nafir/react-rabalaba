@@ -96,6 +96,29 @@ export async function fetchYahooChart(
   return data?.chart?.result?.[0] ?? null;
 }
 
+/**
+ * Fetch chart data (OHLCV) for an explicit time window instead of a rolling
+ * `range` — used to chart a CLOSED journal trade over its own period.
+ * `period1`/`period2` are epoch SECONDS (Yahoo convention).
+ */
+export async function fetchYahooChartPeriod(
+  symbol: string,
+  period1: number,
+  period2: number,
+  interval: string,
+): Promise<YahooChartResult | null> {
+  const url = `${BASE_URL}/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=${interval}&includePrePost=false`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Yahoo Finance chart error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data?.chart?.result?.[0] ?? null;
+}
+
 /** A Yahoo numeric field — quoteSummary wraps numbers as { raw, fmt }. */
 interface YahooRaw {
   raw?: number;

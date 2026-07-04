@@ -29,7 +29,7 @@ export default function CalendarPage() {
 
   const impactOptions = Object.keys(IMPACT_LEVELS).map((value) => ({
     value: value as ImpactFilter,
-    label: t(`calendar.impact.${value}`),
+    label: t(IMPACT_LEVELS[value as ImpactFilter].labelKey),
   }));
 
   const filteredEvents = useMemo(() => {
@@ -209,7 +209,7 @@ export default function CalendarPage() {
                               IMPACT_LEVELS[event.impact].badge,
                             )}
                           >
-                            {event.impact}
+                            {t(IMPACT_LEVELS[event.impact].labelKey)}
                           </Badge>
                         </CardContent>
                       </Card>

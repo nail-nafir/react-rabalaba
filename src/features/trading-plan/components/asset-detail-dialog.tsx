@@ -14,6 +14,7 @@ import {
   supportsAccumulation,
 } from "@/features/engine/accumulation";
 import { enrichAsset } from "@/features/engine/enrichment";
+import { resolveAnalysisText } from "@/features/engine/analysis-text";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
 import { TradeSetupChart } from "./trade-setup-chart";
 import { useShareSetup } from "../hooks/use-share-setup";
@@ -42,7 +43,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StrengthBar } from "@/components/charts/strength-bar";
 import { CategoryScoreChart } from "@/components/charts/category-score-chart";
 import { WinRateRing } from "@/components/charts/win-rate-ring";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,7 @@ import {
   REGIME_COLORS,
   REGIME_LABEL_KEYS,
   SIGNAL_LABEL_KEYS,
+  SIGNAL_COLORS,
   ACCUMULATION_LABEL_KEYS,
   INDICATOR_STATUS_COLORS,
   PALETTE,
@@ -69,11 +70,24 @@ import {
   Loader2,
   Star,
   Share2,
-  PauseCircle,
   RotateCw,
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
+
+const getSmartMoneyLabelKey = (label: string): string => {
+  switch (label) {
+    case "Neutral positioning": return "dialog.sm_labels.neutral_positioning";
+    case "No positioning data": return "dialog.sm_labels.no_positioning_data";
+    case "New longs": return "dialog.sm_labels.new_longs";
+    case "New shorts": return "dialog.sm_labels.new_shorts";
+    case "Short covering": return "dialog.sm_labels.short_covering";
+    case "Long capitulation": return "dialog.sm_labels.long_capitulation";
+    case "Crowded longs, squeeze down risk": return "dialog.sm_labels.crowded_longs";
+    case "Crowded shorts, squeeze up potential": return "dialog.sm_labels.crowded_shorts";
+    default: return "";
+  }
+};
 
 export function AssetDetailDialog() {
   const { t } = useTranslation();
@@ -200,46 +214,19 @@ export function AssetDetailDialog() {
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
             {selectedAssetSymbol}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 hover:text-amber-400 hover:bg-muted/80 flex items-center justify-center cursor-pointer transition-all duration-200"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!selectedAssetSymbol) return;
-                // Favorites are premium + login gated; route non-entitled users
-                // to the license dialog instead of a silently failing write.
-                if (!hasAccess) {
-                  openLicenseDialog();
-                  return;
-                }
-                if (isStarred) {
-                  removeSymbol(selectedAssetSymbol);
-                  toast.success(
-                    t("market.favorite_removed", {
-                      symbol: selectedAssetSymbol,
-                    }),
-                  );
-                } else {
-                  addSymbol(selectedAssetSymbol);
-                  toast.success(
-                    t("market.favorite_added", {
-                      symbol: selectedAssetSymbol,
-                    }),
-                  );
-                }
-              }}
-              title={isStarred ? "Remove from Favorites" : "Add to Favorites"}
-            >
-              <Star
+            {outlook && (
+              <Badge
+                variant="outline"
                 className={cn(
-                  "h-4 w-4 transition-all",
-                  isStarred
-                    ? "fill-amber-400 text-amber-400"
-                    : "text-amber-400/40 hover:scale-110",
+                  "font-bold tracking-wider uppercase text-[10px] rounded-md",
+                  SIGNAL_COLORS[outlook.signal].bg,
+                  SIGNAL_COLORS[outlook.signal].text,
+                  SIGNAL_COLORS[outlook.signal].border,
                 )}
-              />
-            </Button>
+              >
+                {t(SIGNAL_LABEL_KEYS[outlook.signal])}
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
             {asset?.name ?? selectedAssetSymbol} ·{" "}
@@ -268,6 +255,53 @@ export function AssetDetailDialog() {
                   />
                 </div>
               </div>
+
+              {/* Favorite Button (Right-aligned) */}
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "h-9 w-9 cursor-pointer transition-all duration-200",
+                  isStarred
+                    ? "bg-amber-500/10 border-amber-500/50 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:border-amber-500"
+                    : "hover:bg-muted/80",
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!selectedAssetSymbol) return;
+                  // Favorites are premium + login gated; route non-entitled users
+                  // to the license dialog instead of a silently failing write.
+                  if (!hasAccess) {
+                    openLicenseDialog();
+                    return;
+                  }
+                  if (isStarred) {
+                    removeSymbol(selectedAssetSymbol);
+                    toast.success(
+                      t("market.favorite_removed", {
+                        symbol: selectedAssetSymbol,
+                      }),
+                    );
+                  } else {
+                    addSymbol(selectedAssetSymbol);
+                    toast.success(
+                      t("market.favorite_added", {
+                        symbol: selectedAssetSymbol,
+                      }),
+                    );
+                  }
+                }}
+                title={isStarred ? "Remove from Favorites" : "Add to Favorites"}
+              >
+                <Star
+                  className={cn(
+                    "h-3.5 w-3.5 transition-all duration-200",
+                    isStarred
+                      ? "fill-amber-500 text-amber-500 scale-110"
+                      : "text-muted-foreground/60 hover:scale-110",
+                  )}
+                />
+              </Button>
             </div>
           )}
 
@@ -283,7 +317,7 @@ export function AssetDetailDialog() {
                   RISK_COLORS[outlook.risk].border,
                 )}
               >
-                {outlook.risk} Risk
+                {t(`common.risk_levels.${outlook.risk}`)}
               </Badge>
               <Badge
                 variant="outline"
@@ -299,21 +333,16 @@ export function AssetDetailDialog() {
               {outlook.suppressed && (
                 <Badge
                   variant="outline"
-                  className="font-semibold uppercase tracking-wider text-[10px] rounded-md gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                  className="font-semibold uppercase tracking-wider text-[10px] rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
                 >
-                  <PauseCircle className="h-3 w-3" />
                   {t("dialog.suppressed_badge")}
                 </Badge>
               )}
-              <div className="flex-1 min-w-25">
-                <StrengthBar value={outlook.strength} />
-              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3 mt-3">
               <Skeleton className="h-5 w-16 rounded" />
               <Skeleton className="h-5 w-20 rounded" />
-              <Skeleton className="h-3 w-24 rounded flex-1" />
             </div>
           )}
         </DialogHeader>
@@ -779,111 +808,6 @@ export function AssetDetailDialog() {
                   </Card>
                 )}
 
-                {/* Market context vs the leading benchmark for the asset's
-                    class (BTC for crypto, IHSG for ID stocks, S&P 500 for US
-                    stocks). One conditional unit keyed off the asset type. */}
-                {outlook.signal !== "neutral" &&
-                  (asset?.assetType === "crypto" && marketContext ? (
-                    <Card className="border border-border bg-muted/50">
-                      <CardContent className="space-y-1">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.crypto_context")}
-                        </CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                          {t("dialog.crypto_context_desc", {
-                            riskState: t(
-                              marketContext.riskState === "risk_off"
-                                ? "dialog.crypto_risk_off"
-                                : marketContext.riskState === "risk_on"
-                                  ? "dialog.crypto_risk_on"
-                                  : "dialog.crypto_risk_neutral",
-                            ),
-                            score: marketContext.btcDirectionScore.toFixed(2),
-                            flow: t(
-                              marketContext.riskState === "risk_off"
-                                ? "dialog.crypto_flow_risk_off"
-                                : "dialog.crypto_flow_risk_on",
-                            ),
-                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
-                            alignment: t(
-                              fightsBenchmark(
-                                outlook.signal,
-                                marketContext.riskState,
-                              )
-                                ? "dialog.crypto_fighting"
-                                : "dialog.crypto_aligned",
-                            ),
-                          })}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  ) : asset?.assetType === "id-stock" && idxContext ? (
-                    <Card className="border border-border bg-muted/50">
-                      <CardContent className="space-y-1">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.idx_context")}
-                        </CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                          {t("dialog.idx_context_desc", {
-                            riskState: t(
-                              idxContext.riskState === "risk_off"
-                                ? "dialog.idx_risk_off"
-                                : idxContext.riskState === "risk_on"
-                                  ? "dialog.idx_risk_on"
-                                  : "dialog.idx_risk_neutral",
-                            ),
-                            score: idxContext.ihsgDirectionScore.toFixed(2),
-                            rupiahTrend: t(
-                              idxContext.usdIdrTrend === "bullish"
-                                ? "dialog.idx_rupiah_weakening"
-                                : idxContext.usdIdrTrend === "bearish"
-                                  ? "dialog.idx_rupiah_strengthening"
-                                  : "dialog.idx_rupiah_stable",
-                            ),
-                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
-                            alignment: t(
-                              fightsBenchmark(
-                                outlook.signal,
-                                idxContext.riskState,
-                              )
-                                ? "dialog.idx_fighting"
-                                : "dialog.idx_aligned",
-                            ),
-                          })}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  ) : asset?.assetType === "us-stock" && usContext ? (
-                    <Card className="border border-border bg-muted/50">
-                      <CardContent className="space-y-1">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.us_context")}
-                        </CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                          {t("dialog.us_context_desc", {
-                            riskState: t(
-                              usContext.riskState === "risk_off"
-                                ? "dialog.us_risk_off"
-                                : usContext.riskState === "risk_on"
-                                  ? "dialog.us_risk_on"
-                                  : "dialog.us_risk_neutral",
-                            ),
-                            score: usContext.spxDirectionScore.toFixed(2),
-                            vix:
-                              typeof usContext.vixLevel === "number"
-                                ? `, VIX ${usContext.vixLevel.toFixed(1)}`
-                                : "",
-                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
-                            alignment: t(
-                              fightsBenchmark(outlook.signal, usContext.riskState)
-                                ? "dialog.us_fighting"
-                                : "dialog.us_aligned",
-                            ),
-                          })}
-                        </CardDescription>
-                      </CardContent>
-                    </Card>
-                  ) : null)}
                 {/* Smart money: derivatives positioning (Binance), with an
                     unavailable-feed fallback. One conditional unit, kept at the
                     bottom of the supporting evidence. */}
@@ -907,7 +831,7 @@ export function AssetDetailDialog() {
                                     : badgeClass(BADGE.negative),
                               )}
                             >
-                              {smartMoney.label}
+                              {t(getSmartMoneyLabelKey(smartMoney.label), { defaultValue: smartMoney.label })}
                               {smartMoney.flow && (
                                 <span className="inline-flex items-center gap-0.5 text-[10px] font-medium normal-case text-muted-foreground">
                                   OI
@@ -1016,6 +940,112 @@ export function AssetDetailDialog() {
                         <p className="text-xs leading-relaxed text-rose-700/90 dark:text-rose-300/90">
                           {t("dialog.sm_unavailable_desc")}
                         </p>
+                      </CardContent>
+                    </Card>
+                  ) : null)}
+
+                {/* Market context vs the leading benchmark for the asset's
+                    class (BTC for crypto, IHSG for ID stocks, S&P 500 for US
+                    stocks). One conditional unit keyed off the asset type. */}
+                {outlook.signal !== "neutral" &&
+                  (asset?.assetType === "crypto" && marketContext ? (
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-1">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.crypto_context")}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                          {t("dialog.crypto_context_desc", {
+                            riskState: t(
+                              marketContext.riskState === "risk_off"
+                                ? "dialog.crypto_risk_off"
+                                : marketContext.riskState === "risk_on"
+                                  ? "dialog.crypto_risk_on"
+                                  : "dialog.crypto_risk_neutral",
+                            ),
+                            score: marketContext.btcDirectionScore.toFixed(2),
+                            flow: t(
+                              marketContext.riskState === "risk_off"
+                                ? "dialog.crypto_flow_risk_off"
+                                : "dialog.crypto_flow_risk_on",
+                            ),
+                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
+                            alignment: t(
+                              fightsBenchmark(
+                                outlook.signal,
+                                marketContext.riskState,
+                              )
+                                ? "dialog.crypto_fighting"
+                                : "dialog.crypto_aligned",
+                            ),
+                          })}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  ) : asset?.assetType === "id-stock" && idxContext ? (
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-1">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.idx_context")}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                          {t("dialog.idx_context_desc", {
+                            riskState: t(
+                              idxContext.riskState === "risk_off"
+                                ? "dialog.idx_risk_off"
+                                : idxContext.riskState === "risk_on"
+                                  ? "dialog.idx_risk_on"
+                                  : "dialog.idx_risk_neutral",
+                            ),
+                            score: idxContext.ihsgDirectionScore.toFixed(2),
+                            rupiahTrend: t(
+                              idxContext.usdIdrTrend === "bullish"
+                                ? "dialog.idx_rupiah_weakening"
+                                : idxContext.usdIdrTrend === "bearish"
+                                  ? "dialog.idx_rupiah_strengthening"
+                                  : "dialog.idx_rupiah_stable",
+                            ),
+                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
+                            alignment: t(
+                              fightsBenchmark(
+                                outlook.signal,
+                                idxContext.riskState,
+                              )
+                                ? "dialog.idx_fighting"
+                                : "dialog.idx_aligned",
+                            ),
+                          })}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>
+                  ) : asset?.assetType === "us-stock" && usContext ? (
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-1">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("dialog.us_context")}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground leading-relaxed">
+                          {t("dialog.us_context_desc", {
+                            riskState: t(
+                              usContext.riskState === "risk_off"
+                                ? "dialog.us_risk_off"
+                                : usContext.riskState === "risk_on"
+                                  ? "dialog.us_risk_on"
+                                  : "dialog.us_risk_neutral",
+                            ),
+                            score: usContext.spxDirectionScore.toFixed(2),
+                            vix:
+                              typeof usContext.vixLevel === "number"
+                                ? `, VIX ${usContext.vixLevel.toFixed(1)}`
+                                : "",
+                            signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
+                            alignment: t(
+                              fightsBenchmark(outlook.signal, usContext.riskState)
+                                ? "dialog.us_fighting"
+                                : "dialog.us_aligned",
+                            ),
+                          })}
+                        </CardDescription>
                       </CardContent>
                     </Card>
                   ) : null)}
@@ -1214,22 +1244,22 @@ export function AssetDetailDialog() {
                   <AnalysisItem
                     icon={TrendingUp}
                     title={t("table.trend")}
-                    text={outlook.analysis.trend}
+                    text={resolveAnalysisText(t, outlook.analysis.trend)}
                   />
                   <AnalysisItem
                     icon={Activity}
                     title={t("table.volume")}
-                    text={outlook.analysis.volume}
+                    text={resolveAnalysisText(t, outlook.analysis.volume)}
                   />
                   <AnalysisItem
                     icon={Gauge}
                     title="Momentum"
-                    text={outlook.analysis.momentum}
+                    text={resolveAnalysisText(t, outlook.analysis.momentum)}
                   />
                   <AnalysisItem
                     icon={ShieldAlert}
                     title={t("dialog.sentiment")}
-                    text={outlook.analysis.sentiment}
+                    text={resolveAnalysisText(t, outlook.analysis.sentiment)}
                   />
                 </div>
               </div>

@@ -109,11 +109,16 @@ export function useJournalAssets() {
       if (!userId) return;
       // Optimistic: flip locally so the toggle responds instantly.
       queryClient.setQueryData<JournalAssetRow[]>(QUERY_KEY, (prev) =>
-        (prev ?? []).map((a) => (a.symbol === symbol ? { ...a, active } : a)),
+        (prev ?? []).map((a) =>
+          a.symbol === symbol ? { ...a, active, source: "admin" } : a,
+        ),
       );
+      // Adopt-on-toggle: any admin touch flips source to 'admin', taking the
+      // row permanently out of auto-discovery's reach — otherwise discovery
+      // would re-activate a deliberately paused auto asset the next morning.
       const { error } = await supabase
         .from("journal_assets")
-        .update({ active } as never)
+        .update({ active, source: "admin" } as never)
         .eq("symbol", symbol);
       if (error) {
         await queryClient.invalidateQueries({ queryKey: QUERY_KEY });

@@ -59,7 +59,8 @@ export function useCryptoContext() {
         btcReturns,
       );
     },
-    staleTime: 60_000,
+    staleTime: 1_800_000, // 30 minutes
+    refetchInterval: 1_800_000,
     retry: 2,
   });
 }

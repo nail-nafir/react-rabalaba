@@ -72,32 +72,42 @@ test("fearGreedContextWarning: boundary 20 (fear) with zero score → null (need
 });
 
 // ─── generateSentimentAnalysis ───────────────────────────────
+// Now returns a localizable descriptor ({ key, params }) instead of a
+// pre-formatted English string; the dialog resolves it in the active language.
 test("generateSentimentAnalysis: undefined → unavailable note", async () => {
   const { generateSentimentAnalysis } = await loadModule(SENT);
-  assert.ok(generateSentimentAnalysis(undefined).toLowerCase().includes("unavailable"));
+  assert.equal(
+    generateSentimentAnalysis(undefined).key,
+    "analysis.sentiment.unavailable",
+  );
 });
 
 test("generateSentimentAnalysis: extreme fear band", async () => {
   const { generateSentimentAnalysis } = await loadModule(SENT);
-  assert.ok(generateSentimentAnalysis(10).includes("Extreme Fear"));
+  const a = generateSentimentAnalysis(10);
+  assert.equal(a.key, "analysis.sentiment.extreme_fear");
+  assert.equal(a.params.value, 10);
 });
 
 test("generateSentimentAnalysis: fear band", async () => {
   const { generateSentimentAnalysis } = await loadModule(SENT);
-  assert.ok(generateSentimentAnalysis(30).includes("(Fear)"));
+  assert.equal(generateSentimentAnalysis(30).key, "analysis.sentiment.fear");
 });
 
 test("generateSentimentAnalysis: neutral band", async () => {
   const { generateSentimentAnalysis } = await loadModule(SENT);
-  assert.ok(generateSentimentAnalysis(50).includes("(Neutral)"));
+  assert.equal(generateSentimentAnalysis(50).key, "analysis.sentiment.neutral");
 });
 
 test("generateSentimentAnalysis: greed band", async () => {
   const { generateSentimentAnalysis } = await loadModule(SENT);
-  assert.ok(generateSentimentAnalysis(70).includes("(Greed)"));
+  assert.equal(generateSentimentAnalysis(70).key, "analysis.sentiment.greed");
 });
 
 test("generateSentimentAnalysis: extreme greed band", async () => {
   const { generateSentimentAnalysis } = await loadModule(SENT);
-  assert.ok(generateSentimentAnalysis(90).includes("Extreme Greed"));
+  assert.equal(
+    generateSentimentAnalysis(90).key,
+    "analysis.sentiment.extreme_greed",
+  );
 });

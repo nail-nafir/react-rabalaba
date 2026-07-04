@@ -84,9 +84,11 @@ export function useShareSetup() {
         pnlR,
         locale: i18n.language,
         markers,
+        // Hardcoded (not translated) so the share card matches the web chart,
+        // whose markers always read "ENTRY" / "CLOSED".
         markerLabels: {
-          entry: t("journal.entry_marker"),
-          close: t("journal.close_marker"),
+          entry: "ENTRY",
+          close: "CLOSED",
         },
       });
       const blob = await svgToPngBlob(

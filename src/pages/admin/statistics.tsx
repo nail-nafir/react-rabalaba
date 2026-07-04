@@ -106,9 +106,9 @@ export default function AdminSystemPage() {
       else if (u.tier === "trial") trial++;
       else free++;
 
-      if (u.last_sign_in_at) {
-        const lastSignIn = new Date(u.last_sign_in_at).getTime();
-        if (lastSignIn >= sevenDaysAgo) {
+      if (u.last_active_at) {
+        const lastActive = new Date(u.last_active_at).getTime();
+        if (lastActive >= sevenDaysAgo) {
           activeLast7Days++;
         }
       }
@@ -215,7 +215,7 @@ export default function AdminSystemPage() {
     };
   }, [accessCodes]);
 
-  // 4. Group signups and active user login dates for AreaChart (Daily for the current calendar month)
+  // 4. Group signups and active user activity dates for AreaChart (Daily for the current calendar month)
   const registrationChartData = useMemo(() => {
     if (!users || users.length === 0) return [];
 
@@ -235,8 +235,8 @@ export default function AdminSystemPage() {
         const regDate = u.created_at.split("T")[0]; // YYYY-MM-DD
         regGroups[regDate] = (regGroups[regDate] || 0) + 1;
       }
-      if (u.last_sign_in_at) {
-        const activeDate = u.last_sign_in_at.split("T")[0]; // YYYY-MM-DD
+      if (u.last_active_at) {
+        const activeDate = u.last_active_at.split("T")[0]; // YYYY-MM-DD
         activeGroups[activeDate] = (activeGroups[activeDate] || 0) + 1;
       }
     });
@@ -710,7 +710,7 @@ export default function AdminSystemPage() {
               <p className="text-[10px] text-muted-foreground">
                 {t(
                   "admin.summary_chart_user_stats_desc",
-                  "Tren pendaftaran, kumulatif, dan login aktif harian.",
+                  "Tren pendaftaran, kumulatif, dan aktivitas harian.",
                 )}
               </p>
             </div>
@@ -900,7 +900,7 @@ export default function AdminSystemPage() {
               <CardDescription className="text-xs">
                 {t(
                   "admin.summary_chart_user_stats_desc",
-                  "Tren pendaftaran, kumulatif, dan login aktif harian.",
+                  "Tren pendaftaran, kumulatif, dan aktivitas harian.",
                 )}
               </CardDescription>
             </div>

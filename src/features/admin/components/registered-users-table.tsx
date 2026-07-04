@@ -96,12 +96,17 @@ function SortButton<T>({
 
 /** Tier badge with colour coding: premium=emerald, trial=amber, free=muted. */
 function TierBadge({ tier }: { tier: string }) {
+  const { t } = useTranslation();
   const cls =
     tier === "premium"
       ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
       : tier === "trial"
         ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
         : "bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground";
+
+  // Translate using the existing user tier localization keys: admin.users_tier_xxxx
+  const label = t(`admin.users_tier_${tier}`, tier);
+
   return (
     <Badge
       variant="outline"
@@ -110,35 +115,13 @@ function TierBadge({ tier }: { tier: string }) {
         cls,
       )}
     >
-      {tier}
+      {label}
     </Badge>
   );
 }
 
-/** Code-kind badge: full=emerald, trial=amber. */
-function CodeKindBadge({ kind }: { kind: string }) {
-  const cls =
-    kind === "full"
-      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-      : "bg-amber-500/15 border-amber-500/30 text-amber-400";
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "font-bold tracking-wider uppercase text-[10px] rounded-md",
-        cls,
-      )}
-    >
-      {kind}
-    </Badge>
-  );
-}
 
-/** Mask an access code, showing only the last 4 characters. */
-function maskCode(code: string): string {
-  if (code.length <= 4) return code;
-  return "●".repeat(code.length - 4) + code.slice(-4);
-}
+
 
 /** Format a timestamptz ISO string to DD-MM-YYYY + HH:MM; returns null if missing. */
 function formatTs(iso: string | null): { date: string; time: string } | null {
@@ -363,75 +346,26 @@ export function RegisteredUsersTable() {
         cell: ({ row }) => (
           <div className="py-1">
             <TierBadge tier={row.original.tier} />
+            {row.original.tier === "premium" && (
+              <div className="text-[10px] text-muted-foreground mt-0.5 font-medium whitespace-nowrap">
+                {t("admin.tier_lifetime")}
+              </div>
+            )}
             {row.original.tier === "trial" && row.original.trial_expires_at && (
               <div className="text-[10px] text-muted-foreground mt-0.5 font-medium whitespace-nowrap">
-                Exp: {formatTs(row.original.trial_expires_at)?.date}
+                {t("admin.tier_expires")} {formatTs(row.original.trial_expires_at)?.date}
               </div>
             )}
           </div>
         ),
       },
       {
-        accessorKey: "access_code",
-        enableSorting: false,
-        header: () => (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("table.access_code")}
-          </span>
-        ),
-        cell: ({ row }) =>
-          row.original.access_code ? (
-            <Badge
-              variant="outline"
-              className="font-mono text-xs font-bold uppercase rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground tracking-wider px-1.5 py-0.5"
-            >
-              {maskCode(row.original.access_code)}
-            </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          ),
-      },
-      {
-        accessorKey: "access_code_kind",
-        enableSorting: false,
-        header: () => (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("table.code_type")}
-          </span>
-        ),
-        cell: ({ row }) =>
-          row.original.access_code_kind ? (
-            <CodeKindBadge kind={row.original.access_code_kind} />
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          ),
-      },
-      {
-        accessorKey: "redeemed_at",
+        accessorKey: "last_active_at",
         header: ({ column }) => (
-          <SortButton label={t("table.redeemed")} column={column} />
+          <SortButton label={t("table.last_access")} column={column} />
         ),
         cell: ({ row }) => {
-          const ts = formatTs(row.original.redeemed_at);
-          if (!ts)
-            return <span className="text-xs text-muted-foreground">—</span>;
-          return (
-            <div className="py-1">
-              <div className="font-bold text-sm tracking-tight text-foreground">
-                {ts.date}
-              </div>
-              <div className="text-xs text-muted-foreground">{ts.time}</div>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: "last_sign_in_at",
-        header: ({ column }) => (
-          <SortButton label={t("table.last_login")} column={column} />
-        ),
-        cell: ({ row }) => {
-          const ts = formatTs(row.original.last_sign_in_at);
+          const ts = formatTs(row.original.last_active_at);
           if (!ts)
             return <span className="text-xs text-muted-foreground">—</span>;
           return (

@@ -26,10 +26,19 @@ export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number];
 export const FOLLOW_SIGNALS = ["long", "short"] as const;
 export type FollowSignal = (typeof FOLLOW_SIGNALS)[number];
 
-/** UI PnL filter — `tp` aggregates tp1-3 and `reversed` matches any reversal
- *  close (no-TP reversal OR a reversal-after-TP), so both are their own grouping
- *  rather than a slice of FOLLOW_STATUSES. */
-export const PNL_FILTERS = ["all", "tp", "sl", "reversed"] as const;
+/** UI PnL filter. Mirrors the donut's outcome buckets so the table and the
+ *  "Distribusi Hasil Akhir" chart partition closed trades IDENTICALLY: `tp`
+ *  aggregates tp1-3 — including a reversal-after-TP, which still secured its
+ *  tp{n} — `sl` is a clean stop, and a NO-TP reversal (status `reversed`) splits
+ *  by realized P/L into `reversal_profit` / `reversal_loss`. Every closed trade
+ *  lands in exactly one. `all` is the UI-only sentinel. */
+export const PNL_FILTERS = [
+  "all",
+  "tp",
+  "sl",
+  "reversal_profit",
+  "reversal_loss",
+] as const;
 export type PnlFilter = (typeof PNL_FILTERS)[number];
 
 /** i18n keys (journal.status_*) for the outcome label. */
@@ -53,5 +62,6 @@ export const PNL_FILTER_LABEL_KEYS: Record<PnlFilter, string> = {
   all: "journal.filter_all_pnl",
   tp: "journal.pnl_tp",
   sl: "journal.status_sl",
-  reversed: "journal.status_reversed",
+  reversal_profit: "journal.outcome_reversed_win",
+  reversal_loss: "journal.outcome_reversed_loss",
 };

@@ -173,9 +173,11 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Schedule gate (journal_settings — admin-editable, data-driven) ──
-  // The cron ticks at a fixed BASE cadence (*/15); we decide HERE whether this
+  // The cron ticks at a fixed BASE cadence (*/30); we decide HERE whether this
   // tick should actually run, honoring the admin's pause flag + interval. So
   // changing the cadence or pausing is pure data — no cron edit, no redeploy.
+  // Automated runs are CLOCK-ALIGNED to WIB midnight (interval 60 → every :00,
+  // 360 → 00/06/12/18 WIB, 720 → 00/12 WIB), so they never drift.
   // (null settings = pre-migration → behave as before: always run.)
   const { data: settings } = await db
     .from("journal_settings")
@@ -187,21 +189,30 @@ Deno.serve(async (req: Request) => {
     if (!settings.enabled) {
       return jsonResponse({ ok: true, skipped: "disabled" });
     }
-    // The interval/due-gate only applies to automated ticks; a manual force run
-    // scans immediately regardless of when the last run was.
+    // The alignment gate only applies to automated ticks; a manual force run
+    // scans immediately regardless of the clock. "Aligned" = minutes-since-WIB-
+    // midnight is a multiple of the interval, so interval 360 fires at 00:00/
+    // 06:00/12:00/18:00 WIB with no drift. The tick minute is floored to the
+    // */30 base cadence so a slightly-late tick still maps to its slot.
     if (!force) {
-      const lastRun = settings.last_run_at
-        ? Date.parse(settings.last_run_at)
-        : 0;
-      const dueMs = settings.interval_minutes * 60_000;
-      // 60s grace so a tick landing slightly early still counts as due.
-      if (Date.now() - lastRun < dueMs - 60_000) {
-        const nextInMin = Math.ceil((dueMs - (Date.now() - lastRun)) / 60_000);
-        return jsonResponse({
-          ok: true,
-          skipped: "not-due",
-          next_in_min: nextInMin,
-        });
+      const WIB_OFFSET_MS = 7 * 60 * 60 * 1000; // WIB = UTC+7, no DST
+      const TICK_MIN = 30; // cron base cadence (*/30)
+      const nowMs = Date.now();
+      const wib = new Date(nowMs + WIB_OFFSET_MS);
+      const minsSinceWibMidnight = wib.getUTCHours() * 60 + wib.getUTCMinutes();
+      const slotMin = Math.floor(minsSinceWibMidnight / TICK_MIN) * TICK_MIN;
+      if (slotMin % settings.interval_minutes !== 0) {
+        return jsonResponse({ ok: true, skipped: "not-aligned", slot_min: slotMin });
+      }
+      // Dedup: don't re-run the same slot (retried/duplicate tick). The slot's
+      // WIB start as a UTC instant; a stamp at/after it means we already ran it.
+      const wibMidnightUtcMs =
+        Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()) -
+        WIB_OFFSET_MS;
+      const slotStartMs = wibMidnightUtcMs + slotMin * 60_000;
+      const lastRun = settings.last_run_at ? Date.parse(settings.last_run_at) : 0;
+      if (lastRun >= slotStartMs) {
+        return jsonResponse({ ok: true, skipped: "already-ran-slot" });
       }
     }
   }

@@ -25,7 +25,6 @@ import {
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -106,7 +105,7 @@ export function AdminLayout() {
     : t("admin.admin_console_title", "Dashboard Admin");
 
   const overviewItem = {
-    to: "/admin/summary",
+    to: "/admin/statistics",
     label: t("admin.menu_summary", "Summary"),
     icon: LineChart,
   };
@@ -149,14 +148,17 @@ export function AdminLayout() {
     },
   ];
 
-  const navItems = [overviewItem, ...managementItems];
 
-  // Breadcrumb leaf: resolve the active nav label from the current route.
-  const activeNav = navItems.find((item) =>
-    location.pathname.startsWith(item.to),
-  );
-  const currentLabel =
-    activeNav?.label ?? t("admin.console_label", "Dashboard");
+
+  // Breadcrumb resolve: determine parent group and child page label based on route.
+  const isStatistics = location.pathname.startsWith("/admin/statistics");
+  const parentLabel = isStatistics
+    ? t("admin.nav_group_overview", "Summary")
+    : t("admin.nav_group_management", "Management");
+
+  const currentLabel = isStatistics
+    ? t("admin.menu_summary", "Statistics")
+    : (managementItems.find((item) => location.pathname.startsWith(item.to))?.label ?? t("admin.console_label", "Dashboard"));
 
   return (
     <TooltipProvider>
@@ -334,32 +336,17 @@ export function AdminLayout() {
             />
             <Breadcrumb>
               <BreadcrumbList>
-                {location.pathname === "/admin/summary" ? (
-                  <BreadcrumbItem>
-                    <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
-                      {t("admin.console_label", "Dashboard")}
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                ) : (
-                  <>
-                    <BreadcrumbItem className="hidden sm:block">
-                      <BreadcrumbLink asChild>
-                        <Link
-                          to="/admin/summary"
-                          className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
-                        >
-                          {t("admin.console_label", "Dashboard")}
-                        </Link>
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden sm:block" />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
-                        {currentLabel}
-                      </BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </>
-                )}
+                <BreadcrumbItem className="hidden sm:block">
+                  <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                    {parentLabel}
+                  </span>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden sm:block" />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
+                    {currentLabel}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
 

@@ -41,18 +41,17 @@ export function SkeletonCryptoCard({ className }: SkeletonCardProps) {
         <Skeleton className="h-3 w-12" />
         <Skeleton className="h-5 w-16 rounded" />
       </div>
-      
-      <div className="flex items-center gap-3 w-full py-1 mb-4">
-        <Skeleton className="h-20 w-20 rounded-full shrink-0" />
-        <div className="flex flex-col items-start gap-1 flex-1">
-          <Skeleton className="h-3 w-16 mb-0.5" />
+
+      <div className="flex flex-col items-center w-full py-1 gap-1.5 mb-4">
+        <Skeleton className="h-12.5 w-12.5 rounded-full shrink-0" />
+        <div className="flex justify-center gap-4 text-[11px] w-full">
           <div className="flex items-center gap-1.5">
-            <Skeleton className="h-1.5 w-1.5 rounded-full shrink-0" />
-            <Skeleton className="h-3 w-14" />
+            <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-muted-foreground/30" />
+            <Skeleton className="h-3 w-10" />
           </div>
           <div className="flex items-center gap-1.5">
-            <Skeleton className="h-1.5 w-1.5 rounded-full shrink-0" />
-            <Skeleton className="h-3 w-14" />
+            <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-muted-foreground/30" />
+            <Skeleton className="h-3 w-10" />
           </div>
         </div>
       </div>
@@ -80,7 +79,7 @@ export function SkeletonIndexCard({ className }: SkeletonCardProps) {
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-5 w-12 rounded" />
       </div>
-      
+
       <div className="w-full h-20 mb-4 flex items-center justify-center">
         <Skeleton className="w-full h-full rounded-sm" />
       </div>
@@ -108,13 +107,9 @@ export function SkeletonCalendarItem() {
     </div>
   );
 }
-
-export function SkeletonTableRow() {
+export function SkeletonAssetSignalRow() {
   return (
     <>
-      <TableCell>
-        <Skeleton className="h-4 w-4" />
-      </TableCell>
       <TableCell>
         <div className="space-y-1.5">
           <Skeleton className="h-4 w-20" />
@@ -154,6 +149,51 @@ export function SkeletonTableRow() {
   );
 }
 
+export function SkeletonFollowHistoryRow() {
+  return (
+    <>
+      <TableCell>
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-12" />
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-8 rounded" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-16 rounded" />
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-12 rounded" />
+      </TableCell>
+    </>
+  );
+}
 
 /** Loading row for the admin auto-journal table (journal-asset-manager).
  *  Mirrors its 7 columns: added (date+time), symbol (symbol+name), type, price,
@@ -197,8 +237,8 @@ export function SkeletonJournalAssetRow() {
 }
 
 /** Loading row for the admin registered-users table (registered-users-table).
- *  Mirrors its 9 columns: joined (date+time), email, role, tier,
- *  access code, code type, redeemed (date+time), last login (date+time), actions. */
+ *  Mirrors its 7 columns: joined (date+time), email, role, tier (+ code),
+ *  last login (date+time), disclaimer, actions. */
 export function SkeletonAdminUserRow() {
   return (
     <>
@@ -219,14 +259,8 @@ export function SkeletonAdminUserRow() {
       <TableCell>
         <div className="space-y-1.5 py-1">
           <Skeleton className="h-5 w-16 rounded-md" />
-          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-20" />
         </div>
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-20 rounded-md" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-12 rounded-md" />
       </TableCell>
       <TableCell>
         <div className="space-y-1.5 py-1">
@@ -236,8 +270,8 @@ export function SkeletonAdminUserRow() {
       </TableCell>
       <TableCell>
         <div className="space-y-1.5 py-1">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-3 w-14" />
+          <Skeleton className="h-5 w-12 rounded-md" />
+          <Skeleton className="h-3 w-16" />
         </div>
       </TableCell>
       <TableCell>
@@ -384,4 +418,3 @@ export function SkeletonAccessCodeRow() {
     </>
   );
 }
-

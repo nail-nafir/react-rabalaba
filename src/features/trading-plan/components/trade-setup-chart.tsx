@@ -1,17 +1,18 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   formatPrice,
-  formatDateFull,
   formatClock,
   formatDayMonth,
   formatRatio,
+  formatVolume,
 } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { PALETTE, SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
@@ -44,6 +45,27 @@ const CHART_LEFT = PAD_X;
 const CELL_PAD = 16; // horizontal padding inside a cell (8px per side)
 const EMPHASIS_CHAR_W = 7.6;
 const NORMAL_CHAR_W = 6.6;
+
+/** Tightest zoom: fewer raw candles than this and the bars lose meaning. */
+const MIN_SPAN = 12;
+
+/** Widest zoom: bars keep their native interval (no re-bucketing), so this
+ *  caps how many can draw at once — beyond it they'd be sub-pixel slivers. */
+const MAX_VISIBLE = 360;
+
+/** Index of the candle whose timestamp is closest to `ts` (epoch seconds). */
+const nearestIdx = (candles: { timestamp: number }[], ts: number) => {
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < candles.length; i++) {
+    const dist = Math.abs(candles[i].timestamp - ts);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  return best;
+};
 
 /** Width of a combined level pill ([KEY | price]) for the given strings. */
 const pillWidth = (key: string, price: string) =>
@@ -166,22 +188,220 @@ export function TradeSetupChart({
   const { t, i18n } = useTranslation();
   const [hoveredCandle, setHoveredCandle] = useState<number | null>(null);
   const [hoveredLevel, setHoveredLevel] = useState<LevelKey | null>(null);
+  // Free cursor Y (viewBox space) for the horizontal crosshair + price pill.
+  // null on touch (no hover) and when the cursor is off the plot.
+  const [hoverY, setHoverY] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const model = useMemo(
-    () => buildTradeSetupModel(candles, plan, signal, currentPrice),
-    [candles, plan, signal, currentPrice],
-  );
+  // ── Zoomable viewport ──────────────────────────────────────────────
+  // The chart owns a window into the raw `candles` series: wheel = zoom
+  // (anchored on the cursor), drag / horizontal scroll = pan, double-click =
+  // reset. Bars always keep their native interval (e.g. 1h) — zoom only
+  // changes how many are visible, never their shape — so the count is capped
+  // at MAX_VISIBLE and longer histories are reached by panning.
+
+  // Trade bounds (entry→close markers), when they fall fully inside the data —
+  // the default frame centers on them; otherwise it shows the latest bars.
+  const focus = useMemo(() => {
+    const entry = markers?.find((m) => m.kind === "entry");
+    const close = markers?.find((m) => m.kind === "close");
+    if (!entry || !close || candles.length === 0) return null;
+    const lo = candles[0].timestamp;
+    const hi = candles[candles.length - 1].timestamp;
+    return entry.timestamp >= lo && close.timestamp <= hi
+      ? { start: entry.timestamp, end: close.timestamp }
+      : null;
+  }, [markers, candles]);
+
+  const defaultViewport = useMemo(() => {
+    const len = candles.length;
+    if (len === 0) return { start: 0, span: 0 };
+    if (!focus) {
+      const span = Math.min(MAX_CANDLES, len);
+      return { start: len - span, span };
+    }
+    const entryIdx = nearestIdx(candles, focus.start);
+    const closeIdx = nearestIdx(candles, focus.end);
+    const tradeSpan = closeIdx - entryIdx + 1;
+    if (tradeSpan <= MAX_VISIBLE * 0.8) {
+      // Whole trade fits at native bars: frame it centered at ≤ ~80% width.
+      const span = Math.min(
+        len,
+        Math.max(MAX_CANDLES, Math.ceil(tradeSpan / 0.8)),
+      );
+      const center = (entryIdx + closeIdx) / 2;
+      const start = Math.min(
+        Math.max(Math.round(center - span / 2), 0),
+        len - span,
+      );
+      return { start, span };
+    }
+    // Trade longer than one frame can hold at native bars: anchor on the
+    // close (+ a little aftermath); the entry reads as the off-screen edge
+    // chevron and is reached by panning back.
+    const span = Math.min(len, MAX_VISIBLE);
+    const start = Math.min(
+      Math.max(Math.round(closeIdx + span * 0.1) - span, 0),
+      len - span,
+    );
+    return { start, span };
+  }, [candles, focus]);
+
+  // null = follow the default frame; set once the user zooms/pans. A new data
+  // series (other symbol / window mode) snaps back to the default frame — the
+  // "adjust state during render" pattern.
+  const [viewport, setViewport] = useState<{
+    start: number;
+    span: number;
+  } | null>(null);
+  const dataKey = candles.length
+    ? `${candles[0].timestamp}:${candles[candles.length - 1].timestamp}:${candles.length}`
+    : "empty";
+  const [prevDataKey, setPrevDataKey] = useState(dataKey);
+  if (prevDataKey !== dataKey) {
+    setPrevDataKey(dataKey);
+    setViewport(null);
+  }
+
+  const vp = viewport ?? defaultViewport;
 
   const view = useMemo(
-    () =>
-      candles
-        .slice(-MAX_CANDLES)
-        // Fully-contained only: the model's domain encloses every in-context
-        // candle, so this keeps all of them and drops just the out-of-regime
-        // ones — a candle is never half-rendered clipped against an edge.
-        .filter((c) => c.low >= model.priceMin && c.high <= model.priceMax),
-    [candles, model.priceMin, model.priceMax],
+    () => candles.slice(vp.start, vp.start + vp.span),
+    [candles, vp.start, vp.span],
   );
+
+  // The price domain refits to whatever is visible (plus every plan level).
+  const model = useMemo(
+    () => buildTradeSetupModel(view, plan, signal, currentPrice),
+    [view, plan, signal, currentPrice],
+  );
+
+  // Interaction plumbing: handlers read live values through refs so the
+  // native wheel listener (registered once, non-passive so preventDefault
+  // stops the dialog from scrolling) never sees stale state.
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const vpRef = useRef(vp);
+  const lenRef = useRef(candles.length);
+  const projXRef = useRef(VB_W);
+  const dragRef = useRef<{
+    pointerId: number;
+    lastX: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
+  useEffect(() => {
+    vpRef.current = vp;
+    lenRef.current = candles.length;
+  });
+
+  const applyViewport = useCallback((start: number, span: number) => {
+    const len = lenRef.current;
+    if (len === 0) return;
+    const s = Math.min(
+      Math.max(span, Math.min(MIN_SPAN, len)),
+      Math.min(len, MAX_VISIBLE),
+    );
+    const st = Math.min(Math.max(start, 0), len - s);
+    setViewport({ start: st, span: s });
+    // Indices shift under the inspected candle when the window moves.
+    setHoveredCandle(null);
+  }, []);
+
+  useEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (lenRef.current === 0) return;
+      e.preventDefault();
+      const cur = vpRef.current;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        // Horizontal trackpad swipe → pan.
+        let shift = Math.round((e.deltaX / 300) * cur.span);
+        if (shift === 0) shift = e.deltaX > 0 ? 1 : -1;
+        applyViewport(cur.start + shift, cur.span);
+      } else {
+        // Vertical wheel → zoom, keeping the candle under the cursor put.
+        const rect = el.getBoundingClientRect();
+        const vbX = ((e.clientX - rect.left) / rect.width) * VB_W;
+        const frac = Math.min(
+          Math.max((vbX - CHART_LEFT) / (projXRef.current - CHART_LEFT), 0),
+          1,
+        );
+        const span = Math.round(cur.span * Math.exp(e.deltaY * 0.0015));
+        const anchor = cur.start + frac * cur.span;
+        applyViewport(Math.round(anchor - frac * span), span);
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [applyViewport]);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (lenRef.current === 0) return;
+    dragRef.current = {
+      pointerId: e.pointerId,
+      lastX: e.clientX,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const el = chartRef.current;
+
+    // Free-cursor Y for the horizontal crosshair (desktop hover only). Uses
+    // the SVG's own rect — the wrapper also spans the legend strip above it.
+    if ((!drag || !drag.moved) && e.pointerType !== "touch") {
+      const svg = svgRef.current;
+      if (svg) {
+        const r = svg.getBoundingClientRect();
+        const vbY = Math.round(((e.clientY - r.top) / r.height) * VB_H);
+        setHoverY(vbY >= CHART_TOP && vbY <= CHART_BOTTOM ? vbY : null);
+      }
+    }
+
+    if (!drag || drag.pointerId !== e.pointerId || !el) return;
+    // Movement threshold before the pan starts, so a tap (touch inspect)
+    // isn't swallowed by an accidental 1-2px wiggle.
+    if (!drag.moved) {
+      if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 6) {
+        return;
+      }
+      drag.moved = true;
+      drag.lastX = e.clientX;
+      setHoverY(null); // panning: no crosshair
+    }
+    const rect = el.getBoundingClientRect();
+    const cur = vpRef.current;
+    // px → fraction of the candle plot area → raw-candle shift.
+    const plotPx = (rect.width * (projXRef.current - CHART_LEFT)) / VB_W;
+    const shift = Math.round((-(e.clientX - drag.lastX) / plotPx) * cur.span);
+    if (shift !== 0) {
+      drag.lastX = e.clientX;
+      applyViewport(cur.start + shift, cur.span);
+    }
+  };
+  const onPointerLeave = () => {
+    setHoverY(null);
+    setHoveredCandle(null);
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (drag?.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    // Touch has no hover: a clean tap (no drag) inspects the candle under it.
+    if (!drag.moved && e.pointerType === "touch" && slot > 0) {
+      const el = chartRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vbX = ((e.clientX - rect.left) / rect.width) * VB_W;
+      const idx = Math.floor((vbX - CHART_LEFT) / slot);
+      setHoveredCandle(idx >= 0 && idx < view.length ? idx : null);
+    }
+  };
 
   // Right price column auto-sizes to the widest level pill, so candles fill the
   // rest of the width (minimal empty space on the right, mirroring the left).
@@ -193,10 +413,19 @@ export function TradeSetupChart({
       ),
     ) + 6;
   const PROJ_X = VB_W - PAD_X - axisW;
+  useEffect(() => {
+    projXRef.current = PROJ_X;
+  });
 
   const y = (price: number) =>
     CHART_TOP +
     (1 - priceToRatio(price, model.priceMin, model.priceMax)) * CHART_H;
+
+  // Inverse of y(): the price at a chart Y — for the crosshair price pill.
+  const priceFromY = (yc: number) => {
+    const ratio = 1 - (yc - CHART_TOP) / CHART_H;
+    return model.priceMin + ratio * (model.priceMax - model.priceMin);
+  };
 
   // Precompute candle geometry.
   const slot = view.length > 0 ? (PROJ_X - CHART_LEFT) / view.length : 0;
@@ -226,6 +455,40 @@ export function TradeSetupChart({
 
   const hovered = hoveredCandle != null ? candleGeo[hoveredCandle] : null;
 
+  // Crosshair geometry, computed once so the guide LINES (drawn behind the
+  // candles) and the value PILLS (drawn last, on top of the level badges/axis
+  // labels) share the same numbers. Horizontal position snaps to the candle;
+  // the Y follows the free cursor (or the candle close on touch).
+  const crosshair = hovered
+    ? (() => {
+        const crossY = hoverY ?? y(hovered.candle.close);
+        const crossPrice =
+          hoverY != null ? priceFromY(hoverY) : hovered.candle.close;
+        const timeStr = `${formatDayMonth(
+          hovered.candle.timestamp,
+          i18n.language,
+        )} ${formatClock(hovered.candle.timestamp)}`;
+        const timeW = timeStr.length * NORMAL_CHAR_W + 10;
+        const timeCx = Math.min(
+          Math.max(hovered.cx, CHART_LEFT + timeW / 2),
+          PROJ_X - timeW / 2,
+        );
+        return {
+          cx: hovered.cx,
+          crossY,
+          priceStr: formatPrice(crossPrice, assetType),
+          timeStr,
+          timeW,
+          timeCx,
+        };
+      })()
+    : null;
+
+  // OHLC legend strip (TradingView pattern): a FIXED line above the plot that
+  // shows the inspected candle — or the latest visible one when idle — so the
+  // reading position never moves and no candle is ever covered by a tooltip.
+  const legendCandle = hovered?.candle ?? view[view.length - 1] ?? null;
+
   // Entry/close annotations resolved to the visible candle window. Out-of-range
   // markers are clamped to the chart edge (cx) and flagged so they render an
   // off-screen indicator. Computed inline (like candleGeo) as it depends on the
@@ -252,14 +515,127 @@ export function TradeSetupChart({
 
   return (
     <div className="space-y-3">
-      <div className="relative w-full">
+      <div
+        ref={chartRef}
+        className="relative w-full cursor-grab active:cursor-grabbing select-none"
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onDoubleClick={() => setViewport(null)}
+      >
+        {/* Back-to-default-frame affordance: appears once the user has
+            zoomed/panned away (same action as double-clicking the chart). */}
+        {viewport !== null && (
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => setViewport(null)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            aria-label={t("dialog.chart_restore")}
+            className="absolute right-2 top-2 z-10 cursor-pointer bg-background/80 backdrop-blur-sm gap-1"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>{t("dialog.chart_restore")}</span>
+          </Button>
+        )}
         <Card className="overflow-hidden border border-border bg-muted/50">
-          <CardContent>
+          {/* @container so the HTML legend can size its font in cqw to match
+              the SVG text, which scales with the same width (viewBox 760). */}
+          <CardContent className="@container">
+
+            {legendCandle &&
+              (() => {
+                const up = legendCandle.close >= legendCandle.open;
+                const chg =
+                  legendCandle.open !== 0
+                    ? ((legendCandle.close - legendCandle.open) /
+                        legendCandle.open) *
+                      100
+                    : 0;
+                const dirColor = up ? "text-emerald-400" : "text-rose-400";
+                return (
+                  <div
+                    className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 leading-none"
+                    style={{
+                      // Line the strip up with the plot's left edge (CHART_LEFT
+                      // inside the same-width SVG below), not the card padding.
+                      paddingLeft: `${(CHART_LEFT / VB_W) * 100}%`,
+                      // Match the SVG's fontSize=11: the SVG (w-full, viewBox
+                      // 760) renders text at 11·W/760 px, and 100cqw == W here.
+                      fontSize: `calc(100cqw / ${VB_W} * 11)`,
+                    }}
+                  >
+                    <span className="whitespace-nowrap text-mono-data">
+                      <span className="text-muted-foreground">
+                        {formatDayMonth(legendCandle.timestamp, i18n.language)}{" "}
+                        {formatClock(legendCandle.timestamp)}
+                      </span>{" "}
+                      <span className={dirColor}>
+                        {chg >= 0 ? "+" : ""}
+                        {chg.toFixed(2)}%
+                      </span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-mono-data">
+                      <LegendStat
+                        label="OPEN"
+                        value={formatPrice(legendCandle.open, assetType)}
+                      />
+                      <LegendStat
+                        label="HIGH"
+                        value={formatPrice(legendCandle.high, assetType)}
+                        valueClassName="text-emerald-400"
+                      />
+                      <LegendStat
+                        label="LOW"
+                        value={formatPrice(legendCandle.low, assetType)}
+                        valueClassName="text-rose-400"
+                      />
+                      <LegendStat
+                        label="CLOSE"
+                        value={formatPrice(legendCandle.close, assetType)}
+                        valueClassName={dirColor}
+                      />
+                      <LegendStat
+                        label="VOLUME"
+                        // Yahoo often has no volume for a crypto intraday
+                        // candle (a genuine 24/7 zero is impossible), so show
+                        // "—" for a missing bar instead of a misleading "0".
+                        value={
+                          legendCandle.volume > 0
+                            ? formatVolume(legendCandle.volume)
+                            : "—"
+                        }
+                      />
+                    </span>
+                  </div>
+                );
+              })()}
             <svg
+              ref={svgRef}
               viewBox={`0 0 ${VB_W} ${VB_H}`}
               className="block h-auto w-full"
               role="img"
             >
+              {/* exchange-style brand watermark: RABALABA, big and faint,
+                  centered behind the price action (bottom-most layer). */}
+              <text
+                x={(CHART_LEFT + PROJ_X) / 2}
+                y={CHART_TOP + CHART_H / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="select-none"
+                fontSize={54}
+                fontWeight={900}
+                letterSpacing="0.02em"
+                opacity={0.07}
+              >
+                <tspan className="fill-foreground">RABALABA</tspan>
+              </text>
+
               {/* price axis: horizontal gridlines + right-gutter labels */}
               {priceTicks(model.priceMin, model.priceMax).map((p, i) => {
                 const py = y(p);
@@ -279,7 +655,7 @@ export function TradeSetupChart({
                       y={py}
                       dominantBaseline="central"
                       textAnchor="start"
-                      className="fill-muted-foreground"
+                      className="fill-muted-foreground text-mono-data"
                       fontSize={11}
                     >
                       {formatPrice(p, assetType)}
@@ -308,7 +684,7 @@ export function TradeSetupChart({
                       x={cx}
                       y={CHART_BOTTOM + 12}
                       textAnchor={anchor}
-                      className="fill-muted-foreground"
+                      className="fill-muted-foreground text-mono-data"
                       fontSize={11}
                     >
                       {formatDayMonth(view[idx].timestamp, i18n.language)}
@@ -333,14 +709,39 @@ export function TradeSetupChart({
                 className="fill-rose-400/10"
               />
 
+              {/* crosshair guide lines (behind the candles; the value pills
+                  draw last so they sit on top of everything). Both lines share
+                  the same dashed style — no highlight band. */}
+              {crosshair && (
+                <g className="pointer-events-none">
+                  <line
+                    x1={crosshair.cx}
+                    y1={CHART_TOP}
+                    x2={crosshair.cx}
+                    y2={CHART_BOTTOM}
+                    className="stroke-muted-foreground"
+                    strokeWidth={1}
+                    strokeDasharray="3 3"
+                    opacity={0.7}
+                  />
+                  <line
+                    x1={CHART_LEFT}
+                    y1={crosshair.crossY}
+                    x2={PROJ_X}
+                    y2={crosshair.crossY}
+                    className="stroke-muted-foreground"
+                    strokeWidth={1}
+                    strokeDasharray="3 3"
+                    opacity={0.7}
+                  />
+                </g>
+              )}
+
               {/* candles */}
               {candleGeo.map((g, i) => (
                 <g
                   key={i}
                   className={g.up ? PALETTE.positive.text : PALETTE.negative.text}
-                  opacity={
-                    hoveredCandle == null || hoveredCandle === i ? 1 : 0.45
-                  }
                 >
                   <line
                     x1={g.cx}
@@ -534,72 +935,53 @@ export function TradeSetupChart({
                   onMouseLeave={() => setHoveredCandle(null)}
                 />
               ))}
+
+              {/* crosshair value pills — drawn LAST so the price pill overrides
+                  the level badges and the time pill overrides the date axis
+                  labels (like a real trading terminal). */}
+              {crosshair && (
+                <g className="pointer-events-none">
+                  <rect
+                    x={PROJ_X}
+                    y={crosshair.crossY - 9}
+                    width={VB_W - PAD_X - PROJ_X}
+                    height={18}
+                    rx={2}
+                    className="fill-foreground"
+                  />
+                  <text
+                    x={PROJ_X + 4}
+                    y={crosshair.crossY}
+                    dominantBaseline="central"
+                    textAnchor="start"
+                    className="fill-background text-mono-data"
+                    fontSize={11}
+                  >
+                    {crosshair.priceStr}
+                  </text>
+                  <rect
+                    x={crosshair.timeCx - crosshair.timeW / 2}
+                    y={CHART_BOTTOM + 1}
+                    width={crosshair.timeW}
+                    height={AXIS_B - 1}
+                    rx={2}
+                    className="fill-foreground"
+                  />
+                  <text
+                    x={crosshair.timeCx}
+                    y={CHART_BOTTOM + 1 + (AXIS_B - 1) / 2}
+                    dominantBaseline="central"
+                    textAnchor="middle"
+                    className="fill-background text-mono-data"
+                    fontSize={11}
+                  >
+                    {crosshair.timeStr}
+                  </text>
+                </g>
+              )}
             </svg>
           </CardContent>
         </Card>
-
-        {/* candle tooltip */}
-        {hovered && (
-          <Card
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full border border-border text-[10px]"
-            style={{
-              left: `${Math.min(85, Math.max(15, (hovered.cx / VB_W) * 100))}%`,
-              top: `${(hovered.yHigh / VB_H) * 100}%`,
-            }}
-          >
-            <CardContent>
-              <div className="flex items-center justify-between gap-4 whitespace-nowrap">
-                <span className="font-medium text-muted-foreground">
-                  {formatDateFull(hovered.candle.timestamp, i18n.language)}
-                </span>
-                <span className="font-medium text-muted-foreground">
-                  {formatClock(hovered.candle.timestamp)}
-                </span>
-              </div>
-              <Separator className="my-2" />
-              {(() => {
-                const c = hovered.candle;
-                const up = c.close >= c.open;
-                const chg =
-                  c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
-                const closeColor = up ? "text-emerald-400" : "text-rose-400";
-                return (
-                  <>
-                    <div className="flex flex-col gap-1 text-mono-data">
-                      <Ohlc
-                        label="Open"
-                        value={formatPrice(c.open, assetType)}
-                      />
-                      <Ohlc
-                        label="High"
-                        value={formatPrice(c.high, assetType)}
-                        valueClassName="text-emerald-400"
-                      />
-                      <Ohlc
-                        label="Low"
-                        value={formatPrice(c.low, assetType)}
-                        valueClassName="text-rose-400"
-                      />
-                      <Ohlc
-                        label="Close"
-                        value={formatPrice(c.close, assetType)}
-                        valueClassName={closeColor}
-                      />
-                    </div>
-                    <Separator className="my-2" />
-                    <div className="flex justify-between gap-3 text-mono-data">
-                      <span className="text-muted-foreground">Change</span>
-                      <span className={closeColor}>
-                        {chg >= 0 ? "+" : ""}
-                        {chg.toFixed(2)}%
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* numeric panel: R:R · Entry · SL · TP1 · TP2 · TP3 */}
@@ -680,7 +1062,8 @@ export function TradeSetupChart({
   );
 }
 
-function Ohlc({
+/** One legend-strip stat: muted single-letter label + mono value inline. */
+function LegendStat({
   label,
   value,
   valueClassName,
@@ -690,8 +1073,8 @@ function Ohlc({
   valueClassName?: string;
 }) {
   return (
-    <span className="flex justify-between gap-3 whitespace-nowrap">
-      <span className="text-muted-foreground">{label}</span>
+    <span className="whitespace-nowrap">
+      <span className="text-muted-foreground">{label} </span>
       <span className={valueClassName}>{value}</span>
     </span>
   );

@@ -29,6 +29,9 @@ export function useFundamentals(
     },
     staleTime: DAY_MS,
     gcTime: DAY_MS,
+    // Daily poll (matches staleTime) — overrides the global 5 min default so
+    // slow-moving fundamentals aren't re-polled every 5 min while a dialog is open.
+    refetchInterval: DAY_MS,
     retry: 1,
   });
 }

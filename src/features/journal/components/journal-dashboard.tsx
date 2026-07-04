@@ -90,7 +90,29 @@ function getDatesRange(startDate: Date, endDate: Date): string[] {
   return dates;
 }
 
-type TimeframeOption = "1D" | "1W" | "1M" | "YTD" | "ALL";
+/**
+ * Pick the Yahoo `range` for the "ALL" timeframe benchmark fetch.
+ *
+ * Yahoo silently coarsens `range=max&interval=1d` into MONTHLY (BTC, ^JKSE) or
+ * even QUARTERLY (^GSPC) buckets. Over a short journal span that leaves only one
+ * data point inside the displayed window, so the benchmark anchors to itself and
+ * flatlines at +0.00%. To keep TRUE daily candles we never ask for `max`;
+ * instead we return the smallest range that still covers the oldest trade
+ * (every range up to 10y returns daily). `max` is used only past ~10y, where
+ * monthly resolution over a decade-plus window is acceptable anyway.
+ */
+function dailyRangeForSpan(oldestMs: number, nowMs: number): string {
+  const days = Math.max(0, (nowMs - oldestMs) / 86_400_000);
+  if (days <= 80) return "3mo";
+  if (days <= 170) return "6mo";
+  if (days <= 350) return "1y";
+  if (days <= 700) return "2y";
+  if (days <= 1750) return "5y";
+  if (days <= 3600) return "10y";
+  return "max";
+}
+
+type TimeframeOption = "1D" | "1W" | "1M" | "ALL";
 
 export function JournalDashboard() {
   const { t } = useTranslation();
@@ -99,13 +121,23 @@ export function JournalDashboard() {
   const [timeframe, setTimeframe] = useState<TimeframeOption>("1D");
   const [activeBenchmarks] = useState<string[]>(["BTC-USD", "IHSG", "S&P 500"]);
 
+  // Timestamp of the earliest trade — defines the span of the "ALL" timeframe
+  // for both the displayed window and the benchmark fetch range.
+  const oldestTradeMs = useMemo(() => {
+    const now = new Date().getTime();
+    if (history.length === 0) return now;
+    return history.reduce(
+      (oldest, t) => Math.min(oldest, t.closedAt ?? t.followedAt),
+      now,
+    );
+  }, [history]);
+
   const timeframeOptions = useMemo(
     () =>
       [
         { value: "1D" as TimeframeOption, label: t("journal.timeframe_1d") },
         { value: "1W" as TimeframeOption, label: t("journal.timeframe_1w") },
         { value: "1M" as TimeframeOption, label: t("journal.timeframe_1m") },
-        { value: "YTD" as TimeframeOption, label: t("journal.timeframe_ytd") },
         { value: "ALL" as TimeframeOption, label: t("journal.timeframe_all") },
       ] as const,
     [t],
@@ -134,22 +166,9 @@ export function JournalDashboard() {
         start = d.getTime();
         break;
       }
-      case "YTD": {
-        const ytd = new Date(today.getFullYear(), 0, 1);
-        ytd.setHours(0, 0, 0, 0);
-        start = ytd.getTime();
-        break;
-      }
       case "ALL":
       default: {
-        if (history.length > 0) {
-          start = history.reduce((oldest, t) => {
-            const time = t.closedAt ?? t.followedAt;
-            return time < oldest ? time : oldest;
-          }, today.getTime());
-        } else {
-          start = 0;
-        }
+        start = history.length > 0 ? oldestTradeMs : 0;
         break;
       }
     }
@@ -158,7 +177,7 @@ export function JournalDashboard() {
       const time = t.closedAt ?? t.followedAt;
       return time >= start;
     });
-  }, [history, timeframe]);
+  }, [history, timeframe, oldestTradeMs]);
 
   const stats = useMemo(
     () => buildTrackerStats(filteredHistory, openCount),
@@ -173,13 +192,14 @@ export function JournalDashboard() {
         return { range: "1mo", interval: "1d" };
       case "1M":
         return { range: "1mo", interval: "1d" };
-      case "YTD":
-        return { range: "ytd", interval: "1d" };
       case "ALL":
       default:
-        return { range: "max", interval: "1d" };
+        return {
+          range: dailyRangeForSpan(oldestTradeMs, new Date().getTime()),
+          interval: "1d",
+        };
     }
-  }, [timeframe]);
+  }, [timeframe, oldestTradeMs]);
 
   const { data: btcRawData } = useQuery({
     queryKey: [
@@ -377,18 +397,10 @@ export function JournalDashboard() {
       endOfRange = endOfTimeframe;
     } else if (timeframe === "1M") {
       startOfTimeframe.setDate(today.getDate() - 29);
-    } else if (timeframe === "YTD") {
-      startOfTimeframe = new Date(today.getFullYear(), 0, 1);
+    } else if (history.length > 0) {
+      startOfTimeframe = new Date(oldestTradeMs);
     } else {
-      if (history.length > 0) {
-        const oldestTrade = history.reduce((oldest, t) => {
-          const time = t.closedAt ?? t.followedAt;
-          return time < oldest ? time : oldest;
-        }, today.getTime());
-        startOfTimeframe = new Date(oldestTrade);
-      } else {
-        startOfTimeframe.setDate(today.getDate() - 29);
-      }
+      startOfTimeframe.setDate(today.getDate() - 29);
     }
 
     const dateList = getDatesRange(startOfTimeframe, endOfRange);
@@ -452,7 +464,14 @@ export function JournalDashboard() {
         sp500Pct,
       };
     });
-  }, [timeframe, history, btcRawData, ihsgRawData, sp500RawData]);
+  }, [
+    timeframe,
+    history,
+    oldestTradeMs,
+    btcRawData,
+    ihsgRawData,
+    sp500RawData,
+  ]);
 
   const outcomeData = useMemo(() => {
     let sl = 0;

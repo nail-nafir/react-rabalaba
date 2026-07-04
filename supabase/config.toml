@@ -5,3 +5,7 @@ project_id = "nravncsodgcxwkdaeqcw"
 # which passes the gateway. The function writes with the auto-injected
 # service-role key. Flip to false only if you switch to a shared-secret header.
 verify_jwt = true
+
+[functions.asset-discovery]
+# Same gateway setup as auto-journal (see schedule-asset-discovery.sql).
+verify_jwt = true

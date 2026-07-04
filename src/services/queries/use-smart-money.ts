@@ -60,17 +60,16 @@ export function useSmartMoney(assets: UnifiedAsset[]): SmartMoneyResult {
           return null; // no perp / unavailable → graceful
         }
       },
-      staleTime: 300_000, // 5 minutes
+      staleTime: 1_800_000, // 30 minutes
       // Don't retry: when Binance is blocked (geo 451/403) or times out, a
       // retry just doubles the wait for a call that won't succeed. fetch already
       // fails fast via the shorter BINANCE_TIMEOUT, and partial/empty data is
       // handled gracefully (null → no positioning, no signal nudge).
       retry: 0,
-      // Smart money is enrichment, not a live ticker — opt OUT of the global
-      // 60s poll (and reconnect refetch) so we don't hammer Binance. Combined
-      // with the fetch-layer circuit breaker, a blocked exchange is hit at most
-      // once, then left alone until the user manually retries.
-      refetchInterval: false,
+      // Poll at 30 min (enrichment, not a live ticker). retry:0 + the fetch-layer
+      // circuit breaker keep a blocked exchange (geo 451/403) to one fast-failing
+      // call per interval; still opt out of reconnect refetch to avoid extra hits.
+      refetchInterval: 1_800_000,
       refetchOnReconnect: false,
     })),
     combine: (results) => {

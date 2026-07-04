@@ -1,10 +1,12 @@
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-/** Yahoo's v10 quoteSummary (fundamentals/analyst) is gated behind a per-session
- *  cookie + matching "crumb" token — everything else (v8 chart, v1 search) is
- *  open. We fetch a cookie/crumb pair once, cache it per isolate, and refresh on
- *  a 401. Cache is in-memory (warm isolate); a cold start just re-fetches. */
+/** Yahoo's v10 quoteSummary (fundamentals/analyst) and the v1 screener (the
+ *  asset-discovery cron's custom IDX query needs it; the predefined lists work
+ *  either way) are gated behind a per-session cookie + matching "crumb" token —
+ *  everything else (v8 chart, v1 search) is open. We fetch a cookie/crumb pair
+ *  once, cache it per isolate, and refresh on a 401. Cache is in-memory (warm
+ *  isolate); a cold start just re-fetches. */
 let crumbCache: { cookie: string; crumb: string; at: number } | null = null;
 const CRUMB_TTL_MS = 30 * 60 * 1000;
 
@@ -58,7 +60,8 @@ async function getCrumb(force = false): Promise<{ cookie: string; crumb: string 
 export const onRequest: PagesFunction = async (context) => {
   const url = new URL(context.request.url);
   const path = url.pathname.replace("/api/yahoo", "");
-  const needsCrumb = path.includes("/quoteSummary");
+  const needsCrumb =
+    path.includes("/quoteSummary") || path.includes("/finance/screener");
 
   const baseHeaders = new Headers(context.request.headers);
   // Yahoo hates these headers from browsers.

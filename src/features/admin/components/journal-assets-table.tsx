@@ -68,6 +68,7 @@ import { AddJournalAssetDialog } from "./add-journal-asset-dialog";
 import { JournalSettingsDialog } from "./journal-settings-dialog";
 
 type StatusFilter = "all" | "active" | "inactive";
+type SourceFilter = "all" | "admin" | "auto";
 
 function SortIcon({ column }: { column: Column<JournalAssetRow, unknown> }) {
   const isSorted = column.getIsSorted();
@@ -178,12 +179,16 @@ function ToggleStatusButton({
 }
 
 /** Delete with a destructive confirm dialog — same look as the old close-position
- *  dialog (destructive media + Trash2 + destructive action). */
+ *  dialog (destructive media + Trash2 + destructive action). Auto-discovered
+ *  rows get an extra note: deleting is NOT permanent (a still-trending symbol
+ *  is re-added on the next discovery run) — pausing is the suppression path. */
 function DeleteButton({
   symbol,
+  isAuto,
   onRemove,
 }: {
   symbol: string;
+  isAuto: boolean;
   onRemove: (symbol: string) => void;
 }) {
   const { t } = useTranslation();
@@ -206,7 +211,9 @@ function DeleteButton({
           </AlertDialogMedia>
           <AlertDialogTitle>{t("admin.delete_confirm_title", { symbol })}</AlertDialogTitle>
           <AlertDialogDescription>
-            {t("admin.delete_confirm_desc", { symbol })}
+            {isAuto
+              ? t("admin.delete_confirm_desc_auto", { symbol })
+              : t("admin.delete_confirm_desc", { symbol })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -234,11 +241,15 @@ export function JournalAssetsTable() {
   const { assets, isLoading, toggleActive, removeAsset } = useJournalAssets();
   const { users } = useAdminUsers();
 
-  const userEmailMap = useMemo(() => {
-    const map = new Map<string, string>();
+  const userMap = useMemo(() => {
+    const map = new Map<string, { email: string; is_admin: boolean; is_owner: boolean }>();
     users.forEach((u) => {
       if (u.user_id && u.email) {
-        map.set(u.user_id, u.email);
+        map.set(u.user_id, {
+          email: u.email,
+          is_admin: u.is_admin ?? false,
+          is_owner: u.is_owner ?? false,
+        });
       }
     });
     return map;
@@ -267,6 +278,7 @@ export function JournalAssetsTable() {
   const [search, setSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilterType>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   // Default sorting based on date added (created_at) descending.
   const [sorting, setSorting] = useState<SortingState>([
     { id: "created_at", desc: true },
@@ -278,6 +290,7 @@ export function JournalAssetsTable() {
       if (assetFilter !== "all" && a.asset_type !== assetFilter) return false;
       if (statusFilter === "active" && !a.active) return false;
       if (statusFilter === "inactive" && a.active) return false;
+      if (sourceFilter !== "all" && a.source !== sourceFilter) return false;
       if (
           q &&
           !a.symbol.toLowerCase().includes(q) &&
@@ -286,7 +299,7 @@ export function JournalAssetsTable() {
         return false;
       return true;
     });
-  }, [assets, assetFilter, statusFilter, search]);
+  }, [assets, assetFilter, statusFilter, sourceFilter, search]);
 
   // Asset-type tabs reuse the screener's taxonomy options (all + the 5 types).
   const assetOptions: FilterOption<AssetFilterType>[] = ASSET_TYPE_OPTIONS.map(
@@ -296,6 +309,11 @@ export function JournalAssetsTable() {
     { value: "all", label: t("admin.status_all") },
     { value: "active", label: t("admin.status_active") },
     { value: "inactive", label: t("admin.status_inactive") },
+  ];
+  const sourceOptions: FilterOption<SourceFilter>[] = [
+    { value: "all", label: t("admin.source_all") },
+    { value: "admin", label: t("admin.source_admin") },
+    { value: "auto", label: t("admin.source_auto") },
   ];
 
   const columns = useMemo<ColumnDef<JournalAssetRow>[]>(
@@ -328,12 +346,50 @@ export function JournalAssetsTable() {
           </span>
         ),
         cell: ({ row }) => {
+          // Auto-discovered rows have no human author — show the Auto badge
+          // (reason in the tooltip) instead of an email.
+          if (row.original.source === "auto") {
+            const reason = row.original.discovery_reason;
+            return (
+              <div
+                className="py-1"
+                title={
+                  reason
+                    ? t("admin.source_auto_tooltip", {
+                        reason: t(`admin.discovery_reason.${reason}`),
+                      })
+                    : undefined
+                }
+              >
+                <div className="font-bold text-sm tracking-tight text-foreground uppercase">
+                  {t("admin.source_system")}
+                </div>
+                <div className="text-xs truncate max-w-50 text-muted-foreground">
+                  {t("admin.source_auto")}
+                </div>
+              </div>
+            );
+          }
           const userId = row.original.created_by;
-          const email = userId ? userEmailMap.get(userId) : null;
+          const userMeta = userId ? userMap.get(userId) : null;
+          if (!userId && !userMeta) {
+            return (
+              <span className="text-xs text-muted-foreground">—</span>
+            );
+          }
+          const isOwner = userMeta?.is_owner ?? false;
+          const roleLabel = isOwner ? t("admin.owner_console_title") : t("admin.source_admin");
           return (
-            <span className="text-xs text-muted-foreground">
-              {email ?? "—"}
-            </span>
+            <div className="py-1">
+              <div className="font-bold text-sm tracking-tight text-foreground uppercase">
+                {roleLabel}
+              </div>
+              {userMeta?.email && (
+                <div className="text-xs truncate max-w-50 text-muted-foreground">
+                  {userMeta.email}
+                </div>
+              )}
+            </div>
           );
         },
       },
@@ -426,12 +482,16 @@ export function JournalAssetsTable() {
         cell: ({ row }) => (
           <div className="flex items-center justify-end gap-1">
             <ToggleStatusButton asset={row.original} onToggle={toggleActive} />
-            <DeleteButton symbol={row.original.symbol} onRemove={removeAsset} />
+            <DeleteButton
+              symbol={row.original.symbol}
+              isAuto={row.original.source === "auto"}
+              onRemove={removeAsset}
+            />
           </div>
         ),
       },
     ],
-    [t, toggleActive, removeAsset, marketDataMap, userEmailMap],
+    [t, toggleActive, removeAsset, marketDataMap, userMap],
   );
 
   const table = useReactTable({
@@ -466,6 +526,14 @@ export function JournalAssetsTable() {
               value={statusFilter}
               options={statusOptions}
               onChange={setStatusFilter}
+              variant="select"
+              className="flex-1 sm:flex-none"
+            />
+
+            <FilterGroup
+              value={sourceFilter}
+              options={sourceOptions}
+              onChange={setSourceFilter}
               variant="select"
               className="flex-1 sm:flex-none"
             />

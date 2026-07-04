@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -20,7 +20,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Info,
   Star,
   Plus,
   X,
@@ -34,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SkeletonTableRow } from "@/components/shared/skeleton-card";
+import { SkeletonAssetSignalRow } from "@/components/shared/skeleton-card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -43,6 +42,7 @@ import { PercentageChange } from "@/components/shared/percentage-change";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StrengthBar } from "@/components/charts/strength-bar";
 import { Sparkline } from "@/components/charts/sparkline";
+import { SuccessRateBar } from "@/components/charts/success-rate-bar";
 import {
   TIER_COLORS,
   SIGNAL_COLORS,
@@ -50,6 +50,8 @@ import {
   SIGNAL_FILTER_OPTIONS,
   ASSET_TYPE_OPTIONS,
 } from "@/constants";
+import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
+import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
 import { useAppSelector, useUIActions, useFilterActions } from "@/store/hooks";
 import { type SignalFilterType } from "@/store/slices/filter-slice";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -84,6 +86,8 @@ function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
   return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
 }
 
+
+
 export function AssetSignalTable() {
   "use no memo";
   const { t } = useTranslation();
@@ -107,6 +111,21 @@ export function AssetSignalTable() {
   const [showFavorites, setShowFavorites] = useState(false);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  // Fetch journal trades to compute historical win rate per symbol
+  const { openTrades, history } = useJournalTrades();
+  const winrateBySymbol = useMemo(() => {
+    const stat: Record<string, { wins: number; total: number }> = {};
+    for (const tr of [...openTrades, ...history]) {
+      if (tr.status === "open") continue;
+      const s = (stat[tr.symbol] ??= { wins: 0, total: 0 });
+      s.total += 1;
+      if (computePnl(tr, tr.closePrice ?? tr.entryPrice).r >= 0) s.wins += 1;
+    }
+    return stat;
+  }, [openTrades, history]);
+  const winrateRef = useRef<Record<string, { wins: number; total: number }>>({});
+  winrateRef.current = winrateBySymbol;
 
   // crypto / US / ID stocks come from the admin-managed DB universe for premium
   // (single source with the cron), DEFAULT_* for free — the hook handles the
@@ -238,7 +257,7 @@ export function AssetSignalTable() {
   // base assets (semua kategori) + market context BTC + smart-money crypto —
   // supaya table tampil sekaligus & sudah ter-sort, bukan nongol per-kategori
   // lalu re-sort. Pakai flag first-load (isLoading/isPending), bukan isFetching,
-  // biar refetch background 60s update nilai di tempat tanpa nge-flash skeleton.
+  // biar refetch background 30 menit update nilai di tempat tanpa nge-flash skeleton.
   const baseInitialLoading =
     cryptoLoading ||
     usLoading ||
@@ -297,26 +316,6 @@ export function AssetSignalTable() {
 
   const columns = useMemo<ColumnDef<UnifiedAsset>[]>(
     () => [
-      {
-        id: "actions",
-        header: () => null,
-        cell: ({ row }) => {
-          return (
-            <Button
-              variant="link"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
-              onClick={() => {
-                openDetailDialog(row.original.symbol);
-              }}
-              title={t("common.analyze")}
-            >
-              <Info className="h-4 w-4" />
-            </Button>
-          );
-        },
-        enableSorting: false,
-      },
       {
         accessorKey: "symbol",
         header: ({ column }) => (
@@ -464,9 +463,6 @@ export function AssetSignalTable() {
                 colors.border,
                 colors.bg,
                 colors.text,
-                // A high tier on a suppressed (NEUTRAL) row is a held-back lean,
-                // not an actionable grade — dim + strike it so it doesn't mislead.
-                suppressed && "opacity-50 line-through decoration-1",
               )}
             >
               {tier}
@@ -474,6 +470,35 @@ export function AssetSignalTable() {
           );
         },
       },
+      {
+        id: "successrate",
+        accessorFn: (row) => {
+          const s = winrateRef.current[row.symbol];
+          return s && s.total > 0 ? s.wins / s.total : -1;
+        },
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.successrate")} <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const s = winrateRef.current[row.original.symbol];
+          return (
+            <div className="py-1">
+              <SuccessRateBar
+                wins={s?.wins ?? 0}
+                total={s?.total ?? 0}
+                barWidth="w-16"
+              />
+            </div>
+          );
+        },
+      },
+
       {
         accessorKey: "signal",
         header: () => (
@@ -515,7 +540,7 @@ export function AssetSignalTable() {
         enableSorting: false,
       },
     ],
-    [openDetailDialog, t],
+    [t],
   );
 
   const table = useReactTable({
@@ -704,7 +729,7 @@ export function AssetSignalTable() {
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  <SkeletonTableRow />
+                  <SkeletonAssetSignalRow />
                 </TableRow>
               ))
             ) : table.getRowModel().rows.length === 0 ? (
@@ -737,7 +762,21 @@ export function AssetSignalTable() {
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  onClick={() => openDetailDialog(row.original.symbol)}
+                  className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  tabIndex={0}
+                  role="button"
+                  aria-haspopup="dialog"
+                  aria-label={t("common.analyze_symbol", { symbol: row.original.symbol })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openDetailDialog(row.original.symbol);
+                    }
+                  }}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
