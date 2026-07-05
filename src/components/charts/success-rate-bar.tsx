@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export const SuccessRateBar = memo(function SuccessRateBar({
   barHeight = "h-2",
   className,
 }: SuccessRateBarProps) {
+  const { t } = useTranslation();
   const successPercent = total > 0 ? (wins / total) * 100 : 0;
   const failurePercent = total > 0 ? 100 - successPercent : 0;
 
@@ -92,18 +94,35 @@ export const SuccessRateBar = memo(function SuccessRateBar({
           )}
         />
       )}
-      {showValue && (
-        <div className="flex flex-col items-start font-mono gap-1 leading-none shrink-0">
-          <span className={cn("text-sm font-semibold leading-none", textColor)}>
-            {total > 0 ? `${successPercent.toFixed(0)}%` : "—"}
+      {showValue &&
+        (total > 0 ? (
+          <div className="flex flex-col items-start font-mono gap-1 leading-none shrink-0">
+            <span
+              className={cn("text-sm font-semibold leading-none", textColor)}
+            >
+              {`${successPercent.toFixed(0)}%`}
+            </span>
+            {/* Second row matches the journal P&L column's TP-progress line
+                exactly (size + weight + mono + color) so the two read as one. */}
+            <span className="text-[10px] font-semibold text-mono-data uppercase tracking-wider text-foreground">
+              {`${wins}/${total}`}
+            </span>
+          </div>
+        ) : (
+          /* No CLOSED trade yet → no track record to rate. Show a muted "Baru"
+             badge instead of a bare "—" so an empty history reads as a status
+             (no data), never as a genuine 0% win rate. */
+          <span
+            className={cn(
+              "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+              PALETTE.neutral.bg,
+              PALETTE.neutral.border,
+              PALETTE.neutral.text,
+            )}
+          >
+            {t("common.new")}
           </span>
-          {/* Second row matches the journal P&L column's TP-progress line
-              exactly (size + weight + mono + color) so the two read as one. */}
-          <span className="text-[10px] font-semibold text-mono-data uppercase tracking-wider text-foreground">
-            {total > 0 ? `${wins}/${total}` : "—"}
-          </span>
-        </div>
-      )}
+        ))}
     </div>
   );
 });

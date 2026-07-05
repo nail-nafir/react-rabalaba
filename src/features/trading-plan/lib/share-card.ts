@@ -245,7 +245,9 @@ export function buildShareCardSvg(
     return (
       `<text x="${left}" y="${top - 20}" font-family="${FONT_MONO}" font-size="15" dominant-baseline="central">` +
       `<tspan fill="${C.muted}">${esc(formatDayMonth(c.timestamp, meta.locale))} ${esc(formatClock(c.timestamp))}</tspan>` +
-      `<tspan dx="6" fill="${dir}">${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%</tspan>` +
+      // % change leads the OHLV cluster: a full group-gap (dx matches the stat
+      // spacing below) from the date, not glued to the timestamp.
+      `<tspan dx="16" fill="${dir}">${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%</tspan>` +
       stat("OPEN", formatPrice(c.open, meta.assetType), C.text) +
       stat("HIGH", formatPrice(c.high, meta.assetType), C.emerald) +
       stat("LOW", formatPrice(c.low, meta.assetType), C.rose) +

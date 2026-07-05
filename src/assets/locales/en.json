@@ -66,6 +66,7 @@
     "view_plans": "View Tiers",
     "contact_team": "Contact Team",
     "edit": "Edit",
+    "new": "New",
     "error_generic": "Something went wrong, try again.",
     "signals": {
       "all": "All Signals",

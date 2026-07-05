@@ -569,17 +569,18 @@ export function TradeSetupChart({
                       fontSize: `calc(100cqw / ${VB_W} * 11)`,
                     }}
                   >
-                    <span className="whitespace-nowrap text-mono-data">
-                      <span className="text-muted-foreground">
-                        {formatDayMonth(legendCandle.timestamp, i18n.language)}{" "}
-                        {formatClock(legendCandle.timestamp)}
-                      </span>{" "}
-                      <span className={dirColor}>
+                    <span className="whitespace-nowrap text-mono-data text-muted-foreground">
+                      {formatDayMonth(legendCandle.timestamp, i18n.language)}{" "}
+                      {formatClock(legendCandle.timestamp)}
+                    </span>
+                    {/* The candle's % change reads as an OHLV stat, not part of
+                        the timestamp — lead the stats group with it so it sits a
+                        full group-gap from the date (matches the share card). */}
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-mono-data">
+                      <span className={cn("whitespace-nowrap", dirColor)}>
                         {chg >= 0 ? "+" : ""}
                         {chg.toFixed(2)}%
                       </span>
-                    </span>
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-mono-data">
                       <LegendStat
                         label="OPEN"
                         value={formatPrice(legendCandle.open, assetType)}
