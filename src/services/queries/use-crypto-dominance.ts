@@ -14,9 +14,12 @@ export function useCryptoDominance() {
   return useQuery<Dominance>({
     queryKey: ["dominance"],
     queryFn: fetchDominance,
-    staleTime: 1_800_000, // 30 minutes (CoinGecko free tier is rate-limited)
+    staleTime: 1_800_000, // 30 min — edge proxy caches for the same duration
+    gcTime: 3_600_000, // 1 h — keep stale data in memory even after unmount
     refetchInterval: 1_800_000,
-    retry: 1,
+    retry: 3, // transient 502/timeout from the edge proxy → worth retrying
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000), // 1 s → 2 s → 4 s
+    placeholderData: (prev) => prev, // keep old donut visible during refetch
     meta: { silent: true }, // optional context; handled gracefully if it fails
   });
 }
