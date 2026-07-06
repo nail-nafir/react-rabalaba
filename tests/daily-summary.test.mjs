@@ -66,11 +66,8 @@ test("formatDailySummaryForDiscord renders the compact scoreboard recap", async 
   const { formatDailySummaryForDiscord } = await loadModule(ALERTS);
   const msg = formatDailySummaryForDiscord(INPUT);
 
-  // Persona + framing present.
-  assert.ok(msg.includes("🥋 WANGSIT RABALABA SENSEI"));
+  // Scoreboard header present.
   assert.ok(msg.includes("🗓️ REKAP 29-06-2026"));
-  assert.ok(msg.includes("🧘 PETUAH SENSEI"));
-  assert.ok(msg.includes("━━━"));
 
   // Scoreboard: 3 closed → 2 wins (12, 0.28) / 1 loss (-8.3) → 67%.
   // Total = 12 - 8.3 + 0.28 = 3.98 ≈ +4%; terbaik EIGEN +12%, terburuk MYX -8.3%.

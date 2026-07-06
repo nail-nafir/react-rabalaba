@@ -38,5 +38,8 @@ supabase/functions/.env
 # Supabase CLI local cache (linked project ref, pooler url, service versions)
 supabase/.temp
 
+# Wrangler/Miniflare local runtime cache
+.wrangler/state/
+
 # AI Agents
 .agent

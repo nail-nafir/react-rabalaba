@@ -94,13 +94,6 @@ export const DISCORD_MAX = 1900;
 /** Light horizontal rule dividing the message into sections. */
 export const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━";
 
-/** "Wangsit Raba Laba Sensei" persona header — the in-character framing. */
-export const SENSEI_HEADER = "🥋 WANGSIT RABALABA SENSEI";
-
-/** Closing wisdom, in character — plain quote, padded inside the quotes. */
-const SENSEI_QUOTE =
-  '"Bersemedi di depan chart mengajarkan kita: yang patah bisa tumbuh, yang floating loss belum tentu rebound."';
-
 /** Signed P&L like " (+120%)", " (-15%)", " (+0.28%)" — precision scales with
  *  magnitude, trailing zeros dropped. Empty when there's no value. */
 function pctSuffix(pct?: number): string {
@@ -154,11 +147,10 @@ function pctFrom(entry: number, target: number, isLong: boolean): number {
 }
 
 /**
- * Render alerts into a single in-character "Wangsit Raba Laba Sensei" Discord
- * message: header → 🚨 SINYAL (new entries) → 📢 HASIL (TP / SL / REVERSED
- * outcomes with realized %) → 🧘‍♂️ PETUAH SENSEI (closing wisdom), each section
- * split by a divider rule. Each signal/outcome spans two lines (headline + ↳
- * detail). Returns null when there's nothing to say so the caller can skip POST.
+ * Render alerts into a single Discord message: 🚨 SINYAL (new entries) → 📢
+ * HASIL (TP / SL / REVERSED outcomes with realized %), each section split by a
+ * divider rule. Each signal/outcome spans two lines (headline + ↳ detail).
+ * Returns null when there's nothing to say so the caller can skip POST.
  */
 export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
   if (alerts.length === 0) return null;
@@ -218,12 +210,11 @@ export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
       .map((a) => renderOutcome("🔄", a, reversedResultLabel(a.pnlPct))),
   ].join("\n\n");
 
-  const blocks: string[] = [SENSEI_HEADER];
-  if (signalBody) blocks.push(DIVIDER, "🚨 SINYAL:\n\n" + signalBody);
-  if (outcomeBody) blocks.push(DIVIDER, "📢 HASIL:\n\n" + outcomeBody);
-  blocks.push(DIVIDER, "🧘 PETUAH SENSEI\n\n" + SENSEI_QUOTE);
+  const sections: string[] = [];
+  if (signalBody) sections.push("🚨 SINYAL:\n\n" + signalBody);
+  if (outcomeBody) sections.push("📢 HASIL:\n\n" + outcomeBody);
 
-  let msg = blocks.join("\n\n");
+  let msg = sections.join(`\n\n${DIVIDER}\n\n`);
   if (msg.length > DISCORD_MAX) {
     msg = msg.slice(0, DISCORD_MAX - 20) + "\n… (truncated)";
   }
@@ -281,12 +272,11 @@ function inlinePct(pct?: number): string {
 }
 
 /**
- * Render the END-OF-DAY recap into one compact in-character "Wangsit RabaLaba
- * Sensei" Discord message: just the 🗓️ REKAP scoreboard (total P&L, best/worst,
- * counts, win-rate) framed by the persona header and 🧘 PETUAH SENSEI. The
- * per-trade / per-signal / per-open listings were intentionally dropped — the
- * scoreboard IS the recap. Returns null only when the day was completely empty
- * (nothing closed, emitted, or open) so the caller can skip the POST. PURE (no
+ * Render the END-OF-DAY recap into one compact Discord message: just the 🗓️
+ * REKAP scoreboard (total P&L, best/worst, counts, win-rate). The per-trade /
+ * per-signal / per-open listings were intentionally dropped — the scoreboard
+ * IS the recap. Returns null only when the day was completely empty (nothing
+ * closed, emitted, or open) so the caller can skip the POST. PURE (no
  * fetch/DB/Date).
  */
 export function formatDailySummaryForDiscord(
@@ -323,15 +313,7 @@ export function formatDailySummaryForDiscord(
     );
   }
 
-  const blocks: string[] = [
-    SENSEI_HEADER,
-    DIVIDER,
-    recap.join("\n"),
-    DIVIDER,
-    "🧘 PETUAH SENSEI\n\n" + SENSEI_QUOTE,
-  ];
-
-  let msg = blocks.join("\n\n");
+  let msg = recap.join("\n");
   if (msg.length > DISCORD_MAX) {
     msg = msg.slice(0, DISCORD_MAX - 20) + "\n… (truncated)";
   }

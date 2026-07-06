@@ -154,14 +154,12 @@ test("a reversal that secured a TP is reported AS that TP (🎯), not a reversal
   assert.ok(msg.includes("↳ TP2: `@1.59` `(+8.4%)`"));
 });
 
-test("formatAlertsForDiscord renders the Sensei message, null when empty", async () => {
+test("formatAlertsForDiscord renders the signal + outcome message, null when empty", async () => {
   const { buildAutoJournalAlerts, formatAlertsForDiscord } =
     await loadModule(ALERTS);
   const msg = formatAlertsForDiscord(buildAutoJournalAlerts(PLAN));
-  assert.ok(msg.includes("🥋 WANGSIT RABALABA SENSEI"));
   assert.ok(msg.includes("🚨 SINYAL:"));
   assert.ok(msg.includes("📢 HASIL:"));
-  assert.ok(msg.includes("🧘 PETUAH SENSEI"));
   assert.ok(
     msg.includes(
       "🟢 **BTC-USD** • LONG • A\n↳ ENTRY: `@65.000`\n↳ TP1: `@67.000` `(+3.1%)`\n↳ SL: `@63.000` `(-3.1%)`",
@@ -184,7 +182,6 @@ test("formatAlertsForDiscord renders the Sensei message, null when empty", async
       "🔄 **NEAR-USD** • SHORT • C\n↳ REVERSED PROFIT: `@5.12` `(+0.28%)`\n↳ DURATION: `52 DETIK`",
     ),
   );
-  assert.ok(msg.includes("Bersemedi di depan chart")); // closing wisdom
   assert.ok(msg.includes("━━━")); // divider rule
 
   assert.equal(formatAlertsForDiscord([]), null);

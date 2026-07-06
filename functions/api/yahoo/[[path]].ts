@@ -1,5 +1,13 @@
+import {
+  cleanProxyResponse,
+  fetchWithTimeout,
+  jsonErrorResponse,
+  jsonOptionsResponse,
+} from "../_shared/proxy";
+
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const UPSTREAM_TIMEOUT_MS = 8_000;
 
 /** Yahoo's v10 quoteSummary (fundamentals/analyst) and the v1 screener (the
  *  asset-discovery cron's custom IDX query needs it; the predefined lists work
@@ -27,7 +35,9 @@ function cookieHeaderFrom(res: Response): string {
 }
 
 /** Obtain (and cache) a matching cookie + crumb pair. */
-async function getCrumb(force = false): Promise<{ cookie: string; crumb: string } | null> {
+async function getCrumb(
+  force = false,
+): Promise<{ cookie: string; crumb: string } | null> {
   if (
     !force &&
     crumbCache &&
@@ -38,15 +48,20 @@ async function getCrumb(force = false): Promise<{ cookie: string; crumb: string 
   }
   try {
     // 1) Seed a session cookie (A1/A3). fc.yahoo.com may 404 but still sets it.
-    const seed = await fetch("https://fc.yahoo.com/", {
-      headers: { "User-Agent": UA },
-    });
+    const seed = await fetchWithTimeout(
+      "https://fc.yahoo.com/",
+      {
+        headers: { "User-Agent": UA },
+      },
+      UPSTREAM_TIMEOUT_MS,
+    );
     const cookie = cookieHeaderFrom(seed);
     if (!cookie) return null;
     // 2) Exchange the cookie for a crumb (plain-text body).
-    const crumbRes = await fetch(
+    const crumbRes = await fetchWithTimeout(
       "https://query1.finance.yahoo.com/v1/test/getcrumb",
       { headers: { "User-Agent": UA, Cookie: cookie } },
+      UPSTREAM_TIMEOUT_MS,
     );
     const crumb = (await crumbRes.text()).trim();
     if (!crumb || crumb.includes("<")) return null; // HTML = failed, not a crumb
@@ -58,16 +73,19 @@ async function getCrumb(force = false): Promise<{ cookie: string; crumb: string 
 }
 
 export const onRequest: PagesFunction = async (context) => {
+  if (context.request.method === "OPTIONS") return jsonOptionsResponse();
+
   const url = new URL(context.request.url);
   const path = url.pathname.replace("/api/yahoo", "");
   const needsCrumb =
     path.includes("/quoteSummary") || path.includes("/finance/screener");
 
-  const baseHeaders = new Headers(context.request.headers);
-  // Yahoo hates these headers from browsers.
-  baseHeaders.delete("Origin");
-  baseHeaders.delete("Referer");
-  baseHeaders.set("User-Agent", UA);
+  const baseHeaders = new Headers({
+    Accept: context.request.headers.get("accept") ?? "application/json",
+    "User-Agent": UA,
+  });
+  const contentType = context.request.headers.get("content-type");
+  if (contentType) baseHeaders.set("Content-Type", contentType);
 
   const body =
     context.request.method !== "GET" && context.request.method !== "HEAD"
@@ -89,34 +107,35 @@ export const onRequest: PagesFunction = async (context) => {
   try {
     let creds = needsCrumb ? await getCrumb() : null;
     let target = upstream(creds);
-    let response = await fetch(target.url, {
-      method: context.request.method,
-      headers: target.headers,
-      body,
-    });
+    let response = await fetchWithTimeout(
+      target.url,
+      {
+        method: context.request.method,
+        headers: target.headers,
+        body,
+      },
+      UPSTREAM_TIMEOUT_MS,
+    );
 
     // Stale/invalid crumb → refresh once and retry.
     if (needsCrumb && response.status === 401) {
       creds = await getCrumb(true);
       if (creds) {
         target = upstream(creds);
-        response = await fetch(target.url, {
-          method: context.request.method,
-          headers: target.headers,
-          body,
-        });
+        response = await fetchWithTimeout(
+          target.url,
+          {
+            method: context.request.method,
+            headers: target.headers,
+            body,
+          },
+          UPSTREAM_TIMEOUT_MS,
+        );
       }
     }
 
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
+    return cleanProxyResponse(response);
   } catch {
-    return new Response(JSON.stringify({ error: "Failed to proxy to Yahoo" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonErrorResponse("Failed to proxy to Yahoo");
   }
 };

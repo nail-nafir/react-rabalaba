@@ -2,10 +2,28 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import tailwindcss from "@tailwindcss/vite";
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type {
+  ClientRequest,
+  IncomingMessage,
+  ServerResponse,
+} from "node:http";
 
 const YAHOO_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const DEFAULT_PROXY_UA = "RabaLaba/1.0";
+const COINGECKO_DEMO_API_KEY =
+  process.env.COINGECKO_DEMO_API_KEY ?? process.env.COINGECKO_API_KEY;
+
+function applyCleanProxyHeaders(
+  proxyReq: ClientRequest,
+  userAgent = DEFAULT_PROXY_UA,
+) {
+  proxyReq.removeHeader("origin");
+  proxyReq.removeHeader("referer");
+  proxyReq.removeHeader("cookie");
+  proxyReq.setHeader("Accept", "application/json");
+  proxyReq.setHeader("User-Agent", userAgent);
+}
 
 /**
  * Dev parity with the Cloudflare proxy (functions/api/yahoo): Yahoo's v10
@@ -128,12 +146,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/yahoo/, ""),
         configure: (proxy) => {
           proxy.on("proxyReq", (proxyReq) => {
-            proxyReq.removeHeader("origin");
-            proxyReq.removeHeader("referer");
-            proxyReq.setHeader(
-              "User-Agent",
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            );
+            applyCleanProxyHeaders(proxyReq, YAHOO_UA);
           });
         },
       },
@@ -141,17 +154,38 @@ export default defineConfig({
         target: "https://api.alternative.me",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/fng/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            applyCleanProxyHeaders(proxyReq);
+          });
+        },
       },
       "/api/coingecko": {
         target: "https://api.coingecko.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/coingecko/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            applyCleanProxyHeaders(proxyReq);
+            if (COINGECKO_DEMO_API_KEY) {
+              proxyReq.setHeader(
+                "x-cg-demo-api-key",
+                COINGECKO_DEMO_API_KEY,
+              );
+            }
+          });
+        },
       },
       "/api/binance": {
         target: "https://fapi.binance.com",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api\/binance/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            applyCleanProxyHeaders(proxyReq, YAHOO_UA);
+          });
+        },
       },
     },
   },

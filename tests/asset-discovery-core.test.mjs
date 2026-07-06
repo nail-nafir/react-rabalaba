@@ -412,7 +412,6 @@ test("formatDiscoveryForDiscord: null on no-news, sections + cap otherwise", asy
   );
   bigPlan.prune = ["GONE-USD"];
   const msg = formatDiscoveryForDiscord(bigPlan);
-  assert.ok(msg.includes("WANGSIT RABALABA SENSEI"));
   assert.ok(msg.includes("ASET TREN BARU"));
   assert.ok(msg.includes("KEMBALI DIPANTAU"));
   assert.ok(msg.includes("KELUAR DARI UNIVERSE"));

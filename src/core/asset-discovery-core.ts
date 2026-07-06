@@ -10,7 +10,7 @@
  * Hard invariant: rows with source='admin' NEVER appear in any output list —
  * discovery may only ever touch what discovery itself created.
  */
-import { DISCORD_MAX, DIVIDER, SENSEI_HEADER } from "./alerts";
+import { DISCORD_MAX, DIVIDER } from "./alerts";
 
 export type DiscoveryMarket = "crypto" | "us-stock" | "id-stock";
 
@@ -583,15 +583,11 @@ const MARKET_LABELS: Record<DiscoveryMarket, string> = {
   "id-stock": "ID STOCK",
 };
 
-/** Closing wisdom, in character — discovery's own line (alerts keeps its own). */
-const DISCOVERY_QUOTE =
-  '"Pasar selalu melahirkan bintang baru. Sensei hanya memantau yang pantas, bukan yang paling berisik."';
-
 /**
- * Render a discovery plan into one in-character "Wangsit RabaLaba Sensei"
- * Discord message: 🔭 new assets (with market + source), ♻️ reactivations and
- * 🍂 prunes, framed like the signal broadcast. Returns null when there is no
- * news (a refresh-only run is not worth a ping) so the caller skips the POST.
+ * Render a discovery plan into one Discord message: 🔭 new assets (with market +
+ * source), ♻️ reactivations and 🍂 prunes, each section split by a divider
+ * rule. Returns null when there is no news (a refresh-only run is not worth a
+ * ping) so the caller skips the POST.
  */
 export function formatDiscoveryForDiscord(plan: DiscoveryPlan): string | null {
   if (
@@ -614,25 +610,20 @@ export function formatDiscoveryForDiscord(plan: DiscoveryPlan): string | null {
   const listBody = (symbols: string[]) =>
     symbols.map((s) => `**${s}**`).join("\n");
 
-  const blocks: string[] = [SENSEI_HEADER];
+  const sections: string[] = [];
   if (plan.inserts.length > 0) {
-    blocks.push(DIVIDER, "🔭 ASET TREN BARU:\n\n" + insertBody);
+    sections.push("🔭 ASET TREN BARU:\n\n" + insertBody);
   }
   if (plan.reactivate.length > 0) {
-    blocks.push(
-      DIVIDER,
-      "♻️ KEMBALI DIPANTAU:\n\n" + listBody(plan.reactivate),
-    );
+    sections.push("♻️ KEMBALI DIPANTAU:\n\n" + listBody(plan.reactivate));
   }
   if (plan.prune.length > 0) {
-    blocks.push(
-      DIVIDER,
+    sections.push(
       "🍂 KELUAR DARI UNIVERSE (tren memudar):\n\n" + listBody(plan.prune),
     );
   }
-  blocks.push(DIVIDER, "🧘 PETUAH SENSEI\n\n" + DISCOVERY_QUOTE);
 
-  let msg = blocks.join("\n\n");
+  let msg = sections.join(`\n\n${DIVIDER}\n\n`);
   if (msg.length > DISCORD_MAX) {
     msg = msg.slice(0, DISCORD_MAX - 20) + "\n… (truncated)";
   }
