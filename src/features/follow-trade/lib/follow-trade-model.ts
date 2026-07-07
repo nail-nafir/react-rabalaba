@@ -60,6 +60,76 @@ export function computePnl(
   };
 }
 
+export interface TradeWinrateSnapshot {
+  wins: number;
+  total: number;
+}
+
+const tradeResolvedAt = (trade: FollowedTrade) =>
+  trade.closedAt ?? trade.followedAt;
+
+const compareTradeTimeline = (a: FollowedTrade, b: FollowedTrade) => {
+  const resolvedDiff = tradeResolvedAt(a) - tradeResolvedAt(b);
+  if (resolvedDiff !== 0) return resolvedDiff;
+  const openedDiff = a.followedAt - b.followedAt;
+  if (openedDiff !== 0) return openedDiff;
+  return a.id.localeCompare(b.id);
+};
+
+/**
+ * Per-row journal win-rate snapshots. Closed rows include their own result;
+ * open rows show only the closed track record that existed before entry.
+ */
+export function buildTradeWinrateSnapshots(
+  trades: FollowedTrade[],
+): Record<string, TradeWinrateSnapshot> {
+  const snapshots: Record<string, TradeWinrateSnapshot> = {};
+  const closedBySymbol = new Map<string, FollowedTrade[]>();
+
+  for (const trade of trades) {
+    if (trade.status === "open") continue;
+    const list = closedBySymbol.get(trade.symbol);
+    if (list) list.push(trade);
+    else closedBySymbol.set(trade.symbol, [trade]);
+  }
+
+  const cumulativeBySymbol = new Map<
+    string,
+    (TradeWinrateSnapshot & { at: number })[]
+  >();
+
+  for (const [symbol, closedTrades] of closedBySymbol) {
+    const ordered = [...closedTrades].sort(compareTradeTimeline);
+    const cumulative: (TradeWinrateSnapshot & { at: number })[] = [];
+    let wins = 0;
+    let total = 0;
+
+    for (const trade of ordered) {
+      total += 1;
+      if (computePnl(trade, trade.closePrice ?? trade.entryPrice).r >= 0) {
+        wins += 1;
+      }
+      const snapshot = { wins, total };
+      snapshots[trade.id] = snapshot;
+      cumulative.push({ ...snapshot, at: tradeResolvedAt(trade) });
+    }
+
+    cumulativeBySymbol.set(symbol, cumulative);
+  }
+
+  for (const trade of trades) {
+    if (trade.status !== "open") continue;
+    let snapshot: TradeWinrateSnapshot = { wins: 0, total: 0 };
+    for (const point of cumulativeBySymbol.get(trade.symbol) ?? []) {
+      if (point.at >= trade.followedAt) break;
+      snapshot = { wins: point.wins, total: point.total };
+    }
+    snapshots[trade.id] = snapshot;
+  }
+
+  return snapshots;
+}
+
 export interface FollowEvaluation {
   status: FollowStatus;
   highestTpReached: number;

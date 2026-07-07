@@ -10,7 +10,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
+  ReferenceLine,
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { fetchYahooChart } from "@/services/api/yahoo-finance";
@@ -41,6 +41,7 @@ const NEG = PALETTE.negative.fill;
 // data/layout prop identity changes, which can cascade into "Maximum update
 // depth exceeded" under re-render bursts (see components/charts/sparkline.tsx).
 const CHART_MARGIN = { left: 4, right: 8, top: 8 };
+const CHART_YAXIS_WIDTH = 40;
 const BACKGROUND_RING = [{ value: 100 }];
 
 function ChartCard({
@@ -551,6 +552,98 @@ export function JournalDashboard() {
     return outcomeData.reduce((acc, curr) => acc + curr.value, 0);
   }, [outcomeData]);
 
+  const benchmarkLegendItems = useMemo(() => {
+    const lastData = computedChartData[computedChartData.length - 1];
+    const total = stats.closed;
+    const winPct = total > 0 ? (stats.winLoss.wins / total) * 100 : 0;
+    const lossPct = total > 0 ? (stats.winLoss.losses / total) * 100 : 0;
+
+    return [
+      {
+        name: t("journal.wins"),
+        value: stats.winLoss.wins,
+        pct: `${winPct.toFixed(0)}%`,
+        color: POS,
+        type: "count",
+      },
+      {
+        name: t("journal.losses"),
+        value: stats.winLoss.losses,
+        pct: `${lossPct.toFixed(0)}%`,
+        color: NEG,
+        type: "count",
+      },
+      {
+        name: t("journal.cumulative"),
+        value: lastData?.cumPct ?? 0,
+        color: "var(--color-primary)",
+        type: "pct",
+      },
+      ...(activeBenchmarks.includes("BTC-USD")
+        ? [
+            {
+              name: t("journal.benchmark_btc"),
+              value: lastData?.btcPct ?? 0,
+              color: "#F7931A",
+              type: "pct",
+            },
+          ]
+        : []),
+      ...(activeBenchmarks.includes("IHSG")
+        ? [
+            {
+              name: t("journal.benchmark_ihsg"),
+              value: lastData?.ihsgPct ?? 0,
+              color: "#818CF8",
+              type: "pct",
+            },
+          ]
+        : []),
+      ...(activeBenchmarks.includes("S&P 500")
+        ? [
+            {
+              name: t("journal.benchmark_sp500"),
+              value: lastData?.sp500Pct ?? 0,
+              color: "#3B82F6",
+              type: "pct",
+            },
+          ]
+        : []),
+    ];
+  }, [computedChartData, activeBenchmarks, stats.winLoss, stats.closed, t]);
+
+  const assetTypeLegendItems = useMemo(() => {
+    const total = stats.closed;
+    return stats.byAssetType.map((d) => {
+      const count = filteredHistory.filter((t) => t.assetType === d.assetType).length;
+      const pct = total > 0 ? (count / total) * 100 : 0;
+      
+      const wins = filteredHistory.filter(
+        (t) => t.assetType === d.assetType && computePnl(t, t.closePrice ?? t.entryPrice).r > 0
+      ).length;
+      const winRate = count > 0 ? (wins / count) * 100 : 0;
+
+      const valNum = Number(d.pct);
+      const isZero = valNum === 0;
+      const color = isZero
+        ? "var(--color-zinc-500)"
+        : valNum > 0
+          ? POS
+          : NEG;
+      const displayName = t(`common.asset_types.${d.assetType}`, d.assetType);
+      
+      return {
+        name: displayName,
+        count,
+        pct: `${pct.toFixed(0)}%`,
+        winRate: `${winRate.toFixed(0)}%`,
+        color,
+        type: "asset",
+        pnl: valNum,
+      };
+    });
+  }, [stats, filteredHistory, t]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -663,147 +756,195 @@ export function JournalDashboard() {
             />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <ChartCard
-              title={t("journal.chart_equity_benchmark")}
-              className="h-full flex flex-col"
-            >
-              <ChartContainer
-                config={equityConfig}
-                className="aspect-auto h-65 w-full mt-2"
-              >
-                <ComposedChart data={computedChartData} margin={CHART_MARGIN}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    fontSize={11}
-                    minTickGap={24}
-                    tickFormatter={fmtDay}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    width={32}
-                    fontSize={11}
-                  />
-                  <ChartTooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload) return null;
-                      const filteredPayload = payload.filter(
-                        (item) =>
-                          item.value !== null && item.value !== undefined,
-                      );
-                      return (
-                        <ChartTooltipContent
-                          active={active}
-                          payload={filteredPayload}
-                          label={label}
-                          className="min-w-45"
-                          labelFormatter={(l) => fmtFullDate(String(l))}
-                          formatter={(value, name, item) => {
-                            const isWin =
-                              item.dataKey === "dayPctWin" ||
-                              name === "dayPctWin";
-                            const isLoss =
-                              item.dataKey === "dayPctLoss" ||
-                              name === "dayPctLoss";
-
-                            const valNum = Number(value);
-                            const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}%`;
-
-                            let dotColor = "var(--color-cumPct)";
-                            let displayName = t("journal.cumulative");
-
-                            if (isWin) {
-                              dotColor = POS;
-                              displayName = t("journal.wins");
-                            } else if (isLoss) {
-                              dotColor = NEG;
-                              displayName = t("journal.losses");
-                            } else if (
-                              item.dataKey === "btcPct" ||
-                              name === "btcPct"
-                            ) {
-                              dotColor = "#F7931A";
-                              displayName = t("journal.benchmark_btc");
-                            } else if (
-                              item.dataKey === "ihsgPct" ||
-                              name === "ihsgPct"
-                            ) {
-                              dotColor = "#818CF8";
-                              displayName = t("journal.benchmark_ihsg");
-                            } else if (
-                              item.dataKey === "sp500Pct" ||
-                              name === "sp500Pct"
-                            ) {
-                              dotColor = "#3B82F6";
-                              displayName = t("journal.benchmark_sp500");
-                            }
-
+            <ChartCard title={t("journal.chart_equity_benchmark")}>
+              <div className="flex-1 h-65 flex items-center justify-center mt-2">
+                <div className="h-full w-full flex flex-col items-center justify-center">
+                  <div className="h-48 w-full relative">
+                    <ChartContainer
+                      config={equityConfig}
+                      className="h-full w-full"
+                    >
+                      <ComposedChart data={computedChartData} margin={CHART_MARGIN}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          fontSize={11}
+                          minTickGap={24}
+                          tickFormatter={fmtDay}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          width={CHART_YAXIS_WIDTH}
+                          fontSize={11}
+                          tickFormatter={(v) => `${v}%`}
+                        />
+                        <ChartTooltip
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload) return null;
+                            const filteredPayload = payload.filter(
+                              (item) =>
+                                item.value !== null && item.value !== undefined,
+                            );
                             return (
-                              <>
-                                <div
-                                  className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
-                                  style={{ backgroundColor: dotColor }}
-                                />
-                                <div className="flex flex-1 justify-between leading-none items-center gap-8">
-                                  <span className="text-muted-foreground">
-                                    {displayName}
-                                  </span>
-                                  <span className="font-mono font-medium text-foreground tabular-nums">
-                                    {formattedValue}
-                                  </span>
-                                </div>
-                              </>
+                              <ChartTooltipContent
+                                active={active}
+                                payload={filteredPayload}
+                                label={label}
+                                className="min-w-45"
+                                labelFormatter={(l) => fmtFullDate(String(l))}
+                                formatter={(value, name, item) => {
+                                  const isWin =
+                                    item.dataKey === "dayPctWin" ||
+                                    name === "dayPctWin";
+                                  const isLoss =
+                                    item.dataKey === "dayPctLoss" ||
+                                    name === "dayPctLoss";
+
+                                  const valNum = Number(value);
+                                  const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}%`;
+
+                                  let dotColor = "var(--color-cumPct)";
+                                  let displayName = t("journal.cumulative");
+
+                                  if (isWin) {
+                                    dotColor = POS;
+                                    displayName = t("journal.wins");
+                                  } else if (isLoss) {
+                                    dotColor = NEG;
+                                    displayName = t("journal.losses");
+                                  } else if (
+                                    item.dataKey === "btcPct" ||
+                                    name === "btcPct"
+                                  ) {
+                                    dotColor = "#F7931A";
+                                    displayName = t("journal.benchmark_btc");
+                                  } else if (
+                                    item.dataKey === "ihsgPct" ||
+                                    name === "ihsgPct"
+                                  ) {
+                                    dotColor = "#818CF8";
+                                    displayName = t("journal.benchmark_ihsg");
+                                  } else if (
+                                    item.dataKey === "sp500Pct" ||
+                                    name === "sp500Pct"
+                                  ) {
+                                    dotColor = "#3B82F6";
+                                    displayName = t("journal.benchmark_sp500");
+                                  }
+
+                                  return (
+                                    <>
+                                      <div
+                                        className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                                        style={{ backgroundColor: dotColor }}
+                                      />
+                                      <div className="flex flex-1 justify-between leading-none items-center gap-8">
+                                        <span className="text-muted-foreground">
+                                          {displayName}
+                                        </span>
+                                        <span className="font-mono font-medium text-foreground tabular-nums">
+                                          {formattedValue}
+                                        </span>
+                                      </div>
+                                    </>
+                                  );
+                                }}
+                              />
                             );
                           }}
                         />
-                      );
-                    }}
-                  />
 
-                  <Bar dataKey="dayPctWin" stackId="a" radius={4} fill={POS} />
-                  <Bar dataKey="dayPctLoss" stackId="a" radius={4} fill={NEG} />
-                  <Line
-                    type="monotone"
-                    dataKey="cumPct"
-                    stroke="var(--color-cumPct)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  {activeBenchmarks.includes("BTC-USD") && (
-                    <Line
-                      type="monotone"
-                      dataKey="btcPct"
-                      stroke="#F7931A"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      dot={false}
-                    />
-                  )}
-                  {activeBenchmarks.includes("IHSG") && (
-                    <Line
-                      type="monotone"
-                      dataKey="ihsgPct"
-                      stroke="#818CF8"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      dot={false}
-                    />
-                  )}
-                  {activeBenchmarks.includes("S&P 500") && (
-                    <Line
-                      type="monotone"
-                      dataKey="sp500Pct"
-                      stroke="#3B82F6"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      dot={false}
-                    />
-                  )}
-                </ComposedChart>
-              </ChartContainer>
+                        <Bar dataKey="dayPctWin" stackId="a" radius={4} fill={POS} />
+                        <Bar dataKey="dayPctLoss" stackId="a" radius={4} fill={NEG} />
+                        <Line
+                          type="monotone"
+                          dataKey="cumPct"
+                          stroke="var(--color-cumPct)"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        {activeBenchmarks.includes("BTC-USD") && (
+                          <Line
+                            type="monotone"
+                            dataKey="btcPct"
+                            stroke="#F7931A"
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                          />
+                        )}
+                        {activeBenchmarks.includes("IHSG") && (
+                          <Line
+                            type="monotone"
+                            dataKey="ihsgPct"
+                            stroke="#818CF8"
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                          />
+                        )}
+                        {activeBenchmarks.includes("S&P 500") && (
+                          <Line
+                            type="monotone"
+                            dataKey="sp500Pct"
+                            stroke="#3B82F6"
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                          />
+                        )}
+                      </ComposedChart>
+                    </ChartContainer>
+                  </div>
+                  {/* Premium Legend at the Bottom */}
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground font-normal px-2 mt-3 w-full">
+                    {benchmarkLegendItems.map((d, i) => {
+                      const isCount = d.type === "count";
+                      const valNum = Number(d.value);
+                      const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}%`;
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-1.5 transition-colors group",
+                            isCount && d.value === 0 && "opacity-40",
+                          )}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full shrink-0 group-hover:scale-125 transition-transform"
+                            style={{ backgroundColor: d.color }}
+                          />
+                          <span className="transition-colors dark:opacity-60">
+                            {d.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "font-mono",
+                              isCount
+                                ? "dark:opacity-60"
+                                : valNum === 0
+                                  ? "text-zinc-500"
+                                  : valNum > 0
+                                    ? "text-emerald-400"
+                                    : "text-rose-400",
+                            )}
+                          >
+                            {isCount ? d.value : formattedValue}
+                          </span>
+                          {isCount && (
+                            <span className="font-mono dark:opacity-60">
+                              ({d.pct})
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </ChartCard>
 
             {/* Card 2: Distribusi Hasil Akhir Trade */}
@@ -975,103 +1116,149 @@ export function JournalDashboard() {
 
             {/* Card 3: Performa Per Kategori Aset */}
             <ChartCard title={t("journal.chart_asset_performance")}>
-              <div className="h-65 w-full flex items-center justify-center mt-2">
+              <div className="flex-1 h-65 flex items-center justify-center mt-2">
                 {stats.byAssetType.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-zinc-500 text-xs font-medium select-none">
                     {t("journal.chart_no_category_data")}
                   </div>
                 ) : (
-                  <ChartContainer
-                    config={{ pct: { label: t("journal.total_pnl") } }}
-                    className="h-full w-full"
-                  >
-                    <BarChart data={stats.byAssetType} margin={CHART_MARGIN}>
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                        dataKey="assetType"
-                        tickLine={false}
-                        axisLine={false}
-                        fontSize={11}
-                        tickFormatter={(v) => {
-                          return t(`common.asset_types.${v}`, v) as string;
-                        }}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        width={32}
-                        fontSize={11}
-                        tickFormatter={(v) => `${v}%`}
-                      />
-                      <ChartTooltip
-                        cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
-                        content={({ active, payload, label }) => {
-                          if (!active || !payload || !payload.length)
-                            return null;
-                          return (
-                            <ChartTooltipContent
-                              active={active}
-                              payload={payload}
-                              label={label}
-                              className="min-w-40"
-                              labelFormatter={(l) =>
-                                (
-                                  t(`common.asset_types.${l}`, l) as string
-                                ).toUpperCase()
-                              }
-                              formatter={(value) => {
-                                const valNum = Number(value);
-                                const isZero = valNum === 0;
-                                return (
-                                  <>
-                                    <div
-                                      className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
-                                      style={{
-                                        backgroundColor: isZero
-                                          ? "var(--color-zinc-500)"
-                                          : valNum > 0
-                                            ? POS
-                                            : NEG,
-                                      }}
-                                    />
-                                    <div className="flex flex-1 justify-between leading-none items-center gap-8">
-                                      <span className="text-muted-foreground">
-                                        {t("journal.total_pnl")}
-                                      </span>
-                                      <span
-                                        className={cn(
-                                          "font-mono font-medium tabular-nums",
-                                          isZero
-                                            ? "text-foreground"
-                                            : valNum > 0
-                                              ? "text-emerald-400"
-                                              : "text-rose-400",
-                                        )}
-                                      >
-                                        {valNum > 0 ? "+" : ""}
-                                        {valNum.toFixed(2)}%
-                                      </span>
-                                    </div>
-                                  </>
-                                );
-                              }}
+                  <div className="h-full w-full flex flex-col items-center justify-center">
+                    <div className="h-48 w-full relative">
+                      <ChartContainer
+                        config={{ pct: { label: t("journal.total_pnl") } }}
+                        className="h-full w-full"
+                      >
+                        <ComposedChart data={stats.byAssetType} margin={CHART_MARGIN}>
+                          <CartesianGrid vertical={false} />
+                          <XAxis
+                            dataKey="assetType"
+                            tickLine={false}
+                            axisLine={false}
+                            fontSize={11}
+                            tickFormatter={(v) => {
+                              return t(`common.asset_types.${v}`, v) as string;
+                            }}
+                          />
+                          <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            width={CHART_YAXIS_WIDTH}
+                            fontSize={11}
+                            tickFormatter={(v) => `${v}%`}
+                          />
+                          <ChartTooltip
+                            content={({ active, payload, label }) => {
+                              if (!active || !payload || !payload.length)
+                                return null;
+                              return (
+                                <ChartTooltipContent
+                                  active={active}
+                                  payload={payload}
+                                  label={label}
+                                  className="min-w-40"
+                                  labelFormatter={(l) =>
+                                    (
+                                      t(`common.asset_types.${l}`, l) as string
+                                    ).toUpperCase()
+                                  }
+                                  formatter={(value) => {
+                                    const valNum = Number(value);
+                                    const isZero = valNum === 0;
+                                    return (
+                                      <>
+                                        <div
+                                          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                                          style={{
+                                            backgroundColor: isZero
+                                              ? "var(--color-zinc-500)"
+                                              : valNum > 0
+                                                ? POS
+                                                : NEG,
+                                          }}
+                                        />
+                                        <div className="flex flex-1 justify-between leading-none items-center gap-8">
+                                          <span className="text-muted-foreground">
+                                            {t("journal.total_pnl")}
+                                          </span>
+                                          <span
+                                            className={cn(
+                                              "font-mono font-medium tabular-nums",
+                                              isZero
+                                                ? "text-foreground"
+                                                : valNum > 0
+                                                  ? "text-emerald-400"
+                                                  : "text-rose-400",
+                                            )}
+                                          >
+                                            {valNum > 0 ? "+" : ""}
+                                            {valNum.toFixed(2)}%
+                                          </span>
+                                        </div>
+                                      </>
+                                    );
+                                  }}
+                                />
+                              );
+                            }}
+                          />
+                          <Bar dataKey="pct" radius={4}>
+                            {stats.byAssetType.map((entry, index) => {
+                              const fill =
+                                entry.pct === 0
+                                  ? "var(--color-zinc-500)"
+                                  : entry.pct > 0
+                                    ? POS
+                                    : NEG;
+                              return <Cell key={`cell-${index}`} fill={fill} />;
+                            })}
+                          </Bar>
+                        </ComposedChart>
+                      </ChartContainer>
+                    </div>
+                    {/* Premium Legend at the Bottom */}
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground font-normal px-2 mt-3 w-full">
+                      {assetTypeLegendItems.map((d, i) => {
+                        return (
+                          <div
+                            key={i}
+                            className={cn(
+                              "flex items-center gap-1.5 transition-colors group",
+                              d.count === 0 && "opacity-40",
+                            )}
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full shrink-0 group-hover:scale-125 transition-transform"
+                              style={{ backgroundColor: d.color }}
                             />
-                          );
-                        }}
-                      />
-                      <Bar dataKey="pct" radius={4}>
-                        {stats.byAssetType.map((entry, index) => {
-                          const fill =
-                            entry.pct === 0
-                              ? "var(--color-zinc-500)"
-                              : entry.pct > 0
-                                ? POS
-                                : NEG;
-                          return <Cell key={`cell-${index}`} fill={fill} />;
-                        })}
-                      </Bar>
-                    </BarChart>
-                  </ChartContainer>
+                            <span className="transition-colors dark:opacity-60">
+                              {d.name}
+                            </span>
+                            <span className="font-mono dark:opacity-60">
+                              {d.count}
+                            </span>
+                            <span className="font-mono dark:opacity-60">
+                              ({d.pct})
+                            </span>
+                            <span className="text-zinc-600 dark:text-zinc-500 select-none">·</span>
+                            <span
+                              className={cn(
+                                "font-mono font-medium",
+                                d.count === 0
+                                  ? "text-muted-foreground"
+                                  : Number(d.winRate.replace("%", "")) >= 60
+                                    ? "text-emerald-400"
+                                    : Number(d.winRate.replace("%", "")) >= 40
+                                      ? "text-amber-400"
+                                      : "text-rose-400",
+                              )}
+                            >
+                              {d.winRate}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             </ChartCard>

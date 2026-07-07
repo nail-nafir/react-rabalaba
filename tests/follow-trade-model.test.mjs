@@ -69,6 +69,95 @@ test("computePnl: short sign flips", async () => {
   assert.ok(computePnl(t, 110).r < 0);
 });
 
+test("buildTradeWinrateSnapshots: closed trades are cumulative per symbol", async () => {
+  const { buildTradeWinrateSnapshots } = await loadModule(SRC);
+  const snapshots = buildTradeWinrateSnapshots([
+    longTrade({
+      id: "third",
+      status: "sl",
+      closePrice: 80,
+      followedAt: 30,
+      closedAt: 300,
+    }),
+    longTrade({
+      id: "first",
+      status: "sl",
+      closePrice: 80,
+      followedAt: 10,
+      closedAt: 100,
+    }),
+    longTrade({
+      id: "second",
+      status: "tp1",
+      closePrice: 120,
+      followedAt: 20,
+      closedAt: 200,
+    }),
+  ]);
+
+  assert.deepEqual(snapshots.first, { wins: 0, total: 1 });
+  assert.deepEqual(snapshots.second, { wins: 1, total: 2 });
+  assert.deepEqual(snapshots.third, { wins: 1, total: 3 });
+});
+
+test("buildTradeWinrateSnapshots: symbols are tracked independently", async () => {
+  const { buildTradeWinrateSnapshots } = await loadModule(SRC);
+  const snapshots = buildTradeWinrateSnapshots([
+    longTrade({
+      id: "btc-loss",
+      symbol: "BTC",
+      status: "sl",
+      closePrice: 80,
+      closedAt: 100,
+    }),
+    longTrade({
+      id: "eth-win",
+      symbol: "ETH",
+      name: "Ethereum",
+      status: "tp1",
+      closePrice: 120,
+      closedAt: 200,
+    }),
+    longTrade({
+      id: "btc-win",
+      symbol: "BTC",
+      status: "tp1",
+      closePrice: 120,
+      closedAt: 300,
+    }),
+  ]);
+
+  assert.deepEqual(snapshots["btc-loss"], { wins: 0, total: 1 });
+  assert.deepEqual(snapshots["eth-win"], { wins: 1, total: 1 });
+  assert.deepEqual(snapshots["btc-win"], { wins: 1, total: 2 });
+});
+
+test("buildTradeWinrateSnapshots: open trades use only history before entry", async () => {
+  const { buildTradeWinrateSnapshots } = await loadModule(SRC);
+  const snapshots = buildTradeWinrateSnapshots([
+    longTrade({
+      id: "before-loss",
+      status: "sl",
+      closePrice: 80,
+      followedAt: 10,
+      closedAt: 100,
+    }),
+    longTrade({ id: "open-mid", status: "open", followedAt: 150 }),
+    longTrade({
+      id: "after-win",
+      status: "tp1",
+      closePrice: 120,
+      followedAt: 160,
+      closedAt: 200,
+    }),
+    longTrade({ id: "open-early", status: "open", followedAt: 50 }),
+  ]);
+
+  assert.deepEqual(snapshots["open-mid"], { wins: 0, total: 1 });
+  assert.deepEqual(snapshots["open-early"], { wins: 0, total: 0 });
+  assert.deepEqual(snapshots["after-win"], { wins: 1, total: 2 });
+});
+
 test("long 100 -> 150 closes at tp3", async () => {
   const { evaluateFollow } = await loadModule(SRC);
   const ev = evaluateFollow(longTrade(), 150);

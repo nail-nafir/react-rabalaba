@@ -26,12 +26,14 @@ import {
 import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import {
+  buildTradeWinrateSnapshots,
   computePnl,
   deriveFollowProgress,
   type FollowedTrade,
   type FollowProgress,
   type FollowSignal,
   type LifecycleStatus,
+  type TradeWinrateSnapshot,
   LIFECYCLE_STATUSES,
   FOLLOW_SIGNALS,
 } from "@/features/follow-trade/lib/follow-trade-model";
@@ -160,22 +162,15 @@ export function FollowHistoryTable() {
   const progressRef = useRef<Record<string, FollowProgress>>({});
   progressRef.current = progressBySymbol;
 
-  // Win rate per symbol, from CLOSED trades only (an open position hasn't
-  // resolved yet). A win = non-negative realized P/L, matching the row's own
-  // `isWin`. Kept in a ref so the memoized columns read fresh stats without
-  // being recreated each render — same reason as prices/progress above.
-  const winrateBySymbol = useMemo(() => {
-    const stat: Record<string, { wins: number; total: number }> = {};
-    for (const tr of [...openTrades, ...history]) {
-      if (tr.status === "open") continue;
-      const s = (stat[tr.symbol] ??= { wins: 0, total: 0 });
-      s.total += 1;
-      if (computePnl(tr, tr.closePrice ?? tr.entryPrice).r >= 0) s.wins += 1;
-    }
-    return stat;
-  }, [openTrades, history]);
-  const winrateRef = useRef<Record<string, { wins: number; total: number }>>({});
-  winrateRef.current = winrateBySymbol;
+  // Journal rows need the historical snapshot at that trade's point in time,
+  // not the symbol's current aggregate. Kept in a ref so the memoized columns
+  // read fresh stats without being recreated — same reason as prices/progress.
+  const winrateByTradeId = useMemo(
+    () => buildTradeWinrateSnapshots([...openTrades, ...history]),
+    [openTrades, history],
+  );
+  const winrateRef = useRef<Record<string, TradeWinrateSnapshot>>({});
+  winrateRef.current = winrateByTradeId;
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: "date", desc: false },
@@ -484,17 +479,17 @@ export function FollowHistoryTable() {
         },
       },
       {
-        // Historical win rate for this symbol across our CLOSED trades on it.
+        // Historical win rate snapshot for this exact trade row.
         id: "successrate",
         accessorFn: (tr) => {
-          const s = winrateRef.current[tr.symbol];
+          const s = winrateRef.current[tr.id];
           return s && s.total > 0 ? s.wins / s.total : -1;
         },
         header: ({ column }) => (
           <SortButton label={t("journal.col_successrate")} column={column} />
         ),
         cell: ({ row }) => {
-          const s = winrateRef.current[row.original.symbol];
+          const s = winrateRef.current[row.original.id];
           return (
             <div className="py-1">
               <SuccessRateBar
