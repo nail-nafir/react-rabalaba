@@ -66,7 +66,7 @@ async function loadAsset(symbol: string) {
   try {
     const chart = await fetchChart(symbol);
     return chart ? adaptYahooChart(chart) : null;
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -335,7 +335,7 @@ Deno.serve(async (req: Request) => {
     const alerts = buildAutoJournalAlerts({ inserts, closures });
     const message = formatAlertsForDiscord(alerts);
     if (message && (await sendDiscord(message))) alerted = alerts.length;
-  } catch (_err) {
+  } catch {
     // swallow — alerts are non-critical
   }
 
@@ -370,7 +370,7 @@ async function sendDiscord(content: string): Promise<boolean> {
       body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
     });
     return res.ok;
-  } catch (_err) {
+  } catch {
     return false;
   }
 }

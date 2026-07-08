@@ -81,11 +81,11 @@ test("long setup: domain covers all levels + candles, TP>entry>SL", async () => 
 
 test("scale follows recent action + levels, ignoring old far-away candles", async () => {
   const { buildTradeSetupModel } = await loadModule(SRC);
-  const old = Array.from({ length: 60 }, (_, i) => ({
+  const old = Array.from({ length: 120 }, (_, i) => ({
     open: 40, high: 42, low: 38, close: 41, volume: 1000, timestamp: i + 1,
   }));
-  const recent = Array.from({ length: 60 }, (_, i) => ({
-    open: 100, high: 102, low: 98, close: 101, volume: 1000, timestamp: i + 61,
+  const recent = Array.from({ length: 120 }, (_, i) => ({
+    open: 100, high: 102, low: 98, close: 101, volume: 1000, timestamp: i + 121,
   }));
   const plan = {
     entry: 100, stopLoss: 95, takeProfit1: 108,

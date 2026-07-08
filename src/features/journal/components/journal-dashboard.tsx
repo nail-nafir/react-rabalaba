@@ -10,7 +10,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  ReferenceLine,
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { fetchYahooChart } from "@/services/api/yahoo-finance";

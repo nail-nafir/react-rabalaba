@@ -20,8 +20,6 @@ import {
   Power,
   Play,
   Pause,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import {
   Table,
@@ -46,6 +44,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonPaymentMethodRow } from "@/components/shared/skeleton-card";
 import { usePaymentMethods } from "@/hooks/use-payment-methods";
 import type { PaymentMethodRow } from "@/services/supabase/database.types";
@@ -352,40 +351,11 @@ export function PaymentMethodsTable() {
       </div>
 
       {/* Pagination */}
-      {table.getPageCount() > 1 && (
-        <div className="flex items-center justify-between pt-3 border-t border-border/60">
-          <div className="text-xs text-muted-foreground">
-            {t("table.page")}{" "}
-            <span className="font-medium text-foreground">
-              {table.getState().pagination.pageIndex + 1}
-            </span>{" "}
-            {t("table.of")}{" "}
-            <span className="font-medium text-foreground">
-              {table.getPageCount()}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="h-8 w-8 cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="h-8 w-8 cursor-pointer"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTablePagination
+        table={table}
+        hideWhenSinglePage
+        className="pt-3 border-t border-border/60"
+      />
 
       <PaymentMethodDialog open={dialogOpen} onOpenChange={setDialogOpen} method={editing} />
     </div>

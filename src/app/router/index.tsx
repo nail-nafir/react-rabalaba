@@ -1,30 +1,30 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { RootLayout } from '@/app/layouts/root-layout';
 import { AuthLayout } from '@/app/layouts/auth-layout';
 import { AdminLayout } from '@/app/layouts/admin-layout';
 import { ErrorBoundary } from '@/components/shared/error-boundary';
 import { PageLoader } from '@/components/shared/page-loader';
-
-// Lazy load pages for code splitting
-const LandingPage = lazy(() => import('@/pages/landing'));
-const TerminalPage = lazy(() => import('@/pages/terminal'));
-const CalendarPage = lazy(() => import('@/pages/calendar'));
-const SubscriptionPage = lazy(() => import('@/pages/subscription'));
-const AdminPage = lazy(() => import('@/pages/admin'));
-const AdminAssetsPage = lazy(() => import('@/pages/admin/assets'));
-const AdminUsersPage = lazy(() => import('@/pages/admin/users'));
-const AdminCodesPage = lazy(() => import('@/pages/admin/codes'));
-const AdminInvitationsPage = lazy(() => import('@/pages/admin/invitations'));
-const AdminPlansPage = lazy(() => import('@/pages/admin/plans'));
-const AdminPaymentsPage = lazy(() => import('@/pages/admin/payments'));
-const AdminDisclaimerPage = lazy(() => import('@/pages/admin/disclaimer'));
-const InvitePage = lazy(() => import('@/pages/invite'));
-const AdminSystemPage = lazy(() => import('@/pages/admin/statistics'));
-const LoginPage = lazy(() => import('@/pages/login'));
-const RegisterPage = lazy(() => import('@/pages/register'));
-const AuthCallbackPage = lazy(() => import('@/pages/auth-callback'));
-const NotFoundPage = lazy(() => import('@/pages/not-found'));
+import {
+  AdminAssetsPage,
+  AdminCodesPage,
+  AdminDisclaimerPage,
+  AdminInvitationsPage,
+  AdminPage,
+  AdminPaymentsPage,
+  AdminPlansPage,
+  AdminSystemPage,
+  AdminUsersPage,
+  AuthCallbackPage,
+  CalendarPage,
+  InvitePage,
+  LandingPage,
+  LoginPage,
+  NotFoundPage,
+  RegisterPage,
+  SubscriptionPage,
+  TerminalPage,
+} from '@/app/router/lazy-pages';
 
 export const router = createBrowserRouter([
   {
@@ -253,4 +253,3 @@ export const router = createBrowserRouter([
     ),
   },
 ]);
-

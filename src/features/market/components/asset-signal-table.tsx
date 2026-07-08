@@ -17,8 +17,6 @@ import {
   ArrowDown,
   Loader2,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   Search,
   Star,
   Plus,
@@ -40,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { EmptyState } from "@/components/shared/empty-state";
+import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { StrengthBar } from "@/components/charts/strength-bar";
 import { Sparkline } from "@/components/charts/sparkline";
 import { SuccessRateBar } from "@/components/charts/success-rate-bar";
@@ -792,42 +791,7 @@ export function AssetSignalTable() {
         </Table>
       </div>
 
-      {!isLoading && (
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">
-            {t("table.page")}{" "}
-            <span className="font-medium text-foreground">
-              {table.getPageCount() > 0
-                ? table.getState().pagination.pageIndex + 1
-                : 0}
-            </span>{" "}
-            {t("table.of")}{" "}
-            <span className="font-medium text-foreground">
-              {table.getPageCount() || 0}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="h-8 w-8 cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="h-8 w-8 cursor-pointer"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {!isLoading && <DataTablePagination table={table} />}
 
       {/* Detail dialog */}
       <AssetDetailDialog />

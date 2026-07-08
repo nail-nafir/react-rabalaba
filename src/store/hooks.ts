@@ -1,7 +1,5 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import type { RootState, AppDispatch } from "./index";
 import { uiActions, setLicenseSuccessAction } from "./slices/ui-slice";
 import { filterActions, type SignalFilterType } from "./slices/filter-slice";
@@ -19,11 +17,6 @@ export const useAppSelector = useSelector.withTypes<RootState>();
  */
 export function useUIActions() {
   const dispatch = useAppDispatch();
-  // Read the session straight off the same store rather than via useAuth() — it
-  // imports from this module, so going through it would create an import cycle.
-  const isAuthenticated = useAppSelector((s) => !!s.auth.session);
-  const navigate = useNavigate();
-  const { t } = useTranslation();
   return useMemo(
     () => ({
       openDetailDialog: (symbol: string) =>
@@ -44,10 +37,7 @@ export function useUIActions() {
       setPageLoading: (loading: boolean) =>
         dispatch(uiActions.setPageLoading(loading)),
     }),
-    // Identity stays stable except on the rare events that actually matter:
-    // login/logout (isAuthenticated) and language switch (t). `navigate` is
-    // referentially stable across renders.
-    [dispatch, isAuthenticated, navigate, t],
+    [dispatch],
   );
 }
 
