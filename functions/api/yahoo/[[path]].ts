@@ -1,13 +1,70 @@
 import {
-  cleanProxyResponse,
   fetchWithTimeout,
-  jsonErrorResponse,
   jsonOptionsResponse,
+  proxyJsonRequest,
+  type ProxyCachePolicy,
 } from "../_shared/proxy";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const UPSTREAM_TIMEOUT_MS = 8_000;
+const RECOVERABLE_YAHOO_STATUSES: ProxyCachePolicy["staleOnStatuses"] = [
+  429,
+  [500, 599],
+];
+
+function cachePolicy(
+  _context: unknown,
+  _requestUrl: URL,
+  upstreamUrl: URL,
+): ProxyCachePolicy {
+  const path = upstreamUrl.pathname;
+  const shared = {
+    errorTtlSeconds: 60,
+    staleOnStatuses: RECOVERABLE_YAHOO_STATUSES,
+  } satisfies Partial<ProxyCachePolicy>;
+
+  if (path.includes("/v8/finance/chart/")) {
+    return {
+      ...shared,
+      freshTtlSeconds: 1_800,
+      staleTtlSeconds: 6 * 60 * 60,
+    };
+  }
+
+  if (path.includes("/v10/finance/quoteSummary/")) {
+    return {
+      ...shared,
+      freshTtlSeconds: 6 * 60 * 60,
+      staleTtlSeconds: 2 * 24 * 60 * 60,
+    };
+  }
+
+  if (path.includes("/v1/finance/search")) {
+    return {
+      ...shared,
+      freshTtlSeconds: 300,
+      staleTtlSeconds: 60 * 60,
+    };
+  }
+
+  if (
+    path.includes("/finance/screener") ||
+    path.includes("/calendar-events")
+  ) {
+    return {
+      ...shared,
+      freshTtlSeconds: 1_800,
+      staleTtlSeconds: 6 * 60 * 60,
+    };
+  }
+
+  return {
+    ...shared,
+    freshTtlSeconds: 300,
+    staleTtlSeconds: 60 * 60,
+  };
+}
 
 /** Yahoo's v10 quoteSummary (fundamentals/analyst) and the v1 screener (the
  *  asset-discovery cron's custom IDX query needs it; the predefined lists work
@@ -105,24 +162,20 @@ export const onRequest: PagesFunction = async (context) => {
   };
 
   try {
-    let creds = needsCrumb ? await getCrumb() : null;
+    let creds: { cookie: string; crumb: string } | null = null;
     let target = upstream(creds);
-    let response = await fetchWithTimeout(
-      target.url,
-      {
-        method: context.request.method,
-        headers: target.headers,
-        body,
-      },
-      UPSTREAM_TIMEOUT_MS,
-    );
 
-    // Stale/invalid crumb → refresh once and retry.
-    if (needsCrumb && response.status === 401) {
-      creds = await getCrumb(true);
-      if (creds) {
-        target = upstream(creds);
-        response = await fetchWithTimeout(
+    return proxyJsonRequest(context, {
+      serviceName: "Yahoo",
+      upstreamUrl: new URL(target.url),
+      cachePolicy,
+      fetchUpstream: async () => {
+        if (needsCrumb && !creds) {
+          creds = await getCrumb();
+          target = upstream(creds);
+        }
+
+        let response = await fetchWithTimeout(
           target.url,
           {
             method: context.request.method,
@@ -131,11 +184,33 @@ export const onRequest: PagesFunction = async (context) => {
           },
           UPSTREAM_TIMEOUT_MS,
         );
-      }
-    }
 
-    return cleanProxyResponse(response);
+        // Stale/invalid crumb → refresh once and retry.
+        if (needsCrumb && response.status === 401) {
+          creds = await getCrumb(true);
+          if (creds) {
+            target = upstream(creds);
+            response = await fetchWithTimeout(
+              target.url,
+              {
+                method: context.request.method,
+                headers: target.headers,
+                body,
+              },
+              UPSTREAM_TIMEOUT_MS,
+            );
+          }
+        }
+
+        return response;
+      },
+    });
   } catch {
-    return jsonErrorResponse("Failed to proxy to Yahoo");
+    return proxyJsonRequest(context, {
+      serviceName: "Yahoo",
+      upstreamUrl: new URL(`https://query1.finance.yahoo.com${path}`),
+      cachePolicy,
+      fetchUpstream: () => Promise.reject(new Error("Failed to proxy to Yahoo")),
+    });
   }
 };

@@ -2,6 +2,7 @@ import { envString, proxyJsonGet } from "../_shared/proxy";
 
 const UPSTREAM_ORIGIN = "https://api.coingecko.com";
 const CACHE_TTL_SECONDS = 1_800;
+const STALE_TTL_SECONDS = 6 * 60 * 60;
 
 /**
  * CoinGecko free/public traffic is rate-limited by upstream infrastructure.
@@ -14,6 +15,8 @@ export const onRequest: PagesFunction = (context) =>
     routePrefix: "/api/coingecko",
     serviceName: "CoinGecko",
     cacheTtlSeconds: CACHE_TTL_SECONDS,
+    staleTtlSeconds: STALE_TTL_SECONDS,
+    errorTtlSeconds: 60,
     headers: ({ env }) => {
       const apiKey =
         envString(env, "COINGECKO_DEMO_API_KEY") ??

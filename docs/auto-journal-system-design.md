@@ -116,7 +116,10 @@ the client-side `applyPriceSync` loop, and the `follow-store` localStorage layer
 - **Frontend:** React + Vite SPA, react-router-dom, react-i18next (en/id),
   TanStack Query, shadcn/ui, recharts, Zustand (UI state).
 - **Market data proxy:** Cloudflare Pages Functions (`functions/api/*`) for the
-  browser; the Edge Function hits Yahoo directly (UA-spoofed).
+  browser and cron flows. Auto-journal/daily-summary default through
+  `/api/yahoo`; asset-discovery defaults through `/api/yahoo`, `/api/coingecko`,
+  and `/api/binance`. The proxies provide fresh/stale/error cache behavior and
+  can be bypassed by cron `no-cache`/cache-buster requests when freshness matters.
 - **Backend:** Supabase — Postgres, Edge Functions (Deno), pg_cron + pg_net +
   Vault, Auth.
 

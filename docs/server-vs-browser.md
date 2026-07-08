@@ -22,7 +22,7 @@
 | 🌐 **Browser** (HP/laptop user) | Aplikasi React: tampilan, chart, dialog, screener | The React app: UI, charts, dialogs, screener |
 | 🦾 **Supabase Edge Function** (Deno) | Robot auto-journal (cron) — server, tanpa browser | The auto-journal robot (cron) — server, no browser |
 | 🗄️ **Supabase Postgres** (+ pg_cron + RLS) | Database, jadwal cron, keamanan, login | Database, cron schedule, security, auth |
-| ☁️ **Cloudflare** (Pages + Functions) | Hosting web statis + proxy Yahoo buat browser | Static site host + Yahoo proxy for the browser |
+| ☁️ **Cloudflare** (Pages + Functions) | Hosting web statis + proxy data market (Yahoo/CoinGecko/Binance/F&G) | Static site host + market-data proxies (Yahoo/CoinGecko/Binance/F&G) |
 
 ---
 
@@ -39,7 +39,7 @@
 | Login + redeem kode · *auth + redeem* | UI | | ✅ Auth+RPC | |
 | Baca jurnal di web · *read the journal on web* | ✅ minta | | ✅ RLS putusin | |
 | Kelola universe di `/admin` · *manage universe* | UI | | ✅ RLS tulis | |
-| Proxy ke Yahoo (anti-CORS) · *Yahoo proxy* | | | | ✅ Function |
+| Proxy data market + cache/stale fallback · *market-data proxy* | | | | ✅ Function |
 
 ---
 
@@ -59,18 +59,33 @@ One source, two execution sites. So "does the engine run on server or browser?" 
 
 ---
 
-## 🌐 vs 🛰️ Cara ambil data Yahoo beda / Two different Yahoo paths
+## 🌐 + 🛰️ Jalur Data Market / Market Data Path
 
-🇮🇩 Penting: browser dan robot **ambil Yahoo lewat jalur beda**:
-- **Browser** → lewat **Cloudflare Function** (`functions/api/yahoo/...`) biar gak kena CORS.
-- **Robot (Deno)** → **langsung** ke `query1.finance.yahoo.com` (gak lewat proxy).
+🇮🇩 Penting: browser dan robot sekarang **sengaja lewat jalur Cloudflare proxy
+yang sama** untuk data market:
+- **Browser** → `/api/yahoo`, `/api/coingecko`, `/api/binance`, `/api/fng`.
+- **Auto-journal / daily-summary (Deno)** → default lewat `/api/yahoo` supaya
+  snapshot candle sama dengan web; bisa override `YAHOO_PROXY_BASE` kalau proxy
+  perlu fallback.
+- **Asset-discovery (Deno)** → default lewat `/api/yahoo`, `/api/coingecko`,
+  dan `/api/binance`; bisa override `DISCOVERY_PROXY_BASE`.
 
-🇬🇧 Important: the browser and the robot **fetch Yahoo via different paths**:
-- **Browser** → through a **Cloudflare Function** (`functions/api/yahoo/...`) to dodge CORS.
-- **Robot (Deno)** → **directly** to `query1.finance.yahoo.com` (no proxy).
+🇬🇧 Important: the browser and robots now intentionally use the **same
+Cloudflare proxy path** for market data:
+- **Browser** → `/api/yahoo`, `/api/coingecko`, `/api/binance`, `/api/fng`.
+- **Auto-journal / daily-summary (Deno)** → default through `/api/yahoo` so
+  candle snapshots match the web; `YAHOO_PROXY_BASE` can override it.
+- **Asset-discovery (Deno)** → default through `/api/yahoo`, `/api/coingecko`,
+  and `/api/binance`; `DISCOVERY_PROXY_BASE` can override it.
 
-> 🇮🇩 Beda jalur ini pernah jadi sumber bug data basi (robot dapet snapshot beda dari web). Lihat memori/dok stale-data.
-> 🇬🇧 This path difference once caused a stale-data bug (the robot got a different snapshot than the web). See the stale-data notes.
+> 🇮🇩 Konsekuensinya: rate limit upstream di produksi bisa dipicu browser **dan**
+> robot cron, karena sama-sama keluar lewat Cloudflare. Proxy sengaja punya
+> cache fresh/stale/error supaya satu upstream yang marah gak bikin UI spam
+> request.
+> 🇬🇧 Consequence: production upstream rate limits can be triggered by both
+> browser and cron traffic, because both egress through Cloudflare. The proxy
+> keeps fresh/stale/error cache layers so one angry upstream does not make the UI
+> spam requests.
 
 ---
 
@@ -93,7 +108,10 @@ One source, two execution sites. So "does the engine run on server or browser?" 
 ```
         🌐 BROWSER (untrusted)                 ☁️ CLOUDFLARE
         - React UI / charts                    - Pages (host situs statis)
-        - screener: engine live  ──Yahoo──▶    - Function: proxy Yahoo
+        - screener: engine live  ──market──▶   - Functions: market-data proxy
+                                      ▲          (fresh/stale/error cache)
+        🦾 EDGE FUNCTION (Deno) ──────┘
+        - auto-journal / discovery
         - baca journal_trades  ─────────┐
         - /admin tulis universe ──────┐ │
                                       │ │
@@ -103,7 +121,7 @@ One source, two execution sites. So "does the engine run on server or browser?" 
         - RLS + is_premium()/is_admin() + RPC redeem  ← keamanan
         - pg_cron ⏰ ──POST──▶ 🦾 EDGE FUNCTION (Deno)
                                  - robot auto-journal
-                                 - Yahoo LANGSUNG (bukan via CF)
+                                 - market data via Cloudflare proxy by default
                                  - service-role → tulis journal_trades
 ```
 
