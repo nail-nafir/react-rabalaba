@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 
-const BASE_URL = "/api/binance";
+const BASE_URL = "https://fapi.binance.com";
 
 /** Yahoo bases that map to Binance's 1000× perpetual contracts. */
 const PERP_OVERRIDES: Record<string, string> = {

@@ -658,6 +658,7 @@
       "idx-most-actives": "IDX Most Actives"
     },
     "admin_console_title": "Admin Dashboard",
+    "console_entry": "Manage System",
     "admin_console_desc": "Manage the asset list and auto journal cron schedules.",
     "admin_console_users_desc": "Manage registered users, their tier statuses, and track redeemed premium access codes.",
     "status_active": "Active",

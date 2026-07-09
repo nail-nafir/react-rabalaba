@@ -1,7 +1,7 @@
 import { apiClient } from "./client";
 import type { Dominance } from "@/types/market";
 
-const BASE_URL = "/api/coingecko";
+const BASE_URL = "https://api.coingecko.com";
 
 interface CoinGeckoGlobalResponse {
   data?: {

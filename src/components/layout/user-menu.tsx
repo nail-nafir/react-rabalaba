@@ -8,7 +8,7 @@ import {
   LogOut,
   LogIn,
   UserPlus,
-  ShieldCheck,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,7 @@ const LANGUAGES = [
 export function UserMenu() {
   const { t, i18n } = useTranslation();
   const { isAuthenticated, user, signOut } = useAuth();
-  const { isAdmin, isOwner } = usePremiumAccess();
+  const { isAdmin } = usePremiumAccess();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const currentLang = i18n.language.split("-")[0];
@@ -104,10 +104,8 @@ export function UserMenu() {
                   onClick={() => navigate("/admin")}
                   className="text-xs cursor-pointer"
                 >
-                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  {isOwner
-                    ? t("admin.owner_console_title", "Dashboard Pemilik")
-                    : t("admin.admin_console_title", "Dashboard Admin")}
+                  <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                  {t("admin.console_entry", "Kelola Sistem")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>

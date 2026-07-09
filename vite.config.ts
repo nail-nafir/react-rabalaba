@@ -11,8 +11,6 @@ import type {
 const YAHOO_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const DEFAULT_PROXY_UA = "RabaLaba/1.0";
-const COINGECKO_DEMO_API_KEY =
-  process.env.COINGECKO_DEMO_API_KEY ?? process.env.COINGECKO_API_KEY;
 
 function applyCleanProxyHeaders(
   proxyReq: ClientRequest,
@@ -157,33 +155,6 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on("proxyReq", (proxyReq) => {
             applyCleanProxyHeaders(proxyReq);
-          });
-        },
-      },
-      "/api/coingecko": {
-        target: "https://api.coingecko.com",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/coingecko/, ""),
-        configure: (proxy) => {
-          proxy.on("proxyReq", (proxyReq) => {
-            applyCleanProxyHeaders(proxyReq);
-            if (COINGECKO_DEMO_API_KEY) {
-              proxyReq.setHeader(
-                "x-cg-demo-api-key",
-                COINGECKO_DEMO_API_KEY,
-              );
-            }
-          });
-        },
-      },
-      "/api/binance": {
-        target: "https://fapi.binance.com",
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api\/binance/, ""),
-        configure: (proxy) => {
-          proxy.on("proxyReq", (proxyReq) => {
-            applyCleanProxyHeaders(proxyReq, YAHOO_UA);
           });
         },
       },

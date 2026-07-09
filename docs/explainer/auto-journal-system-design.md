@@ -114,12 +114,18 @@ the client-side `applyPriceSync` loop, and the `follow-store` localStorage layer
 ### 4.1 Tech stack
 
 - **Frontend:** React + Vite SPA, react-router-dom, react-i18next (en/id),
-  TanStack Query, shadcn/ui, recharts, Zustand (UI state).
-- **Market data proxy:** Cloudflare Pages Functions (`functions/api/*`) for the
-  browser and cron flows. Auto-journal/daily-summary default through
-  `/api/yahoo`; asset-discovery defaults through `/api/yahoo`, `/api/coingecko`,
-  and `/api/binance`. The proxies provide fresh/stale/error cache behavior and
-  can be bypassed by cron `no-cache`/cache-buster requests when freshness matters.
+  TanStack Query, shadcn/ui, recharts, Redux Toolkit (UI/filter/auth state).
+- **Market data proxy:** Cloudflare Pages Functions (`functions/api/*`). The
+  **cron flows** (auto-journal/daily-summary/asset-discovery) go through the
+  proxies: auto-journal/daily-summary default through `/api/yahoo`;
+  asset-discovery defaults through `/api/yahoo`, `/api/coingecko`, and
+  `/api/binance`. The **browser** goes through the proxy only for Yahoo
+  (`/api/yahoo`, needs crumb/cookie gating) and Fear & Greed (`/api/fng`);
+  CoinGecko `/global` (dominance) and Binance derivatives are called **direct**
+  from the browser so each visitor uses their own IP instead of the shared
+  Cloudflare egress IP (avoids 429s on CoinGecko free tier / Binance limits).
+  The proxies provide fresh/stale/error cache behavior and can be bypassed by
+  cron `no-cache`/cache-buster requests when freshness matters.
 - **Backend:** Supabase — Postgres, Edge Functions (Deno), pg_cron + pg_net +
   Vault, Auth.
 
@@ -311,8 +317,8 @@ premium screener universe, ~114 symbols).
   (shadcn `Card` + react-hook-form + zod). The Subscription dialog
   (`license-dialog.tsx`) shows the current plan + a code-redeem field when logged
   in, or CTA buttons to those pages when logged out.
-- **`use-auth.ts`** — Zustand wrapper over `supabase.auth` (session, sign
-  in/up/out, `onAuthStateChange`).
+- **`use-auth.ts`** — mirrors `supabase.auth` session into the Redux `auth` slice
+  (session, sign in/up/out, `onAuthStateChange`).
 - **`use-premium-access.ts`** — reads the `profiles` row of the session user via
   react-query (server truth) and derives `tier` / `hasAccess` /
   `expiresAt`. `grantAccess(code)` → `redeem_access_code` RPC → invalidates the

@@ -658,6 +658,7 @@
       "idx-most-actives": "IDX Most Actives"
     },
     "admin_console_title": "Dashboard Admin",
+    "console_entry": "Kelola Sistem",
     "admin_console_desc": "Kelola semua aset dan jadwal rutin jurnal otomatis.",
     "admin_console_users_desc": "Kelola pengguna terdaftar, tingkat tier, dan penggunaan kode akses premium.",
     "status_active": "Aktif",
