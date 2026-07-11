@@ -172,7 +172,7 @@ function ManualActionCard({
         <Badge
           variant="outline"
           className={cn(
-            "font-mono text-[10px] font-bold rounded-md py-0.5 px-2",
+            "text-[10px] font-bold rounded-md py-0.5 px-2",
             badgeClassName,
           )}
         >
@@ -441,7 +441,7 @@ function JournalSettingsForm({
                   </div>
                   <Badge
                     variant="outline"
-                    className="font-mono text-[10px] font-bold rounded-md bg-emerald-500/15 border-emerald-500/30 text-emerald-400 py-0.5 px-2"
+                    className="text-[10px] font-bold rounded-md bg-emerald-500/15 border-emerald-500/30 text-emerald-400 py-0.5 px-2"
                   >
                     {settings.daily_summary_last_sent_at
                       ? t("admin.scan_last_run", {

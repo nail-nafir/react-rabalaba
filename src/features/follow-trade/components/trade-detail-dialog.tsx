@@ -252,7 +252,7 @@ export function TradeDetailDialog({
                   {priceLabel}
                 </p>
                 <div className="flex items-end gap-3 min-w-0">
-                  <span className="text-xl sm:text-3xl font-bold text-mono-data wrap-break-word">
+                  <span className="text-xl sm:text-3xl font-bold wrap-break-word">
                     {formatPrice(displayPrice, trade.assetType)}
                   </span>
                   {!isClosed && (
@@ -265,7 +265,7 @@ export function TradeDetailDialog({
               </div>
               <div className="text-right leading-tight">
                 <div
-                  className={`text-xl font-bold text-mono-data ${
+                  className={`text-xl font-bold ${
                     pos ? PALETTE.positive.text : PALETTE.negative.text
                   }`}
                 >
@@ -273,7 +273,7 @@ export function TradeDetailDialog({
                   {pnl.pct.toFixed(2)}%
                 </div>
                 <div
-                  className={`text-xs font-semibold text-mono-data ${
+                  className={`text-xs font-semibold ${
                     pos ? "text-emerald-400/80" : "text-rose-400/80"
                   }`}
                 >
@@ -288,14 +288,24 @@ export function TradeDetailDialog({
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             <Badge
               variant="outline"
-              className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono"
+              className={cn(
+                "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+                PALETTE.positive.bg,
+                PALETTE.positive.border,
+                PALETTE.positive.text,
+              )}
             >
               {t("journal.datetime_entry")} {formattedFollowedDate}
             </Badge>
             {formattedClosedDate && (
               <Badge
                 variant="outline"
-                className="font-semibold uppercase tracking-wider text-[10px] rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono"
+                className={cn(
+                  "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+                  PALETTE.positive.bg,
+                  PALETTE.positive.border,
+                  PALETTE.positive.text,
+                )}
               >
                 {t("journal.datetime_closed")} {formattedClosedDate}
               </Badge>

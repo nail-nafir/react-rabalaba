@@ -116,12 +116,12 @@ export function MarketTicker({ showTitle = false }: { showTitle?: boolean }) {
                   <span className="font-medium text-foreground">
                     {item.symbol}
                   </span>
-                  <span className="text-mono-data text-muted-foreground">
+                  <span className="text-muted-foreground">
                     {item.price}
                   </span>
                   <span
                     className={cn(
-                      "text-mono-data font-medium",
+                      "font-medium",
                       item.change > 0
                         ? "text-emerald-400"
                         : item.change < 0

@@ -169,7 +169,7 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               onChange={(e) => setSlug(e.target.value)}
               disabled={isEdit}
               placeholder="professional"
-              className="h-8 text-sm font-mono lowercase disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-auto"
+              className="h-8 text-sm lowercase disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-auto"
             />
           </div>
           <div className="space-y-1.5">
@@ -268,7 +268,7 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
             value={ctaLink}
             onChange={(e) => setCtaLink(e.target.value)}
             placeholder="/terminal or https://t.me/..."
-            className="h-8 text-sm font-mono placeholder:font-sans placeholder:text-xs"
+            className="h-8 text-sm placeholder:text-xs"
           />
         </div>
 

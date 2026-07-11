@@ -189,7 +189,7 @@ export function PaymentMethodsTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="font-semibold text-sm text-foreground text-mono-data">
+          <span className="font-semibold text-sm text-foreground">
             {row.original.account_no}
           </span>
         ),

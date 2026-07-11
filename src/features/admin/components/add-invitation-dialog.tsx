@@ -172,7 +172,7 @@ function InviteFormContent({ origin }: InviteFormProps) {
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2.5 min-w-0">
-            <span className="flex-1 truncate font-mono text-[11px] text-foreground select-all">
+            <span className="flex-1 truncate text-[11px] text-foreground select-all">
               {url}
             </span>
             <Button

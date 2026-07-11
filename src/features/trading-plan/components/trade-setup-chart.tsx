@@ -569,14 +569,14 @@ export function TradeSetupChart({
                       fontSize: `calc(100cqw / ${VB_W} * 11)`,
                     }}
                   >
-                    <span className="whitespace-nowrap text-mono-data text-muted-foreground">
+                    <span className="whitespace-nowrap text-muted-foreground">
                       {formatDayMonth(legendCandle.timestamp, i18n.language)}{" "}
                       {formatClock(legendCandle.timestamp)}
                     </span>
                     {/* The candle's % change reads as an OHLV stat, not part of
                         the timestamp — lead the stats group with it so it sits a
                         full group-gap from the date (matches the share card). */}
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-mono-data">
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span className={cn("whitespace-nowrap", dirColor)}>
                         {chg >= 0 ? "+" : ""}
                         {chg.toFixed(2)}%
@@ -656,7 +656,7 @@ export function TradeSetupChart({
                       y={py}
                       dominantBaseline="central"
                       textAnchor="start"
-                      className="fill-muted-foreground text-mono-data"
+                      className="fill-muted-foreground"
                       fontSize={11}
                     >
                       {formatPrice(p, assetType)}
@@ -685,7 +685,7 @@ export function TradeSetupChart({
                       x={cx}
                       y={CHART_BOTTOM + 12}
                       textAnchor={anchor}
-                      className="fill-muted-foreground text-mono-data"
+                      className="fill-muted-foreground"
                       fontSize={11}
                     >
                       {formatDayMonth(view[idx].timestamp, i18n.language)}
@@ -757,7 +757,7 @@ export function TradeSetupChart({
                     y={g.bodyTop}
                     width={g.bodyW}
                     height={g.bodyH}
-                    className="fill-current"
+              className="fill-current"
                   />
                 </g>
               ))}
@@ -955,7 +955,7 @@ export function TradeSetupChart({
                     y={crosshair.crossY}
                     dominantBaseline="central"
                     textAnchor="start"
-                    className="fill-background text-mono-data"
+                    className="fill-background"
                     fontSize={11}
                   >
                     {crosshair.priceStr}
@@ -973,7 +973,7 @@ export function TradeSetupChart({
                     y={CHART_BOTTOM + 1 + (AXIS_B - 1) / 2}
                     dominantBaseline="central"
                     textAnchor="middle"
-                    className="fill-background text-mono-data"
+                    className="fill-background"
                     fontSize={11}
                   >
                     {crosshair.timeStr}
@@ -992,7 +992,7 @@ export function TradeSetupChart({
             <span className="text-[10px] text-muted-foreground">
               Risk : Reward
             </span>
-            <span className="text-base font-bold leading-none text-mono-data">
+            <span className="text-base font-bold leading-none">
               1 : {formatRatio(model.riskReward)}
             </span>
           </CardContent>
@@ -1041,15 +1041,15 @@ export function TradeSetupChart({
                   </Badge>
                 )}
               </div>
-              <span className="text-base font-bold leading-none text-mono-data">
+              <span className="text-base font-bold leading-none">
                 {formatPrice(lvl.price, assetType)}
               </span>
               {lvl.kind !== "entry" && (
                 <span
                   className={cn(
-                    "text-[10px] font-medium",
-                    LEVEL_COLOR[lvl.kind],
-                  )}
+                     "text-[10px] font-medium",
+                     LEVEL_COLOR[lvl.kind],
+                   )}
                 >
                   {lvl.pctFromCurrent >= 0 ? "+" : ""}
                   {lvl.pctFromCurrent.toFixed(2)}%

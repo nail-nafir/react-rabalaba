@@ -67,7 +67,7 @@ export const StrengthBar = memo(function StrengthBar({
       {showValue && (
         <span
           className={cn(
-            "text-mono-data text-xs font-semibold shrink-0",
+            "text-xs font-semibold shrink-0",
             tone.text,
           )}
         >

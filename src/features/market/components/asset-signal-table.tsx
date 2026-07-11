@@ -365,7 +365,7 @@ export function AssetSignalTable() {
         ),
         cell: ({ row }) => {
           return (
-            <span className="text-sm font-semibold text-mono-data">
+            <span className="text-sm font-semibold">
               {formatPrice(row.original.price, row.original.assetType)}
             </span>
           );
@@ -395,7 +395,7 @@ export function AssetSignalTable() {
         ),
         cell: ({ row }) => {
           return (
-            <span className="text-xs text-mono-data text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {formatVolume(row.original.volume)}
             </span>
           );

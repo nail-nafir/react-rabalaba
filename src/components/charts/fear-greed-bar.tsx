@@ -37,7 +37,7 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
       <div className="flex items-baseline justify-between mb-2 w-full">
         <div className="flex items-baseline gap-1.5">
           <span
-            className="text-[10px] font-bold tabular-nums leading-none"
+            className="text-[10px] font-bold leading-none"
             style={{ color }}
           >
             {clampedValue}

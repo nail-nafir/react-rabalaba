@@ -167,7 +167,7 @@ export function TopPerformers() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      "h-7 w-7 rounded-full flex items-center justify-center p-0 font-mono font-black shrink-0 text-xs",
+                      "h-7 w-7 rounded-full flex items-center justify-center p-0 font-black shrink-0 text-xs",
                       isGainer ? SIGNAL_COLORS.long.bg : SIGNAL_COLORS.short.bg,
                       isGainer
                         ? SIGNAL_COLORS.long.text
@@ -203,7 +203,7 @@ export function TopPerformers() {
                 <div className="text-right shrink-0">
                   <div
                     className={cn(
-                      "font-mono text-sm font-bold leading-none tabular-nums",
+                      "text-sm font-bold leading-none",
                       isGainer
                         ? "text-emerald-600 dark:text-emerald-400"
                         : "text-rose-600 dark:text-rose-400",
@@ -212,7 +212,7 @@ export function TopPerformers() {
                     {pct >= 0 ? "+" : ""}
                     {pct.toFixed(2)}%
                   </div>
-                  <div className="text-[9px] text-muted-foreground font-mono leading-none mt-1">
+                  <div className="text-[9px] text-muted-foreground leading-none mt-1">
                     {formatDateNumeric(dateSecs)}
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export function TopPerformers() {
                   <div className="flex items-baseline gap-1 whitespace-nowrap">
                     <span
                       className={cn(
-                        "font-mono font-bold leading-none tabular-nums text-xs",
+                        "font-bold leading-none text-xs",
                         gainerStats && gainerStats.totalPct > 0
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-muted-foreground",
@@ -295,7 +295,7 @@ export function TopPerformers() {
                         ? `+${gainerStats.totalPct.toFixed(2)}%`
                         : "0.00%"}
                     </span>
-                    <span className="text-[9px] text-muted-foreground font-mono">
+                    <span className="text-[9px] text-muted-foreground">
                       {gainerStats
                         ? t("journal.from_n_data", { count: gainerStats.count })
                         : t("journal.from_n_data", { count: 0 })}
@@ -303,12 +303,12 @@ export function TopPerformers() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-right">
-                  <span className="text-xs font-mono font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-bold leading-none text-emerald-600 dark:text-emerald-400">
                     {allProfitStats.totalPct > 0
                       ? `+${allProfitStats.totalPct.toFixed(2)}%`
                       : "0.00%"}
                   </span>
-                  <span className="text-[9px] text-muted-foreground font-mono leading-none">
+                  <span className="text-[9px] text-muted-foreground leading-none">
                     {t("journal.from_n_data", { count: allProfitStats.count })}
                   </span>
                 </div>
@@ -328,7 +328,7 @@ export function TopPerformers() {
                   <div className="flex items-baseline gap-1 whitespace-nowrap">
                     <span
                       className={cn(
-                        "font-mono font-bold leading-none tabular-nums text-xs",
+                        "font-bold leading-none text-xs",
                         loserStats && loserStats.totalPct < 0
                           ? "text-rose-600 dark:text-rose-400"
                           : "text-muted-foreground",
@@ -338,7 +338,7 @@ export function TopPerformers() {
                         ? `${loserStats.totalPct.toFixed(2)}%`
                         : "0.00%"}
                     </span>
-                    <span className="text-[9px] text-muted-foreground font-mono">
+                    <span className="text-[9px] text-muted-foreground">
                       {loserStats
                         ? t("journal.from_n_data", { count: loserStats.count })
                         : t("journal.from_n_data", { count: 0 })}
@@ -346,12 +346,12 @@ export function TopPerformers() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-right">
-                  <span className="text-xs font-mono font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
+                  <span className="text-xs font-bold leading-none text-rose-600 dark:text-rose-400">
                     {allLossStats.totalPct < 0
                       ? `${allLossStats.totalPct.toFixed(2)}%`
                       : "0.00%"}
                   </span>
-                  <span className="text-[9px] text-muted-foreground font-mono leading-none">
+                  <span className="text-[9px] text-muted-foreground leading-none">
                     {t("journal.from_n_data", { count: allLossStats.count })}
                   </span>
                 </div>

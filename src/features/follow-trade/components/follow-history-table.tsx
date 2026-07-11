@@ -310,12 +310,12 @@ export function FollowHistoryTable() {
           const nowSec = Date.now() / 1000;
 
           return (
-            <div className="py-1 flex flex-col items-start font-mono text-xs gap-1 leading-none">
+            <div className="py-1 flex flex-col items-start text-xs gap-1 leading-none">
               {/* Row 1: entry date */}
               <div className="text-foreground flex items-center gap-1 font-medium">
                 <LogIn className="h-3 w-3 text-foreground shrink-0" />
                 <span>{formatDayMonth(entrySec, i18n.language)}</span>
-                <span className="text-muted-foreground/40">·</span>
+                <span className="text-muted-foreground/40">∙</span>
                 <span className="text-[10px] font-normal text-muted-foreground/75">
                   {formatClock(entrySec)}
                 </span>
@@ -326,7 +326,7 @@ export function FollowHistoryTable() {
                 <div className="text-muted-foreground flex items-center gap-1 font-medium">
                   <LogOut className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span>{formatDayMonth(closeSec, i18n.language)}</span>
-                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-muted-foreground/40">∙</span>
                   <span className="text-[10px] font-normal opacity-75">
                     {formatClock(closeSec)}
                   </span>
@@ -335,7 +335,7 @@ export function FollowHistoryTable() {
                 <div className="text-amber-400 flex items-center gap-1 font-medium">
                   <Hourglass className="h-3 w-3 text-amber-400 shrink-0" />
                   <span>{formatDayMonth(nowSec, i18n.language)}</span>
-                  <span className="text-amber-500/40">·</span>
+                  <span className="text-amber-500/40">∙</span>
                   <span className="text-[10px] font-normal opacity-75">
                     {formatClock(nowSec)}
                   </span>
@@ -411,7 +411,7 @@ export function FollowHistoryTable() {
           }
 
           return (
-            <div className="py-1 flex flex-col items-start font-mono text-xs gap-1 leading-none">
+            <div className="py-1 flex flex-col items-start text-xs gap-1 leading-none">
               {/* Row 1: entry price */}
               <div className="text-foreground flex items-center gap-1 font-medium">
                 <LogIn className="h-3 w-3 text-foreground shrink-0" />
@@ -557,7 +557,7 @@ export function FollowHistoryTable() {
               <div className="flex items-baseline gap-1">
                 <span
                   className={cn(
-                    "text-sm font-semibold font-mono leading-none",
+                    "text-sm font-bold tracking-tight leading-none",
                     isWin
                       ? PALETTE.positive.textStrong
                       : PALETTE.negative.textStrong,
@@ -566,10 +566,19 @@ export function FollowHistoryTable() {
                   {pct >= 0 ? "+" : ""}
                   {pct.toFixed(2)}%
                 </span>
-                <span className="text-muted-foreground font-mono">·</span>
                 <span
                   className={cn(
-                    "text-[10px] font-mono leading-none",
+                    "opacity-40",
+                    isWin
+                      ? PALETTE.positive.textStrong
+                      : PALETTE.negative.textStrong,
+                  )}
+                >
+                  ∙
+                </span>
+                <span
+                  className={cn(
+                    "text-[10px] leading-none",
                     isWin
                       ? "text-emerald-600/70 dark:text-emerald-400/70"
                       : "text-rose-600/70 dark:text-rose-400/70",

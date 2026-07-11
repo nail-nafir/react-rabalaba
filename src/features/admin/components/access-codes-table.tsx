@@ -112,7 +112,7 @@ export function AccessCodesTable() {
           return (
             <Badge
               variant="outline"
-              className="font-mono text-xs font-bold uppercase rounded-md bg-muted/50 border-border text-muted-foreground tracking-wider px-1.5 py-0.5"
+              className="text-xs font-bold uppercase rounded-md bg-muted/50 border-border text-muted-foreground tracking-wider px-1.5 py-0.5"
             >
               {isRevealed ? row.original.code : maskCode(row.original.code)}
             </Badge>
@@ -152,7 +152,7 @@ export function AccessCodesTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs font-semibold text-foreground font-mono">
+          <span className="text-xs font-semibold text-foreground">
             {row.original.max_redemptions ?? "∞"}
           </span>
         ),
@@ -166,7 +166,7 @@ export function AccessCodesTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs font-semibold text-foreground font-mono">
+          <span className="text-xs font-semibold text-foreground">
             {row.original.redemption_count}
           </span>
         ),
@@ -180,7 +180,7 @@ export function AccessCodesTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground font-mono">
+          <span className="text-xs text-muted-foreground">
             {row.original.trial_days ?? "—"}
           </span>
         ),

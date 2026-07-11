@@ -179,7 +179,7 @@ export function MarketSummaryRow() {
                                 style={{ backgroundColor: btcColor }}
                               />
                               <span className="text-zinc-400">BTC</span>
-                              <span className="font-mono text-zinc-200 font-bold">{btc.toFixed(1)}%</span>
+                              <span className="text-zinc-200 font-bold">{btc.toFixed(1)}%</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span
@@ -187,7 +187,7 @@ export function MarketSummaryRow() {
                                 style={{ backgroundColor: ethColor }}
                               />
                               <span className="text-zinc-400">ETH</span>
-                              <span className="font-mono text-zinc-200 font-bold">{eth.toFixed(1)}%</span>
+                              <span className="text-zinc-200 font-bold">{eth.toFixed(1)}%</span>
                             </div>
                           </div>
                         </div>
@@ -312,7 +312,7 @@ export function MarketSummaryRow() {
                         </CardContent>
 
                         <CardFooter className="flex-col items-start justify-center">
-                          <div className="text-2xl font-bold text-mono-data tracking-tight text-foreground">
+                          <div className="text-2xl font-bold tracking-tight text-foreground">
                             {formattedValue}
                           </div>
                           <PercentageChange

@@ -441,7 +441,7 @@ export function JournalAssetsTable() {
             return <span className="text-xs text-muted-foreground">—</span>;
           }
           return (
-            <span className="font-semibold text-sm text-foreground text-mono-data">
+            <span className="font-semibold text-sm text-foreground">
               {formatPrice(liveAsset.price, liveAsset.assetType)}
             </span>
           );

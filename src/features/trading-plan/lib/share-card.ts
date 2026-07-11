@@ -43,8 +43,7 @@ const H = 1040;
 
 const FONT =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-const FONT_MONO =
-  "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+const FONT_MONO = FONT;
 
 /**
  * Theme-aware palette. Hex values are derived from the resolved CSS variables

@@ -62,7 +62,7 @@ export const WinRateRing = memo(function WinRateRing({
         <span className="text-[9px] font-semibold tracking-wide text-muted-foreground">
           {t("dialog.bt_success_rate")}
         </span>
-        <span className="text-xl font-bold text-mono-data">
+        <span className="text-xl font-bold">
           {Math.round(value * 100)}%
         </span>
         <span className="px-2 text-center text-[9px] leading-tight text-muted-foreground">

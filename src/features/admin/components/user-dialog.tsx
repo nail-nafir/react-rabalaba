@@ -465,7 +465,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                       <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
                         {t("table.access_code")}
                       </span>
-                      <span className="text-foreground font-mono">
+                      <span className="text-foreground">
                         {user.access_code ? user.access_code : "—"}
                       </span>
                     </div>

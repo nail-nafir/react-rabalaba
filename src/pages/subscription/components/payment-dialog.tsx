@@ -77,7 +77,7 @@ export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
                           {desc}
                         </p>
                       )}
-                      <p className="text-[11px] font-mono font-mono-data text-foreground/80 break-all select-all">
+                      <p className="text-[11px] text-foreground/80 break-all select-all">
                         {value}
                       </p>
                     </div>

@@ -844,7 +844,7 @@ export function JournalDashboard() {
                                         <span className="text-muted-foreground">
                                           {displayName}
                                         </span>
-                                        <span className="font-mono font-medium text-foreground tabular-nums">
+                                        <span className="font-medium text-foreground">
                                           {formattedValue}
                                         </span>
                                       </div>
@@ -921,7 +921,7 @@ export function JournalDashboard() {
                           </span>
                           <span
                             className={cn(
-                              "font-mono",
+                              "",
                               isCount
                                 ? "dark:opacity-60"
                                 : valNum === 0
@@ -934,7 +934,7 @@ export function JournalDashboard() {
                             {isCount ? d.value : formattedValue}
                           </span>
                           {isCount && (
-                            <span className="font-mono dark:opacity-60">
+                            <span className="dark:opacity-60">
                               ({d.pct})
                             </span>
                           )}
@@ -1049,21 +1049,17 @@ export function JournalDashboard() {
                         </PieChart>
                       </ChartContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-xl font-bold text-foreground font-mono mt-1 leading-none">
+                        <span className="text-xl font-bold text-foreground mt-1 leading-none">
                           {stats.winRate.toFixed(0)}%
                         </span>
                         <span className="text-[10px] text-muted-foreground mt-1 leading-none">
-                          <span className="font-mono">
-                            {stats.winLoss.wins}
-                          </span>{" "}
+                          {stats.winLoss.wins}{" "}
                           {t("journal.profit_abbr")} /{" "}
-                          <span className="font-mono">
-                            {stats.winLoss.losses}
-                          </span>{" "}
+                          {stats.winLoss.losses}{" "}
                           {t("journal.loss_abbr")}
                         </span>
                         <span className="text-[10px] text-foreground mt-0.5">
-                          <span className="font-mono">{stats.closed}</span>{" "}
+                          {stats.closed}{" "}
                           {t("journal.transactions")}
                         </span>
                       </div>
@@ -1098,10 +1094,10 @@ export function JournalDashboard() {
                             <span className="transition-colors dark:opacity-60">
                               {d.name}
                             </span>
-                            <span className="font-mono dark:opacity-60">
+                            <span className="dark:opacity-60">
                               {d.value}
                             </span>
-                            <span className="font-mono dark:opacity-60">
+                            <span className="dark:opacity-60">
                               ({pct.toFixed(0)}%)
                             </span>
                           </div>
@@ -1181,7 +1177,7 @@ export function JournalDashboard() {
                                           </span>
                                           <span
                                             className={cn(
-                                              "font-mono font-medium tabular-nums",
+                                              "font-medium",
                                               isZero
                                                 ? "text-foreground"
                                                 : valNum > 0
@@ -1232,16 +1228,16 @@ export function JournalDashboard() {
                             <span className="transition-colors dark:opacity-60">
                               {d.name}
                             </span>
-                            <span className="font-mono dark:opacity-60">
+                            <span className="dark:opacity-60">
                               {d.count}
                             </span>
-                            <span className="font-mono dark:opacity-60">
+                            <span className="dark:opacity-60">
                               ({d.pct})
                             </span>
-                            <span className="text-zinc-600 dark:text-zinc-500 select-none">·</span>
+                            <span className="text-zinc-600 dark:text-zinc-500 select-none">∙</span>
                             <span
                               className={cn(
-                                "font-mono font-medium",
+                                "font-medium",
                                 d.count === 0
                                   ? "text-muted-foreground"
                                   : Number(d.winRate.replace("%", "")) >= 60

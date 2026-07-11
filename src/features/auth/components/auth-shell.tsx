@@ -63,11 +63,11 @@ export function AuthShell({
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider">
+                  <span className="text-[9px] text-slate-400 uppercase tracking-wider">
                     Engine: online
                   </span>
                 </div>
-                <span className="text-[9px] font-mono text-primary font-bold">
+                <span className="text-[9px] text-primary font-bold">
                   V-1.0
                 </span>
               </div>
@@ -162,7 +162,7 @@ export function AuthShell({
               </div>
 
               {/* Logs */}
-              <div className="space-y-1 font-mono text-[9px] text-slate-400">
+              <div className="space-y-1 text-[9px] text-slate-400">
                 <p className="text-emerald-400/90">
                   &gt; ALGO: BUY BTC @ $67,420 [TP1 hit]
                 </p>
@@ -208,7 +208,7 @@ export function AuthShell({
           </div>
 
           {/* Secure footer */}
-          <div className="relative z-10 flex items-center gap-1.5 text-[9px] text-slate-500 font-mono">
+          <div className="relative z-10 flex items-center gap-1.5 text-[9px] text-slate-500">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
             <span>End-to-End Encrypted</span>
           </div>

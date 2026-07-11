@@ -22,7 +22,7 @@ function DetailBox({ label, value }: { label: string; value: string }) {
       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
         {label}
       </span>
-      <span className="text-xs font-bold text-mono-data text-foreground">
+      <span className="text-xs font-bold text-foreground">
         {value}
       </span>
     </div>

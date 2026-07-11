@@ -78,7 +78,7 @@ export function DataTablePagination<TData>({
               }
             }}
             onBlur={submitEdit}
-            className="h-6 w-12 px-1 text-center font-mono text-xs rounded border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="h-6 w-12 px-1 text-center text-xs rounded border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         ) : (
           <button
@@ -91,7 +91,7 @@ export function DataTablePagination<TData>({
             }}
             disabled={!canJump}
             className={cn(
-              "font-mono font-semibold text-foreground px-1.5 py-0.5 rounded border border-border hover:bg-muted/50 transition-all duration-150",
+              "font-semibold text-foreground px-1.5 py-0.5 rounded border border-border hover:bg-muted/50 transition-all duration-150",
               canJump && "cursor-pointer",
             )}
             title={canJump ? "Click to edit page" : undefined}
@@ -100,7 +100,7 @@ export function DataTablePagination<TData>({
           </button>
         )}
         <span>{t("table.of")}</span>
-        <span className="font-mono font-semibold text-foreground">
+        <span className="font-semibold text-foreground">
           {pageCount || 0}
         </span>
       </div>
@@ -133,7 +133,7 @@ export function DataTablePagination<TData>({
         </Button>
 
         {/* Fallback pagination status on ultra-small mobile screens */}
-        <span className="text-muted-foreground text-xs font-mono px-3 py-2 rounded-md bg-muted/40 border border-border/25 min-[480px]:hidden pointer-events-none">
+        <span className="text-muted-foreground text-xs px-3 py-2 rounded-md bg-muted/40 border border-border/25 min-[480px]:hidden pointer-events-none">
           {currentPage}/{pageCount}
         </span>
 

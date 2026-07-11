@@ -246,7 +246,7 @@ export function AssetDetailDialog() {
                   {t("journal.current_price")}
                 </p>
                 <div className="flex items-end gap-3 min-w-0">
-                  <span className="text-xl sm:text-3xl font-bold text-mono-data wrap-break-word">
+                  <span className="text-xl sm:text-3xl font-bold wrap-break-word">
                     {formatPrice(currentPrice, asset?.assetType)}
                   </span>
                   <PercentageChange
@@ -457,7 +457,7 @@ export function AssetDetailDialog() {
                           <CardContent>
                             <div
                               className={cn(
-                                "text-sm font-bold tabular-nums tracking-tight",
+                                "text-sm font-bold tracking-tight",
                                 backtest.expectancy > 0
                                   ? PALETTE.positive.text
                                   : backtest.expectancy < 0
@@ -476,7 +476,7 @@ export function AssetDetailDialog() {
                           <CardContent>
                             <div
                               className={cn(
-                                "text-sm font-bold tabular-nums tracking-tight",
+                                "text-sm font-bold tracking-tight",
                                 backtest.profitFactor >= 1
                                   ? PALETTE.positive.text
                                   : PALETTE.negative.text,
@@ -493,7 +493,7 @@ export function AssetDetailDialog() {
                         </Card>
                         <Card className="flex-1 border-border border">
                           <CardContent>
-                            <div className="text-sm font-bold tabular-nums tracking-tight text-rose-400">
+                            <div className="text-sm font-bold tracking-tight text-rose-400">
                               -{backtest.maxDrawdownR.toFixed(2)}R
                             </div>
                             <CardDescription className="text-[10px] text-muted-foreground">
@@ -602,7 +602,7 @@ export function AssetDetailDialog() {
                       <div className="flex items-stretch gap-3">
                         <Card className="flex-1 border-border border">
                           <CardContent>
-                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                            <div className="text-sm font-bold tracking-tight">
                               {typeof assetFundamentals.trailingPE === "number"
                                 ? assetFundamentals.trailingPE.toFixed(1)
                                 : "—"}
@@ -614,7 +614,7 @@ export function AssetDetailDialog() {
                         </Card>
                         <Card className="flex-1 border-border border">
                           <CardContent>
-                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                            <div className="text-sm font-bold tracking-tight">
                               {typeof assetFundamentals.priceToBook === "number"
                                 ? assetFundamentals.priceToBook.toFixed(1)
                                 : "—"}
@@ -626,7 +626,7 @@ export function AssetDetailDialog() {
                         </Card>
                         <Card className="flex-1 border-border border">
                           <CardContent>
-                            <div className="text-sm font-bold tabular-nums tracking-tight">
+                            <div className="text-sm font-bold tracking-tight">
                               {typeof assetFundamentals.debtToEquity === "number"
                                 ? `${(assetFundamentals.debtToEquity / 100).toFixed(1)}×`
                                 : "—"}
@@ -686,7 +686,7 @@ export function AssetDetailDialog() {
                           <CardContent>
                             <div
                               className={cn(
-                                "text-sm font-bold tabular-nums tracking-tight",
+                                "text-sm font-bold tracking-tight",
                                 accumulation.breakdown.cmf > 0
                                   ? PALETTE.positive.text
                                   : accumulation.breakdown.cmf < 0
@@ -705,7 +705,7 @@ export function AssetDetailDialog() {
                           <CardContent>
                             <div
                               className={cn(
-                                "text-sm font-bold tabular-nums tracking-tight",
+                                "text-sm font-bold tracking-tight",
                                 accumulation.breakdown.mfi > 50
                                   ? PALETTE.positive.text
                                   : accumulation.breakdown.mfi < 50
@@ -724,7 +724,7 @@ export function AssetDetailDialog() {
                           <CardContent>
                             <div
                               className={cn(
-                                "text-sm font-bold tabular-nums tracking-tight",
+                                "text-sm font-bold tracking-tight",
                                 accumulation.breakdown.upDownVolume > 0
                                   ? PALETTE.positive.text
                                   : accumulation.breakdown.upDownVolume < 0
@@ -782,7 +782,7 @@ export function AssetDetailDialog() {
                               <CardContent>
                                 <div
                                   className={cn(
-                                    "text-sm font-bold tabular-nums tracking-tight",
+                                    "text-sm font-bold tracking-tight",
                                     typeof v !== "number"
                                       ? "text-muted-foreground"
                                       : v > 0
@@ -856,7 +856,7 @@ export function AssetDetailDialog() {
                             <CardContent>
                               <div
                                 className={cn(
-                                  "text-sm font-bold tabular-nums tracking-tight",
+                                  "text-sm font-bold tracking-tight",
                                   smartMoney.fundingRate == null
                                     ? "text-muted-foreground"
                                     : smartMoney.fundingRate > 0
@@ -879,7 +879,7 @@ export function AssetDetailDialog() {
                             <CardContent>
                               <div
                                 className={cn(
-                                  "text-sm font-bold tabular-nums tracking-tight",
+                                  "text-sm font-bold tracking-tight",
                                   smartMoney.openInterestDelta == null
                                     ? "text-muted-foreground"
                                     : smartMoney.openInterestDelta > 0
@@ -900,7 +900,7 @@ export function AssetDetailDialog() {
                           </Card>
                           <Card className="flex-1 border-border border">
                             <CardContent>
-                              <div className="text-sm font-bold tabular-nums tracking-tight">
+                              <div className="text-sm font-bold tracking-tight">
                                 {smartMoney.longShortRatio != null
                                   ? smartMoney.longShortRatio.toFixed(2)
                                   : "—"}
@@ -1312,7 +1312,7 @@ function IndicatorItem({
         <div className="text-[10px] text-muted-foreground">{label}</div>
         <div
           className={cn(
-            "text-xs font-semibold text-mono-data",
+            "text-xs font-semibold",
             INDICATOR_STATUS_COLORS[(status ?? "normal") as IndicatorStatus],
           )}
         >

@@ -144,7 +144,7 @@ function MethodForm({ method, onClose }: MethodFormProps) {
             value={accountNo}
             onChange={(e) => setAccountNo(e.target.value)}
             placeholder="0123456789 or 0x..."
-            className="h-8 text-sm font-mono placeholder:font-sans placeholder:text-xs"
+            className="h-8 text-sm placeholder:font-sans placeholder:text-xs"
           />
         </div>
 

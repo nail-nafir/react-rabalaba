@@ -96,15 +96,15 @@ export const SuccessRateBar = memo(function SuccessRateBar({
       )}
       {showValue &&
         (total > 0 ? (
-          <div className="flex flex-col items-start font-mono gap-1 leading-none shrink-0">
+          <div className="flex flex-col items-start gap-1 leading-none shrink-0">
             <span
-              className={cn("text-sm font-semibold leading-none", textColor)}
+              className={cn("text-sm font-bold tracking-tight leading-none", textColor)}
             >
               {`${successPercent.toFixed(0)}%`}
             </span>
             {/* Second row matches the journal P&L column's TP-progress line
                 exactly (size + weight + mono + color) so the two read as one. */}
-            <span className="text-[10px] font-semibold text-mono-data uppercase tracking-wider text-foreground">
+            <span className="text-xs text-muted-foreground">
               {`${wins}/${total}`}
             </span>
           </div>

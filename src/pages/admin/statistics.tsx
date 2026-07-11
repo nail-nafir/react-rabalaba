@@ -493,7 +493,7 @@ export default function AdminSystemPage() {
                           <span className="text-muted-foreground">
                             {displayName}
                           </span>
-                          <span className="font-mono font-medium text-foreground tabular-nums">
+                          <span className="font-medium text-foreground">
                             {Number(value).toLocaleString()}
                           </span>
                         </div>
@@ -634,7 +634,7 @@ export default function AdminSystemPage() {
         <Card className="border border-border bg-card shadow-xs">
           <div className="flex items-start justify-between p-5 h-full">
             <div className="space-y-1">
-              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono leading-none">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-none">
                 {userStats.total}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -651,7 +651,7 @@ export default function AdminSystemPage() {
         <Card className="border border-border bg-card shadow-xs">
           <div className="flex items-start justify-between p-5 h-full">
             <div className="space-y-1">
-              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono leading-none">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-none">
                 {assetStats.total}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -668,7 +668,7 @@ export default function AdminSystemPage() {
         <Card className="border border-border bg-card shadow-xs">
           <div className="flex items-start justify-between p-5 h-full">
             <div className="space-y-1">
-              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono leading-none">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-none">
                 {codeStats.totalRedemptions}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -685,7 +685,7 @@ export default function AdminSystemPage() {
         <Card className="border border-border bg-card shadow-xs">
           <div className="flex items-start justify-between p-5 h-full">
             <div className="space-y-1">
-              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono leading-none">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-none">
                 {totalSignals}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -822,7 +822,7 @@ export default function AdminSystemPage() {
                                     <span className="text-muted-foreground">
                                       {displayName}
                                     </span>
-                                    <span className="font-mono font-medium text-foreground tabular-nums">
+                                    <span className="font-medium text-foreground">
                                       {Number(value).toLocaleString()}
                                     </span>
                                   </div>
@@ -1008,7 +1008,7 @@ export default function AdminSystemPage() {
                                     <span className="text-muted-foreground">
                                       {displayName}
                                     </span>
-                                    <span className="font-mono font-medium text-foreground tabular-nums">
+                                    <span className="font-medium text-foreground">
                                       {Number(value).toLocaleString()}
                                     </span>
                                   </div>
@@ -1088,7 +1088,7 @@ export default function AdminSystemPage() {
               )}
             </CardDescription>
           </div>
-          <div className="text-[10px] font-mono flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="text-[10px] flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -1105,7 +1105,7 @@ export default function AdminSystemPage() {
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
                   {t("admin.summary_vite_env", "Vite Environment")}
                 </div>
-                <div className="font-mono font-bold text-foreground mt-1">
+                <div className="font-bold text-foreground mt-1">
                   Vite + React
                 </div>
               </div>
@@ -1116,7 +1116,7 @@ export default function AdminSystemPage() {
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
                   {t("admin.summary_db_engine", "Database Engine")}
                 </div>
-                <div className="font-mono font-bold text-foreground mt-1">
+                <div className="font-bold text-foreground mt-1">
                   Supabase PG
                 </div>
               </div>
@@ -1127,7 +1127,7 @@ export default function AdminSystemPage() {
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
                   {t("admin.summary_api_gateway", "API Gateway")}
                 </div>
-                <div className="font-mono font-bold text-foreground mt-1">
+                <div className="font-bold text-foreground mt-1">
                   Yahoo Finance
                 </div>
               </div>
@@ -1138,7 +1138,7 @@ export default function AdminSystemPage() {
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
                   {t("admin.summary_trans_service", "Translation Service")}
                 </div>
-                <div className="font-mono font-bold text-foreground mt-1">
+                <div className="font-bold text-foreground mt-1">
                   i18next v26
                 </div>
               </div>
@@ -1147,13 +1147,13 @@ export default function AdminSystemPage() {
 
           {/* Terminal Live logs */}
           <div className="flex-1 flex flex-col min-h-0 bg-zinc-950/80 dark:bg-black/40 border border-border/80 rounded-lg p-3 shadow-inner">
-            <div className="flex items-center gap-1.5 border-b border-border/40 pb-2 mb-2 text-[10px] text-muted-foreground font-mono">
+            <div className="flex items-center gap-1.5 border-b border-border/40 pb-2 mb-2 text-[10px] text-muted-foreground">
               <div className="size-2 rounded-full bg-rose-500" />
               <div className="size-2 rounded-full bg-amber-500" />
               <div className="size-2 rounded-full bg-emerald-500" />
               <span className="ml-2 font-semibold">system_diagnostics.log</span>
             </div>
-            <div className="flex-1 font-mono text-[10px] leading-relaxed overflow-y-auto space-y-1.5 text-muted-foreground select-none">
+            <div className="flex-1 text-[10px] leading-relaxed overflow-y-auto space-y-1.5 text-muted-foreground select-none">
               {dynamicLogs.map((log, index) => (
                 <p key={index} className="flex gap-2">
                   <span className="text-zinc-500 shrink-0">[{log.time}]</span>

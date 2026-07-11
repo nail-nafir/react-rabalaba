@@ -228,7 +228,7 @@ export function InvitationsTable() {
         ),
         cell: ({ row }) => (
           <div className="py-1">
-            <div className="font-bold text-sm tracking-tight text-foreground font-mono">
+            <div className="font-bold text-sm tracking-tight text-foreground">
               {row.original.code}
             </div>
             {row.original.recipient_label && (
@@ -276,7 +276,7 @@ export function InvitationsTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="text-xs font-semibold text-foreground font-mono">
+          <span className="text-xs font-semibold text-foreground">
             {`${row.original.redemption_count}/${row.original.max_redemptions ?? "∞"}`}
           </span>
         ),

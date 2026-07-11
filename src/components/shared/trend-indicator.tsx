@@ -37,7 +37,7 @@ export function TrendIndicator({
             style={{ width: `${pct}%` }}
           />
         </span>
-        <span className="text-[10px] font-bold tabular-nums text-mono-data">{meta}</span>
+        <span className="text-[10px] font-bold tabular-nums">{meta}</span>
       </span>
     );
   };
@@ -51,7 +51,7 @@ export function TrendIndicator({
           {meta && (showBar ? (
             miniBar(parseInt(meta))
           ) : (
-            <span className="text-[10px] font-bold tabular-nums text-mono-data ml-1.5">
+            <span className="text-[10px] font-bold tabular-nums ml-1.5">
               {meta}%
             </span>
           ))}

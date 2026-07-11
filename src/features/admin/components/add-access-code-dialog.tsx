@@ -158,7 +158,7 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                     autoFocus
                     autoComplete="off"
                     spellCheck={false}
-                    className="placeholder:text-sm text-sm uppercase font-mono"
+                    className="placeholder:text-sm text-sm uppercase"
                   />
                   {fieldState.invalid && (
                     <FieldError

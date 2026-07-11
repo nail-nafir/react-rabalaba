@@ -195,7 +195,7 @@ export function SubscriptionPlansTable() {
           </span>
         ),
         cell: ({ row }) => (
-          <span className="font-semibold text-sm text-foreground text-mono-data">
+          <span className="font-semibold text-sm text-foreground">
             {pickLocale(row.original.price, lang, "—") as string}
           </span>
         ),

@@ -84,7 +84,7 @@ function renderValueLabel(props: LabelProps) {
       dominantBaseline="central"
       fontSize={11}
       fontWeight={600}
-      className={cn("text-mono-data tabular-nums", LABEL_CLASS[tone(v)])}
+      className={cn("tabular-nums", LABEL_CLASS[tone(v)])}
     >
       {pct > 0 ? `+${pct}` : pct}%
     </text>

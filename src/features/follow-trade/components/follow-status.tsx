@@ -64,7 +64,6 @@ export function TpProgress({
   total,
   slHit = false,
   reversed = false,
-  reversedPnl,
   size = "xs",
   className,
   isClosed = false,
@@ -73,7 +72,7 @@ export function TpProgress({
   if (total === 0 && !slHit) {
     if (variant === "badge") return null;
     return (
-      <span className="text-xs text-mono-data text-muted-foreground">—</span>
+      <span className="text-xs text-muted-foreground">—</span>
     );
   }
 
@@ -122,14 +121,13 @@ export function TpProgress({
     );
   }
 
-  const labelCls = size === "sm" ? "text-[11px]" : "text-[10px]";
+  const labelCls = size === "sm" ? "text-[11px]" : "text-xs";
 
   if (slHit) {
     return (
       <span
         className={cn(
-          PALETTE.negative.textStrong,
-          "font-semibold text-mono-data uppercase tracking-wider",
+          "text-muted-foreground",
           labelCls,
           className,
         )}
@@ -143,21 +141,18 @@ export function TpProgress({
     return (
       <span
         className={cn(
-          "font-semibold text-mono-data uppercase tracking-wider flex items-baseline gap-1",
+          "text-muted-foreground flex items-baseline gap-1",
           labelCls,
           className,
         )}
       >
-        <span className={PALETTE.positive.textStrong}>
+        <span>
           TP {reached}/{total}
         </span>
         {reversed && (
           <>
-            <span className="text-muted-foreground">·</span>
-            {/* Match the R/risk value above it (emerald) so the TP-secured row
-                reads as one uniform-toned line. The standalone no-TP REVERSED
-                below stays neutral/white. */}
-            <span className="text-emerald-600/70 dark:text-emerald-400/70">
+            <span>∙</span>
+            <span>
               REVERSED
             </span>
           </>
@@ -166,19 +161,10 @@ export function TpProgress({
     );
   }
 
-  // No-TP reversal close → REVERSED, tinted green/red by its realized P/L so it
-  // reads as the donut's Reversal Profit / Loss. Open & still flat → muted.
-  const reversedTone =
-    reversedPnl === "profit"
-      ? PALETTE.positive.textStrong
-      : reversedPnl === "loss"
-        ? PALETTE.negative.textStrong
-        : "text-muted-foreground/60";
   return (
     <span
       className={cn(
-        "font-semibold text-mono-data uppercase tracking-wider",
-        isClosed ? reversedTone : "text-foreground",
+        "text-muted-foreground",
         labelCls,
         className,
       )}

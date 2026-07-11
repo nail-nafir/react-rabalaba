@@ -445,7 +445,7 @@ function SubscriptionCard({
           <CardContent className="flex flex-col items-center justify-center gap-1 p-4">
             {originalPrice && (
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="relative text-xs font-semibold text-rose-500 dark:text-rose-400 font-mono-data px-1.5 select-none">
+                <span className="relative text-xs font-semibold text-rose-500 dark:text-rose-400 px-1.5 select-none">
                   {originalPrice}
                   <span className="absolute inset-x-0 top-1/2 h-[1.5px] bg-rose-500 dark:bg-rose-400 -translate-y-1/2" />
                 </span>
@@ -462,7 +462,7 @@ function SubscriptionCard({
               </div>
             )}
             <div className="flex items-baseline justify-center gap-1 w-full">
-              <span className="text-3xl sm:text-4xl font-black tracking-tight text-foreground font-mono-data">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
                 {price}
               </span>
               {price !== "Custom" && price !== "Kustom" && (
