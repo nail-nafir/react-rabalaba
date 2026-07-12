@@ -555,7 +555,7 @@
     "outcome_reversed_win": "Reversal Profit",
     "outcome_reversed_loss": "Reversal Loss",
     "benchmark_btc": "Benchmark (BTC)",
-    "benchmark_ihsg": "Benchmark (IHSG)",
+    "benchmark_ihsg": "Benchmark (IHSG IDX)",
     "benchmark_sp500": "Benchmark (S&P 500)",
     "total_pnl": "Total PnL",
     "timeframe_1d": "1D",

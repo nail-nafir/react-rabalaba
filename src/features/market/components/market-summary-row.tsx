@@ -14,8 +14,8 @@ import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
-import { useMarketMomentum } from "@/services/queries/use-market-momentum";
 import { MARKET_INDICES } from "@/constants/assets";
+import { cn } from "@/lib/utils";
 import { Loader2, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,13 @@ export function MarketSummaryRow() {
     isError: indicesError,
     refetch: refetchIndices,
   } = useMarketData(MARKET_INDICES.map((i) => i.symbol));
-  const { data: marketContext, isLoading: contextLoading, refetch: refetchContext } = useCryptoContext();
-  const { isLoading: dominanceLoading, refetch: refetchDominance } = useCryptoDominance();
-  const { momentum } = useMarketMomentum();
+  const {
+    data: marketContext,
+    isLoading: contextLoading,
+    refetch: refetchContext,
+  } = useCryptoContext();
+  const { isLoading: dominanceLoading, refetch: refetchDominance } =
+    useCryptoDominance();
 
   const showEmptyState =
     (fearGreedError || (!fearGreed && !fearGreedLoading)) &&
@@ -77,9 +81,9 @@ export function MarketSummaryRow() {
         </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto scrollbar-none min-h-50">
+      <div className="grid grid-flow-col auto-cols-[minmax(13rem,1fr)] grid-rows-[auto_1fr_auto] gap-4 overflow-x-auto scrollbar-none min-h-50">
         {showEmptyState ? (
-          <div className="w-full flex items-center justify-center border rounded-xl py-8 border-dashed">
+          <div className="w-full flex items-center justify-center border rounded-xl py-8 border-dashed row-span-3 col-span-full">
             <EmptyState
               title={t("market.data_unavailable")}
               description={t("market.data_unavailable_desc")}
@@ -107,19 +111,15 @@ export function MarketSummaryRow() {
             {contextLoading || fearGreedLoading ? (
               <SkeletonCryptoCard className="min-w-52" />
             ) : (
-              <Card className="min-w-52 border border-border">
+              <Card className="min-w-52 border border-border grid grid-rows-subgrid row-span-3">
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
                     Crypto
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     {marketContext && (
                       <TrendIndicator
                         trend={marketContext.btcTrend}
-                        meta={(marketContext.btcTrend === "bearish"
-                          ? momentum?.bearishPercent
-                          : momentum?.bullishPercent
-                        )?.toString()}
                         showBar={false}
                       />
                     )}
@@ -146,70 +146,106 @@ export function MarketSummaryRow() {
                   </CardContent>
                 ) : (
                   <>
-                <CardContent className="flex flex-1 flex-col justify-center gap-4">
-                  {marketContext?.dominance ? (
-                    (() => {
-                      const { btc, eth } = marketContext.dominance;
-                      const others = Math.max(0, 100 - btc - eth);
-                      const getColor = (val: number) => {
-                        if (val <= 20) return "var(--color-rose-400)";
-                        if (val <= 40) return "var(--color-orange-400)";
-                        if (val <= 60) return "var(--color-amber-400)";
-                        if (val <= 80) return "var(--color-lime-400)";
-                        return "var(--color-emerald-400)";
-                      };
-                      const btcColor = getColor(btc);
-                      const ethColor = getColor(eth);
+                    <CardContent className="flex flex-1 flex-col gap-4">
+                      {marketContext?.dominance ? (
+                        (() => {
+                          const { btc, eth } = marketContext.dominance;
+                          const others = Math.max(0, 100 - btc - eth);
+                          const getColor = (val: number) => {
+                            if (val <= 20) return "var(--color-rose-400)";
+                            if (val <= 40) return "var(--color-orange-400)";
+                            if (val <= 60) return "var(--color-amber-400)";
+                            if (val <= 80) return "var(--color-lime-400)";
+                            return "var(--color-emerald-400)";
+                          };
+                          const btcColor = getColor(btc);
+                          const ethColor = getColor(eth);
 
-                      return (
-                        <div className="flex flex-col items-center w-full py-1 gap-1">
-                          <div className="relative shrink-0" style={{ width: 50, height: 50 }}>
-                            <DominanceChart
-                              btc={btc}
-                              eth={eth}
-                              others={others}
-                              width={50}
-                              height={50}
-                            />
-                          </div>
-                          <div className="flex justify-center gap-x-4 text-[11px] text-[#71717a] font-normal">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="h-1.5 w-1.5 rounded-full shrink-0"
-                                style={{ backgroundColor: btcColor }}
-                              />
-                              <span className="text-zinc-400">BTC</span>
-                              <span className="text-zinc-200 font-bold">{btc.toFixed(1)}%</span>
+                          return (
+                            <div className="flex flex-1 flex-col items-center justify-center w-full py-1 gap-1">
+                              <div
+                                className="relative shrink-0"
+                                style={{ width: 56, height: 56 }}
+                              >
+                                <DominanceChart
+                                  btc={btc}
+                                  eth={eth}
+                                  others={others}
+                                  width={56}
+                                  height={56}
+                                />
+                              </div>
+                              <div className="flex justify-center gap-x-4 text-[12px] text-[#71717a] font-normal">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: btcColor }}
+                                  />
+                                  <span className="text-zinc-400">BTC</span>
+                                  <span className="text-zinc-200 font-bold">
+                                    {btc.toFixed(1)}%
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: ethColor }}
+                                  />
+                                  <span className="text-zinc-400">ETH</span>
+                                  <span className="text-zinc-200 font-bold">
+                                    {eth.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="h-1.5 w-1.5 rounded-full shrink-0"
-                                style={{ backgroundColor: ethColor }}
-                              />
-                              <span className="text-zinc-400">ETH</span>
-                              <span className="text-zinc-200 font-bold">{eth.toFixed(1)}%</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="flex flex-1 flex-col items-center justify-center py-2 gap-1.5 w-full">
-                      {dominanceLoading ? (
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin opacity-50" />
-                          <span>{t("market.loading_dominance")}</span>
-                        </div>
+                          );
+                        })()
                       ) : (
-                        <div className="flex flex-col items-center gap-1.5">
+                        <div className="flex flex-1 flex-col items-center justify-center py-2 gap-1.5 w-full">
+                          {dominanceLoading ? (
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin opacity-50" />
+                              <span>{t("market.loading_dominance")}</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground">
+                                {t("market.dominance_unavailable")}
+                              </span>
+                              <Button
+                                variant="link"
+                                size="xs"
+                                onClick={() => {
+                                  refetchDominance();
+                                  refetchContext();
+                                }}
+                                className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
+                              >
+                                <RotateCw className="h-2.5 w-2.5 mr-1" />
+                                {t("common.retry")}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter className="flex-col items-stretch">
+                      {fearGreed ? (
+                        <FearGreedBar
+                          value={fearGreed.value}
+                          label={fearGreed.label}
+                          change={fearGreed.change}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-start py-2 gap-1.5 w-full">
                           <span className="text-[11px] text-muted-foreground">
-                            {t("market.dominance_unavailable")}
+                            {t("market.sentiment_unavailable")}
                           </span>
                           <Button
                             variant="link"
                             size="xs"
                             onClick={() => {
-                              refetchDominance();
+                              refetchFearGreed();
                               refetchContext();
                             }}
                             className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
@@ -219,36 +255,7 @@ export function MarketSummaryRow() {
                           </Button>
                         </div>
                       )}
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="flex-col items-stretch">
-                  {fearGreed ? (
-                    <FearGreedBar
-                      value={fearGreed.value}
-                      label={fearGreed.label}
-                      change={fearGreed.change}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-start py-2 gap-1.5 w-full">
-                      <span className="text-[11px] text-muted-foreground">
-                        {t("market.sentiment_unavailable")}
-                      </span>
-                      <Button
-                        variant="link"
-                        size="xs"
-                        onClick={() => {
-                          refetchFearGreed();
-                          refetchContext();
-                        }}
-                        className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
-                      >
-                        <RotateCw className="h-2.5 w-2.5 mr-1" />
-                        {t("common.retry")}
-                      </Button>
-                    </div>
-                  )}
-                </CardFooter>
+                    </CardFooter>
                   </>
                 )}
               </Card>
@@ -256,7 +263,7 @@ export function MarketSummaryRow() {
 
             {/* Market index cards */}
             {indicesLoading
-              ? Array.from({ length: 6 }).map((_, i) => (
+              ? Array.from({ length: 10 }).map((_, i) => (
                   <SkeletonIndexCard
                     key={`idx-skeleton-${i}`}
                     className="min-w-52"
@@ -286,10 +293,16 @@ export function MarketSummaryRow() {
                           : idx.price.toFixed(2)
                         : String(idx.price);
 
+                    const pointChange = (() => {
+                      if (typeof idx.price !== "number" || typeof idx.changePercent !== "number") return null;
+                      const prev = idx.price / (1 + idx.changePercent / 100);
+                      return idx.price - prev;
+                    })();
+
                     return (
                       <Card
                         key={idx.symbol}
-                        className="min-w-52 border border-border"
+                        className="min-w-52 border border-border grid grid-rows-subgrid row-span-3"
                       >
                         <CardHeader className="flex flex-row items-center justify-between">
                           <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
@@ -299,26 +312,46 @@ export function MarketSummaryRow() {
                         </CardHeader>
 
                         <CardContent className="flex-1 flex flex-col">
-                          <Sparkline
-                            className="w-full h-full"
-                            values={idx.quoteIndicators?.close}
-                            width={170}
-                            height={80}
-                            strokeWidth={1.5}
-                            margin={2}
-                            animationDuration={1000}
-                            animationBegin={200}
-                          />
+                           <Sparkline
+                             className="w-full h-full"
+                             values={idx.quoteIndicators?.close}
+                             width={170}
+                             height={80}
+                             strokeWidth={1.5}
+                             margin={2}
+                             animationDuration={1000}
+                             animationBegin={200}
+                           />
                         </CardContent>
 
-                        <CardFooter className="flex-col items-start justify-center">
-                          <div className="text-2xl font-bold tracking-tight text-foreground">
-                            {formattedValue}
+                        <CardFooter className="flex-row items-end justify-between w-full">
+                          <div className="flex flex-col">
+                            <div className="text-2xl font-bold tracking-tight text-foreground">
+                              {formattedValue}
+                            </div>
+                            <PercentageChange
+                              value={idx.changePercent}
+                              className="text-xs font-semibold"
+                            />
                           </div>
-                          <PercentageChange
-                            value={idx.changePercent}
-                            className="text-xs font-semibold"
-                          />
+                          {pointChange !== null && (
+                            <span
+                              className={cn(
+                                "text-xs font-semibold tabular-nums mb-0.5",
+                                pointChange > 0
+                                  ? "text-emerald-400/80"
+                                  : pointChange === 0
+                                    ? "text-zinc-400/80"
+                                    : "text-rose-400/80"
+                              )}
+                            >
+                              {pointChange > 0 ? "+" : ""}
+                              {pointChange.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </span>
+                          )}
                         </CardFooter>
                       </Card>
                     );

@@ -670,18 +670,7 @@ export function JournalDashboard() {
     );
   }
 
-  if (stats.totalFollowed === 0) {
-    return (
-      <Card className="border border-border">
-        <CardContent>
-          <EmptyState
-            title={t("journal.empty_dashboard_title")}
-            description={t("journal.empty_dashboard")}
-          />
-        </CardContent>
-      </Card>
-    );
-  }
+
 
   const equityConfig: ChartConfig = {
     dayPctWin: { label: t("journal.wins"), color: POS },
@@ -732,7 +721,19 @@ export function JournalDashboard() {
 
   return (
     <div className="space-y-4">
-      {stats.closed === 0 ? (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          {t("journal.portfolio_stats")}
+        </h2>
+        <FilterGroup
+          value={timeframe}
+          options={timeframeOptions}
+          onChange={setTimeframe}
+          className="self-start sm:self-auto"
+        />
+      </div>
+
+      {stats.totalFollowed === 0 || stats.closed === 0 ? (
         <Card className="border border-border">
           <CardContent>
             <EmptyState
@@ -742,19 +743,7 @@ export function JournalDashboard() {
           </CardContent>
         </Card>
       ) : (
-        <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              {t("journal.portfolio_stats")}
-            </h2>
-            <FilterGroup
-              value={timeframe}
-              options={timeframeOptions}
-              onChange={setTimeframe}
-              className="self-start sm:self-auto"
-            />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <ChartCard title={t("journal.chart_equity_benchmark")}>
               <div className="flex-1 h-65 flex items-center justify-center mt-2">
                 <div className="h-full w-full flex flex-col items-center justify-center">
@@ -769,7 +758,7 @@ export function JournalDashboard() {
                           dataKey="date"
                           tickLine={false}
                           axisLine={false}
-                          fontSize={11}
+                          fontSize={12}
                           minTickGap={24}
                           tickFormatter={fmtDay}
                         />
@@ -777,7 +766,7 @@ export function JournalDashboard() {
                           tickLine={false}
                           axisLine={false}
                           width={CHART_YAXIS_WIDTH}
-                          fontSize={11}
+                          fontSize={12}
                           tickFormatter={(v) => `${v}%`}
                         />
                         <ChartTooltip
@@ -899,7 +888,7 @@ export function JournalDashboard() {
                     </ChartContainer>
                   </div>
                   {/* Premium Legend at the Bottom */}
-                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground font-normal px-2 mt-3 w-full">
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted-foreground font-normal px-2 mt-3 w-full">
                     {benchmarkLegendItems.map((d, i) => {
                       const isCount = d.type === "count";
                       const valNum = Number(d.value);
@@ -1066,7 +1055,7 @@ export function JournalDashboard() {
                     </div>
 
                     {/* Premium Legend at the Bottom */}
-                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground font-normal px-2 mt-3 w-full">
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted-foreground font-normal px-2 mt-3 w-full">
                       {outcomeData.map((d, i) => {
                         const pct =
                           totalOutcomes > 0
@@ -1129,7 +1118,7 @@ export function JournalDashboard() {
                             dataKey="assetType"
                             tickLine={false}
                             axisLine={false}
-                            fontSize={11}
+                            fontSize={12}
                             tickFormatter={(v) => {
                               return t(`common.asset_types.${v}`, v) as string;
                             }}
@@ -1138,7 +1127,7 @@ export function JournalDashboard() {
                             tickLine={false}
                             axisLine={false}
                             width={CHART_YAXIS_WIDTH}
-                            fontSize={11}
+                            fontSize={12}
                             tickFormatter={(v) => `${v}%`}
                           />
                           <ChartTooltip
@@ -1211,7 +1200,7 @@ export function JournalDashboard() {
                       </ChartContainer>
                     </div>
                     {/* Premium Legend at the Bottom */}
-                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground font-normal px-2 mt-3 w-full">
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted-foreground font-normal px-2 mt-3 w-full">
                       {assetTypeLegendItems.map((d, i) => {
                         return (
                           <div
@@ -1234,21 +1223,6 @@ export function JournalDashboard() {
                             <span className="dark:opacity-60">
                               ({d.pct})
                             </span>
-                            <span className="text-zinc-600 dark:text-zinc-500 select-none">∙</span>
-                            <span
-                              className={cn(
-                                "font-medium",
-                                d.count === 0
-                                  ? "text-muted-foreground"
-                                  : Number(d.winRate.replace("%", "")) >= 60
-                                    ? "text-emerald-400"
-                                    : Number(d.winRate.replace("%", "")) >= 40
-                                      ? "text-amber-400"
-                                      : "text-rose-400",
-                              )}
-                            >
-                              {d.winRate}
-                            </span>
                           </div>
                         );
                       })}
@@ -1258,7 +1232,6 @@ export function JournalDashboard() {
               </div>
             </ChartCard>
           </div>
-        </>
       )}
     </div>
   );

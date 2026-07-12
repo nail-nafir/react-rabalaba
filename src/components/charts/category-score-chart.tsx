@@ -60,7 +60,7 @@ function renderCategoryTick(props: YAxisTickContentProps) {
       y={props.y}
       textAnchor="start"
       dominantBaseline="central"
-      fontSize={10}
+      fontSize={12}
       className="fill-zinc-400"
     >
       {String(props.payload?.value ?? "")}
@@ -82,7 +82,7 @@ function renderValueLabel(props: LabelProps) {
       y={(vb.y ?? 0) + (vb.height ?? 0) / 2}
       textAnchor="end"
       dominantBaseline="central"
-      fontSize={11}
+      fontSize={12}
       fontWeight={600}
       className={cn("tabular-nums", LABEL_CLASS[tone(v)])}
     >

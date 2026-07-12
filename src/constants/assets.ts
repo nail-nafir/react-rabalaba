@@ -59,12 +59,14 @@ export const DEFAULT_FOREX_TICKERS = [
 ];
 
 export const MARKET_INDICES = [
-  { symbol: "^JKSE", name: "IHSG", region: "id" },
+  { symbol: "^JKSE", name: "IHSG IDX", region: "id" },
   { symbol: "^GSPC", name: "S&P 500", region: "us" },
-  { symbol: "^IXIC", name: "NASDAQ", region: "us" },
-  { symbol: "^DJI", name: "Dow Jones", region: "us" },
-  { symbol: "^N225", name: "Nikkei", region: "asia" },
-  { symbol: "^KS11", name: "KOSPI", region: "asia" },
+  { symbol: "^NDX", name: "Nasdaq 100", region: "us" },
+  { symbol: "^N225", name: "Nikkei 225", region: "asia" },
+  { symbol: "^KS200", name: "KOSPI 200", region: "asia" },
+  { symbol: "^HSI", name: "Hang Seng 80", region: "asia" },
+  { symbol: "^STI", name: "STI 30", region: "asia" },
+  { symbol: "000300.SS", name: "CSI 300", region: "asia" },
   { symbol: "BTC-USD", name: "BTC-USD", region: "global" },
   { symbol: "ETH-USD", name: "ETH-USD", region: "global" },
   { symbol: "GC=F", name: "Gold", region: "global" },

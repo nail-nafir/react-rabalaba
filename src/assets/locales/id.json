@@ -555,7 +555,7 @@
     "outcome_reversed_win": "Reversal Profit",
     "outcome_reversed_loss": "Reversal Loss",
     "benchmark_btc": "Acuan (BTC)",
-    "benchmark_ihsg": "Acuan (IHSG)",
+    "benchmark_ihsg": "Acuan (IHSG IDX)",
     "benchmark_sp500": "Acuan (S&P 500)",
     "total_pnl": "Total Laba Rugi",
     "timeframe_1d": "1H",

@@ -8,7 +8,12 @@ interface FearGreedBarProps {
   className?: string;
 }
 
-export function FearGreedBar({ value, label, change, className }: FearGreedBarProps) {
+export function FearGreedBar({
+  value,
+  label,
+  change,
+  className,
+}: FearGreedBarProps) {
   const { t } = useTranslation();
   const clampedValue = Math.min(100, Math.max(0, value));
 
@@ -33,8 +38,8 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
   const currentLabel = getLabel();
 
   return (
-    <div className={cn("w-full", className)}>
-      <div className="flex items-baseline justify-between mb-2 w-full">
+    <div className={cn("flex flex-col gap-1 w-full pt-1.5", className)}>
+      <div className="flex items-baseline justify-between w-full">
         <div className="flex items-baseline gap-1.5">
           <span
             className="text-[10px] font-bold leading-none"
@@ -43,7 +48,7 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
             {clampedValue}
           </span>
           <span
-            className="text-[10px] font-bold uppercase tracking-widest leading-none"
+            className="text-[10px] font-bold uppercase leading-none"
             style={{ color }}
           >
             {currentLabel}
@@ -52,8 +57,12 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
         {change !== undefined && (
           <span
             className={cn(
-              "text-[10px] font-bold uppercase tracking-widest leading-none",
-              change > 0 ? "text-emerald-400" : change < 0 ? "text-rose-400" : "",
+              "text-[10px] font-bold uppercase leading-none",
+              change > 0
+                ? "text-emerald-400"
+                : change < 0
+                  ? "text-rose-400"
+                  : "",
             )}
             style={change === 0 ? { color } : undefined}
           >
@@ -65,7 +74,7 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
         )}
       </div>
 
-      <div className="relative h-2.5 w-full rounded-md overflow-hidden mb-2">
+      <div className="relative h-2.5 w-full rounded-md overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-r from-rose-500 via-amber-500 to-emerald-500 opacity-30" />
         <div
           className="absolute top-0 bottom-0 w-1.5 bg-foreground z-20 transition-all duration-700 ease-out"
@@ -77,7 +86,7 @@ export function FearGreedBar({ value, label, change, className }: FearGreedBarPr
         />
       </div>
 
-      <div className="flex justify-between text-[7px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">
+      <div className="flex justify-between text-[10px] font-bold text-muted-foreground uppercase">
         <span>Fear</span>
         <span>Neutral</span>
         <span>Greed</span>

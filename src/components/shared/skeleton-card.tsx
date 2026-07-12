@@ -33,7 +33,7 @@ export function SkeletonCryptoCard({ className }: SkeletonCardProps) {
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl border border-border/50 p-3 min-w-52",
+        "flex flex-col rounded-xl border border-border/50 p-3 min-w-52 row-span-3",
         className,
       )}
     >
@@ -71,7 +71,7 @@ export function SkeletonIndexCard({ className }: SkeletonCardProps) {
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl border border-border/50 p-3 min-w-52",
+        "flex flex-col rounded-xl border border-border/50 p-3 min-w-52 row-span-3",
         className,
       )}
     >
@@ -84,9 +84,12 @@ export function SkeletonIndexCard({ className }: SkeletonCardProps) {
         <Skeleton className="w-full h-full rounded-sm" />
       </div>
 
-      <div className="mt-auto flex flex-col gap-1">
-        <Skeleton className="h-7 w-20" />
-        <Skeleton className="h-4 w-12" />
+      <div className="mt-auto flex flex-row items-end justify-between w-full">
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-7 w-20" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-4 w-12 rounded mb-0.5" />
       </div>
     </div>
   );

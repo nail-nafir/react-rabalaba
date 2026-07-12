@@ -6,6 +6,7 @@ import { queryClient } from "@/app/config/query-client";
 import { router } from "@/app/router";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSessionActivity } from "@/hooks/use-session-activity";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { Toaster } from "@/components/ui/sonner";
 
@@ -22,9 +23,11 @@ export function AppProviders() {
     <Provider store={store}>
       <ThemeProvider defaultTheme="dark" storageKey="rabalaba-theme">
         <QueryClientProvider client={queryClient}>
-          <SessionActivity />
-          <RouterProvider router={router} />
-          <Toaster position="top-right" richColors />
+          <TooltipProvider>
+            <SessionActivity />
+            <RouterProvider router={router} />
+            <Toaster position="top-right" richColors />
+          </TooltipProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </Provider>
