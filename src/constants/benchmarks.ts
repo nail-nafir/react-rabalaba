@@ -2,7 +2,7 @@ import type { AssetType } from "@/constants/taxonomy/asset";
 import { IDX_BENCHMARK_SYMBOL, USDIDR_SYMBOL } from "./idx";
 import { US_BENCHMARK_SYMBOL, VIX_SYMBOL, DXY_SYMBOL } from "./us";
 
-/** BTC is the macro driver for the crypto sleeve. */
+/** BTC is the macro driver for the crypto card. */
 const BTC_SYMBOL = "BTC-USD";
 
 /** The benchmark/context symbols each asset class needs fetched to compute its

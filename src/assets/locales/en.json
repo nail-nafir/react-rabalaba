@@ -279,6 +279,8 @@
     "dominance_unavailable": "Dominance is taking a break",
     "sentiment_unavailable": "Sentiment is taking a break",
     "crypto_unavailable": "Crypto data is taking a break",
+    "market_context": "Market Context",
+    "market_context_unavailable": "Market context unavailable",
     "no_assets_found": "No assets found here",
     "no_assets_found_desc": "Try switching up the filters.",
     "search_no_results": "No assets found for \"{{query}}\"",

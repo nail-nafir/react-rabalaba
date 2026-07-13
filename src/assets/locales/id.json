@@ -279,6 +279,8 @@
     "dominance_unavailable": "Dominasi lagi istirahat",
     "sentiment_unavailable": "Sentimen lagi istirahat",
     "crypto_unavailable": "Data crypto lagi istirahat",
+    "market_context": "Konteks Pasar",
+    "market_context_unavailable": "Konteks pasar tidak tersedia",
     "no_assets_found": "Aset gak ditemukan",
     "no_assets_found_desc": "Coba ubah filternya sebentar.",
     "search_no_results": "Aset \"{{query}}\" gak ditemukan",

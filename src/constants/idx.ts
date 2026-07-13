@@ -8,7 +8,7 @@ export const IDX_BENCHMARK_SYMBOL = "^JKSE";
 
 /** USD/IDR — rupiah-pressure proxy. Foreign outflow shows up in FX first, so
  *  this acts as the risk tiebreak when IHSG is indecisive. Already fetched by
- *  the forex sleeve (DEFAULT_FOREX_TICKERS). */
+ *  the forex card (DEFAULT_FOREX_TICKERS). */
 export const USDIDR_SYMBOL = "USDIDR=X";
 
 /** Daily auto-reject (ARA/ARB) price bands per IDX "normalisasi tahap II"

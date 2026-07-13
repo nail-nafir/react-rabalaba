@@ -17,7 +17,7 @@ const IDX_CONTEXT_SYMBOLS = [IDX_BENCHMARK_SYMBOL, USDIDR_SYMBOL];
  *
  * Subscribes to the SAME per-symbol ["asset-data", ...] cache entries already
  * fetched on /terminal by the market summary row (^JKSE is in MARKET_INDICES)
- * and the forex sleeve (USDIDR=X is in DEFAULT_FOREX_TICKERS) — react-query
+ * and the forex card (USDIDR=X is in DEFAULT_FOREX_TICKERS) — react-query
  * dedupes identical queryKeys, so this hook adds ZERO network requests there.
  * Both series are resampled to daily so the rupiah 1-week change and IHSG
  * window returns are measured in trading days, not hourly bars.

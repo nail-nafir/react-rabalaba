@@ -12,3 +12,9 @@ export const VIX_SYMBOL = "^VIX";
 /** US Dollar Index. A surging dollar is risk-off pressure for equities/risk
  *  assets, so it acts as a second tiebreak alongside VIX. */
 export const DXY_SYMBOL = "DX-Y.NYB";
+
+/** COMEX Gold futures — the safe-haven leg of the Copper/Gold risk ratio. */
+export const GOLD_SYMBOL = "GC=F";
+
+/** COMEX Copper futures — the growth/industrial leg of the Copper/Gold risk ratio. */
+export const COPPER_SYMBOL = "HG=F";

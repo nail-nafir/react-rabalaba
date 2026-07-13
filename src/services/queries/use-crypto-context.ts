@@ -12,7 +12,7 @@ import { useFearGreedIndex } from "./use-fear-greed";
 import { useCryptoDominance } from "./use-crypto-dominance";
 import type { CryptoContext } from "@/types/market";
 
-/** BTC is the macro driver for the crypto sleeve. */
+/** BTC is the macro driver for the crypto card. */
 const BTC_SYMBOL = "BTC-USD";
 
 /**

@@ -1,5 +1,6 @@
 import type { TrendDirection } from "@/constants/taxonomy/trend";
 import type { MarketRegime } from "@/constants/taxonomy/regime";
+import type { AssetType } from "@/constants/taxonomy/asset";
 
 // Sourced from @/constants/taxonomy; re-exported so existing `@/types/market`
 // imports keep resolving unchanged.
@@ -108,7 +109,7 @@ export interface UsContext {
   lastUpdated: number;
 }
 
-/** Universe momentum over a single asset class (crypto sleeve by default). */
+/** Universe momentum over a single asset class (crypto card by default). */
 export interface Breadth {
   total: number;
   bullish: number;
@@ -117,4 +118,62 @@ export interface Breadth {
   bullishPercent: number;
   /** Percent of the universe that is bearish, 0-100. */
   bearishPercent: number;
+}
+
+export type MarketContextDirection = "up" | "down" | "flat";
+
+/** A Yahoo quote used as the market-level context for an asset class. */
+export interface QuoteMarketContext {
+  kind: "quote";
+  symbol: string;
+  name: string;
+  value: number;
+  changePercent: number;
+  direction: MarketContextDirection;
+  precision: number;
+  /** Epoch milliseconds, matching UnifiedAsset.quoteTime. */
+  timestamp: number;
+}
+
+/** Realized volatility calculated from daily OHLC rather than a quoted index. */
+export interface RealizedVolatilityMarketContext {
+  kind: "realized-volatility";
+  sourceSymbol: string;
+  name: string;
+  /** Annualized volatility in percentage points. */
+  value: number;
+  lookbackDays: number;
+  precision: number;
+  /** Epoch milliseconds of the latest completed candle in the calculation. */
+  timestamp: number;
+  /** Relative change vs the comparison window, when enough history exists. */
+  changePercent?: number;
+  direction?: MarketContextDirection;
+  /** Trading-day offset of the comparison window (e.g. 5 = ~1 week). */
+  changeOffsetDays?: number;
+}
+
+export type MarketContext =
+  | QuoteMarketContext
+  | RealizedVolatilityMarketContext;
+
+export type MarketContextByAssetClass = Record<
+  AssetType,
+  MarketContext | null
+>;
+
+export type MarketPulseScoreKind = "risk_appetite" | "card";
+
+export interface MarketPulseCardModel {
+  id: string;
+  title: string;
+  assetGroup: AssetType;
+  score: number;
+  scoreKind: MarketPulseScoreKind;
+  trend: TrendDirection;
+  headlineValue: string;
+  changePercent: number;
+  sparkline?: number[];
+  updatedAt: number;
+  status: "active" | "degraded" | "error";
 }

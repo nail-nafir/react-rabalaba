@@ -1,79 +1,410 @@
 import {
   Card,
+  CardAction,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  SkeletonCryptoCard,
-  SkeletonIndexCard,
-} from "@/components/shared/skeleton-card";
-import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
-import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
-import { MARKET_INDICES } from "@/constants/assets";
+import { useIdxContext } from "@/services/queries/use-idx-context";
+import { useUsContext } from "@/services/queries/use-us-context";
+import { useMarketContexts } from "@/services/queries/use-market-context";
 import { cn } from "@/lib/utils";
-import { Loader2, RotateCw } from "lucide-react";
+import {
+  Loader2,
+  RotateCw,
+  Coins,
+  Building2,
+  Globe,
+  Gem,
+  DollarSign,
+  AlertTriangle,
+} from "lucide-react";
+import { memo, useMemo } from "react";
+import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { FearGreedBar } from "@/components/charts/fear-greed-bar";
-import { DominanceChart } from "@/components/charts/dominance-chart";
-import { PercentageChange } from "@/components/shared/percentage-change";
 import { Sparkline } from "@/components/charts/sparkline";
+import { PercentageChange } from "@/components/shared/percentage-change";
+import { EmptyState } from "@/components/shared/empty-state";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
-import type { TrendDirection } from "@/types/market";
+import {
+  mapCryptoCard,
+  mapIdEquityCard,
+  mapUsEquityCard,
+  mapCommoditiesCard,
+  mapForexCard,
+} from "../lib/market-pulse-mapper";
+import type { MarketContext, MarketContextDirection } from "@/types/market";
+
+const MARKET_PULSE_SYMBOLS = [
+  "BTC-USD",
+  "ETH-USD",
+  "^JKSE",
+  "USDIDR=X",
+  "^GSPC",
+  "^VIX",
+  "DX-Y.NYB",
+  "GC=F",
+];
+
+import { PALETTE } from "@/constants/taxonomy/palette";
+
+const directionConfig = {
+  up: PALETTE.positive.textStrong,
+  down: PALETTE.negative.textStrong,
+  flat: PALETTE.neutral.textStrong,
+} as const;
+
+function formatValue(value: number, precision: number): string {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
+}
+
+function ContextChange({
+  changePercent,
+  direction,
+}: {
+  changePercent: number;
+  direction: MarketContextDirection;
+}) {
+  const colorClass = directionConfig[direction];
+
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span aria-hidden="true" className={cn("opacity-40", colorClass)}>
+        ∙
+      </span>
+      <PercentageChange
+        value={changePercent}
+        className="text-xs font-semibold"
+      />
+    </span>
+  );
+}
+
+function QuoteChange({
+  context,
+}: {
+  context: Extract<MarketContext, { kind: "quote" }>;
+}) {
+  return (
+    <ContextChange
+      changePercent={context.changePercent}
+      direction={context.direction}
+    />
+  );
+}
+
+// All recharts inputs are hoisted/memoized — identity churn on data/domain/
+// margin restarts mount animations whose effect cleanup calls setState, which
+// can cascade into "Maximum update depth exceeded" (see sparkline.tsx).
+// Dimensions mirror WinRateRing (size 112 / outer 52 / inner 42 / barSize 10)
+// scaled down to the 40px footer slot.
+const DONUT_SIZE = 40;
+const DONUT_OUTER = 18.5;
+const DONUT_INNER = 15;
+const DONUT_DOMAIN: [number, number] = [0, 100];
+const DONUT_MARGIN = { top: 0, right: 0, bottom: 0, left: 0 };
+/** Full-circle track behind the arc — same style as WinRateRing. */
+const DONUT_TRACK = { fill: "var(--color-zinc-400)", fillOpacity: 0.15 };
+
+const DONUT_COLOR_ROSE = "var(--color-rose-400)";
+const DONUT_COLOR_AMBER = "var(--color-amber-400)";
+const DONUT_COLOR_EMERALD = "var(--color-emerald-400)";
+
+const DONUT_TEXT_ROSE = "text-rose-400";
+const DONUT_TEXT_AMBER = "text-amber-400";
+const DONUT_TEXT_EMERALD = "text-emerald-400";
+
+const DonutGauge = memo(function DonutGauge({ value }: { value: number }) {
+  const normalizedValue = Number.isFinite(value)
+    ? Math.min(100, Math.max(0, Math.round(value)))
+    : 50;
+
+  const arcFill =
+    normalizedValue <= 35
+      ? DONUT_COLOR_ROSE
+      : normalizedValue <= 65
+        ? DONUT_COLOR_AMBER
+        : DONUT_COLOR_EMERALD;
+
+  const textClass =
+    normalizedValue <= 35
+      ? DONUT_TEXT_ROSE
+      : normalizedValue <= 65
+        ? DONUT_TEXT_AMBER
+        : DONUT_TEXT_EMERALD;
+
+  const data = useMemo(
+    () => [{ v: normalizedValue, fill: arcFill }],
+    [normalizedValue, arcFill],
+  );
+
+  return (
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: DONUT_SIZE, height: DONUT_SIZE }}
+    >
+      <RadialBarChart
+        width={DONUT_SIZE}
+        height={DONUT_SIZE}
+        data={data}
+        startAngle={90}
+        endAngle={-270}
+        innerRadius={DONUT_INNER}
+        outerRadius={DONUT_OUTER}
+        margin={DONUT_MARGIN}
+        accessibilityLayer={false}
+      >
+        <PolarAngleAxis
+          type="number"
+          domain={DONUT_DOMAIN}
+          tick={false}
+          axisLine={false}
+        />
+        <RadialBar
+          dataKey="v"
+          barSize={3.5}
+          cornerRadius={1.75}
+          background={DONUT_TRACK}
+        />
+      </RadialBarChart>
+      {/* Inner label */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+        <span className={cn("text-[10px] font-bold tabular-nums", textClass)}>
+          {normalizedValue}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+function MarketContextFooter({
+  context,
+  isLoading,
+  score,
+}: {
+  context: MarketContext | null;
+  isLoading: boolean;
+  score: number;
+}) {
+  const { t } = useTranslation();
+
+  if (isLoading && !context) {
+    return (
+      <CardFooter className="mt-auto min-h-24 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+        <div className="flex flex-col gap-2 flex-1">
+          <Skeleton className="h-2.5 w-20" />
+          <Skeleton className="h-3.5 w-32 max-w-full" />
+          <Skeleton className="h-4 w-28 max-w-full" />
+        </div>
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <Skeleton className="h-2.5 w-10" />
+          <Skeleton className="size-10 rounded-full" />
+        </div>
+      </CardFooter>
+    );
+  }
+
+  return (
+    <CardFooter className="mt-auto min-h-24 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+      {/* Left side: Context details */}
+      <div className="flex flex-col items-start gap-1 min-w-0 flex-1">
+        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("market.market_context")}
+        </span>
+
+        {context ? (
+          <>
+            <span
+              className="line-clamp-1 wrap-break-word text-xs font-semibold leading-tight text-foreground"
+              title={context.name}
+            >
+              {context.name}
+            </span>
+
+            {context.kind === "quote" ? (
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums">
+                <span className="text-sm font-bold text-foreground">
+                  {formatValue(context.value, context.precision)}
+                </span>
+                <QuoteChange context={context} />
+              </div>
+            ) : context.changePercent !== undefined &&
+              context.direction !== undefined ? (
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums">
+                <span className="text-sm font-bold text-foreground">
+                  {formatValue(context.value, context.precision)}
+                </span>
+                <ContextChange
+                  changePercent={context.changePercent}
+                  direction={context.direction}
+                />
+              </div>
+            ) : (
+              <span className="text-sm font-bold tabular-nums text-foreground">
+                {formatValue(context.value, context.precision)}
+              </span>
+            )}
+          </>
+        ) : (
+          <span
+            className="text-xs leading-snug text-muted-foreground"
+            role="status"
+          >
+            {t("market.market_context_unavailable")}
+          </span>
+        )}
+      </div>
+
+      {/* Right side: Score Donut */}
+      <div className="flex flex-col items-center gap-1 shrink-0">
+        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Score
+        </span>
+        <DonutGauge value={score} />
+      </div>
+    </CardFooter>
+  );
+}
 
 export function MarketSummaryRow() {
   const { t } = useTranslation();
+
+  const {
+    data: assets,
+    isLoading: assetsLoading,
+    isFetching: assetsFetching,
+    refetch: refetchAssets,
+  } = useMarketData(MARKET_PULSE_SYMBOLS);
+
   const {
     data: fearGreed,
-    isFetching: fgFetching,
     isLoading: fearGreedLoading,
-    isError: fearGreedError,
+    isFetching: fgFetching,
     refetch: refetchFearGreed,
   } = useFearGreedIndex();
+
   const {
-    data: indices,
-    isFetching: indicesFetching,
-    isLoading: indicesLoading,
-    isError: indicesError,
-    refetch: refetchIndices,
-  } = useMarketData(MARKET_INDICES.map((i) => i.symbol));
-  const {
-    data: marketContext,
-    isLoading: contextLoading,
-    refetch: refetchContext,
+    data: cryptoContext,
+    isLoading: cryptoContextLoading,
+    refetch: refetchCryptoContext,
   } = useCryptoContext();
-  const { isLoading: dominanceLoading, refetch: refetchDominance } =
-    useCryptoDominance();
 
-  const showEmptyState =
-    (fearGreedError || (!fearGreed && !fearGreedLoading)) &&
-    (indicesError || (!indices?.length && !indicesLoading));
+  const { data: idxContext, isLoading: idxContextLoading } = useIdxContext();
 
-  // Crypto card: both sub-signals (dominance + F&G) are settled AND missing →
-  // one combined message instead of two separate "unavailable" placeholders.
-  const cryptoBothEmpty =
-    !marketContext?.dominance && !dominanceLoading && !fearGreed;
+  const { data: usContext, isLoading: usContextLoading } = useUsContext();
+
+  const {
+    data: marketContexts,
+    isLoading: marketContextsLoading,
+    isFetching: marketContextsFetching,
+    refetch: refetchMarketContexts,
+  } = useMarketContexts();
+
+  const isLoading =
+    assetsLoading ||
+    cryptoContextLoading ||
+    idxContextLoading ||
+    usContextLoading ||
+    fearGreedLoading;
+
+  const showEmptyState = !assets?.length && !assetsLoading && !isLoading;
+
+  if (isLoading) {
+    return (
+      <>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              {t("market.pulse")}
+            </h2>
+            <Loader2 className="size-3.5 animate-spin text-primary opacity-50" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex size-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex size-1.5 rounded-full bg-primary"></span>
+            </span>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              {t("market.live_connection")}
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonCard key={`pulse-skeleton-${i}`} />
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // Map each card
+  const cryptoCard = mapCryptoCard(
+    cryptoContext,
+    fearGreed,
+    assets?.find((a) => a.symbol === "BTC-USD"),
+    assets?.find((a) => a.symbol === "ETH-USD"),
+  );
+
+  const idEquityCard = mapIdEquityCard(
+    idxContext,
+    assets?.find((a) => a.symbol === "^JKSE"),
+    assets?.find((a) => a.symbol === "USDIDR=X"),
+  );
+
+  const usEquityCard = mapUsEquityCard(
+    usContext,
+    assets?.find((a) => a.symbol === "^GSPC"),
+    assets?.find((a) => a.symbol === "^VIX"),
+    assets?.find((a) => a.symbol === "DX-Y.NYB"),
+  );
+
+  const commoditiesCard = mapCommoditiesCard(
+    assets?.find((a) => a.symbol === "GC=F"),
+    usContext,
+    assets?.find((a) => a.symbol === "^VIX"),
+    assets?.find((a) => a.symbol === "DX-Y.NYB"),
+  );
+
+  const forexCard = mapForexCard(
+    assets?.find((a) => a.symbol === "USDIDR=X"),
+    usContext,
+    assets?.find((a) => a.symbol === "^VIX"),
+    assets?.find((a) => a.symbol === "DX-Y.NYB"),
+  );
+
+  const cards = [
+    cryptoCard,
+    idEquityCard,
+    usEquityCard,
+    commoditiesCard,
+    forexCard,
+  ];
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("market.pulse")}
           </h2>
-          {(fgFetching || indicesFetching) && (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary opacity-50" />
+          {(assetsFetching || fgFetching || marketContextsFetching) && (
+            <Loader2 className="size-3.5 animate-spin text-primary opacity-50" />
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="relative flex h-1.5 w-1.5">
+          <span className="relative flex size-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+            <span className="relative inline-flex size-1.5 rounded-full bg-primary"></span>
           </span>
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
             {t("market.live_connection")}
@@ -81,9 +412,9 @@ export function MarketSummaryRow() {
         </div>
       </div>
 
-      <div className="grid grid-flow-col auto-cols-[minmax(13rem,1fr)] grid-rows-[auto_1fr_auto] gap-4 overflow-x-auto scrollbar-none min-h-50">
+      <div className="w-full">
         {showEmptyState ? (
-          <div className="w-full flex items-center justify-center border rounded-xl py-8 border-dashed row-span-3 col-span-full">
+          <div className="w-full flex items-center justify-center border rounded-xl py-8 border-dashed">
             <EmptyState
               title={t("market.data_unavailable")}
               description={t("market.data_unavailable_desc")}
@@ -92,273 +423,193 @@ export function MarketSummaryRow() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    refetchAssets();
                     refetchFearGreed();
-                    refetchIndices();
-                    refetchContext();
-                    refetchDominance();
+                    refetchCryptoContext();
+                    refetchMarketContexts();
                   }}
                   className="gap-2 cursor-pointer font-semibold"
                 >
-                  <RotateCw className="h-3.5 w-3.5" />
+                  <RotateCw data-icon="inline-start" />
                   {t("common.retry")}
                 </Button>
               }
             />
           </div>
         ) : (
-          <>
-            {/* Market Sentiment: regime + fear & greed */}
-            {contextLoading || fearGreedLoading ? (
-              <SkeletonCryptoCard className="min-w-52" />
-            ) : (
-              <Card className="min-w-52 border border-border grid grid-rows-subgrid row-span-3">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
-                    Crypto
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    {marketContext && (
-                      <TrendIndicator
-                        trend={marketContext.btcTrend}
-                        showBar={false}
-                      />
-                    )}
-                  </div>
-                </CardHeader>
-                {cryptoBothEmpty ? (
-                  <CardContent className="flex flex-1 flex-col items-center justify-center py-6 w-full text-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">
-                      {t("market.crypto_unavailable")}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => {
-                        refetchDominance();
-                        refetchFearGreed();
-                        refetchContext();
-                      }}
-                      className="text-[10px] h-7 gap-1 font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <RotateCw className="h-3 w-3" />
-                      {t("common.retry")}
-                    </Button>
-                  </CardContent>
-                ) : (
-                  <>
-                    <CardContent className="flex flex-1 flex-col gap-4">
-                      {marketContext?.dominance ? (
-                        (() => {
-                          const { btc, eth } = marketContext.dominance;
-                          const others = Math.max(0, 100 - btc - eth);
-                          const getColor = (val: number) => {
-                            if (val <= 20) return "var(--color-rose-400)";
-                            if (val <= 40) return "var(--color-orange-400)";
-                            if (val <= 60) return "var(--color-amber-400)";
-                            if (val <= 80) return "var(--color-lime-400)";
-                            return "var(--color-emerald-400)";
-                          };
-                          const btcColor = getColor(btc);
-                          const ethColor = getColor(eth);
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full">
+            {cards.map((card) => {
+              const icon = getCardIcon(card.id);
 
-                          return (
-                            <div className="flex flex-1 flex-col items-center justify-center w-full py-1 gap-1">
-                              <div
-                                className="relative shrink-0"
-                                style={{ width: 56, height: 56 }}
-                              >
-                                <DominanceChart
-                                  btc={btc}
-                                  eth={eth}
-                                  others={others}
-                                  width={56}
-                                  height={56}
-                                />
-                              </div>
-                              <div className="flex justify-center gap-x-4 text-[12px] text-[#71717a] font-normal">
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: btcColor }}
-                                  />
-                                  <span className="text-zinc-400">BTC</span>
-                                  <span className="text-zinc-200 font-bold">
-                                    {btc.toFixed(1)}%
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: ethColor }}
-                                  />
-                                  <span className="text-zinc-400">ETH</span>
-                                  <span className="text-zinc-200 font-bold">
-                                    {eth.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        <div className="flex flex-1 flex-col items-center justify-center py-2 gap-1.5 w-full">
-                          {dominanceLoading ? (
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                              <Loader2 className="h-3.5 w-3.5 animate-spin opacity-50" />
-                              <span>{t("market.loading_dominance")}</span>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground">
-                                {t("market.dominance_unavailable")}
-                              </span>
-                              <Button
-                                variant="link"
-                                size="xs"
-                                onClick={() => {
-                                  refetchDominance();
-                                  refetchContext();
-                                }}
-                                className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
-                              >
-                                <RotateCw className="h-2.5 w-2.5 mr-1" />
-                                {t("common.retry")}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                    <CardFooter className="flex-col items-stretch">
-                      {fearGreed ? (
-                        <FearGreedBar
-                          value={fearGreed.value}
-                          label={fearGreed.label}
-                          change={fearGreed.change}
-                        />
-                      ) : (
-                        <div className="flex flex-col items-start py-2 gap-1.5 w-full">
-                          <span className="text-[11px] text-muted-foreground">
-                            {t("market.sentiment_unavailable")}
-                          </span>
-                          <Button
-                            variant="link"
-                            size="xs"
-                            onClick={() => {
-                              refetchFearGreed();
-                              refetchContext();
-                            }}
-                            className="text-[10px] h-auto p-0 font-semibold text-primary cursor-pointer hover:no-underline"
-                          >
-                            <RotateCw className="h-2.5 w-2.5 mr-1" />
-                            {t("common.retry")}
-                          </Button>
-                        </div>
-                      )}
-                    </CardFooter>
-                  </>
-                )}
-              </Card>
-            )}
+              return (
+                <Card
+                  key={card.id}
+                  className={cn(
+                    "border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full",
+                    card.status === "error"
+                      ? "border-rose-500/30 bg-rose-500/5"
+                      : "border-border hover:border-zinc-700",
+                  )}
+                >
+                  <CardHeader>
+                    <CardTitle className="flex min-w-0 items-center gap-2">
+                      {icon}
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
+                        {card.title}
+                      </span>
+                    </CardTitle>
+                    <CardAction>
+                      <TrendIndicator trend={card.trend} />
+                    </CardAction>
+                  </CardHeader>
 
-            {/* Market index cards */}
-            {indicesLoading
-              ? Array.from({ length: 10 }).map((_, i) => (
-                  <SkeletonIndexCard
-                    key={`idx-skeleton-${i}`}
-                    className="min-w-52"
-                  />
-                ))
-              : indices
-                  ?.filter(
-                    (idx) =>
-                      idx.symbol !== "BTC-USD" && idx.symbol !== "ETH-USD",
-                  )
-                  .map((idx) => {
-                    const meta = MARKET_INDICES.find(
-                      (m) => m.symbol === idx.symbol,
-                    );
-                    const trend: TrendDirection =
-                      idx.changePercent > 0.5
-                        ? "bullish"
-                        : idx.changePercent < -0.5
-                          ? "bearish"
-                          : "sideways";
-                    const formattedValue =
-                      typeof idx.price === "number"
-                        ? idx.price >= 1000
-                          ? idx.price.toLocaleString("en-US", {
-                              maximumFractionDigits: 2,
-                            })
-                          : idx.price.toFixed(2)
-                        : String(idx.price);
-
-                    const pointChange = (() => {
-                      if (typeof idx.price !== "number" || typeof idx.changePercent !== "number") return null;
-                      const prev = idx.price / (1 + idx.changePercent / 100);
-                      return idx.price - prev;
-                    })();
-
-                    return (
-                      <Card
-                        key={idx.symbol}
-                        className="min-w-52 border border-border grid grid-rows-subgrid row-span-3"
-                      >
-                        <CardHeader className="flex flex-row items-center justify-between">
-                          <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
-                            {meta?.name || idx.name}
-                          </CardTitle>
-                          <TrendIndicator trend={trend} />
-                        </CardHeader>
-
-                        <CardContent className="flex-1 flex flex-col">
-                           <Sparkline
-                             className="w-full h-full"
-                             values={idx.quoteIndicators?.close}
-                             width={170}
-                             height={80}
-                             strokeWidth={1.5}
-                             margin={2}
-                             animationDuration={1000}
-                             animationBegin={200}
-                           />
-                        </CardContent>
-
-                        <CardFooter className="flex-row items-end justify-between w-full">
-                          <div className="flex flex-col">
-                            <div className="text-2xl font-bold tracking-tight text-foreground">
-                              {formattedValue}
-                            </div>
-                            <PercentageChange
-                              value={idx.changePercent}
-                              className="text-xs font-semibold"
-                            />
-                          </div>
-                          {pointChange !== null && (
-                            <span
-                              className={cn(
-                                "text-xs font-semibold tabular-nums mb-0.5",
-                                pointChange > 0
-                                  ? "text-emerald-400/80"
-                                  : pointChange === 0
-                                    ? "text-zinc-400/80"
-                                    : "text-rose-400/80"
-                              )}
-                            >
-                              {pointChange > 0 ? "+" : ""}
-                              {pointChange.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
+                  <CardContent className="flex flex-col gap-3 px-4 pt-0">
+                    {card.status === "error" ? (
+                      <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
+                        <AlertTriangle className="h-8 w-8 text-rose-500/80 animate-pulse" />
+                        <span className="text-xs text-muted-foreground font-semibold">
+                          Data Offline
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/60 max-w-50">
+                          Failed to load core benchmark prices
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Headline */}
+                        <div className="flex items-center justify-between gap-1.5 min-w-0">
+                          <div className="flex flex-col min-w-0 gap-0.5 flex-1">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                              {getLabel(card.id)}
                             </span>
+                            <div className="flex items-baseline gap-1 min-w-0">
+                              <span
+                                className="truncate text-xl font-bold tracking-tight text-foreground xl:text-2xl"
+                                title={card.headlineValue}
+                              >
+                                {card.headlineValue}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                className={cn(
+                                  "opacity-40",
+                                  card.changePercent > 0
+                                    ? PALETTE.positive.textStrong
+                                    : card.changePercent === 0
+                                      ? PALETTE.neutral.textStrong
+                                      : PALETTE.negative.textStrong,
+                                )}
+                              >
+                                ∙
+                              </span>
+                              <PercentageChange
+                                value={card.changePercent}
+                                className="text-xs font-semibold shrink-0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Sparkline Chart */}
+                        <div className="h-9 w-full overflow-hidden">
+                          {card.sparkline && card.sparkline.length > 0 && (
+                            <Sparkline
+                              values={card.sparkline}
+                              width={240}
+                              height={32}
+                              strokeWidth={1.5}
+                              margin={2}
+                              className="w-full [&>svg]:w-full!"
+                            />
                           )}
-                        </CardFooter>
-                      </Card>
-                    );
-                  })}
-          </>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+
+                  <MarketContextFooter
+                    context={marketContexts?.[card.assetGroup] ?? null}
+                    isLoading={marketContextsLoading}
+                    score={card.score}
+                  />
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
     </>
+  );
+}
+
+function getCardIcon(id: string) {
+  switch (id) {
+    case "crypto":
+      return <Coins className="size-4 text-muted-foreground" />;
+    case "id-equity":
+      return <Building2 className="size-4 text-muted-foreground" />;
+    case "us-equity":
+      return <Globe className="size-4 text-muted-foreground" />;
+    case "commodities":
+      return <Gem className="size-4 text-muted-foreground" />;
+    case "forex":
+      return <DollarSign className="size-4 text-muted-foreground" />;
+    default:
+      return <Coins className="size-4 text-muted-foreground" />;
+  }
+}
+
+function getLabel(cardId: string) {
+  switch (cardId) {
+    case "crypto":
+      return "BTC USD";
+    case "id-equity":
+      return "IHSG IDX";
+    case "us-equity":
+      return "S&P 500";
+    case "commodities":
+      return "Gold USD";
+    case "forex":
+      return "USD / IDR";
+    default:
+      return "Index";
+  }
+}
+
+function SkeletonCard() {
+  return (
+    <Card className="border border-border/80 bg-card/45 w-full">
+      <CardHeader>
+        <CardTitle>
+          <Skeleton className="h-4 w-24" />
+        </CardTitle>
+        <CardAction>
+          <Skeleton className="h-5 w-16 rounded-md" />
+        </CardAction>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-3 px-4 pb-4 pt-0">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+            <Skeleton className="h-3 w-10" />
+            <Skeleton className="h-6 w-28 max-w-full" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+        <Skeleton className="h-9 w-full" />
+      </CardContent>
+
+      <CardFooter className="mt-auto min-h-24 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+        <div className="flex flex-col gap-2 flex-1">
+          <Skeleton className="h-2.5 w-20" />
+          <Skeleton className="h-3.5 w-32 max-w-full" />
+          <Skeleton className="h-4 w-28 max-w-full" />
+        </div>
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <Skeleton className="h-2.5 w-10" />
+          <Skeleton className="size-10 rounded-full" />
+        </div>
+      </CardFooter>
+    </Card>
   );
 }

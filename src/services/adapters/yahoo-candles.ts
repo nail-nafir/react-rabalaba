@@ -41,10 +41,19 @@ export function normalizeYahooCandles(
   quote: YahooQuoteIndicators | null | undefined,
   timestamps: number[] = [],
 ): NormalizedYahooCandle[] {
-  if (!quote) return [];
+  if (
+    !quote ||
+    !Array.isArray(quote.open) ||
+    !Array.isArray(quote.high) ||
+    !Array.isArray(quote.low) ||
+    !Array.isArray(quote.close)
+  ) {
+    return [];
+  }
 
   const candles: NormalizedYahooCandle[] = [];
   const length = quote.close.length;
+  const volumes = Array.isArray(quote.volume) ? quote.volume : [];
 
   for (let i = 0; i < length; i++) {
     const open = quote.open[i];
@@ -62,7 +71,7 @@ export function normalizeYahooCandles(
       continue;
     }
 
-    const rawVolume = quote.volume[i];
+    const rawVolume = volumes[i];
     const volume = isFiniteNumber(rawVolume) ? rawVolume : 0;
     const timestamp = isFiniteNumber(timestamps[i]) ? timestamps[i] : i;
 
