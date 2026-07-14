@@ -16,13 +16,13 @@
 | Server state | @tanstack/react-query | ^5.101.2 |
 | Table | @tanstack/react-table | ^8.21.3 |
 | Client state | @reduxjs/toolkit + react-redux | ^2.12.0 / ^9.3.0 |
-| Backend | @supabase/supabase-js | ^2.110.0 |
+| Backend | @supabase/supabase-js | 2.110.4 |
 | Forms | react-hook-form + @hookform/resolvers | ^7.81.0 / ^5.4.0 |
 | Validasi | zod | ^4.4.3 |
-| i18n | i18next + react-i18next + i18next-browser-languagedetector | ^26.3.4 / ^17.0.8 / ^8.2.1 |
+| i18n | i18next + react-i18next + i18next-browser-languagedetector | ^26.3.6 / ^17.0.9 / ^8.2.1 |
 | Charts | recharts | ^3.9.2 |
-| UI primitives | radix-ui + shadcn | ^1.6.1 / ^4.13.0 |
-| Icons | lucide-react | ^1.23.0 |
+| UI primitives | @base-ui/react + shadcn | ^1.6.0 / 4.13.0 |
+| Icons | lucide-react | ^1.24.0 |
 | Theme | next-themes | ^0.4.6 |
 | Date | date-fns + react-day-picker | ^4.4.0 / ^10.0.1 |
 | Toast | sonner | ^2.0.7 |
@@ -69,7 +69,7 @@
 | `eslint.config.js` | Flat config. TS/TSX extend `js.configs.recommended` + `tseslint.configs.recommended` + react-hooks + react-refresh. Browser globals. `react-refresh/only-export-components: error` (allow `badgeVariants`/`buttonVariants`/`tabsListVariants`/`useSidebar`/`useTheme`) |
 | `vite.config.ts` | Plugins: react, tailwindcss, custom `yahooCrumbDevPlugin()` (dev-only Yahoo crumb mint). Resolve `@ → ./src`. Dev proxy `/api/yahoo` → `query1.finance.yahoo.com`, `/api/fng` → `api.alternative.me` |
 | `wrangler.toml` | `name = "react-rabalaba"`, `compatibility_date = "2024-01-01"` (minimal; Pages Functions) |
-| `components.json` | shadcn config: style `radix-nova`, `rsc:false`, `tsx:true`, baseColor neutral, cssVariables true, iconLibrary lucide, alias `@/components`/`@/lib/utils`/`@/components/ui`/`@/lib`/`@/hooks` |
+| `components.json` | shadcn config: style `base-nova`, `rsc:false`, `tsx:true`, baseColor neutral, cssVariables true, iconLibrary lucide, alias `@/components`/`@/lib/utils`/`@/components/ui`/`@/lib`/`@/hooks` |
 | `.env.example` | Legacy/stale — `VITE_ACCESS_KEY`/`VITE_ACCESS_CODE`/`VITE_TRIAL_CODE`/`VITE_TRIAL_DURATION` (kosong; migrasi pindah ke DB `access_codes`) |
 | `.env` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (browser client) |
 
