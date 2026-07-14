@@ -9,12 +9,14 @@ import {
   LogIn,
   UserPlus,
   SlidersHorizontal,
+  MessageSquareQuote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
@@ -27,6 +29,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { useTheme } from "@/components/theme-provider";
+import { TESTIMONIAL_PATH } from "@/features/testimonials/constants";
 
 const LANGUAGES = [
   { value: "id", label: "Indonesia" },
@@ -110,6 +113,17 @@ export function UserMenu() {
                 <DropdownMenuSeparator />
               </>
             )}
+
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                onClick={() => navigate(TESTIMONIAL_PATH)}
+                className="text-xs cursor-pointer"
+              >
+                <MessageSquareQuote className="h-4 w-4 text-muted-foreground" />
+                {t("testimonials.menu_entry", "Ulasan Pribadi")}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
           </>
         )}
 

@@ -6,7 +6,7 @@
  * Bumping the clause `version` in /admin re-prompts everyone (their recorded
  * version falls behind). Clauses read via [[pickLocale]]. See [[use-journal-settings]].
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/services/supabase/client";
 import type { DisclaimerRow } from "@/services/supabase/database.types";
@@ -18,6 +18,7 @@ const AGREE_KEY = (userId: string | null) => ["disclaimer-agreement", userId] as
 // localStorage keys: legacy bool (pre-DB) + the version the visitor last accepted.
 const LS_AGREED = "rabalaba_disclaimer_agreed";
 const LS_VERSION = "rabalaba_disclaimer_v";
+const LOCAL_ACCEPTANCE_EVENT = "rabalaba:disclaimer-accepted";
 
 /** Highest disclaimer version this browser accepted while anonymous. Legacy
  *  `=== "true"` flag counts as v1 so existing users aren't re-prompted by v1. */
@@ -39,8 +40,26 @@ export function useDisclaimer() {
   // Read localStorage once (anonymous path); agree() advances it locally.
   const [localVersion, setLocalVersion] = useState(readLocalVersion);
 
+  // Multiple consumers share this hook (the gate dialog and the Terminal
+  // boundary). A same-tab localStorage write does not emit `storage`, so use a
+  // tiny browser event to keep their anonymous acceptance state synchronized.
+  useEffect(() => {
+    const syncLocalVersion = () => setLocalVersion(readLocalVersion());
+    window.addEventListener(LOCAL_ACCEPTANCE_EVENT, syncLocalVersion);
+    window.addEventListener("storage", syncLocalVersion);
+    return () => {
+      window.removeEventListener(LOCAL_ACCEPTANCE_EVENT, syncLocalVersion);
+      window.removeEventListener("storage", syncLocalVersion);
+    };
+  }, []);
+
   // Clauses — public, always enabled.
-  const { data: clauses, isLoading } = useQuery({
+  const {
+    data: clauses,
+    isLoading,
+    isError: clausesError,
+    refetch: refetchClauses,
+  } = useQuery({
     queryKey: CLAUSES_KEY,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -55,7 +74,11 @@ export function useDisclaimer() {
   });
 
   // The logged-in user's highest accepted version (null when anonymous).
-  const { data: agreedVersion } = useQuery({
+  const {
+    data: agreedVersion,
+    isError: agreementError,
+    refetch: refetchAgreement,
+  } = useQuery({
     queryKey: AGREE_KEY(userId),
     enabled: !!userId,
     staleTime: 60_000,
@@ -88,6 +111,17 @@ export function useDisclaimer() {
   // Only prompt once clauses have loaded, status is known, and they're behind.
   const needsAgreement =
     !!clauses && acceptanceResolved && currentVersion > acceptedVersion;
+  // This is the first mandatory gate. A failed query (or a missing singleton
+  // row) must never be interpreted as "nothing to accept".
+  const hasLoadError =
+    clausesError || clauses === null || (!!userId && agreementError);
+
+  const retry = useCallback(async () => {
+    await Promise.all([
+      refetchClauses(),
+      userId ? refetchAgreement() : Promise.resolve(),
+    ]);
+  }, [refetchAgreement, refetchClauses, userId]);
 
   const agree = useCallback(async () => {
     if (!clauses) return;
@@ -112,6 +146,7 @@ export function useDisclaimer() {
       /* storage unavailable — DB record (if logged in) still stands */
     }
     setLocalVersion(version);
+    window.dispatchEvent(new Event(LOCAL_ACCEPTANCE_EVENT));
   }, [clauses, userId, queryClient]);
 
   // ── Admin-only: edit the clauses. `bumpVersion` re-prompts every user. ──
@@ -143,5 +178,15 @@ export function useDisclaimer() {
     [userId, currentVersion, queryClient],
   );
 
-  return { clauses, isLoading, needsAgreement, agree, currentVersion, update };
+  return {
+    clauses,
+    isLoading,
+    isResolving: isLoading || !acceptanceResolved || hasLoadError,
+    hasLoadError,
+    retry,
+    needsAgreement,
+    agree,
+    currentVersion,
+    update,
+  };
 }

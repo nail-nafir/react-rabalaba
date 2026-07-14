@@ -70,6 +70,7 @@ import {
   Crown,
   Wallet,
   Mail,
+  MessageSquareQuote,
 } from "lucide-react";
 
 const LANGUAGES = [
@@ -130,6 +131,11 @@ export function AdminLayout() {
       to: "/admin/invitations",
       label: t("admin.menu_invitations", "Undangan"),
       icon: Mail,
+    },
+    {
+      to: "/admin/testimonials",
+      label: t("admin.menu_testimonials", "Ulasan"),
+      icon: MessageSquareQuote,
     },
     {
       to: "/admin/plans",

@@ -1,19 +1,19 @@
 # TSD 03 — Database Schema
 
-> 🇮🇩 Schema Supabase Postgres: 13 tabel, 22 RPC, RLS, 28 migrasi.
-> 🇺🇸 Supabase Postgres schema: 13 tables, 22 RPCs, RLS, 28 migrations.
+> 🇮🇩 Schema Supabase Postgres: 15 tabel, 24 function/RPC, RLS, 29 migrasi.
+> 🇺🇸 Supabase Postgres schema: 15 tables, 24 functions/RPCs, RLS, 29 migrations.
 
 ---
 
 ## TL;DR
 
-🇮🇩 28 migrasi timestamp-order (idempotent) di `supabase/migrations/` bikin 13 tabel + 22 RPC + 2 trigger + RLS penuh. Ekstensi: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Tipe schema hand-written di `src/services/supabase/database.types.ts:288` (type-only, edge-safe).
+🇮🇩 29 migrasi timestamp-order (idempotent) di `supabase/migrations/` bikin 15 tabel + 24 function/RPC + 5 trigger + RLS penuh. Ekstensi: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Tipe schema hand-written ada di `src/services/supabase/database.types.ts` (type-only, edge-safe).
 
-🇺🇸 28 timestamp-ordered idempotent migrations in `supabase/migrations/` create 13 tables + 22 RPCs + 2 triggers + full RLS. Extensions: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Hand-written schema types at `src/services/supabase/database.types.ts:288` (type-only, edge-safe).
+🇺🇸 29 timestamp-ordered idempotent migrations in `supabase/migrations/` create 15 tables + 24 functions/RPCs + 5 triggers + full RLS. Extensions: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Hand-written schema types live in `src/services/supabase/database.types.ts` (type-only, edge-safe).
 
 ---
 
-## 📋 Tabel / Tables (13)
+## 📋 Tabel / Tables (15)
 
 | Tabel / Table | PK | Kunci / Key columns | RLS policy |
 |---|---|---|---|
@@ -30,12 +30,14 @@
 | `disclaimer_agreements` | user_id+version | agreed_at | own insert, own-or-admin read |
 | `invitations` | code | kind, trial_days, max_redemptions, recipient_label, expires_at, revoked | no policies (locked) |
 | `invitation_redemptions` | code+user_id | — | own select |
+| `testimonial_submissions` | id | unique user_id, display_name, persona, body, rating, status, private rejection/reviewer fields | non-blocked owner CRUD own row; admin all. Trigger forces new/edited content to `pending` and removes stale featured snapshot |
+| `featured_testimonials` | slot 1–6 | unique submission_id + public-safe content snapshot | anon/authenticated read; admin write. Trigger accepts approved submissions only and copies snapshot server-side |
 
 > Seed: `journal_assets` seed `EDGE_UNIVERSE`; `subscription_plans` seed 3 plan (Citizen/Veteran/Lord); `payment_methods` seed 6 channel; `disclaimer` seed v1; `journal_settings` seed 1 row.
 
 ---
 
-## ⚙️ RPC (22, semua `SECURITY DEFINER`)
+## ⚙️ Function/RPC (24)
 
 | RPC | Guard | Fungsi / Purpose |
 |---|---|---|
@@ -61,23 +63,30 @@
 | `admin_list_invitations()` | `is_admin()` | list |
 | `admin_revoke_invitation(code,bool)` | `is_admin()` | revoke |
 | `admin_delete_invitation(code)` | `is_admin()` | delete |
+| `admin_set_featured_testimonial(submission_id,slot)` | `is_admin()` + RLS, `SECURITY INVOKER` | atomically move an approved submission into slot 1–6, replacing the current occupant |
+| `admin_unfeature_testimonial(submission_id?,slot?)` | `is_admin()` + RLS, `SECURITY INVOKER` | remove one featured snapshot; rejects an unscoped call |
+
+> Fungsi trigger privat `private.enforce_testimonial_submission_write`, `private.populate_featured_testimonial_snapshot`, dan `private.unfeature_blocked_user_testimonials` tidak diekspos sebagai Data API RPC. Execute privilege dicabut dari role client.
+>
+> Private trigger functions `private.enforce_testimonial_submission_write`, `private.populate_featured_testimonial_snapshot`, and `private.unfeature_blocked_user_testimonials` are not exposed as Data API RPCs. Client roles have no execute privilege.
 
 ---
 
 ## 🔒 RLS principles
 
 🇮🇩 - **User data** (`profiles`, `user_favorites`, `code_redemptions`, `invitation_redemptions`, `disclaimer_agreements`): own-row select.
-- **Public data** (`subscription_plans`, `payment_methods`, `disclaimer`): public read.
+- **Testimonial privat** (`testimonial_submissions`): pemilik non-blocked CRUD row sendiri; admin moderasi semua row.
+- **Public data** (`subscription_plans`, `payment_methods`, `disclaimer`, `featured_testimonials`): public read. Featured testimonial hanya snapshot tanpa email/user/reviewer ID atau alasan penolakan.
 - **Locked** (`access_codes`, `invitations`): no policies (gak bisa dibaca client) — akses lewat RPC.
 - **Premium data** (`journal_trades`, `journal_assets`): `is_premium()` OR admin.
 - **Admin data** (`journal_settings`): `is_admin()`.
-- **All writes**: service-role (cron) atau RPC `SECURITY DEFINER` (admin). Browser publishable key gak bisa tulis data sensitif.
+- **Writes sensitif**: service-role atau RPC/policy admin. Pengecualian terkontrol: pengguna non-blocked menulis testimoni sendiri; trigger selalu melindungi status moderasi dan snapshot publik.
 
-🇺🇸 - **User data**: own-row select. **Public data**: public read. **Locked**: no policies (RPC-only). **Premium data**: `is_premium()` OR admin. **Admin data**: `is_admin()`. **All writes**: service-role (cron) or `SECURITY DEFINER` RPC.
+🇺🇸 - **User data**: own-row select. **Private testimonials**: non-blocked owners CRUD their row; admins moderate all rows. **Public data**: public read, with featured testimonials limited to a public-safe snapshot. **Locked**: no policies (RPC-only). **Premium data**: `is_premium()` OR admin. **Admin data**: `is_admin()`. **Sensitive writes**: service-role or admin RPC/policy; the controlled exception is a non-blocked user writing their own testimonial while triggers protect moderation and publication state.
 
 ---
 
-## 📜 Migrasi (28, timestamp order)
+## 📜 Migrasi (29, timestamp order)
 
 | # | File | Bikin / Creates |
 |---|---|---|
@@ -103,6 +112,7 @@
 | 26 | `20260701000001_profile_last_active.sql` | `last_active_at` + `touch_last_active` |
 | 27 | `20260702000001_asset_discovery.sql` | `journal_assets.source` + discovery cols on `journal_settings` |
 | 28 | `20260702000002_journal_periodic_summary.sql` | weekly/monthly summary cols |
+| 29 | `20260713093413_user_testimonials.sql` | private submissions + public featured snapshots, constraints, RLS/grants, moderation/snapshot triggers, 2 admin RPCs |
 
 > Cron wiring (bukan migrasi): `schedule-auto-journal.sql`, `schedule-daily-summary.sql`, `schedule-asset-discovery.sql` — jalankan terakhir setelah function di-deploy.
 
@@ -110,7 +120,7 @@
 
 ## 🧩 Tipe schema frontend
 
-`src/services/supabase/database.types.ts` (406 baris) — Row/Insert/Update type per tabel + `Database` generic (9 tabel + 10 RPC terdaftar). Type-only import → runtime-pure, dipake Vite app AND esbuild cron bundle. Mapper: `src/services/supabase/journal-mapper.ts` (`rowToFollowedTrade`, `followedTradeToInsert`) — pure, dipake app (read) + cron (write).
+`src/services/supabase/database.types.ts` — Row/Insert/Update type per tabel + `Database` generic (11 tabel + 19 RPC terdaftar). Type-only import → runtime-pure, dipake Vite app AND esbuild cron bundle. Mapper: `src/services/supabase/journal-mapper.ts` (`rowToFollowedTrade`, `followedTradeToInsert`) — pure, dipake app (read) + cron (write).
 
 ---
 

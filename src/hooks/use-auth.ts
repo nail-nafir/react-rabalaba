@@ -7,6 +7,7 @@
  * forged from the client the way the old localStorage grant could.
  */
 import { supabase } from "@/services/supabase/client";
+import { queryClient } from "@/app/config/query-client";
 import { store } from "@/store";
 import { authActions } from "@/store/slices/auth-slice";
 import { useAppSelector } from "@/store/hooks";
@@ -23,7 +24,20 @@ function initAuth() {
     store.dispatch(authActions.setSession(data.session));
     store.dispatch(authActions.setReady(true));
   });
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    // Entitlement and journal rows are identity-bound. Purge them on an auth
+    // boundary so a same-user re-login (or account switch) cannot briefly read
+    // profile/journal data cached under the preceding session.
+    const previousSession = store.getState().auth.session;
+    const crossedAuthBoundary =
+      event === "SIGNED_OUT" ||
+      event === "USER_UPDATED" ||
+      (event === "SIGNED_IN" &&
+        previousSession?.access_token !== session?.access_token);
+    if (crossedAuthBoundary) {
+      queryClient.removeQueries({ queryKey: ["profile"] });
+      queryClient.removeQueries({ queryKey: ["journal-trades"] });
+    }
     store.dispatch(authActions.setSession(session));
   });
 }

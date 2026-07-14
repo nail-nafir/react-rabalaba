@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save, Plus } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -332,13 +332,13 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                           value="trial"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          {t("admin.users_tier_trial")}
+                          {t("admin.users_tier_premium_trial")}
                         </SelectItem>
                         <SelectItem
                           value="premium"
                           className="uppercase tracking-wider text-[10px] cursor-pointer"
                         >
-                          {t("admin.users_tier_premium")}
+                          {t("admin.users_tier_premium_full")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -356,7 +356,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </label>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                        <SelectValue placeholder={t("admin.users_form_role_placeholder", "Pilih Role")} />
+                        <SelectValue placeholder={t("admin.users_form_role_placeholder", "Pilih Peran")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
@@ -525,9 +525,15 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
               {isSaving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : isEditMode ? (
-                t("admin.users_edit_btn_save", "Simpan Perubahan")
+                <>
+                  <Save data-icon="inline-start" className="h-3.5 w-3.5" />
+                  {t("admin.users_edit_btn_save", "Simpan")}
+                </>
               ) : (
-                t("admin.users_add_btn_save", "Simpan")
+                <>
+                  <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
+                  {t("admin.users_add_btn_save", "Tambah")}
+                </>
               )}
             </Button>
           </DialogFooter>

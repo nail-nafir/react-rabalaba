@@ -59,6 +59,7 @@ export interface ProfileRow {
   /** Manages the auto-journal universe via the admin UI (20260617000001). */
   is_admin: boolean;
   is_owner: boolean;
+  is_blocked: boolean;
   /** timestamptz ISO string; when the user last hit the backend (activity ping). */
   last_active_at: string | null;
   updated_at: string;
@@ -284,54 +285,147 @@ export type UserFavoriteInsert = Omit<UserFavoriteRow, "created_at"> & {
   created_at?: string;
 };
 
+/** Moderation state for a user's single testimonial submission. */
+export type TestimonialStatus = "pending" | "approved" | "rejected";
+
+/** The private owner/admin row. Only featured snapshots are publicly readable. */
+export interface TestimonialSubmissionRow {
+  id: string;
+  user_id: string;
+  display_name: string;
+  verified_purchase: boolean;
+  body: string;
+  rating: number;
+  status: TestimonialStatus;
+  rejection_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Authors supply content only; moderation and timestamps are server-controlled. */
+export type TestimonialSubmissionInsert = Pick<
+  TestimonialSubmissionRow,
+  "user_id" | "display_name" | "verified_purchase" | "body" | "rating"
+> & {
+  id?: string;
+};
+
+/** Supports author content edits and admin moderation. Reviewer/timestamp
+ *  fields remain server-controlled. */
+export type TestimonialSubmissionUpdate = Partial<
+  Pick<
+    TestimonialSubmissionRow,
+    | "display_name"
+    | "verified_purchase"
+    | "body"
+    | "rating"
+    | "status"
+    | "rejection_reason"
+  >
+>;
+
+/** Public landing-page snapshot. It intentionally contains no user/reviewer ID. */
+export interface FeaturedTestimonialRow {
+  slot: number;
+  submission_id: string;
+  display_name: string;
+  verified_purchase: boolean;
+  body: string;
+  rating: number;
+  published_at: string;
+}
+
+/** Snapshot fields are populated by a database trigger, never by the client. */
+export type FeaturedTestimonialInsert = Pick<
+  FeaturedTestimonialRow,
+  "slot" | "submission_id"
+>;
+
+export type FeaturedTestimonialUpdate = Partial<FeaturedTestimonialInsert>;
+
+/** Supabase JS 2.110's schema generic requires each handwritten shape to carry
+ *  generated object-literal semantics; this mapped copy preserves exact keys. */
+type DbRecord<T> = { [Key in keyof T]: T[Key] };
+
 /** supabase-js Database generic (standard generated shape). */
 export interface Database {
   public: {
     Tables: {
       journal_trades: {
-        Row: JournalTradeRow;
-        Insert: JournalTradeInsert;
-        Update: JournalTradeUpdate;
+        Row: DbRecord<JournalTradeRow>;
+        Insert: DbRecord<JournalTradeInsert>;
+        Update: DbRecord<JournalTradeUpdate>;
+        Relationships: [];
       };
       profiles: {
-        Row: ProfileRow;
-        Insert: ProfileRow;
-        Update: Partial<ProfileRow>;
+        Row: DbRecord<ProfileRow>;
+        Insert: DbRecord<ProfileRow>;
+        Update: DbRecord<Partial<ProfileRow>>;
+        Relationships: [];
       };
       user_favorites: {
-        Row: UserFavoriteRow;
-        Insert: UserFavoriteInsert;
-        Update: Partial<UserFavoriteRow>;
+        Row: DbRecord<UserFavoriteRow>;
+        Insert: DbRecord<UserFavoriteInsert>;
+        Update: DbRecord<Partial<UserFavoriteRow>>;
+        Relationships: [];
       };
       journal_assets: {
-        Row: JournalAssetRow;
-        Insert: JournalAssetInsert;
-        Update: Partial<JournalAssetRow>;
+        Row: DbRecord<JournalAssetRow>;
+        Insert: DbRecord<JournalAssetInsert>;
+        Update: DbRecord<Partial<JournalAssetRow>>;
+        Relationships: [];
       };
       journal_settings: {
-        Row: JournalSettingsRow;
-        Insert: Partial<JournalSettingsRow>;
-        Update: Partial<JournalSettingsRow>;
+        Row: DbRecord<JournalSettingsRow>;
+        Insert: DbRecord<Partial<JournalSettingsRow>>;
+        Update: DbRecord<Partial<JournalSettingsRow>>;
+        Relationships: [];
       };
       subscription_plans: {
-        Row: SubscriptionPlanRow;
-        Insert: SubscriptionPlanInsert;
-        Update: Partial<SubscriptionPlanRow>;
+        Row: DbRecord<SubscriptionPlanRow>;
+        Insert: DbRecord<SubscriptionPlanInsert>;
+        Update: DbRecord<Partial<SubscriptionPlanRow>>;
+        Relationships: [];
       };
       payment_methods: {
-        Row: PaymentMethodRow;
-        Insert: PaymentMethodInsert;
-        Update: Partial<PaymentMethodRow>;
+        Row: DbRecord<PaymentMethodRow>;
+        Insert: DbRecord<PaymentMethodInsert>;
+        Update: DbRecord<Partial<PaymentMethodRow>>;
+        Relationships: [];
       };
       disclaimer: {
-        Row: DisclaimerRow;
-        Insert: Partial<DisclaimerRow>;
-        Update: Partial<DisclaimerRow>;
+        Row: DbRecord<DisclaimerRow>;
+        Insert: DbRecord<Partial<DisclaimerRow>>;
+        Update: DbRecord<Partial<DisclaimerRow>>;
+        Relationships: [];
       };
       disclaimer_agreements: {
-        Row: DisclaimerAgreementRow;
-        Insert: DisclaimerAgreementInsert;
-        Update: Partial<DisclaimerAgreementRow>;
+        Row: DbRecord<DisclaimerAgreementRow>;
+        Insert: DbRecord<DisclaimerAgreementInsert>;
+        Update: DbRecord<Partial<DisclaimerAgreementRow>>;
+        Relationships: [];
+      };
+      testimonial_submissions: {
+        Row: DbRecord<TestimonialSubmissionRow>;
+        Insert: DbRecord<TestimonialSubmissionInsert>;
+        Update: DbRecord<TestimonialSubmissionUpdate>;
+        Relationships: [];
+      };
+      featured_testimonials: {
+        Row: DbRecord<FeaturedTestimonialRow>;
+        Insert: DbRecord<FeaturedTestimonialInsert>;
+        Update: DbRecord<FeaturedTestimonialUpdate>;
+        Relationships: [
+          {
+            foreignKeyName: "featured_testimonials_submission_id_fkey";
+            columns: ["submission_id"];
+            isOneToOne: true;
+            referencedRelation: "testimonial_submissions";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
@@ -397,6 +491,66 @@ export interface Database {
       /** Admin-only: permanently delete an invitation (redemptions cascade). */
       admin_delete_invitation: {
         Args: { p_code: string };
+        Returns: boolean;
+      };
+      /** Admin-only: create a confirmed auth user and entitlement profile. */
+      admin_create_user: {
+        Args: {
+          p_email: string;
+          p_password: string;
+          p_tier?: string;
+          p_is_admin?: boolean;
+          p_is_owner?: boolean;
+          p_trial_expires_at?: string | null;
+          p_is_blocked?: boolean;
+        };
+        Returns: string;
+      };
+      /** Admin-only: create an access code. */
+      admin_create_access_code: {
+        Args: {
+          p_code: string;
+          p_kind: string;
+          p_max_redemptions?: number | null;
+          p_trial_days?: number | null;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      admin_toggle_block_user: {
+        Args: { p_user_id: string; p_blocked: boolean };
+        Returns: undefined;
+      };
+      admin_delete_user: {
+        Args: { p_user_id: string };
+        Returns: undefined;
+      };
+      admin_delete_access_code: {
+        Args: { p_code: string };
+        Returns: undefined;
+      };
+      admin_update_user: {
+        Args: {
+          p_user_id: string;
+          p_tier: string;
+          p_is_admin: boolean;
+          p_is_owner: boolean;
+          p_trial_expires_at?: string | null;
+          p_is_blocked?: boolean;
+        };
+        Returns: undefined;
+      };
+      /** Admin-only: atomically move an approved submission into a featured slot. */
+      admin_set_featured_testimonial: {
+        Args: { p_submission_id: string; p_slot: number };
+        Returns: DbRecord<FeaturedTestimonialRow>;
+      };
+      /** Admin-only: remove a featured row by submission, slot, or both. */
+      admin_unfeature_testimonial: {
+        Args: {
+          p_submission_id?: string | null;
+          p_slot?: number | null;
+        };
         Returns: boolean;
       };
     };

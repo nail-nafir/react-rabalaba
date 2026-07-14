@@ -30,8 +30,8 @@
 
 ### Migrations (urutan = urutan nama file / order = filename order)
 
-🇮🇩 Urutan wajib — ada ketergantungan (mis. `is_admin()` dibuat di `06`, dipakai `07`; `profiles` dibuat di `03`, di-`alter` oleh `06`).
-🇺🇸 Order is mandatory — there are dependencies (e.g. `is_admin()` is created in `06` and used by `07`; `profiles` is created in `03` and `alter`ed by `06`).
+🇮🇩 Urutan wajib — ada ketergantungan (mis. `profiles` dibuat di `03`, `is_admin()` dibuat di `06`, dan fitur setelahnya memakai keduanya).
+🇺🇸 Order is mandatory — there are dependencies (for example, `profiles` is created in `03`, `is_admin()` in `06`, and later features use both).
 
 | # | File | 🇮🇩 Isi / 🇺🇸 Contents |
 |---|------|----------|
@@ -42,6 +42,17 @@
 | 5 | `20260615000001_user_favorites` | Favorites per-user + RLS own-rows. |
 | 6 | `20260617000001_journal_assets` | Universe cron data-driven + `profiles.is_admin` + `is_admin()`. |
 | 7 | `20260617000002_journal_settings` | Jadwal cron data-driven (interval/pause/market-hours). / Data-driven cron schedule (interval/pause/market-hours). |
+| 8 | `20260620000001_journal_assets_premium_read` | Premium read policy untuk universe jurnal. / Premium read policy for the journal universe. |
+| 9–10 | `20260621000001…20260622000001` | Status trade reversal + rename status legacy. / Reversal trade state + legacy status rename. |
+| 11–19 | `20260623000001…09` | RPC admin untuk list/create/update/block/delete user dan access code. / Admin RPCs for users and access codes. |
+| 20 | `20260625000001_subscription` | Paket langganan + metode pembayaran. / Subscription plans + payment methods. |
+| 21 | `20260625000002_disclaimer` | Disclaimer versioned + agreement user. / Versioned disclaimer + user agreements. |
+| 22–24 | `20260625000003…20260626000001` | Invitation, redemption, admin listing, dan premium short-circuit. / Invitations, redemptions, admin listing, and premium short-circuit. |
+| 25 | `20260629000001_journal_daily_summary` | Konfigurasi rangkuman harian. / Daily summary configuration. |
+| 26 | `20260701000001_profile_last_active` | Aktivitas terakhir profile. / Profile last activity. |
+| 27 | `20260702000001_asset_discovery` | Auto-discovery universe aset. / Asset-universe auto-discovery. |
+| 28 | `20260702000002_journal_periodic_summary` | Rangkuman mingguan/bulanan. / Weekly/monthly summaries. |
+| 29 | `20260713093413_user_testimonials` | Pengajuan privat, featured snapshot publik, RLS/trigger, dan RPC moderasi. / Private submissions, public featured snapshots, RLS/triggers, and moderation RPCs. |
 
 ---
 
@@ -60,8 +71,8 @@ supabase link --project-ref nravncsodgcxwkdaeqcw
 supabase db push
 ```
 
-🇮🇩 Fallback manual: buka **SQL Editor**, paste isi tiap file **urut #1 → #7**. Aman kalau dobel (semua idempotent: `create ... if not exists`, `create or replace`, `drop policy if exists`).
-🇺🇸 Manual fallback: open the **SQL Editor**, paste each file's contents **in order #1 → #7**. Safe to repeat (all idempotent: `create ... if not exists`, `create or replace`, `drop policy if exists`).
+🇮🇩 Fallback manual: buka **SQL Editor**, lalu paste semua file migration **urut #1 → #29**. Aman kalau dobel (migration memakai pola idempotent seperti `create ... if not exists`, `create or replace`, dan `drop policy if exists`).
+🇺🇸 Manual fallback: open the **SQL Editor**, then paste every migration **in order #1 → #29**. Replays are safe because migrations use idempotent patterns such as `create ... if not exists`, `create or replace`, and `drop policy if exists`.
 
 ### Step 2 — Seed access codes (MANUAL)
 
@@ -126,6 +137,8 @@ select jobid, schedule, jobname from cron.job;                          -- 🇮�
 select * from cron.job_run_details order by start_time desc limit 5;    -- 🇮🇩 ada run sukses? / 🇺🇸 any successful runs?
 select count(*) from public.journal_trades;                            -- 🇮🇩 trade masuk? / 🇺🇸 trades landing?
 select * from public.journal_settings;                                  -- 🇮🇩 config kebaca? / 🇺🇸 config present?
+select count(*) from public.testimonial_submissions;                    -- 🇮🇩 antrean testimoni? / 🇺🇸 testimonial queue?
+select * from public.featured_testimonials order by slot;               -- 🇮🇩 snapshot publik? / 🇺🇸 public snapshots?
 ```
 
 ---

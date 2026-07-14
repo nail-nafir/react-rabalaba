@@ -248,7 +248,7 @@ export function adaptIhsgVolatilityMarketContext(
   return {
     kind: "realized-volatility",
     sourceSymbol: IDX_BENCHMARK_SYMBOL,
-    name: "IHSG Volatility",
+    name: "IHSG Volatility Index",
     value: volatility.value,
     lookbackDays: IHSG_VOLATILITY_LOOKBACK_DAYS,
     precision: 1,

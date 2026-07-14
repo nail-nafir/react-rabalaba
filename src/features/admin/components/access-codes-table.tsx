@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 /* ── Tiny helpers ────────────────────────────────────────────────────── */
 
 function CodeKindBadge({ kind }: { kind: string }) {
+  const { t } = useTranslation();
   const isFull = kind === "full";
   return (
     <Badge
@@ -45,7 +46,9 @@ function CodeKindBadge({ kind }: { kind: string }) {
           : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
       )}
     >
-      {kind}
+      {isFull
+        ? t("admin.codes_form_type_full", "Penuh")
+        : t("admin.codes_form_type_trial", "Uji Coba")}
     </Badge>
   );
 }

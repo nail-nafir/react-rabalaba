@@ -14,7 +14,12 @@ import {
   fitTradeWindowCandles,
 } from "@/features/follow-trade/lib/trade-chart-window";
 import { LifecycleBadge, ReversedBadge, TpProgress } from "./follow-status";
-import { formatPrice, formatRatio, formatDayMonth, formatClock } from "@/lib/formatters";
+import {
+  formatPrice,
+  formatRatio,
+  formatDayMonth,
+  formatClock,
+} from "@/lib/formatters";
 import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { cn } from "@/lib/utils";
@@ -23,25 +28,41 @@ import { useShareSetup } from "@/features/trading-plan/hooks/use-share-setup";
 
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Loader2, Share2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  Share2,
+  Target,
+} from "lucide-react";
 import { SIGNAL_COLORS, PALETTE, SIGNAL_LABEL_KEYS } from "@/constants";
 
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import type { TradingPlan, SignalDirection } from "@/types/asset";
 import type { ChartMarker } from "@/features/trading-plan/lib/trade-setup-model";
 
-interface TradeDetailDialogProps {
+export type TradeDetailDialogState =
+  | "loading"
+  | "ready"
+  | "error"
+  | "unavailable";
+
+export interface TradeDetailDialogProps {
   trade: FollowedTrade | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  state?: TradeDetailDialogState;
+  onRetry?: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /**
@@ -64,21 +85,146 @@ function buildPlanFromTrade(trade: FollowedTrade): TradingPlan {
   };
 }
 
+function TradeDetailStatusDialog({
+  open,
+  onOpenChange,
+  state,
+  onRetry,
+  onCloseAutoFocus,
+}: Omit<TradeDetailDialogProps, "trade"> & {
+  state: Exclude<TradeDetailDialogState, "ready">;
+}) {
+  const { t } = useTranslation();
+  const isLoading = state === "loading";
+  const isError = state === "error";
+  const title = isLoading
+    ? t("journal.trade_detail")
+    : isError
+      ? t("journal.detail_load_error_title", {
+          defaultValue: "Detail jurnal belum dapat dimuat",
+        })
+      : t("journal.detail_unavailable_title", {
+          defaultValue: "Detail jurnal tidak tersedia",
+        });
+  const description = isLoading
+    ? t("dialog.loading")
+    : isError
+      ? t("journal.detail_load_error_description", {
+          defaultValue:
+            "Terjadi gangguan saat mengambil data jurnal. Coba muat ulang.",
+        })
+      : t("journal.detail_unavailable_description", {
+          defaultValue:
+            "Transaksi ini tidak ditemukan atau tidak tersedia untuk akun Anda.",
+        });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
+      >
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div
+          className="flex flex-col space-y-6"
+          role={isError ? "alert" : undefined}
+        >
+          {isLoading ? (
+            <div className="flex flex-col gap-4" aria-busy="true">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-24 w-full rounded-lg" />
+              <Skeleton className="h-44 w-full rounded-lg" />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-5 py-6 text-center sm:py-8">
+              <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <AlertTriangle className="size-5" aria-hidden="true" />
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+                {isError && (
+                  <Button
+                    type="button"
+                    onClick={onRetry}
+                    disabled={!onRetry}
+                    className="min-h-11"
+                  >
+                    <RefreshCw className="size-4" aria-hidden="true" />
+                    {t("common.retry")}
+                  </Button>
+                )}
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant={isError ? "outline" : "default"}
+                    className="min-h-11"
+                  >
+                    {t("journal.close_short")}
+                  </Button>
+                </DialogClose>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function TradeDetailDialog({
   trade,
   open,
   onOpenChange,
+  state = trade ? "ready" : "unavailable",
+  onRetry,
+  onCloseAutoFocus,
 }: TradeDetailDialogProps) {
+  if (state !== "ready" || !trade) {
+    return (
+      <TradeDetailStatusDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        state={state === "ready" ? "unavailable" : state}
+        onRetry={onRetry}
+        onCloseAutoFocus={onCloseAutoFocus}
+      />
+    );
+  }
+
+  return (
+    <TradeDetailReadyDialog
+      trade={trade}
+      open={open}
+      onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
+    />
+  );
+}
+
+function TradeDetailReadyDialog({
+  trade,
+  open,
+  onOpenChange,
+  onCloseAutoFocus,
+}: Omit<TradeDetailDialogProps, "state" | "onRetry"> & {
+  trade: FollowedTrade;
+}) {
   const { t, i18n } = useTranslation();
 
-  const isClosed = trade ? trade.status !== "open" : false;
+  const isClosed = trade.status !== "open";
 
   // OPEN trades chart the live recent window (and need the live price), so
   // they go through useMarketData. Memoize the symbols array so its input is
   // identity-stable (a fresh [trade.symbol] each render churns the query).
   const symbols = useMemo(
-    () => (trade && !isClosed ? [trade.symbol] : []),
-    [trade, isClosed],
+    () => (!isClosed ? [trade.symbol] : []),
+    [trade.symbol, isClosed],
   );
   const { data: assets, isLoading: liveLoading } = useMarketData(symbols);
   const asset = assets?.[0];
@@ -88,13 +234,13 @@ export function TradeDetailDialog({
   // current market — no separate "current" mode.
   const chartWindow = useMemo(
     () =>
-      trade && isClosed && trade.closedAt != null
+      isClosed && trade.closedAt != null
         ? computeTradeChartWindow(trade.followedAt, trade.closedAt)
         : null,
     [trade, isClosed],
   );
   const { data: periodCandles, isLoading: periodLoading } = usePeriodCandles(
-    trade && isClosed ? trade.symbol : null,
+    isClosed ? trade.symbol : null,
     chartWindow,
   );
 
@@ -110,18 +256,14 @@ export function TradeDetailDialog({
   const chartLoading = isClosed ? periodLoading : liveLoading;
 
   // Build the trading plan from the running/saved setup data
-  const tradingPlan = useMemo(
-    () => (trade ? buildPlanFromTrade(trade) : null),
-    [trade],
-  );
-  const livePrice = asset?.price ?? trade?.entryPrice ?? 0;
+  const tradingPlan = useMemo(() => buildPlanFromTrade(trade), [trade]);
+  const livePrice = asset?.price ?? trade.entryPrice;
   const displayPrice = isClosed
-    ? (trade?.closePrice ?? trade?.entryPrice ?? 0)
+    ? (trade.closePrice ?? trade.entryPrice)
     : livePrice;
   const changePercent = isClosed ? 0 : (asset?.changePercent ?? 0);
 
   const pnl = useMemo(() => {
-    if (!trade) return { pct: 0, r: 0 };
     return computePnl(trade, displayPrice);
   }, [trade, displayPrice]);
 
@@ -130,7 +272,6 @@ export function TradeDetailDialog({
   // Candle timestamps are in SECONDS (Yahoo), but followedAt/closedAt are ms
   // (Date.now()), so convert to seconds to keep the marker on the same axis.
   const markers = useMemo<ChartMarker[]>(() => {
-    if (!trade) return [];
     const toSec = (ms: number) => Math.floor(ms / 1000);
     const list: ChartMarker[] = [
       {
@@ -173,8 +314,6 @@ export function TradeDetailDialog({
   );
 
   const handleShare = () => {
-    if (!trade) return;
-    if (!tradingPlan) return;
     shareSetup({
       symbol: trade.symbol,
       name: trade.name,
@@ -195,8 +334,6 @@ export function TradeDetailDialog({
     });
   };
 
-  if (!trade) return null;
-
   const signal: SignalDirection = trade.signal;
   const formatTradeDate = (timestamp: number) => {
     const sec = timestamp / 1000;
@@ -216,11 +353,13 @@ export function TradeDetailDialog({
   const chartTitle = isClosed
     ? t("journal.trade_detail")
     : t("journal.open_position");
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
-        <DialogHeader>
+      <DialogContent
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
+      >
+        <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
             {trade.symbol}
             <Badge
@@ -325,11 +464,10 @@ export function TradeDetailDialog({
             )}
             <LifecycleBadge open={progress.lifecycle === "open"} />
           </div>
+          <Separator className="mt-4" />
         </DialogHeader>
 
-        <div className="flex flex-col space-y-6">
-          <Separator />
-
+        <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
           {/* Trading Plan Chart — uses the saved setup, not the live signal.
               The header (title + window toggle + share) stays mounted through
               loading/empty states so the toggle can't strand the user in a
@@ -359,11 +497,11 @@ export function TradeDetailDialog({
             </div>
 
             {chartLoading ? (
-              <div className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t("dialog.loading")}
               </div>
-            ) : tradingPlan && candles.length > 0 ? (
+            ) : candles.length > 0 ? (
               <TradeSetupChart
                 candles={candles}
                 plan={tradingPlan}

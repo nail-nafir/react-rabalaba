@@ -21,6 +21,7 @@ test.after(async () => {
 });
 
 const SRC = "/src/lib/auth-redirect.ts";
+const TESTIMONIAL_SRC = "/src/features/testimonials/constants.ts";
 
 test("plain path round-trips as an encoded redirect", async () => {
   const { buildLoginRedirect } = await loadModule(SRC);
@@ -80,4 +81,99 @@ test("a lone '?' search is treated as no query", async () => {
     buildLoginRedirect("/terminal", "?"),
     "/login?redirect=%2Fterminal",
   );
+});
+
+test("safe internal redirects preserve path, query, and hash exactly", async () => {
+  const { sanitizeInternalRedirect } = await loadModule(SRC);
+  const target = "/terminal/journal?trade=123#detail";
+
+  assert.equal(sanitizeInternalRedirect(target), target);
+});
+
+test("external schemes and protocol-relative redirects are rejected", async () => {
+  const { sanitizeInternalRedirect, DEFAULT_REDIRECT } = await loadModule(SRC);
+
+  for (const target of [
+    "https://evil.example/steal",
+    "javascript:alert(1)",
+    "data:text/html,boom",
+    "//evil.example/steal",
+    "/%2Fevil.example/steal",
+    "/%252Fevil.example/steal",
+  ]) {
+    assert.equal(sanitizeInternalRedirect(target), DEFAULT_REDIRECT, target);
+  }
+});
+
+test("backslashes and ASCII control characters are rejected at nested encoding layers", async () => {
+  const { sanitizeInternalRedirect, DEFAULT_REDIRECT } = await loadModule(SRC);
+
+  for (const target of [
+    "/terminal\\journal",
+    "/terminal%5Cjournal",
+    "/terminal%255Cjournal",
+    "/terminal\nset-cookie",
+    "/terminal%0Aset-cookie",
+    "/terminal%250Aset-cookie",
+    "/terminal%25250Aset-cookie",
+    "/terminal%7Fdelete",
+  ]) {
+    assert.equal(sanitizeInternalRedirect(target), DEFAULT_REDIRECT, target);
+  }
+});
+
+test("auth entry routes cannot create a redirect loop", async () => {
+  const { sanitizeInternalRedirect, DEFAULT_REDIRECT } = await loadModule(SRC);
+
+  for (const target of [
+    "/login",
+    "/login?redirect=/terminal",
+    "/LOGIN/",
+    "/account/../login",
+    "/%6Cogin",
+    "/register",
+    "/auth/callback?code=fake",
+  ]) {
+    assert.equal(sanitizeInternalRedirect(target), DEFAULT_REDIRECT, target);
+  }
+});
+
+test("login URL builder sanitizes a pre-composed untrusted target", async () => {
+  const { buildLoginRedirect, buildLoginRedirectForTarget, DEFAULT_REDIRECT } =
+    await loadModule(SRC);
+  const fallback = `/login?redirect=${encodeURIComponent(DEFAULT_REDIRECT)}`;
+
+  assert.equal(
+    buildLoginRedirectForTarget("https://evil.example"),
+    fallback,
+  );
+  assert.equal(buildLoginRedirect("/terminal\n"), fallback);
+});
+
+test("login URL builder preserves a section hash", async () => {
+  const { buildLoginRedirect } = await loadModule(SRC);
+
+  assert.equal(
+    buildLoginRedirect(
+      "/terminal/journal",
+      "?trade=65d4f534-6a14-4f42-9f56-65fe1397142e",
+      "#history",
+    ),
+    "/login?redirect=%2Fterminal%2Fjournal%3Ftrade%3D65d4f534-6a14-4f42-9f56-65fe1397142e%23history",
+  );
+});
+
+test("testimonial login deep link preserves its query and section hash", async () => {
+  const { TESTIMONIAL_LOGIN_PATH, TESTIMONIAL_PATH } =
+    await loadModule(TESTIMONIAL_SRC);
+  const loginUrl = new URL(TESTIMONIAL_LOGIN_PATH, "https://rabalaba.app");
+  const redirect = loginUrl.searchParams.get("redirect");
+
+  assert.equal(loginUrl.pathname, "/login");
+  assert.equal(redirect, TESTIMONIAL_PATH);
+
+  const target = new URL(redirect, "https://rabalaba.app");
+  assert.equal(target.pathname, "/");
+  assert.equal(target.searchParams.get("testimonial"), "open");
+  assert.equal(target.hash, "#testimonials");
 });

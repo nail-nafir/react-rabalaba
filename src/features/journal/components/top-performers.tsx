@@ -1,12 +1,10 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Activity, Shield, Sparkles } from "lucide-react";
-import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TradeDetailDialog } from "@/features/follow-trade/components/trade-detail-dialog";
 import { cn } from "@/lib/utils";
 import { formatDateNumeric } from "@/lib/formatters";
 import { SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
@@ -14,15 +12,21 @@ import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-mod
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 
-export function TopPerformers() {
+interface TopPerformersProps {
+  history: FollowedTrade[];
+  isLoading: boolean;
+  onTradeSelect: (tradeId: string, trigger: HTMLElement) => void;
+}
+
+export function TopPerformers({
+  history,
+  isLoading,
+  onTradeSelect,
+}: TopPerformersProps) {
   const { t } = useTranslation();
-  const { history, isLoading } = useJournalTrades();
   type TopPerformerPeriod = "1D" | "1W" | "1M" | "ALL";
 
   const [period, setPeriod] = useState<TopPerformerPeriod>("1D");
-  const [selectedTrade, setSelectedTrade] = useState<FollowedTrade | null>(
-    null,
-  );
 
   const periodOptions = [
     { value: "1D" as const, label: t("journal.timeframe_1d") },
@@ -158,64 +162,75 @@ export function TopPerformers() {
           return (
             <Card
               key={trade.id}
-              onClick={() => setSelectedTrade(trade)}
               size="sm"
-              className="bg-muted/50 hover:bg-muted/80 border border-border transition-all duration-200 cursor-pointer group hover:scale-[1.005] hover:shadow-xs"
+              className="border border-border bg-muted/50 py-0 transition-colors duration-200 group hover:bg-muted/80 hover:shadow-xs"
             >
-              <CardContent className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "h-7 w-7 rounded-full flex items-center justify-center p-0 font-black shrink-0 text-xs",
-                      isGainer ? SIGNAL_COLORS.long.bg : SIGNAL_COLORS.short.bg,
-                      isGainer
-                        ? SIGNAL_COLORS.long.text
-                        : SIGNAL_COLORS.short.text,
-                      isGainer
-                        ? SIGNAL_COLORS.long.border
-                        : SIGNAL_COLORS.short.border,
-                    )}
-                  >
-                    {index + 1}
-                  </Badge>
-                  <div className="min-w-0">
-                    <div className="font-bold text-sm tracking-tight text-foreground flex flex-wrap items-center gap-1.5">
-                      <span>{trade.symbol}</span>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "font-bold tracking-wider uppercase text-[8px] px-1 h-3.5 rounded-lg leading-none shrink-0",
-                          signalColor.bg,
-                          signalColor.text,
-                          signalColor.border,
-                        )}
-                      >
-                        {t(SIGNAL_LABEL_KEYS[trade.signal])}
-                      </Badge>
-                    </div>
-                    <div className="text-xs truncate text-muted-foreground mt-0.5">
-                      {trade.name}
+              <CardContent className="p-0">
+                <button
+                  type="button"
+                  onClick={(event) =>
+                    onTradeSelect(trade.id, event.currentTarget)
+                  }
+                  aria-haspopup="dialog"
+                  aria-label={`${t("journal.view_detail")} ${trade.symbol}`}
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "h-7 w-7 rounded-full flex items-center justify-center p-0 font-black shrink-0 text-xs",
+                        isGainer
+                          ? SIGNAL_COLORS.long.bg
+                          : SIGNAL_COLORS.short.bg,
+                        isGainer
+                          ? SIGNAL_COLORS.long.text
+                          : SIGNAL_COLORS.short.text,
+                        isGainer
+                          ? SIGNAL_COLORS.long.border
+                          : SIGNAL_COLORS.short.border,
+                      )}
+                    >
+                      {index + 1}
+                    </Badge>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm tracking-tight text-foreground flex flex-wrap items-center gap-1.5">
+                        <span>{trade.symbol}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-bold tracking-wider uppercase text-[8px] px-1 h-3.5 rounded-lg leading-none shrink-0",
+                            signalColor.bg,
+                            signalColor.text,
+                            signalColor.border,
+                          )}
+                        >
+                          {t(SIGNAL_LABEL_KEYS[trade.signal])}
+                        </Badge>
+                      </div>
+                      <div className="text-xs truncate text-muted-foreground mt-0.5">
+                        {trade.name}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="text-right shrink-0">
-                  <div
-                    className={cn(
-                      "text-sm font-bold leading-none",
-                      isGainer
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-rose-600 dark:text-rose-400",
-                    )}
-                  >
-                    {pct >= 0 ? "+" : ""}
-                    {pct.toFixed(2)}%
+                  <div className="shrink-0 text-right">
+                    <div
+                      className={cn(
+                        "text-sm font-bold leading-none",
+                        isGainer
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-rose-600 dark:text-rose-400",
+                      )}
+                    >
+                      {pct >= 0 ? "+" : ""}
+                      {pct.toFixed(2)}%
+                    </div>
+                    <div className="mt-1 text-[9px] leading-none text-muted-foreground">
+                      {formatDateNumeric(dateSecs)}
+                    </div>
                   </div>
-                  <div className="text-[9px] text-muted-foreground leading-none mt-1">
-                    {formatDateNumeric(dateSecs)}
-                  </div>
-                </div>
+                </button>
               </CardContent>
             </Card>
           );
@@ -361,15 +376,6 @@ export function TopPerformers() {
           </Card>
         </div>
       )}
-
-      {/* Shared detail modal */}
-      <TradeDetailDialog
-        trade={selectedTrade}
-        open={selectedTrade !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedTrade(null);
-        }}
-      />
     </div>
   );
 }

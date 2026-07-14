@@ -199,14 +199,12 @@ function MarketContextFooter({
 
   if (isLoading && !context) {
     return (
-      <CardFooter className="mt-auto min-h-24 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+      <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 pt-3">
         <div className="flex flex-col gap-2 flex-1">
-          <Skeleton className="h-2.5 w-20" />
           <Skeleton className="h-3.5 w-32 max-w-full" />
           <Skeleton className="h-4 w-28 max-w-full" />
         </div>
         <div className="flex flex-col items-center gap-1 shrink-0">
-          <Skeleton className="h-2.5 w-10" />
           <Skeleton className="size-10 rounded-full" />
         </div>
       </CardFooter>
@@ -214,13 +212,9 @@ function MarketContextFooter({
   }
 
   return (
-    <CardFooter className="mt-auto min-h-24 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+    <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 pt-3">
       {/* Left side: Context details */}
       <div className="flex flex-col items-start gap-1 min-w-0 flex-1">
-        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {t("market.market_context")}
-        </span>
-
         {context ? (
           <>
             <span
@@ -266,9 +260,6 @@ function MarketContextFooter({
 
       {/* Right side: Score Donut */}
       <div className="flex flex-col items-center gap-1 shrink-0">
-        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Score
-        </span>
         <DonutGauge value={score} />
       </div>
     </CardFooter>
@@ -455,7 +446,7 @@ export function MarketSummaryRow() {
                     <CardTitle className="flex min-w-0 items-center gap-2">
                       {icon}
                       <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
-                        {card.title}
+                        {t(card.title)}
                       </span>
                     </CardTitle>
                     <CardAction>
@@ -468,10 +459,10 @@ export function MarketSummaryRow() {
                       <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
                         <AlertTriangle className="h-8 w-8 text-rose-500/80 animate-pulse" />
                         <span className="text-xs text-muted-foreground font-semibold">
-                          Data Offline
+                          {t("market.data_offline")}
                         </span>
                         <span className="text-[10px] text-muted-foreground/60 max-w-50">
-                          Failed to load core benchmark prices
+                          {t("market.data_offline_desc")}
                         </span>
                       </div>
                     ) : (
@@ -480,7 +471,7 @@ export function MarketSummaryRow() {
                         <div className="flex items-center justify-between gap-1.5 min-w-0">
                           <div className="flex flex-col min-w-0 gap-0.5 flex-1">
                             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                              {getLabel(card.id)}
+                              {getLabel(card.id, t)}
                             </span>
                             <div className="flex items-baseline gap-1 min-w-0">
                               <span
@@ -515,11 +506,9 @@ export function MarketSummaryRow() {
                           {card.sparkline && card.sparkline.length > 0 && (
                             <Sparkline
                               values={card.sparkline}
-                              width={240}
-                              height={32}
-                              strokeWidth={1.5}
-                              margin={2}
-                              className="w-full [&>svg]:w-full!"
+                              width={220}
+                              height={40}
+                              className="flex w-full"
                             />
                           )}
                         </div>
@@ -559,7 +548,7 @@ function getCardIcon(id: string) {
   }
 }
 
-function getLabel(cardId: string) {
+function getLabel(cardId: string, t: (key: string) => string) {
   switch (cardId) {
     case "crypto":
       return "BTC USD";
@@ -572,23 +561,24 @@ function getLabel(cardId: string) {
     case "forex":
       return "USD / IDR";
     default:
-      return "Index";
+      return t("market.index_fallback");
   }
 }
 
 function SkeletonCard() {
   return (
-    <Card className="border border-border/80 bg-card/45 w-full">
+    <Card className="border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full border-border hover:border-zinc-700">
       <CardHeader>
-        <CardTitle>
-          <Skeleton className="h-4 w-24" />
+        <CardTitle className="flex min-w-0 items-center gap-2">
+          <Skeleton className="size-4" />
+          <Skeleton className="h-4 w-20" />
         </CardTitle>
         <CardAction>
           <Skeleton className="h-5 w-16 rounded-md" />
         </CardAction>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-3 px-4 pb-4 pt-0">
+      <CardContent className="flex flex-col gap-3 px-4 pt-0">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1.5 flex-1 min-w-0">
             <Skeleton className="h-3 w-10" />
@@ -599,14 +589,12 @@ function SkeletonCard() {
         <Skeleton className="h-9 w-full" />
       </CardContent>
 
-      <CardFooter className="mt-auto min-h-24 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+      <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 pt-3">
         <div className="flex flex-col gap-2 flex-1">
-          <Skeleton className="h-2.5 w-20" />
           <Skeleton className="h-3.5 w-32 max-w-full" />
           <Skeleton className="h-4 w-28 max-w-full" />
         </div>
         <div className="flex flex-col items-center gap-1 shrink-0">
-          <Skeleton className="h-2.5 w-10" />
           <Skeleton className="size-10 rounded-full" />
         </div>
       </CardFooter>

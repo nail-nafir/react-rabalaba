@@ -1,15 +1,15 @@
 # FSD 07 — Admin Console
 
-> 🇮🇩 Konsol admin di `/admin/*`: kelola user, universe jurnal, access code, invitation, plan, payment, disclaimer, statistics.
-> 🇺🇸 Admin console at `/admin/*`: manage users, journal universe, access codes, invitations, plans, payments, disclaimer, statistics.
+> 🇮🇩 Konsol admin di `/admin/*`: kelola user, universe jurnal, access code, invitation, testimoni, plan, payment, disclaimer, statistics.
+> 🇺🇸 Admin console at `/admin/*`: manage users, journal universe, access codes, invitations, testimonials, plans, payments, disclaimer, statistics.
 
 ---
 
 ## TL;DR
 
-🇮🇩 Shell `/admin/*` di-guard di `admin-layout.tsx:90-96` (harus `isAuthenticated && isAdmin`, kalau bukan redirect `/`). Sidebar 2 grup: **Overview** (Statistics) + **Management** (Users/Assets/Codes/Invitations/Plans/Payments/Disclaimer). `isOwner` vs `isAdmin` cuma ubah judul konsol. Semua tabel pakai pola seragam "Terminal-style data table": TanStack Table + skeleton + `DataTablePagination` + `EmptyState`, CRUD via dialog pendamping.
+🇮🇩 Shell `/admin/*` di-guard di `admin-layout.tsx:90-96` (harus `isAuthenticated && isAdmin`, kalau bukan redirect `/`). Sidebar 2 grup: **Overview** (Statistics) + **Management** (Users/Assets/Codes/Invitations/Testimonials/Plans/Payments/Disclaimer). `isOwner` vs `isAdmin` cuma ubah judul konsol. Semua tabel pakai pola seragam "Terminal-style data table": TanStack Table + skeleton + `DataTablePagination` + `EmptyState`, CRUD via dialog pendamping.
 
-🇺🇸 The `/admin/*` shell is guarded at `admin-layout.tsx:90-96` (must be `isAuthenticated && isAdmin`, else redirect `/`). Sidebar has 2 groups: **Overview** (Statistics) + **Management** (Users/Assets/Codes/Invitations/Plans/Payments/Disclaimer). `isOwner` vs `isAdmin` only changes the console title. All tables follow a uniform "Terminal-style data table" pattern: TanStack Table + skeleton + `DataTablePagination` + `EmptyState`, CRUD via companion dialogs.
+🇺🇸 The `/admin/*` shell is guarded at `admin-layout.tsx:90-96` (must be `isAuthenticated && isAdmin`, else redirect `/`). Sidebar has 2 groups: **Overview** (Statistics) + **Management** (Users/Assets/Codes/Invitations/Testimonials/Plans/Payments/Disclaimer). `isOwner` vs `isAdmin` only changes the console title. All tables follow a uniform "Terminal-style data table" pattern: TanStack Table + skeleton + `DataTablePagination` + `EmptyState`, CRUD via companion dialogs.
 
 ---
 
@@ -23,6 +23,7 @@
 | `/admin/assets` | `pages/admin/assets.tsx` | **Universe auto-jurnal** (crypto/US/ID), toggle aktif + refresh | `JournalAssetsTable` + `AddJournalAssetDialog` + `JournalSettingsDialog` | `useJournalAssets`, `useJournalSettings`, `useMarketScan`, `useAssetDiscovery` |
 | `/admin/codes` | `pages/admin/codes.tsx` | Access code (full/trial, `max_redemptions`), add dialog | `AccessCodesTable` + `AddAccessCodeDialog` + `DeleteAccessCodeDialog` | `useAdminUsers` |
 | `/admin/invitations` | `pages/admin/invitations.tsx` | Invite link (premium/trial), create dialog | `InvitationsTable` + `AddInvitationDialog` | `useAdminInvitations` |
+| `/admin/testimonials` | `pages/admin/testimonials.tsx` | Moderasi pengajuan + enam slot landing | `TestimonialsTable` | `useAdminTestimonials` |
 | `/admin/plans` | `pages/admin/plans.tsx` | Subscription plan (price, benefit, `cta_kind`) | `SubscriptionPlansTable` + `PlanDialog` | `useSubscriptionPlans` |
 | `/admin/payments` | `pages/admin/payments.tsx` | Payment method (bank/e-wallet/QRIS/crypto) | `PaymentMethodsTable` + `PaymentMethodDialog` | `usePaymentMethods` |
 | `/admin/disclaimer` | `pages/admin/disclaimer.tsx` | Klausul risk disclaimer + agreement user | `DisclaimerEditor` | `useDisclaimer` (direct supabase) |
@@ -62,6 +63,14 @@ File: `src/pages/admin/statistics.tsx`. KPI card (`:632-700`): total user, aset 
 
 ---
 
+## 💬 Testimonials
+
+`TestimonialsTable` (`features/admin/components/testimonials-table.tsx`) memfilter antrean berdasarkan status, menampilkan rating/persona/isi/catatan privat, dan menyediakan approve, reject, feature/move slot 1–6, unfeature, serta delete permanen. Penggantian slot terisi memerlukan konfirmasi. RPC feature bersifat atomic dan snapshot publik disalin oleh trigger database.
+
+`TestimonialsTable` filters the queue by status, shows rating/persona/body/private notes, and provides approve, reject, feature/move across slots 1–6, unfeature, and permanent delete. Replacing an occupied slot requires confirmation. The feature RPC is atomic and a database trigger copies the public snapshot.
+
+---
+
 ## 💳 Plans & Payments
 
 - `SubscriptionPlansTable` (`features/admin/components/subscription-plans-table.tsx:398`) — add/edit via `PlanDialog` (input bilingual EN/ID berpasangan → JSONB), toggle-active, delete.
@@ -77,6 +86,7 @@ File: `src/pages/admin/statistics.tsx`. KPI card (`:632-700`): total user, aset 
 
 ## 🔗 Terkait / Related
 - [`06-auth-entitlement.md`](06-auth-entitlement.md) — RLS + RPC entitlement
+- [`08-user-testimonials.md`](08-user-testimonials.md) — user submission and moderation lifecycle
 - [`03-auto-journal.md`](03-auto-journal.md) — universe & settings yang dikontrol
 - [`../tsd/03-database-schema.md`](../tsd/03-database-schema.md) — schema admin table
 - [`00-overview.md`](00-overview.md) — persona admin/owner

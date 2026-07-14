@@ -16,13 +16,14 @@ import {
 } from "@/features/auth/schemas/auth-schema";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
+import { sanitizeInternalRedirect } from "@/lib/auth-redirect";
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const { signIn, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const redirect = params.get("redirect") || "/terminal";
+  const redirect = sanitizeInternalRedirect(params.get("redirect"));
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<AuthFormValues>({
@@ -56,7 +57,7 @@ export default function LoginPage() {
         <p className="text-left text-xs text-muted-foreground/80 animate-in fade-in duration-500 delay-300">
           {t("auth.to_signup_q")}{" "}
           <Link
-            to="/register"
+            to={`/register?redirect=${encodeURIComponent(redirect)}`}
             className="font-bold text-primary hover:underline hover:text-primary/95 transition-colors underline-offset-4"
           >
             {t("auth.signup_btn")}

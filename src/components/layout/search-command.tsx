@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAppSelector, useUIActions } from "@/store/hooks";
@@ -12,12 +12,16 @@ import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
 import { ASSET_TYPE_LABEL_KEYS } from "@/constants";
 import type { AssetType } from "@/types/asset";
+import {
+  buildTerminalDialogHref,
+  withTerminalDialogOriginState,
+} from "@/features/terminal/lib/dialog-url";
 
 // Mock search results — will be replaced with API data
 const MOCK_ASSETS: { symbol: string; name: string; assetType: AssetType }[] = [
-  { symbol: "BTC/USD", name: "Bitcoin", assetType: "crypto" },
-  { symbol: "ETH/USD", name: "Ethereum", assetType: "crypto" },
-  { symbol: "SOL/USD", name: "Solana", assetType: "crypto" },
+  { symbol: "BTC-USD", name: "Bitcoin", assetType: "crypto" },
+  { symbol: "ETH-USD", name: "Ethereum", assetType: "crypto" },
+  { symbol: "SOL-USD", name: "Solana", assetType: "crypto" },
   { symbol: "AAPL", name: "Apple Inc.", assetType: "us-stock" },
   { symbol: "MSFT", name: "Microsoft", assetType: "us-stock" },
   { symbol: "GOOGL", name: "Alphabet", assetType: "us-stock" },
@@ -37,6 +41,7 @@ export function SearchCommand() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const debouncedQuery = useDebounce(query, 200);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleClose = useCallback(() => {
     setSearchOpen(false);
@@ -53,8 +58,16 @@ export function SearchCommand() {
   );
 
   const handleSelect = (symbol: string) => {
-    // Navigate to terminal with the selected symbol (optional enhancement)
-    navigate(`/terminal?symbol=${symbol}`);
+    const target = { kind: "market" as const, symbol };
+    navigate(buildTerminalDialogHref(target, location.search) + location.hash, {
+      // The result button lives inside this transient dialog, so it cannot be
+      // a valid focus return target after navigation. Tell Terminal to use its
+      // stable heading fallback and clear any retained row opener.
+      state: withTerminalDialogOriginState(location.state, target, {
+        focus: "fallback",
+      }),
+      preventScrollReset: true,
+    });
     handleClose();
   };
 

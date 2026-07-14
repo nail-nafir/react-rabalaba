@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -184,8 +184,8 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                         <SelectValue placeholder={t("admin.codes_form_type_placeholder", "Pilih Tipe")} />
                       </SelectTrigger>
                        <SelectContent align="start" position="popper" className="p-1">
-                        <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_full", "Full")}</SelectItem>
-                        <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_trial", "Trial")}</SelectItem>
+                        <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_full", "Penuh")}</SelectItem>
+                        <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_trial", "Uji Coba")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -271,7 +271,10 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
               {isSaving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                t("admin.codes_add_btn_save", "Simpan")
+                <>
+                  <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
+                  {t("admin.codes_add_btn_save", "Tambah")}
+                </>
               )}
             </Button>
           </DialogFooter>

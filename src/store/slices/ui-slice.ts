@@ -3,9 +3,6 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 export type TerminalView = "market" | "journal";
 
 interface UIState {
-  // Asset detail dialog
-  selectedAssetSymbol: string | null;
-  isDetailDialogOpen: boolean;
   // License dialog (global)
   isLicenseDialogOpen: boolean;
   // Terminal active view (market | journal)
@@ -17,8 +14,6 @@ interface UIState {
 }
 
 const initialState: UIState = {
-  selectedAssetSymbol: null,
-  isDetailDialogOpen: false,
   isLicenseDialogOpen: false,
   terminalView: "market",
   isSearchOpen: false,
@@ -43,14 +38,6 @@ const uiSlice = createSlice({
   name: "ui",
   initialState,
   reducers: {
-    openDetailDialog(state, action: PayloadAction<string>) {
-      state.selectedAssetSymbol = action.payload;
-      state.isDetailDialogOpen = true;
-    },
-    closeDetailDialog(state) {
-      state.isDetailDialogOpen = false;
-      state.selectedAssetSymbol = null;
-    },
     setLicenseDialogOpen(state, action: PayloadAction<boolean>) {
       state.isLicenseDialogOpen = action.payload;
     },

@@ -1,7 +1,7 @@
 # Testing 01 — Coverage Inventory
 
-> 🇮🇩 Peta 26 file / 268 case test, per modul, fokus coverage.
-> 🇺🇸 Map of 26 files / 268 test cases, per module, coverage focus.
+> 🇮🇩 Peta 29 file / 301 case test, per modul, fokus coverage.
+> 🇺🇸 Map of 29 files / 301 test cases, per module, coverage focus.
 
 ---
 
@@ -10,7 +10,7 @@
 | Metric | Value |
 |---|---|
 | File test | 26 |
-| Total case | 268 |
+| Total case | 301 |
 | Framework | `node --test` + `node:assert/strict` |
 | Load | Vite SSR `ssrLoadModule` real `.ts` |
 | Fokus | pure trading-engine core (`src/features/engine/*`, `src/core/*`) |
@@ -33,7 +33,8 @@
 | `regime-engine.test.mjs` | 9 | `engine/regime.ts` | `classifyRegime` 4 regime + **fixed collapsed-band edge case** (bbBW 0 → low_volatility), collapsed+strong ADX → trending, squeeze priority over high_volatility, bandwidth-at-threshold not squeeze |
 | `enrichment.test.mjs` | 8 | `engine/enrichment.ts` (+ accumulation, crypto-context, smart-money) | `enrichAsset` id-stock: IDX de-rate BEFORE accumulation nudge (exact combined math), accumulation attaches even neutral, US-stock accumulation, crypto identical legacy chain, idxContext never touches crypto / cryptoContext never touches id-stock, same-ref passthrough, commodity/forex passthrough, US-stock SHORT + opposing flow dampens no flip |
 | `daily-summary.test.mjs` | 7 | `core/alerts.ts` (`formatDailySummaryForDiscord`), `core/period-summary.ts` (`recapWindow`) | scoreboard recap, drop per-trade, empty day→null, open-only day counts-only, **`recapWindow`** daily (always send), weekly (Monday-start, Sunday send, WIB/UTC boundary), monthly (last day, Feb non-leap, year rollover), hour-0 send recaps just-completed period |
-| `auth-redirect.test.mjs` | 7 | `lib/auth-redirect.ts` | `buildLoginRedirect` plain path, query preserved+encoded, query normalized, empty→DEFAULT_REDIRECT, login never self, lone `?` = no query |
+| `auth-redirect.test.mjs` | 8 | `lib/auth-redirect.ts`, `features/testimonials/constants.ts` | `buildLoginRedirect` plain path, query preserved+encoded, query normalized, empty→DEFAULT_REDIRECT, login never self, lone `?` = no query; testimonial deep link preserves query + hash |
+| `testimonial-schema.test.mjs` | 2 | `features/testimonials/schemas/testimonial-schema.ts` | valid input trims safely; short/oversized content and out-of-range/fractional rating are rejected |
 | `signal-suppressed.test.mjs` | 6 | `engine/signals.ts` | `suppressed` flag: always boolean, clean LONG not suppressed, plain ranging not suppressed, `createUnavailableSignal` not suppressed, chop squeeze→NEUTRAL+suppressed (130-bar fixture), invariant `suppressed→neutral` |
 | `smart-money.test.mjs` | 5 | `api/binance.ts` (`yahooToBinancePerp`), `engine/smart-money.ts` | `yahooToBinancePerp` (USD crypto, 1000x PEPE, reject non-crypto), `derivePositioning` (OI↑price↑=new longs bullish, extreme funding=contrarian bearish crowded), `applySmartMoney` (boost/dampen ±15% bounded, immutable, neutral untouched) |
 | `proxy.test.mjs` | 5 | `functions/api/_shared/proxy.ts` | in-memory `caches.default` mock: cache success (miss→hit), coalesce concurrent identical GET, serve stale on 429, controlled CORS error no stale, bypass `no-cache` header + `?_=` buster |
@@ -68,7 +69,7 @@
 | Alerts/summary | `alerts`, `daily-summary` | `alerts.ts`, `period-summary.ts` |
 | Proxy | `proxy` | `proxy.ts` |
 | Screener universe | `screener-universe` | `screener-universe.ts` |
-| Lib | `auth-redirect`, `premium-trial` | `lib/auth-redirect.ts`, `lib/premium-trial.ts` |
+| Lib/form | `auth-redirect`, `premium-trial`, `testimonial-schema` | `lib/auth-redirect.ts`, `lib/premium-trial.ts`, `features/testimonials/schemas/testimonial-schema.ts` |
 
 ---
 

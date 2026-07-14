@@ -17,13 +17,14 @@ import {
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { cn } from "@/lib/utils";
+import { sanitizeInternalRedirect } from "@/lib/auth-redirect";
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const { signUp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const redirect = params.get("redirect") || "/terminal";
+  const redirect = sanitizeInternalRedirect(params.get("redirect"));
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -64,7 +65,7 @@ export default function RegisterPage() {
             <MailCheck className="h-8 w-8" />
           </div>
           <Link
-            to="/login"
+            to={`/login?redirect=${encodeURIComponent(redirect)}`}
             className={cn(
               buttonVariants({ size: "lg" }),
               "w-full h-10 text-xs font-extrabold bg-primary hover:bg-primary/95 text-primary-foreground shadow-lg shadow-primary/10 hover:shadow-primary/20 active:scale-[0.985] transition-all rounded-lg cursor-pointer",
@@ -85,7 +86,7 @@ export default function RegisterPage() {
         <p className="text-left text-xs text-muted-foreground/80 animate-in fade-in duration-500 delay-300">
           {t("auth.to_login_q")}{" "}
           <Link
-            to="/login"
+            to={`/login?redirect=${encodeURIComponent(redirect)}`}
             className="font-bold text-primary hover:underline hover:text-primary/95 transition-colors underline-offset-4"
           >
             {t("auth.login_btn")}

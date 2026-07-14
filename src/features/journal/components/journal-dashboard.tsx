@@ -14,10 +14,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { fetchYahooChart } from "@/services/api/yahoo-finance";
 import type { YahooChartResult } from "@/services/api/yahoo-finance";
-import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import {
   buildTrackerStats,
   computePnl,
+  type FollowedTrade,
 } from "@/features/follow-trade/lib/follow-trade-model";
 import { PALETTE } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
@@ -114,9 +114,18 @@ function dailyRangeForSpan(oldestMs: number, nowMs: number): string {
 
 type TimeframeOption = "1D" | "1W" | "1M" | "ALL";
 
-export function JournalDashboard() {
+interface JournalDashboardProps {
+  history: FollowedTrade[];
+  openTrades: FollowedTrade[];
+  isLoading: boolean;
+}
+
+export function JournalDashboard({
+  history,
+  openTrades,
+  isLoading,
+}: JournalDashboardProps) {
   const { t } = useTranslation();
-  const { history, openTrades, isLoading } = useJournalTrades();
   const openCount = openTrades.length;
   const [timeframe, setTimeframe] = useState<TimeframeOption>("1D");
   const [activeBenchmarks] = useState<string[]>(["BTC-USD", "IHSG", "S&P 500"]);

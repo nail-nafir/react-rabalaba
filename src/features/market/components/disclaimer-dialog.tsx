@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -31,9 +31,21 @@ import { pickLocale } from "@/lib/localized";
 export function DisclaimerDialog() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const { clauses, needsAgreement, agree } = useDisclaimer();
+  const { clauses, needsAgreement, agree, hasLoadError, retry } =
+    useDisclaimer();
   const [hasConfirmed, setHasConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  const handleRetry = async () => {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await retry();
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const handleAgree = async () => {
     if (!hasConfirmed || saving) return;
@@ -49,6 +61,42 @@ export function DisclaimerDialog() {
   };
 
   const points = (pickLocale(clauses?.points, lang, []) as string[]) ?? [];
+
+  if (hasLoadError) {
+    return (
+      <Dialog open onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-md border border-border text-foreground"
+          showCloseButton={false}
+        >
+          <DialogHeader>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="flex size-16 items-center justify-center rounded-md bg-amber-500/10">
+                <AlertTriangle className="size-8 text-amber-500" />
+              </div>
+              <DialogTitle className="text-lg font-bold text-foreground">
+                {t("disclaimer.load_error_title")}
+              </DialogTitle>
+              <DialogDescription className="text-xs leading-relaxed text-muted-foreground">
+                {t("disclaimer.load_error_description")}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              size="lg"
+              disabled={retrying}
+              onClick={() => void handleRetry()}
+              className="min-h-11 w-full text-xs font-bold"
+            >
+              {t("common.retry")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={needsAgreement} onOpenChange={() => { /* gate: dismiss only via Agree */ }}>
@@ -111,6 +159,7 @@ export function DisclaimerDialog() {
             onClick={handleAgree}
             className="text-xs font-bold cursor-pointer shrink-0 w-full"
           >
+            <Check data-icon="inline-start" className="h-3.5 w-3.5" />
             {(pickLocale(clauses?.agree_label, lang) as string) ??
               t("disclaimer.agree")}
           </Button>

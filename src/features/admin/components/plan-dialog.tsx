@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -321,8 +321,16 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
         >
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : isEdit ? (
+            <>
+              <Save data-icon="inline-start" className="h-3.5 w-3.5" />
+              {t("admin.billing.save_btn", "Simpan")}
+            </>
           ) : (
-            t("admin.billing.save_btn", "Simpan")
+            <>
+              <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
+              {t("admin.billing.add_action_btn", "Tambah")}
+            </>
           )}
         </Button>
       </DialogFooter>

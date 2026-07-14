@@ -14,6 +14,7 @@ import {
 import { MarketTicker } from "@/components/layout/market-ticker";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { TestimonialSection } from "@/features/testimonials/components/testimonial-section";
 import { cn } from "@/lib/utils";
 
 import {
@@ -186,6 +187,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <TestimonialSection />
 
       {/* ===== FAQ SECTION ===== */}
       <section className="relative z-10 py-24 bg-muted/40">

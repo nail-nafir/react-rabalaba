@@ -96,6 +96,7 @@ function SortButton<T>({
 /** Tier badge with colour coding: premium=emerald, trial=amber, free=muted. */
 function TierBadge({ tier }: { tier: string }) {
   const { t } = useTranslation();
+  const isPremium = tier === "premium" || tier === "trial";
   const cls =
     tier === "premium"
       ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
@@ -103,8 +104,9 @@ function TierBadge({ tier }: { tier: string }) {
         ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
         : "bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground";
 
-  // Translate using the existing user tier localization keys: admin.users_tier_xxxx
-  const label = t(`admin.users_tier_${tier}`, tier);
+  const label = isPremium
+    ? t("admin.users_tier_premium", "Premium")
+    : t(`admin.users_tier_${tier}`, tier);
 
   return (
     <Badge
@@ -237,8 +239,8 @@ export function RegisteredUsersTable() {
 
   const tierOptions: FilterOption<TierFilter>[] = [
     { value: "all", label: t("admin.users_tier_all") },
-    { value: "premium", label: t("admin.users_tier_premium") },
-    { value: "trial", label: t("admin.users_tier_trial") },
+    { value: "premium", label: t("admin.users_tier_premium_full") },
+    { value: "trial", label: t("admin.users_tier_premium_trial") },
     { value: "free", label: t("admin.users_tier_free") },
   ];
 
@@ -509,7 +511,7 @@ export function RegisteredUsersTable() {
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">
-                {t("admin.users_add_btn", "Tambah User")}
+                {t("admin.users_add_btn", "Tambah Pengguna")}
               </span>
             </Button>
           </div>

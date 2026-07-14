@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Radar, Zap, FileText } from "lucide-react";
+import { Loader2, Radar, Zap, FileText, Save } from "lucide-react";
 import {
   useJournalSettings,
   type JournalSettingsPatch,
@@ -216,7 +216,8 @@ function JournalSettingsForm({
   const [draftInterval, setDraftInterval] = useState(interval);
   const [draftMarketHoursOnly, setDraftMarketHoursOnly] =
     useState(marketHoursOnly);
-  const [draftSummaryEnabled, setDraftSummaryEnabled] = useState(summaryEnabled);
+  const [draftSummaryEnabled, setDraftSummaryEnabled] =
+    useState(summaryEnabled);
   const [draftSummaryHour, setDraftSummaryHour] = useState(summaryHour);
   const [draftWeeklyEnabled, setDraftWeeklyEnabled] = useState(weeklyEnabled);
   const [draftMonthlyEnabled, setDraftMonthlyEnabled] =
@@ -299,10 +300,17 @@ function JournalSettingsForm({
                   "flex items-center gap-3 px-3 h-8 text-sm font-medium transition-all duration-200 cursor-pointer shrink-0 sm:w-full select-none rounded-md text-left",
                   isActive
                     ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent",
                 )}
               >
-                <Icon className={cn("size-4 shrink-0", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                <Icon
+                  className={cn(
+                    "size-4 shrink-0",
+                    isActive
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground",
+                  )}
+                />
                 <span className="truncate">{tab.label}</span>
               </button>
             );
@@ -310,7 +318,7 @@ function JournalSettingsForm({
         </div>
 
         {/* Form Content Pane */}
-        <div className="flex-1 min-h-[300px] flex flex-col justify-between">
+        <div className="flex-1 min-h-75 flex flex-col justify-between">
           {activeTab === "journal" && (
             <div className="space-y-4 animate-in fade-in-50 duration-200">
               <div className="space-y-1 divide-y divide-border/60">
@@ -348,7 +356,9 @@ function JournalSettingsForm({
                     onChange={setDraftInterval}
                     renderLabel={(val) =>
                       val >= 60
-                        ? t("admin.settings_interval_hours", { count: val / 60 })
+                        ? t("admin.settings_interval_hours", {
+                            count: val / 60,
+                          })
                         : t("admin.settings_interval_minutes", { count: val })
                     }
                   />
@@ -534,13 +544,17 @@ function JournalSettingsForm({
         <Button
           type="button"
           onClick={handleSave}
+          size="lg"
           disabled={isSaving || !hasChanges}
-          className="text-xs font-bold cursor-pointer h-9 px-4 shrink-0"
+          className="text-xs font-bold cursor-pointer shrink-0"
         >
           {isSaving ? (
             <Loader2 className="size-3.5 animate-spin" />
           ) : (
-            t("admin.settings_save_btn")
+            <>
+              <Save data-icon="inline-start" className="size-3.5" />
+              {t("admin.settings_save_btn")}
+            </>
           )}
         </Button>
       </DialogFooter>
@@ -553,7 +567,7 @@ interface JournalSettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Settings Dialog container styled same as AddTickerDialog/AddJournalAssetDialog */
+/** Settings Dialog container styled same as AddSignalAssetDialog/AddJournalAssetDialog */
 export function JournalSettingsDialog({
   open,
   onOpenChange,

@@ -91,7 +91,7 @@ function ToggleStatusButton({
         variant="link"
         size="icon"
         onClick={() => setOpen(true)}
-        aria-label={active ? `Nonaktifkan ${name}` : `Aktifkan ${name}`}
+        aria-label={active ? t("admin.invitations.deactivate_aria", { name }) : t("admin.invitations.activate_aria", { name })}
         className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
         title={active ? t("admin.action_pause") : t("admin.action_activate")}
       >
@@ -116,13 +116,13 @@ function ToggleStatusButton({
             </AlertDialogMedia>
             <AlertDialogTitle>
               {active
-                ? `Nonaktifkan ${name}?`
-                : `Aktifkan ${name}?`}
+                ? t("admin.invitations.deactivate_title", { name })
+                : t("admin.invitations.activate_title", { name })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {active
-                ? `Apakah Anda yakin ingin menonaktifkan undangan ${name}?`
-                : `Apakah Anda yakin ingin mengaktifkan undangan ${name}?`}
+                ? t("admin.invitations.deactivate_desc", { name })
+                : t("admin.invitations.activate_desc", { name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -261,8 +261,8 @@ export function InvitationsTable() {
               )}
             >
               {isTrial
-                ? `${t("license.tier_trial", "Trial")}${inv.trial_days ? ` ${inv.trial_days}` : ""}`
-                : t("license.tier_premium", "Premium")}
+                ? `${t("admin.codes_form_type_trial", "Uji Coba")}${inv.trial_days ? ` ${inv.trial_days}` : ""}`
+                : t("admin.codes_form_type_full", "Penuh")}
             </Badge>
           );
         },

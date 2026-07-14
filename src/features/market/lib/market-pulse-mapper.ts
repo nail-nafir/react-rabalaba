@@ -140,7 +140,7 @@ export function mapCryptoCard(
   if (!btcAsset) {
     return {
       id: "crypto",
-      title: "Crypto",
+      title: "market.crypto",
       assetGroup: "crypto",
       score: 50,
       scoreKind: "risk_appetite",
@@ -172,7 +172,7 @@ export function mapCryptoCard(
 
   return {
     id: "crypto",
-    title: "Crypto",
+    title: "market.crypto",
     assetGroup: "crypto",
     score,
     scoreKind: "risk_appetite",
@@ -193,7 +193,7 @@ export function mapIdEquityCard(
   if (!ihsgAsset) {
     return {
       id: "id-equity",
-      title: "ID Equity",
+      title: "market.id_equity",
       assetGroup: "id-stock",
       score: 50,
       scoreKind: "risk_appetite",
@@ -226,7 +226,7 @@ export function mapIdEquityCard(
 
   return {
     id: "id-equity",
-    title: "ID Equity",
+    title: "market.id_equity",
     assetGroup: "id-stock",
     score,
     scoreKind: "risk_appetite",
@@ -248,7 +248,7 @@ export function mapUsEquityCard(
   if (!spxAsset) {
     return {
       id: "us-equity",
-      title: "US Equity",
+      title: "market.us_equity",
       assetGroup: "us-stock",
       score: 50,
       scoreKind: "risk_appetite",
@@ -281,7 +281,7 @@ export function mapUsEquityCard(
 
   return {
     id: "us-equity",
-    title: "US Equity",
+    title: "market.us_equity",
     assetGroup: "us-stock",
     score,
     scoreKind: "risk_appetite",
@@ -303,7 +303,7 @@ export function mapCommoditiesCard(
   if (!goldAsset) {
     return {
       id: "commodities",
-      title: "Commodity",
+      title: "market.commodity",
       assetGroup: "commodity",
       score: 50,
       scoreKind: "risk_appetite",
@@ -341,7 +341,7 @@ export function mapCommoditiesCard(
 
   return {
     id: "commodities",
-    title: "Commodity",
+    title: "market.commodity",
     assetGroup: "commodity",
     score,
     scoreKind: "risk_appetite",
@@ -363,7 +363,7 @@ export function mapForexCard(
   if (!usdIdrAsset) {
     return {
       id: "forex",
-      title: "Forex",
+      title: "market.forex",
       assetGroup: "forex",
       score: 50,
       scoreKind: "risk_appetite",
@@ -401,7 +401,7 @@ export function mapForexCard(
 
   return {
     id: "forex",
-    title: "Forex",
+    title: "market.forex",
     assetGroup: "forex",
     score,
     scoreKind: "risk_appetite",

@@ -4,6 +4,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  buildLoginRedirectForTarget,
+  sanitizeInternalRedirect,
+} from "@/lib/auth-redirect";
 
 /**
  * OAuth landing route (/auth/callback). Google → Supabase → here with a `?code`
@@ -20,7 +24,7 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { isAuthenticated } = useAuth();
-  const redirect = params.get("redirect") || "/terminal";
+  const redirect = sanitizeInternalRedirect(params.get("redirect"));
   const handled = useRef(false);
 
   // Provider returned an error (e.g. user denied consent) → straight to login.
@@ -32,7 +36,7 @@ export default function AuthCallbackPage() {
     if (error) {
       handled.current = true;
       toast.error(t("auth.google_failed"));
-      navigate("/login", { replace: true });
+      navigate(buildLoginRedirectForTarget(redirect), { replace: true });
       return;
     }
 
@@ -47,7 +51,7 @@ export default function AuthCallbackPage() {
       if (handled.current) return;
       handled.current = true;
       toast.error(t("auth.google_failed"));
-      navigate("/login", { replace: true });
+      navigate(buildLoginRedirectForTarget(redirect), { replace: true });
     }, 8000);
     return () => clearTimeout(timeout);
   }, [error, isAuthenticated, navigate, redirect, t]);

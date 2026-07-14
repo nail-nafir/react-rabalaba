@@ -59,12 +59,12 @@ export function PageLoader({ trigger = false }: PageLoaderProps) {
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (isPageLoading) {
-          if (prev >= 92) return 92; // Hold near end while loading
-          return prev + Math.random() * 1.2;
+          // Hold near the end without ever overshooting the Radix range.
+          return Math.min(92, prev + Math.random() * 1.2);
         }
 
-        if (prev >= 100) return 100;
-        return prev + 12; // Fast finish
+        // Radix Progress defaults to max=100 and rejects larger values.
+        return Math.min(100, prev + 12);
       });
     }, 70);
 

@@ -7,9 +7,9 @@
 
 ## TL;DR
 
-🇮🇩 Test pakai **Node.js built-in test runner** (`node --test`) + `node:assert/strict`. 26 file / 268 case, semua di `tests/*.test.mjs`. Test load **real shipping `.ts` source** lewat Vite SSR middleware (`ssrLoadModule`) — jadi test exercise production code, bukan copy. Fokus: pure trading-engine core. Run: `npm test`.
+🇮🇩 Test pakai **Node.js built-in test runner** (`node --test`) + `node:assert/strict`. 29 file / 301 case, semua di `tests/*.test.mjs`. Test load **real shipping `.ts` source** lewat Vite SSR middleware (`ssrLoadModule`) — jadi test exercise production code, bukan copy. Fokus utama pure trading-engine core, ditambah helper auth/form. Run: `npm test`.
 
-🇺🇸 Tests use the **Node.js built-in test runner** (`node --test`) + `node:assert/strict`. 26 files / 268 cases, all in `tests/*.test.mjs`. Tests load the **real shipping `.ts` source** via Vite SSR middleware (`ssrLoadModule`) — so tests exercise production code, not a copy. Focus: pure trading-engine core. Run: `npm test`.
+🇺🇸 Tests use the **Node.js built-in test runner** (`node --test`) + `node:assert/strict`. 29 files / 301 cases, all in `tests/*.test.mjs`. Tests load the **real shipping `.ts` source** via Vite SSR middleware (`ssrLoadModule`) — so tests exercise production code, not a copy. The main focus is the pure trading-engine core, plus auth/form helpers. Run: `npm test`.
 
 ---
 
@@ -19,8 +19,8 @@
 |---|---|
 | Runner | `node --test tests/*.test.mjs` (`package.json:11`) |
 | Assertion | `node:assert/strict` |
-| File pattern | `tests/*.test.mjs` (26 file) |
-| Total cases | 268 |
+| File pattern | `tests/*.test.mjs` (29 file) |
+| Total cases | 301 |
 | Module load | Vite SSR `server.ssrLoadModule(path)` |
 
 ---
@@ -56,7 +56,7 @@ const load = (path) => server.ssrLoadModule(path);
 ## ▶️ Cara run / How to run
 
 ```bash
-npm test                              # semua 26 file
+npm test                              # semua 29 file
 node --test tests/signal-engine.test.mjs   # satu file
 node --test tests/*.test.mjs --test-reporter=spec  # verbose
 ```
@@ -70,6 +70,6 @@ Detail per file: [`01-coverage-inventory.md`](01-coverage-inventory.md). Gap + r
 ---
 
 ## 🔗 Terkait / Related
-- [`01-coverage-inventory.md`](01-coverage-inventory.md) — 26 file/268 case map
+- [`01-coverage-inventory.md`](01-coverage-inventory.md) — 29 file/301 case map
 - [`02-gaps-and-conventions.md`](02-gaps-and-conventions.md) — gap + rekomendasi
 - [`../tsd/06-engine-internals.md`](../tsd/06-engine-internals.md) — modul yang di-test

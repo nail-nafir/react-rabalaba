@@ -22,9 +22,9 @@ import { useShareSetup } from "../hooks/use-share-setup";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Card,
@@ -32,7 +32,7 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { useAppSelector, useUIActions } from "@/store/hooks";
+import { useUIActions } from "@/store/hooks";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
@@ -73,37 +73,68 @@ import {
   RotateCw,
   ArrowUp,
   ArrowDown,
+  CloudOff,
+  SearchX,
 } from "lucide-react";
 
 const getSmartMoneyLabelKey = (label: string): string => {
   switch (label) {
-    case "Neutral positioning": return "dialog.sm_labels.neutral_positioning";
-    case "No positioning data": return "dialog.sm_labels.no_positioning_data";
-    case "New longs": return "dialog.sm_labels.new_longs";
-    case "New shorts": return "dialog.sm_labels.new_shorts";
-    case "Short covering": return "dialog.sm_labels.short_covering";
-    case "Long capitulation": return "dialog.sm_labels.long_capitulation";
-    case "Crowded longs, squeeze down risk": return "dialog.sm_labels.crowded_longs";
-    case "Crowded shorts, squeeze up potential": return "dialog.sm_labels.crowded_shorts";
-    default: return "";
+    case "Neutral positioning":
+      return "dialog.sm_labels.neutral_positioning";
+    case "No positioning data":
+      return "dialog.sm_labels.no_positioning_data";
+    case "New longs":
+      return "dialog.sm_labels.new_longs";
+    case "New shorts":
+      return "dialog.sm_labels.new_shorts";
+    case "Short covering":
+      return "dialog.sm_labels.short_covering";
+    case "Long capitulation":
+      return "dialog.sm_labels.long_capitulation";
+    case "Crowded longs, squeeze down risk":
+      return "dialog.sm_labels.crowded_longs";
+    case "Crowded shorts, squeeze up potential":
+      return "dialog.sm_labels.crowded_shorts";
+    default:
+      return "";
   }
 };
 
-export function AssetDetailDialog() {
+export type MarketDetailAvailability = "checking" | "available" | "unavailable";
+
+interface AssetDetailDialogProps {
+  open: boolean;
+  symbol: string | null;
+  availability: MarketDetailAvailability;
+  onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
+}
+
+export function AssetDetailDialog({
+  open,
+  symbol,
+  availability,
+  onOpenChange,
+  onCloseAutoFocus,
+}: AssetDetailDialogProps) {
   const { t } = useTranslation();
-  const isDetailDialogOpen = useAppSelector((s) => s.ui.isDetailDialogOpen);
-  const selectedAssetSymbol = useAppSelector((s) => s.ui.selectedAssetSymbol);
-  const { closeDetailDialog, openLicenseDialog } = useUIActions();
+  const { openLicenseDialog } = useUIActions();
   const { hasAccess } = usePremiumAccess();
 
-  const { favoriteSymbols, addSymbol, removeSymbol } = useFavorites();
-  const isStarred = selectedAssetSymbol
-    ? favoriteSymbols.includes(selectedAssetSymbol)
-    : false;
+  // The URL is intentionally not enough to trigger a Yahoo request. Only the
+  // validated, access-scoped universe may turn into a query symbol.
+  const querySymbol =
+    open && availability === "available" && symbol ? symbol : null;
 
-  const { data: assets, isLoading: chartLoading } = useMarketData(
-    selectedAssetSymbol ? [selectedAssetSymbol] : [],
-  );
+  const { favoriteSymbols, addSymbol, removeSymbol } = useFavorites();
+  const isStarred = querySymbol ? favoriteSymbols.includes(querySymbol) : false;
+
+  const {
+    data: assets,
+    isLoading: chartLoading,
+    isError: marketError,
+    refetch: refetchMarket,
+  } = useMarketData(querySymbol ? [querySymbol] : []);
   const asset = assets?.[0];
 
   // Apply the same enrichment the screener uses (shared enrichAsset chain),
@@ -115,7 +146,10 @@ export function AssetDetailDialog() {
   const { data: usContext } = useUsContext();
   // Fundamentals/analyst overlay (stocks only) — one extra fetch for the open
   // asset; cached a day. Null when unavailable (graceful).
-  const { data: fundamentals } = useFundamentals(asset?.symbol, asset?.assetType);
+  const { data: fundamentals } = useFundamentals(
+    asset?.symbol,
+    asset?.assetType,
+  );
   const smAssets = useMemo(() => (asset ? [asset] : []), [asset]);
   const { data: smartMoneyMap, isUnavailable: smartMoneyUnavailable } =
     useSmartMoney(smAssets);
@@ -189,9 +223,9 @@ export function AssetDetailDialog() {
   const { isSharing, shareSetup } = useShareSetup();
 
   const handleShare = () => {
-    if (!outlook || !tradingPlan || !asset || !selectedAssetSymbol) return;
+    if (!outlook || !tradingPlan || !asset || !querySymbol) return;
     shareSetup({
-      symbol: selectedAssetSymbol,
+      symbol: querySymbol,
       name: asset.name,
       signal: outlook.signal,
       strength: outlook.strength,
@@ -203,17 +237,110 @@ export function AssetDetailDialog() {
     });
   };
 
-  if (!selectedAssetSymbol) return null;
+  if (availability !== "available" || !querySymbol) {
+    const isChecking = availability === "checking";
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          onCloseAutoFocus={onCloseAutoFocus}
+          className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              {t(
+                isChecking
+                  ? "dialog.market_loading_title"
+                  : "dialog.market_unavailable_title",
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+              {t(
+                isChecking
+                  ? "dialog.market_loading_desc"
+                  : "dialog.market_unavailable_desc",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col space-y-6">
+            {isChecking ? (
+              <div className="flex min-h-48 flex-col gap-4" aria-busy="true">
+                <Skeleton className="h-24 w-full rounded-xl" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+              </div>
+            ) : (
+              <div className="flex min-h-56 flex-col items-center justify-center gap-5 text-center">
+                <div className="flex size-14 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
+                  <SearchX className="size-6" aria-hidden="true" />
+                </div>
+                <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+                  {t("dialog.market_unavailable_help")}
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!chartLoading && (marketError || !asset)) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          onCloseAutoFocus={onCloseAutoFocus}
+          className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              {t("dialog.market_error_title")}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+              {t("dialog.market_error_desc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col space-y-6">
+            <div className="flex min-h-56 flex-col items-center justify-center gap-5 text-center">
+              <div className="flex size-14 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
+                <CloudOff className="size-6" aria-hidden="true" />
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <Button
+                  type="button"
+                  size="lg"
+                  onClick={() => refetchMarket()}
+                  className="min-h-11"
+                >
+                  <RotateCw className="size-4" aria-hidden="true" />
+                  {t("common.retry")}
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="min-h-11"
+                >
+                  {t("dialog.close_action")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
-    <Dialog
-      open={isDetailDialogOpen}
-      onOpenChange={(open) => !open && closeDetailDialog()}
-    >
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
+      >
+        <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-            {selectedAssetSymbol}
+            {querySymbol}
             {outlook && (
               <Badge
                 variant="outline"
@@ -229,8 +356,9 @@ export function AssetDetailDialog() {
             )}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {asset?.name ?? selectedAssetSymbol} ·{" "}
-            {asset && t(`common.asset_types.${asset.assetType}`)}
+            {asset
+              ? `${asset.name} · ${t(`common.asset_types.${asset.assetType}`)}`
+              : t("dialog.market_loading_desc")}
           </DialogDescription>
 
           {/* Price row */}
@@ -268,7 +396,7 @@ export function AssetDetailDialog() {
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!selectedAssetSymbol) return;
+                  if (!querySymbol) return;
                   // Favorites are premium + login gated; route non-entitled users
                   // to the license dialog instead of a silently failing write.
                   if (!hasAccess) {
@@ -276,22 +404,31 @@ export function AssetDetailDialog() {
                     return;
                   }
                   if (isStarred) {
-                    removeSymbol(selectedAssetSymbol);
+                    removeSymbol(querySymbol);
                     toast.success(
                       t("market.favorite_removed", {
-                        symbol: selectedAssetSymbol,
+                        symbol: querySymbol,
                       }),
                     );
                   } else {
-                    addSymbol(selectedAssetSymbol);
+                    addSymbol(querySymbol);
                     toast.success(
                       t("market.favorite_added", {
-                        symbol: selectedAssetSymbol,
+                        symbol: querySymbol,
                       }),
                     );
                   }
                 }}
-                title={isStarred ? "Remove from Favorites" : "Add to Favorites"}
+                aria-label={t(
+                  isStarred
+                    ? "dialog.favorite_remove_label"
+                    : "dialog.favorite_add_label",
+                )}
+                title={t(
+                  isStarred
+                    ? "dialog.favorite_remove_label"
+                    : "dialog.favorite_add_label",
+                )}
               >
                 <Star
                   className={cn(
@@ -345,11 +482,10 @@ export function AssetDetailDialog() {
               <Skeleton className="h-5 w-20 rounded" />
             </div>
           )}
+          <Separator className="mt-4" />
         </DialogHeader>
 
-        <div className="flex flex-col space-y-6">
-          <Separator />
-
+        <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
           {chartLoading ? (
             <div className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -536,7 +672,9 @@ export function AssetDetailDialog() {
                             {calibration.regimeWinRate != null &&
                               ` ${t("dialog.calib_regime", {
                                 regime: t(REGIME_LABEL_KEYS[outlook.regime]),
-                                pct: Math.round(calibration.regimeWinRate * 100),
+                                pct: Math.round(
+                                  calibration.regimeWinRate * 100,
+                                ),
                               })}`}
                           </div>
                         </div>
@@ -627,7 +765,8 @@ export function AssetDetailDialog() {
                         <Card className="flex-1 border-border border">
                           <CardContent>
                             <div className="text-sm font-bold tracking-tight">
-                              {typeof assetFundamentals.debtToEquity === "number"
+                              {typeof assetFundamentals.debtToEquity ===
+                              "number"
                                 ? `${(assetFundamentals.debtToEquity / 100).toFixed(1)}×`
                                 : "—"}
                             </div>
@@ -657,97 +796,99 @@ export function AssetDetailDialog() {
 
                 {/* Accumulation: equities daily OHLCV flow (US & ID stocks).
                     No neutral gate — flow context is useful pre-signal. */}
-                {accumulation && asset && supportsAccumulation(asset.assetType) && (
-                  <Card className="border border-border bg-muted/50">
-                    <CardContent className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          {t("dialog.accumulation")}
-                        </CardTitle>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-bold uppercase tracking-wider text-[10px] rounded-md",
-                            isNeutralFlow(accumulation.label)
-                              ? "text-muted-foreground border-muted-foreground/30"
-                              : accumulation.score > 0
-                                ? badgeClass(BADGE.positive)
-                                : badgeClass(BADGE.negative),
-                          )}
-                        >
-                          {t(
-                            ACCUMULATION_LABEL_KEYS[accumulation.label] ??
-                              "dialog.acc_label_neutral",
-                          )}
-                        </Badge>
-                      </div>
-                      <div className="flex items-stretch gap-3">
-                        <Card className="flex-1 border-border border">
-                          <CardContent>
-                            <div
-                              className={cn(
-                                "text-sm font-bold tracking-tight",
-                                accumulation.breakdown.cmf > 0
-                                  ? PALETTE.positive.text
-                                  : accumulation.breakdown.cmf < 0
-                                    ? PALETTE.negative.text
-                                    : "text-muted-foreground",
-                              )}
-                            >
-                              {`${accumulation.breakdown.cmf > 0 ? "+" : ""}${accumulation.breakdown.cmf.toFixed(2)}`}
-                            </div>
-                            <CardDescription className="text-[10px] text-muted-foreground">
-                              {t("dialog.acc_cmf")}
-                            </CardDescription>
-                          </CardContent>
-                        </Card>
-                        <Card className="flex-1 border-border border">
-                          <CardContent>
-                            <div
-                              className={cn(
-                                "text-sm font-bold tracking-tight",
-                                accumulation.breakdown.mfi > 50
-                                  ? PALETTE.positive.text
-                                  : accumulation.breakdown.mfi < 50
-                                    ? PALETTE.negative.text
-                                    : "text-muted-foreground",
-                              )}
-                            >
-                              {accumulation.breakdown.mfi.toFixed(0)}
-                            </div>
-                            <CardDescription className="text-[10px] text-muted-foreground">
-                              {t("dialog.acc_mfi")}
-                            </CardDescription>
-                          </CardContent>
-                        </Card>
-                        <Card className="flex-1 border-border border">
-                          <CardContent>
-                            <div
-                              className={cn(
-                                "text-sm font-bold tracking-tight",
-                                accumulation.breakdown.upDownVolume > 0
-                                  ? PALETTE.positive.text
-                                  : accumulation.breakdown.upDownVolume < 0
-                                    ? PALETTE.negative.text
-                                    : "text-muted-foreground",
-                              )}
-                            >
-                              {`${accumulation.breakdown.upDownVolume > 0 ? "+" : ""}${(accumulation.breakdown.upDownVolume * 100).toFixed(0)}%`}
-                            </div>
-                            <CardDescription className="text-[10px] text-muted-foreground">
-                              {t("dialog.acc_updown")}
-                            </CardDescription>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        {t("dialog.acc_days", {
-                          days: accumulation.daysAnalyzed,
-                        })}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+                {accumulation &&
+                  asset &&
+                  supportsAccumulation(asset.assetType) && (
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            {t("dialog.accumulation")}
+                          </CardTitle>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                              isNeutralFlow(accumulation.label)
+                                ? "text-muted-foreground border-muted-foreground/30"
+                                : accumulation.score > 0
+                                  ? badgeClass(BADGE.positive)
+                                  : badgeClass(BADGE.negative),
+                            )}
+                          >
+                            {t(
+                              ACCUMULATION_LABEL_KEYS[accumulation.label] ??
+                                "dialog.acc_label_neutral",
+                            )}
+                          </Badge>
+                        </div>
+                        <div className="flex items-stretch gap-3">
+                          <Card className="flex-1 border-border border">
+                            <CardContent>
+                              <div
+                                className={cn(
+                                  "text-sm font-bold tracking-tight",
+                                  accumulation.breakdown.cmf > 0
+                                    ? PALETTE.positive.text
+                                    : accumulation.breakdown.cmf < 0
+                                      ? PALETTE.negative.text
+                                      : "text-muted-foreground",
+                                )}
+                              >
+                                {`${accumulation.breakdown.cmf > 0 ? "+" : ""}${accumulation.breakdown.cmf.toFixed(2)}`}
+                              </div>
+                              <CardDescription className="text-[10px] text-muted-foreground">
+                                {t("dialog.acc_cmf")}
+                              </CardDescription>
+                            </CardContent>
+                          </Card>
+                          <Card className="flex-1 border-border border">
+                            <CardContent>
+                              <div
+                                className={cn(
+                                  "text-sm font-bold tracking-tight",
+                                  accumulation.breakdown.mfi > 50
+                                    ? PALETTE.positive.text
+                                    : accumulation.breakdown.mfi < 50
+                                      ? PALETTE.negative.text
+                                      : "text-muted-foreground",
+                                )}
+                              >
+                                {accumulation.breakdown.mfi.toFixed(0)}
+                              </div>
+                              <CardDescription className="text-[10px] text-muted-foreground">
+                                {t("dialog.acc_mfi")}
+                              </CardDescription>
+                            </CardContent>
+                          </Card>
+                          <Card className="flex-1 border-border border">
+                            <CardContent>
+                              <div
+                                className={cn(
+                                  "text-sm font-bold tracking-tight",
+                                  accumulation.breakdown.upDownVolume > 0
+                                    ? PALETTE.positive.text
+                                    : accumulation.breakdown.upDownVolume < 0
+                                      ? PALETTE.negative.text
+                                      : "text-muted-foreground",
+                                )}
+                              >
+                                {`${accumulation.breakdown.upDownVolume > 0 ? "+" : ""}${(accumulation.breakdown.upDownVolume * 100).toFixed(0)}%`}
+                              </div>
+                              <CardDescription className="text-[10px] text-muted-foreground">
+                                {t("dialog.acc_updown")}
+                              </CardDescription>
+                            </CardContent>
+                          </Card>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("dialog.acc_days", {
+                            days: accumulation.daysAnalyzed,
+                          })}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Relative strength: excess return vs the asset's OWN index
                     (id→IHSG, us→S&P, crypto→BTC). Leadership confirms a trade. */}
@@ -757,7 +898,8 @@ export function AssetDetailDialog() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           {t("dialog.rs_title", {
-                            benchmark: relativeStrength.benchmark ?? "Benchmark",
+                            benchmark:
+                              relativeStrength.benchmark ?? "Benchmark",
                           })}
                         </CardTitle>
                         <Badge
@@ -778,7 +920,10 @@ export function AssetDetailDialog() {
                         {(["r1w", "r1m"] as const).map((key) => {
                           const v = relativeStrength[key];
                           return (
-                            <Card key={key} className="flex-1 border-border border">
+                            <Card
+                              key={key}
+                              className="flex-1 border-border border"
+                            >
                               <CardContent>
                                 <div
                                   className={cn(
@@ -797,7 +942,11 @@ export function AssetDetailDialog() {
                                     : "—"}
                                 </div>
                                 <CardDescription className="text-[10px] text-muted-foreground">
-                                  {t(key === "r1w" ? "dialog.rs_1w" : "dialog.rs_1m")}
+                                  {t(
+                                    key === "r1w"
+                                      ? "dialog.rs_1w"
+                                      : "dialog.rs_1m",
+                                  )}
                                 </CardDescription>
                               </CardContent>
                             </Card>
@@ -831,7 +980,9 @@ export function AssetDetailDialog() {
                                     : badgeClass(BADGE.negative),
                               )}
                             >
-                              {t(getSmartMoneyLabelKey(smartMoney.label), { defaultValue: smartMoney.label })}
+                              {t(getSmartMoneyLabelKey(smartMoney.label), {
+                                defaultValue: smartMoney.label,
+                              })}
                               {smartMoney.flow && (
                                 <span className="inline-flex items-center gap-0.5 text-[10px] font-medium normal-case text-muted-foreground">
                                   OI
@@ -1040,7 +1191,10 @@ export function AssetDetailDialog() {
                                 : "",
                             signal: t(SIGNAL_LABEL_KEYS[outlook.signal]),
                             alignment: t(
-                              fightsBenchmark(outlook.signal, usContext.riskState)
+                              fightsBenchmark(
+                                outlook.signal,
+                                usContext.riskState,
+                              )
                                 ? "dialog.us_fighting"
                                 : "dialog.us_aligned",
                             ),

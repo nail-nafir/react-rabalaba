@@ -18,9 +18,10 @@ import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { useAuth } from "@/hooks/use-auth";
 import { useAppSelector, useUIActions } from "@/store/hooks";
 import { takeLicenseSuccessAction } from "@/store/slices/ui-slice";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff, Lock } from "lucide-react";
+import { buildLoginRedirect } from "@/lib/auth-redirect";
+import { Eye, EyeOff, Lock, LogIn, Key } from "lucide-react";
 import {
   accessSchema,
   type AccessFormValues,
@@ -31,9 +32,15 @@ export function LicenseDialog() {
   const { t } = useTranslation();
   const isOpen = useAppSelector((state) => state.ui.isLicenseDialogOpen);
   const { closeLicenseDialog } = useUIActions();
-  const { tier, daysLeft, grantAccess } = usePremiumAccess();
+  const { tier, daysLeft, grantAccess, isBlocked } = usePremiumAccess();
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const [showCode, setShowCode] = useState(false);
+  const loginPath = buildLoginRedirect(
+    location.pathname,
+    location.search,
+    location.hash,
+  );
 
   const form = useForm<AccessFormValues>({
     resolver: zodResolver(accessSchema),
@@ -80,20 +87,23 @@ export function LicenseDialog() {
           ? "license.redeem_exhausted"
           : result === "already"
             ? "license.redeem_already"
-            : "terminal.access_dialog_invalid_code",
+            : result === "blocked"
+              ? "license.redeem_blocked"
+              : "terminal.access_dialog_invalid_code",
       ),
     });
   };
 
   const TierIcon = TIER_BADGE[tier].icon;
-  const statusText =
-    tier === "premium"
+  const statusText = isBlocked
+    ? t("license.status_blocked")
+    : tier === "premium"
       ? t("license.status_premium")
       : tier === "trial"
         ? t("license.status_trial", { count: daysLeft ?? 0 })
         : t("license.status_free");
 
-  const showCodeForm = tier !== "premium";
+  const showCodeForm = tier !== "premium" && !isBlocked;
 
   if (!isAuthenticated) {
     return (
@@ -127,13 +137,14 @@ export function LicenseDialog() {
 
           <DialogFooter className="sm:justify-end">
             <Link
-              to="/login"
+              to={loginPath}
               onClick={() => handleOpenChange(false)}
               className={cn(
                 buttonVariants({ variant: "default" }),
-                "text-xs font-bold cursor-pointer w-full sm:w-auto text-center flex items-center justify-center",
+                "text-xs font-bold cursor-pointer w-full sm:w-auto text-center flex items-center justify-center gap-1.5",
               )}
             >
+              <LogIn data-icon="inline-start" className="h-3.5 w-3.5" />
               {t("license.login_required_btn")}
             </Link>
           </DialogFooter>
@@ -262,6 +273,7 @@ export function LicenseDialog() {
                 disabled={form.formState.isSubmitting || isCodeEmpty}
                 className="text-xs font-bold cursor-pointer shrink-0"
               >
+                <Key data-icon="inline-start" className="h-3.5 w-3.5" />
                 {t("terminal.access_dialog_unlock_btn")}
               </Button>
             </div>

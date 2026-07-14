@@ -21,7 +21,6 @@ import {
   LogOut,
   Hourglass,
 } from "lucide-react";
-import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import {
   buildTradeWinrateSnapshots,
@@ -60,7 +59,6 @@ import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonFollowHistoryRow } from "@/components/shared/skeleton-card";
 import { StrengthBar } from "@/components/charts/strength-bar";
 import { SuccessRateBar } from "@/components/charts/success-rate-bar";
-import { TradeDetailDialog } from "./trade-detail-dialog";
 import {
   FilterGroup,
   type FilterOption,
@@ -120,11 +118,25 @@ function SortButton({
   );
 }
 
-export function FollowHistoryTable() {
+interface FollowHistoryTableProps {
+  openTrades: FollowedTrade[];
+  history: FollowedTrade[];
+  isLoading: boolean;
+  isFetching: boolean;
+  onRefresh: () => void;
+  onTradeSelect: (tradeId: string, trigger: HTMLElement) => void;
+}
+
+export function FollowHistoryTable({
+  openTrades,
+  history,
+  isLoading,
+  isFetching,
+  onRefresh,
+  onTradeSelect,
+}: FollowHistoryTableProps) {
   "use no memo";
   const { t, i18n } = useTranslation();
-  const { openTrades, history, isLoading, isFetching, refetch } =
-    useJournalTrades();
   // Live prices for open ("running") trades so their P/L updates each refetch.
   // Kept in a ref so the (memoized) column defs read fresh prices WITHOUT being
   // recreated every render — that churn is what made recharts hang earlier.
@@ -180,10 +192,6 @@ export function FollowHistoryTable() {
   const [lifecycleFilter, setLifecycleFilter] =
     useState<LifecycleFilter>("all");
   const [pnlFilter, setPnlFilter] = useState<PnlFilter>("all");
-
-  const [selectedTrade, setSelectedTrade] = useState<FollowedTrade | null>(
-    null,
-  );
 
   const handleLifecycleChange = (val: LifecycleFilter) => {
     setLifecycleFilter(val);
@@ -640,7 +648,7 @@ export function FollowHistoryTable() {
           <Button
             variant="link"
             size="icon"
-            onClick={() => refetch()}
+            onClick={onRefresh}
             disabled={isFetching}
             title={t("journal.refresh")}
             aria-label={t("journal.refresh")}
@@ -752,7 +760,9 @@ export function FollowHistoryTable() {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  onClick={() => setSelectedTrade(row.original)}
+                  onClick={(event) =>
+                    onTradeSelect(row.original.id, event.currentTarget)
+                  }
                   className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   tabIndex={0}
                   role="button"
@@ -761,7 +771,7 @@ export function FollowHistoryTable() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setSelectedTrade(row.original);
+                      onTradeSelect(row.original.id, e.currentTarget);
                     }
                   }}
                 >
@@ -782,14 +792,6 @@ export function FollowHistoryTable() {
 
       {/* Pagination */}
       <DataTablePagination table={table} />
-
-      <TradeDetailDialog
-        trade={selectedTrade}
-        open={selectedTrade !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedTrade(null);
-        }}
-      />
     </div>
   );
 }

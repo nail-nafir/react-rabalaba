@@ -71,8 +71,7 @@ import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { useScreenerUniverse } from "@/hooks/use-screener-universe";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
-import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
-import { AddTickerDialog } from "./add-ticker-dialog";
+import { AddSignalAssetDialog } from "./add-signal-asset-dialog";
 
 import { FilterGroup } from "@/components/shared/filter-group";
 
@@ -85,9 +84,11 @@ function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
   return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
 }
 
+interface AssetSignalTableProps {
+  onAssetSelect: (symbol: string, trigger: HTMLElement) => void;
+}
 
-
-export function AssetSignalTable() {
+export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
   "use no memo";
   const { t } = useTranslation();
   const [sorting, setSorting] = useState<SortingState>([
@@ -97,7 +98,7 @@ export function AssetSignalTable() {
   // re-renders on unrelated UI changes (e.g. license-dialog open/close). That
   // decoupling is what kept a stray unstable reference from spiraling into a
   // page-unresponsive render loop.
-  const { openDetailDialog, openLicenseDialog } = useUIActions();
+  const { openLicenseDialog } = useUIActions();
   const assetType = useAppSelector((s) => s.filter.assetType);
   const signalFilter = useAppSelector((s) => s.filter.signalFilter);
   const searchQuery = useAppSelector((s) => s.filter.searchQuery);
@@ -123,7 +124,9 @@ export function AssetSignalTable() {
     }
     return stat;
   }, [openTrades, history]);
-  const winrateRef = useRef<Record<string, { wins: number; total: number }>>({});
+  const winrateRef = useRef<Record<string, { wins: number; total: number }>>(
+    {},
+  );
   winrateRef.current = winrateBySymbol;
 
   // crypto / US / ID stocks come from the admin-managed DB universe for premium
@@ -530,10 +533,10 @@ export function AssetSignalTable() {
         header: "",
         cell: ({ row }) => (
           <Sparkline
-            className="flex justify-end pr-4"
+            className="flex w-full justify-end"
             values={row.original.quoteIndicators?.close}
-            width={60}
-            height={20}
+            width={64}
+            height={32}
           />
         ),
         enableSorting: false,
@@ -707,10 +710,7 @@ export function AssetSignalTable() {
         <Table>
           <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow
-                key={headerGroup.id}
-                className="hover:bg-transparent"
-              >
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
@@ -763,16 +763,20 @@ export function AssetSignalTable() {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  onClick={() => openDetailDialog(row.original.symbol)}
+                  onClick={(event) =>
+                    onAssetSelect(row.original.symbol, event.currentTarget)
+                  }
                   className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   tabIndex={0}
                   role="button"
                   aria-haspopup="dialog"
-                  aria-label={t("common.analyze_symbol", { symbol: row.original.symbol })}
+                  aria-label={t("common.analyze_symbol", {
+                    symbol: row.original.symbol,
+                  })}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      openDetailDialog(row.original.symbol);
+                      onAssetSelect(row.original.symbol, e.currentTarget);
                     }
                   }}
                 >
@@ -793,11 +797,8 @@ export function AssetSignalTable() {
 
       {!isLoading && <DataTablePagination table={table} />}
 
-      {/* Detail dialog */}
-      <AssetDetailDialog />
-
       {/* Add Ticker Dialog Popup */}
-      <AddTickerDialog
+      <AddSignalAssetDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
       />

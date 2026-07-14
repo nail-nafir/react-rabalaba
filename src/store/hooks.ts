@@ -19,9 +19,6 @@ export function useUIActions() {
   const dispatch = useAppDispatch();
   return useMemo(
     () => ({
-      openDetailDialog: (symbol: string) =>
-        dispatch(uiActions.openDetailDialog(symbol)),
-      closeDetailDialog: () => dispatch(uiActions.closeDetailDialog()),
       openLicenseDialog: (onSuccess?: () => void) => {
         setLicenseSuccessAction(onSuccess ?? null);
         dispatch(uiActions.setLicenseDialogOpen(true));

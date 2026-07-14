@@ -11,6 +11,9 @@ export const AdminCodesPage = lazy(() => import("@/pages/admin/codes"));
 export const AdminInvitationsPage = lazy(
   () => import("@/pages/admin/invitations"),
 );
+export const AdminTestimonialsPage = lazy(
+  () => import("@/pages/admin/testimonials"),
+);
 export const AdminPlansPage = lazy(() => import("@/pages/admin/plans"));
 export const AdminPaymentsPage = lazy(() => import("@/pages/admin/payments"));
 export const AdminDisclaimerPage = lazy(

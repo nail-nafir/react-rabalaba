@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardFooter,
   CardHeader,
@@ -72,8 +73,8 @@ export function MiniCalendar({
   };
 
   return (
-    <Card className="border border-border overflow-visible">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+    <Card className="border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full border-border hover:border-zinc-700">
+      <CardHeader>
         <CardTitle className="text-sm font-bold text-foreground">
           {currentDate.toLocaleDateString(
             i18n.language === "id" ? "id-ID" : "en-US",
@@ -83,27 +84,29 @@ export function MiniCalendar({
             },
           )}
         </CardTitle>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => changeMonth(-1)}
-            className="h-8 w-8 rounded-md text-muted-foreground transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => changeMonth(1)}
-            className="h-8 w-8 rounded-md text-muted-foreground transition-colors"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        <CardAction>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => changeMonth(-1)}
+              className="h-8 w-8 rounded-md text-muted-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => changeMonth(1)}
+              className="h-8 w-8 rounded-md text-muted-foreground transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardAction>
       </CardHeader>
 
-      <CardContent className="p-5 pt-0 space-y-4">
+      <CardContent className="flex flex-col gap-3 px-4 pt-0">
         <div className="grid grid-cols-7 gap-1 text-center">
           {[
             t("calendar.days.su"),
@@ -152,7 +155,7 @@ export function MiniCalendar({
         </div>
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-border/40 pt-3">
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
           <div className="h-1.5 w-1.5 rounded-full bg-primary" />
           {t("calendar.scheduled_event")}

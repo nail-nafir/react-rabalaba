@@ -31,6 +31,7 @@
 | [`fsd/05-economic-calendar.md`](fsd/05-economic-calendar.md) | Kalender ekonomi *Economic calendar* |
 | [`fsd/06-auth-entitlement.md`](fsd/06-auth-entitlement.md) | Login, OAuth, premium/trial, redeem code, invite, subscription, disclaimer |
 | [`fsd/07-admin-console.md`](fsd/07-admin-console.md) | Admin console: users, assets, codes, invitations, plans, payments, disclaimer, statistics |
+| [`fsd/08-user-testimonials.md`](fsd/08-user-testimonials.md) | Testimoni pengguna: submit/edit/delete, moderasi, featured landing, privacy |
 
 ### TSD — Technical Spec (arsitektur)
 
@@ -39,7 +40,7 @@
 | [`tsd/00-architecture.md`](tsd/00-architecture.md) | 4 tempat kode jalan, layering, pure/IO split, single-source engine, diagram |
 | [`tsd/01-tech-stack.md`](tsd/01-tech-stack.md) | Tech stack, dependency, tooling |
 | [`tsd/02-data-flow.md`](tsd/02-data-flow.md) | API → adapter → react-query → engine → UI + state (Redux/RQ/Context/i18n) |
-| [`tsd/03-database-schema.md`](tsd/03-database-schema.md) | 13 tabel, 22 RPC, RLS, 28 migrasi |
+| [`tsd/03-database-schema.md`](tsd/03-database-schema.md) | 15 tabel, 24 function/RPC, RLS, 29 migrasi |
 | [`tsd/04-cloudflare-proxy.md`](tsd/04-cloudflare-proxy.md) | 4 route proxy, cache engine fresh/stale/error, Yahoo crumb |
 | [`tsd/05-edge-functions.md`](tsd/05-edge-functions.md) | 3 Edge Function cron, scheduling/gating, Discord |
 | [`tsd/06-engine-internals.md`](tsd/06-engine-internals.md) | Mendalam: tiap export signals/indicators/contexts/enrichment/backtest + formula |

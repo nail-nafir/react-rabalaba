@@ -4,7 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -154,7 +154,10 @@ export function ValidatePasswordDialog({
               {isValidating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                t("common.confirm", "Konfirmasi")
+                <>
+                  <Check data-icon="inline-start" className="h-3.5 w-3.5" />
+                  {t("common.confirm", "Konfirmasi")}
+                </>
               )}
             </Button>
           </DialogFooter>

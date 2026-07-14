@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Calendar as CalendarIcon,
   X,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
@@ -197,6 +198,7 @@ function InviteFormContent({ origin }: InviteFormProps) {
             size="lg"
             className="text-xs font-bold cursor-pointer shrink-0"
           >
+            <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
             {t("admin.invitations.create_another", "Buat Lagi")}
           </Button>
         </DialogFooter>
@@ -246,13 +248,13 @@ function InviteFormContent({ origin }: InviteFormProps) {
                         value="full"
                         className="uppercase tracking-wider text-[10px] cursor-pointer"
                       >
-                        {t("license.tier_premium", "Premium")}
+                        {t("admin.codes_form_type_full", "Penuh")}
                       </SelectItem>
                       <SelectItem
                         value="trial"
                         className="uppercase tracking-wider text-[10px] cursor-pointer"
                       >
-                        {t("license.tier_trial", "Trial")}
+                        {t("admin.codes_form_type_trial", "Uji Coba")}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -398,7 +400,10 @@ function InviteFormContent({ origin }: InviteFormProps) {
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            t("admin.invitations.create_btn", "Buat Undangan")
+            <>
+              <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
+              {t("admin.invitations.create_btn", "Buat")}
+            </>
           )}
         </Button>
       </DialogFooter>

@@ -14,6 +14,7 @@ import {
   AdminPaymentsPage,
   AdminPlansPage,
   AdminSystemPage,
+  AdminTestimonialsPage,
   AdminUsersPage,
   AuthCallbackPage,
   CalendarPage,
@@ -190,6 +191,16 @@ export const router = createBrowserRouter([
           <ErrorBoundary>
             <Suspense fallback={<PageLoader trigger />}>
               <AdminInvitationsPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'testimonials',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader trigger />}>
+              <AdminTestimonialsPage />
             </Suspense>
           </ErrorBoundary>
         ),
