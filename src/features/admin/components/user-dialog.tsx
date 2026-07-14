@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -39,6 +40,26 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   const { t } = useTranslation();
   const { users, addUser, updateUser } = useAdminUsers();
   const [isSaving, setIsSaving] = useState(false);
+  const tierItems = [
+    { value: "free", label: t("admin.users_tier_free") },
+    { value: "trial", label: t("admin.users_tier_premium_trial") },
+    { value: "premium", label: t("admin.users_tier_premium_full") },
+  ] as const;
+  const roleItems = [
+    { value: "user", label: t("admin.users_role_member") },
+    { value: "admin", label: t("admin.users_role_admin") },
+    { value: "owner", label: t("admin.users_role_owner") },
+  ] as const;
+  const statusItems = [
+    {
+      value: "active",
+      label: t("admin.users_form_status_active", "Aktif"),
+    },
+    {
+      value: "blocked",
+      label: t("admin.users_form_status_blocked", "Diblokir"),
+    },
+  ] as const;
 
   const isEditMode = !!user;
 
@@ -313,33 +334,32 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       {t("table.tier")}
                     </label>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      items={tierItems}
+                      value={field.value}
+                      onValueChange={(nextValue) => {
+                        if (nextValue !== null) field.onChange(nextValue);
+                      }}
+                    >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_tier_placeholder", "Pilih Kasta")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
-                        position="popper"
+                        alignItemWithTrigger={false}
                         className="p-1"
                       >
-                        <SelectItem
-                          value="free"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_tier_free")}
-                        </SelectItem>
-                        <SelectItem
-                          value="trial"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_tier_premium_trial")}
-                        </SelectItem>
-                        <SelectItem
-                          value="premium"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_tier_premium_full")}
-                        </SelectItem>
+                        <SelectGroup>
+                          {tierItems.map((item) => (
+                            <SelectItem
+                              key={item.value}
+                              value={item.value}
+                              className="uppercase tracking-wider text-[10px] cursor-pointer"
+                            >
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>
@@ -354,33 +374,32 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       {t("table.role")}
                     </label>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      items={roleItems}
+                      value={field.value}
+                      onValueChange={(nextValue) => {
+                        if (nextValue !== null) field.onChange(nextValue);
+                      }}
+                    >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_role_placeholder", "Pilih Peran")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
-                        position="popper"
+                        alignItemWithTrigger={false}
                         className="p-1"
                       >
-                        <SelectItem
-                          value="user"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_role_member")}
-                        </SelectItem>
-                        <SelectItem
-                          value="admin"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_role_admin")}
-                        </SelectItem>
-                        <SelectItem
-                          value="owner"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_role_owner")}
-                        </SelectItem>
+                        <SelectGroup>
+                          {roleItems.map((item) => (
+                            <SelectItem
+                              key={item.value}
+                              value={item.value}
+                              className="uppercase tracking-wider text-[10px] cursor-pointer"
+                            >
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>
@@ -423,29 +442,33 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                       {t("admin.users_form_status_label", "Status Akun")}
                     </label>
                     <Select
+                      items={statusItems}
                       value={field.value ? "blocked" : "active"}
-                      onValueChange={(val) => field.onChange(val === "blocked")}
+                      onValueChange={(nextValue) => {
+                        if (nextValue !== null) {
+                          field.onChange(nextValue === "blocked");
+                        }
+                      }}
                     >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_status_placeholder", "Pilih Status")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
-                        position="popper"
+                        alignItemWithTrigger={false}
                         className="p-1"
                       >
-                        <SelectItem
-                          value="active"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_form_status_active", "Aktif")}
-                        </SelectItem>
-                        <SelectItem
-                          value="blocked"
-                          className="uppercase tracking-wider text-[10px] cursor-pointer"
-                        >
-                          {t("admin.users_form_status_blocked", "Diblokir")}
-                        </SelectItem>
+                        <SelectGroup>
+                          {statusItems.map((item) => (
+                            <SelectItem
+                              key={item.value}
+                              value={item.value}
+                              className="uppercase tracking-wider text-[10px] cursor-pointer"
+                            >
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>

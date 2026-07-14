@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -63,6 +64,10 @@ function InviteFormContent({ origin }: InviteFormProps) {
   const [saving, setSaving] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const kindItems = [
+    { value: "full", label: t("admin.codes_form_type_full", "Penuh") },
+    { value: "trial", label: t("admin.codes_form_type_trial", "Uji Coba") },
+  ] as const;
 
   const schema = useMemo(() => {
     return z
@@ -235,27 +240,32 @@ function InviteFormContent({ origin }: InviteFormProps) {
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     {t("admin.invitations.field_kind", "Tipe")}
                   </Label>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    items={kindItems}
+                    value={field.value}
+                    onValueChange={(nextValue) => {
+                      if (nextValue !== null) field.onChange(nextValue);
+                    }}
+                  >
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent
                       align="start"
-                      position="popper"
+                      alignItemWithTrigger={false}
                       className="p-1"
                     >
-                      <SelectItem
-                        value="full"
-                        className="uppercase tracking-wider text-[10px] cursor-pointer"
-                      >
-                        {t("admin.codes_form_type_full", "Penuh")}
-                      </SelectItem>
-                      <SelectItem
-                        value="trial"
-                        className="uppercase tracking-wider text-[10px] cursor-pointer"
-                      >
-                        {t("admin.codes_form_type_trial", "Uji Coba")}
-                      </SelectItem>
+                      <SelectGroup>
+                        {kindItems.map((item) => (
+                          <SelectItem
+                            key={item.value}
+                            value={item.value}
+                            className="uppercase tracking-wider text-[10px] cursor-pointer"
+                          >
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
@@ -315,29 +325,31 @@ function InviteFormContent({ origin }: InviteFormProps) {
                 </Label>
                 <div className="relative w-full">
                   <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        className={cn(
-                          "w-full h-8 justify-start text-left font-normal text-sm cursor-pointer pr-8",
-                          !field.value && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        {field.value ? (
-                          format(field.value, "dd MMM yyyy", {
-                            locale: currentLocale,
-                          })
-                        ) : (
-                          <span>
-                            {t(
-                              "admin.invitations.select_date",
-                              "Pilih tanggal",
-                            )}
-                          </span>
-                        )}
-                      </Button>
+                    <PopoverTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          type="button"
+                          className={cn(
+                            "w-full h-8 justify-start text-left font-normal text-sm cursor-pointer pr-8",
+                            !field.value && "text-muted-foreground",
+                          )}
+                        />
+                      }
+                    >
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      {field.value ? (
+                        format(field.value, "dd MMM yyyy", {
+                          locale: currentLocale,
+                        })
+                      ) : (
+                        <span>
+                          {t(
+                            "admin.invitations.select_date",
+                            "Pilih tanggal",
+                          )}
+                        </span>
+                      )}
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar

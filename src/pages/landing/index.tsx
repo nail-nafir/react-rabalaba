@@ -205,7 +205,7 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto">
             <Card className="border border-border bg-background">
               <CardContent>
-                <Accordion collapsible type="single">
+                <Accordion>
                   {faqQuestions.map((item, i) => (
                     <AccordionItem key={i} value={`item-${i}`}>
                       <AccordionTrigger className="hover:text-primary text-base tracking-tight font-bold text-foreground">

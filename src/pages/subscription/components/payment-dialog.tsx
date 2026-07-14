@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Send, Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { usePaymentMethods } from "@/hooks/use-payment-methods";
 import { pickLocale } from "@/lib/localized";
+import { cn } from "@/lib/utils";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -102,22 +103,18 @@ export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button
-            asChild
-            type="button"
-            size="lg"
-            className="w-full text-xs font-bold cursor-pointer"
+          <a
+            href="https://t.me/nailnafir"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "w-full text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5",
+            )}
           >
-            <a
-              href="https://t.me/nailnafir"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5"
-            >
-              <Send className="h-3.5 w-3.5" />
-              <span>{t("payment.dialog.confirm_btn")}</span>
-            </a>
-          </Button>
+            <Send className="h-3.5 w-3.5" />
+            <span>{t("payment.dialog.confirm_btn")}</span>
+          </a>
         </DialogFooter>
       </DialogContent>
     </Dialog>

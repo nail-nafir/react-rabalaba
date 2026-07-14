@@ -85,7 +85,7 @@ function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
 }
 
 interface AssetSignalTableProps {
-  onAssetSelect: (symbol: string, trigger: HTMLElement) => void;
+  onAssetSelect: (symbol: string) => void;
 }
 
 export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
@@ -763,9 +763,7 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  onClick={(event) =>
-                    onAssetSelect(row.original.symbol, event.currentTarget)
-                  }
+                  onClick={() => onAssetSelect(row.original.symbol)}
                   className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   tabIndex={0}
                   role="button"
@@ -776,7 +774,7 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      onAssetSelect(row.original.symbol, e.currentTarget);
+                      onAssetSelect(row.original.symbol);
                     }
                   }}
                 >

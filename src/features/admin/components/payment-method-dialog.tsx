@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -53,6 +54,11 @@ function MethodForm({ method, onClose }: MethodFormProps) {
   const [sortOrder, setSortOrder] = useState(String(method?.sort_order ?? 0));
   const [active, setActive] = useState(method?.active ?? true);
   const [saving, setSaving] = useState(false);
+  const categoryItems = CATEGORIES.map((value) => ({
+    value,
+    label: t(`admin.billing.cat_${value}`, value),
+  }));
+  const iconItems = ICON_OPTIONS.map((value) => ({ value, label: value }));
 
   const canSave = name.trim() && accountNo.trim();
 
@@ -94,20 +100,28 @@ function MethodForm({ method, onClose }: MethodFormProps) {
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("admin.billing.method_category", "Kategori")}
             </Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select
+              items={categoryItems}
+              value={category}
+              onValueChange={(nextValue) => {
+                if (nextValue !== null) setCategory(nextValue);
+              }}
+            >
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" position="popper" className="p-1">
-                {CATEGORIES.map((c) => (
-                  <SelectItem
-                    key={c}
-                    value={c}
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t(`admin.billing.cat_${c}`, c)}
-                  </SelectItem>
-                ))}
+              <SelectContent align="start" alignItemWithTrigger={false} className="p-1">
+                <SelectGroup>
+                  {categoryItems.map((item) => (
+                    <SelectItem
+                      key={item.value}
+                      value={item.value}
+                      className="uppercase tracking-wider text-[10px] cursor-pointer"
+                    >
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -184,20 +198,28 @@ function MethodForm({ method, onClose }: MethodFormProps) {
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {t("admin.billing.method_icon", "Ikon")}
           </Label>
-          <Select value={icon} onValueChange={setIcon}>
+          <Select
+            items={iconItems}
+            value={icon}
+            onValueChange={(nextValue) => {
+              if (nextValue !== null) setIcon(nextValue);
+            }}
+          >
             <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent align="start" position="popper" className="p-1">
-              {ICON_OPTIONS.map((ic) => (
-                <SelectItem
-                  key={ic}
-                  value={ic}
-                  className="uppercase tracking-wider text-[10px] cursor-pointer"
-                >
-                  {ic}
-                </SelectItem>
-              ))}
+            <SelectContent align="start" alignItemWithTrigger={false} className="p-1">
+              <SelectGroup>
+                {iconItems.map((item) => (
+                  <SelectItem
+                    key={item.value}
+                    value={item.value}
+                    className="uppercase tracking-wider text-[10px] cursor-pointer"
+                  >
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -219,7 +241,7 @@ function MethodForm({ method, onClose }: MethodFormProps) {
               <Switch
                 checked={active}
                 onCheckedChange={setActive}
-                className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                className="cursor-pointer data-checked:bg-emerald-500"
               />
             </div>
           </CardContent>

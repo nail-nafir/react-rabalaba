@@ -17,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -171,9 +171,15 @@ export default function InvitePage() {
           </CardDescription>
         </CardHeader>
         <CardFooter className="pb-8">
-          <Button asChild variant="outline" className="w-full text-xs font-bold cursor-pointer">
-            <Link to="/terminal">{t("invite.go_terminal", "Masuk Terminal")}</Link>
-          </Button>
+          <Link
+            to="/terminal"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "w-full text-xs font-bold cursor-pointer",
+            )}
+          >
+            {t("invite.go_terminal", "Masuk Terminal")}
+          </Link>
         </CardFooter>
       </Shell>
     );
@@ -212,24 +218,26 @@ export default function InvitePage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2.5">
-        <Button
-          asChild
-          className="h-9 w-full cursor-pointer text-xs font-bold tracking-tight bg-primary text-primary-foreground hover:bg-primary/80 shadow-none border-0 rounded-lg flex items-center justify-center gap-1.5 transition-all"
+        <Link
+          to={`/login${redirectParam}`}
+          className={cn(
+            buttonVariants(),
+            "h-9 w-full cursor-pointer text-xs font-bold tracking-tight bg-primary text-primary-foreground hover:bg-primary/80 shadow-none border-0 rounded-lg flex items-center justify-center gap-1.5 transition-all",
+          )}
         >
-          <Link to={`/login${redirectParam}`}>
-            <LogIn className="h-3.5 w-3.5" />
-            {t("invite.login_to_claim", "Login untuk Klaim")}
-          </Link>
-        </Button>
-        <Button
-          asChild
-          className="h-9 w-full cursor-pointer text-xs font-bold tracking-tight bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] shadow-none border-0 rounded-lg flex items-center justify-center gap-1.5 transition-all"
+          <LogIn className="h-3.5 w-3.5" />
+          {t("invite.login_to_claim", "Login untuk Klaim")}
+        </Link>
+        <Link
+          to={`/register${redirectParam}`}
+          className={cn(
+            buttonVariants({ variant: "secondary" }),
+            "h-9 w-full cursor-pointer text-xs font-bold tracking-tight bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] shadow-none border-0 rounded-lg flex items-center justify-center gap-1.5 transition-all",
+          )}
         >
-          <Link to={`/register${redirectParam}`}>
-            <UserPlus className="h-3.5 w-3.5" />
-            {t("invite.register_to_claim", "Daftar Akun Baru")}
-          </Link>
-        </Button>
+          <UserPlus className="h-3.5 w-3.5" />
+          {t("invite.register_to_claim", "Daftar Akun Baru")}
+        </Link>
       </CardContent>
       <CardFooter className="pb-8 pt-2">
         <p className="text-[10px] text-muted-foreground text-center w-full leading-relaxed">

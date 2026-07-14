@@ -333,11 +333,10 @@ export function TestimonialDialog({
                       {t("testimonials.form.rating", "Penilaian")}
                     </FieldLabel>
                     <ToggleGroup
-                      type="single"
                       variant="outline"
                       spacing={2}
-                      value={field.value ? String(field.value) : ""}
-                      onValueChange={(value) =>
+                      value={field.value ? [String(field.value)] : []}
+                      onValueChange={([value]) =>
                         field.onChange(value ? Number(value) : 0)
                       }
                       onBlur={field.onBlur}
@@ -401,18 +400,20 @@ export function TestimonialDialog({
             <DialogFooter>
               {submission && (
                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="lg"
-                      disabled={isBusy}
-                      className="text-xs font-bold cursor-pointer shrink-0"
-                    >
-                      <Trash2 data-icon="inline-start" />
-                      {t("testimonials.form.delete", "Hapus")}
-                    </Button>
-                  </AlertDialogTrigger>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="lg"
+                        disabled={isBusy}
+                        className="text-xs font-bold cursor-pointer shrink-0"
+                      >
+                        <Trash2 data-icon="inline-start" />
+                        {t("testimonials.form.delete", "Hapus")}
+                      </Button>
+                    }
+                  />
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
@@ -435,10 +436,7 @@ export function TestimonialDialog({
                       <AlertDialogAction
                         variant="destructive"
                         disabled={isDeleting}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          void handleDelete();
-                        }}
+                        onClick={() => void handleDelete()}
                       >
                         {isDeleting ? (
                           <Spinner data-icon="inline-start" />

@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 interface TopPerformersProps {
   history: FollowedTrade[];
   isLoading: boolean;
-  onTradeSelect: (tradeId: string, trigger: HTMLElement) => void;
+  onTradeSelect: (tradeId: string) => void;
 }
 
 export function TopPerformers({
@@ -168,9 +168,7 @@ export function TopPerformers({
               <CardContent className="p-0">
                 <button
                   type="button"
-                  onClick={(event) =>
-                    onTradeSelect(trade.id, event.currentTarget)
-                  }
+                  onClick={() => onTradeSelect(trade.id)}
                   aria-haspopup="dialog"
                   aria-label={`${t("journal.view_detail")} ${trade.symbol}`}
                   className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"

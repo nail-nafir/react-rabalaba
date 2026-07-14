@@ -227,16 +227,18 @@ export function PaymentMethodsTable() {
                 <Pencil className="h-4 w-4" />
               </Button>
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="link"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-muted"
-                    title={t("admin.delete_btn", "Hapus")}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="link"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-muted"
+                      title={t("admin.delete_btn", "Hapus")}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  }
+                />
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">

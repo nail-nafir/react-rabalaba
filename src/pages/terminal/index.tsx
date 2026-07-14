@@ -18,6 +18,7 @@ import { useAppSelector, useUIActions } from "@/store/hooks";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -71,20 +72,16 @@ export default function TerminalPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const headingRef = useRef<HTMLHeadingElement>(null);
   const autoGateKeyRef = useRef<string | null>(null);
   const { hasAccess, isResolving: accessResolving } = usePremiumAccess();
   const { ready: authReady } = useAuth();
-  const {
-    needsAgreement,
-    isResolving: disclaimerResolving,
-  } = useDisclaimer();
+  const { needsAgreement, isResolving: disclaimerResolving } = useDisclaimer();
   const isLicenseDialogOpen = useAppSelector(
     (state) => state.ui.isLicenseDialogOpen,
   );
   const { openLicenseDialog } = useUIActions();
   const isMobile = useIsMobile();
-  const dialogUrl = useTerminalDialogUrl({ fallbackFocusRef: headingRef });
+  const dialogUrl = useTerminalDialogUrl();
 
   const activeView: TerminalView =
     location.pathname === "/terminal/journal" ? "journal" : "market";
@@ -92,6 +89,10 @@ export default function TerminalPage() {
   const journalGateResolving = !authReady || accessResolving;
   const detailLayerReady =
     !disclaimerResolving && !needsAgreement && !isLicenseDialogOpen;
+  const terminalViewItems: Array<{ label: string; value: TerminalView }> = [
+    { value: "market", label: t("journal.view_market") },
+    { value: "journal", label: t("journal.view_journal") },
+  ];
 
   const setView = (view: TerminalView) => {
     const pathname =
@@ -145,11 +146,7 @@ export default function TerminalPage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6">
         <div className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1
-              ref={headingRef}
-              tabIndex={-1}
-              className="text-3xl font-bold uppercase tracking-tight text-foreground outline-none"
-            >
+            <h1 className="text-3xl font-bold uppercase tracking-tight text-foreground">
               {t("terminal.title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -159,25 +156,31 @@ export default function TerminalPage() {
 
           {isMobile ? (
             <Select
+              items={terminalViewItems}
               value={activeView}
-              onValueChange={(value) => setView(value as TerminalView)}
+              onValueChange={(value) => {
+                if (value !== null) setView(value);
+              }}
             >
-              <SelectTrigger className="h-11 w-fit min-w-[130px] cursor-pointer bg-card text-[10px] uppercase tracking-wider hover:bg-accent">
+              <SelectTrigger className="h-11 w-fit min-w-32.5 cursor-pointer bg-card text-[10px] uppercase tracking-wider hover:bg-accent">
                 <SelectValue className="truncate text-left" />
               </SelectTrigger>
-              <SelectContent align="end" position="popper" className="p-1">
-                <SelectItem
-                  value="market"
-                  className="cursor-pointer text-[10px] uppercase tracking-wider"
-                >
-                  {t("journal.view_market")}
-                </SelectItem>
-                <SelectItem
-                  value="journal"
-                  className="cursor-pointer text-[10px] uppercase tracking-wider"
-                >
-                  {t("journal.view_journal")}
-                </SelectItem>
+              <SelectContent
+                align="end"
+                alignItemWithTrigger={false}
+                className="p-1"
+              >
+                <SelectGroup>
+                  {terminalViewItems.map((item) => (
+                    <SelectItem
+                      key={item.value}
+                      value={item.value}
+                      className="cursor-pointer text-[10px] uppercase tracking-wider"
+                    >
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           ) : (
@@ -219,7 +222,6 @@ export default function TerminalPage() {
             detailOpen={!!marketRequest && detailLayerReady}
             onAssetSelect={dialogUrl.openMarket}
             onDetailOpenChange={dialogUrl.onOpenChange}
-            onDetailCloseAutoFocus={dialogUrl.onCloseAutoFocus}
           />
         ) : journalAccessReady ? (
           <JournalTerminalContent
@@ -227,7 +229,6 @@ export default function TerminalPage() {
             detailOpen={!!journalRequest && detailLayerReady}
             onTradeSelect={dialogUrl.openJournal}
             onDetailOpenChange={dialogUrl.onOpenChange}
-            onDetailCloseAutoFocus={dialogUrl.onCloseAutoFocus}
           />
         ) : (
           <JournalAccessState

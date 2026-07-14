@@ -177,8 +177,8 @@ test("market availability uses the full access universe, not filters or network 
 
 test("history marker identifies only the matching in-app dialog entry", async () => {
   const {
+    TERMINAL_DIALOG_ORIGIN_STATE_KEY,
     hasTerminalDialogOriginState,
-    shouldUseTerminalDialogFallbackFocus,
     withTerminalDialogOriginState,
   } = await loadModule(SRC);
   const market = { kind: "market", symbol: "btc-usd" };
@@ -186,6 +186,10 @@ test("history marker identifies only the matching in-app dialog entry", async ()
   const state = withTerminalDialogOriginState({ preserved: true }, market);
 
   assert.equal(state.preserved, true);
+  assert.deepEqual(state[TERMINAL_DIALOG_ORIGIN_STATE_KEY], {
+    kind: "market",
+    id: "BTC-USD",
+  });
   assert.equal(hasTerminalDialogOriginState(state, market), true);
   assert.equal(
     hasTerminalDialogOriginState(state, {
@@ -196,19 +200,4 @@ test("history marker identifies only the matching in-app dialog entry", async ()
   );
   assert.equal(hasTerminalDialogOriginState(state, journal), false);
   assert.equal(hasTerminalDialogOriginState(null, market), false);
-
-  const fallbackState = withTerminalDialogOriginState(null, market, {
-    focus: "fallback",
-  });
-  assert.equal(
-    shouldUseTerminalDialogFallbackFocus(fallbackState, market),
-    true,
-  );
-  assert.equal(
-    shouldUseTerminalDialogFallbackFocus(fallbackState, {
-      kind: "market",
-      symbol: "ETH-USD",
-    }),
-    false,
-  );
 });

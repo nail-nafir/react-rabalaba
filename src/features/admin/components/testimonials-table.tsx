@@ -181,6 +181,23 @@ function TestimonialActions({
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("1");
   const [working, setWorking] = useState<WorkingAction>(null);
+  const slotItems = FEATURE_SLOTS.map((slot) => {
+    const occupant = featured.find((item) => item.slot === slot);
+
+    return {
+      value: String(slot),
+      label: occupant
+        ? t("admin.testimonials.slot_occupied", {
+            slot,
+            name: occupant.display_name,
+            defaultValue: "Slot {{slot}} — {{name}}",
+          })
+        : t("admin.testimonials.slot_available", {
+            slot,
+            defaultValue: "Slot {{slot}} — kosong",
+          }),
+    };
+  });
 
   const currentFeatured = featured.find(
     (item) => item.submission_id === submission.id,
@@ -310,22 +327,24 @@ function TestimonialActions({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-11 sm:size-8"
-            aria-label={t("admin.testimonials.open_actions", {
-              name: submission.display_name,
-              defaultValue: "Buka tindakan untuk ulasan {{name}}",
-            })}
-          >
-            {isWorking ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <MoreHorizontal />
-            )}
-          </Button>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 sm:size-8"
+              aria-label={t("admin.testimonials.open_actions", {
+                name: submission.display_name,
+                defaultValue: "Buka tindakan untuk ulasan {{name}}",
+              })}
+            />
+          }
+        >
+          {isWorking ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <MoreHorizontal />
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuGroup>
@@ -333,7 +352,7 @@ function TestimonialActions({
               <DropdownMenuItem
                 disabled={isWorking}
                 className="min-h-11 sm:min-h-8"
-                onSelect={() => void handleApprove()}
+                onClick={() => void handleApprove()}
               >
                 <Check />
                 {t("admin.testimonials.action_approve", "Setujui")}
@@ -343,7 +362,7 @@ function TestimonialActions({
               <DropdownMenuItem
                 disabled={isWorking}
                 className="min-h-11 sm:min-h-8"
-                onSelect={() => setRejectOpen(true)}
+                onClick={() => setRejectOpen(true)}
               >
                 <X />
                 {t("admin.testimonials.action_reject", "Tolak")}
@@ -353,7 +372,7 @@ function TestimonialActions({
               <DropdownMenuItem
                 disabled={isWorking}
                 className="min-h-11 sm:min-h-8"
-                onSelect={openFeatureDialog}
+                onClick={openFeatureDialog}
               >
                 <Pin />
                 {currentFeatured
@@ -365,7 +384,7 @@ function TestimonialActions({
               <DropdownMenuItem
                 disabled={isWorking}
                 className="min-h-11 sm:min-h-8"
-                onSelect={() => void handleUnfeature()}
+                onClick={() => void handleUnfeature()}
               >
                 <PinOff />
                 {t("admin.testimonials.action_unfeature", "Hapus dari landing")}
@@ -378,7 +397,7 @@ function TestimonialActions({
               variant="destructive"
               disabled={isWorking}
               className="min-h-11 sm:min-h-8"
-              onSelect={() => setDeleteOpen(true)}
+              onClick={() => setDeleteOpen(true)}
             >
               <Trash2 />
               {t("admin.testimonials.action_delete", "Hapus permanen")}
@@ -480,9 +499,12 @@ function TestimonialActions({
                 {t("admin.testimonials.slot_label", "Slot")}
               </FieldLabel>
               <Select
+                items={slotItems}
                 value={selectedSlot}
                 disabled={isWorking}
-                onValueChange={setSelectedSlot}
+                onValueChange={(nextValue) => {
+                  if (nextValue !== null) setSelectedSlot(nextValue);
+                }}
               >
                 <SelectTrigger
                   id={featureSlotId}
@@ -492,25 +514,11 @@ function TestimonialActions({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {FEATURE_SLOTS.map((slot) => {
-                      const occupant = featured.find(
-                        (item) => item.slot === slot,
-                      );
-                      return (
-                        <SelectItem key={slot} value={String(slot)}>
-                          {occupant
-                            ? t("admin.testimonials.slot_occupied", {
-                                slot,
-                                name: occupant.display_name,
-                                defaultValue: "Slot {{slot}} — {{name}}",
-                              })
-                            : t("admin.testimonials.slot_available", {
-                                slot,
-                                defaultValue: "Slot {{slot}} — kosong",
-                              })}
-                        </SelectItem>
-                      );
-                    })}
+                    {slotItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -801,7 +809,8 @@ export function TestimonialsTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const handleStatusChange = (value: string) => {
+  const handleStatusChange = (value: string | null) => {
+    if (value === null) return;
     setStatusFilter(value as StatusFilter);
     setPagination((current) => ({ ...current, pageIndex: 0 }));
   };
@@ -841,7 +850,11 @@ export function TestimonialsTable() {
         </CardDescription>
         <CardAction className="col-start-1 row-start-3 mt-2 w-full justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:justify-self-end">
           <div className="flex w-full items-center gap-2">
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <Select
+              items={statusOptions}
+              value={statusFilter}
+              onValueChange={handleStatusChange}
+            >
               <SelectTrigger
                 className="h-11 min-w-0 flex-1 sm:h-8 sm:w-40"
                 aria-label={t(

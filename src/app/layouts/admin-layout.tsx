@@ -33,6 +33,7 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -41,12 +42,13 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 import { Separator } from "@/components/ui/separator";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -62,7 +64,6 @@ import {
   Languages,
   LogOut,
   User,
-  PanelLeft,
   ChevronUp,
   LineChart,
   ShieldAlert,
@@ -154,6 +155,12 @@ export function AdminLayout() {
     },
   ];
 
+  const themeItems = [
+    { value: "light", label: t("common.theme_light") },
+    { value: "dark", label: t("common.theme_dark") },
+    { value: "system", label: t("common.theme_system") },
+  ] as const;
+
 
 
   // Breadcrumb resolve: determine parent group and child page label based on route.
@@ -183,24 +190,22 @@ export function AdminLayout() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   size="lg"
-                  asChild
+                  render={<Link to="/terminal" />}
                   tooltip={consoleTitle}
                   className="group/brand gap-2.5 hover:bg-transparent"
                 >
-                  <Link to="/terminal">
-                    <div className="relative flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary via-primary/80 to-primary/60 text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-300 group-hover/brand:scale-110 group-hover/brand:shadow-primary/30">
-                      <Radio className="size-4 relative z-10" />
-                      <div className="absolute inset-0 rounded-lg border border-white/20 z-0" />
-                    </div>
-                    <div className="flex flex-col -space-y-0.5 leading-none">
-                      <span className="text-[13px] font-black tracking-tighter uppercase text-foreground leading-none">
-                        Raba<span className="text-primary">Laba</span>
-                      </span>
-                      <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
-                        {t("admin.console_label", "Dashboard")}
-                      </span>
-                    </div>
-                  </Link>
+                  <div className="relative flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary via-primary/80 to-primary/60 text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-300 group-hover/brand:scale-110 group-hover/brand:shadow-primary/30">
+                    <Radio className="size-4 relative z-10" />
+                    <div className="absolute inset-0 rounded-lg border border-white/20 z-0" />
+                  </div>
+                  <div className="flex flex-col -space-y-0.5 leading-none">
+                    <span className="text-[13px] font-black tracking-tighter uppercase text-foreground leading-none">
+                      Raba<span className="text-primary">Laba</span>
+                    </span>
+                    <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
+                      {t("admin.console_label", "Dashboard")}
+                    </span>
+                  </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -217,7 +222,7 @@ export function AdminLayout() {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      asChild
+                      render={<Link to={overviewItem.to} />}
                       isActive={location.pathname.startsWith(overviewItem.to)}
                       tooltip={overviewItem.label}
                       className={cn(
@@ -227,10 +232,8 @@ export function AdminLayout() {
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      <Link to={overviewItem.to}>
-                        <overviewItem.icon className="size-4 shrink-0" />
-                        <span>{overviewItem.label}</span>
-                      </Link>
+                      <overviewItem.icon className="size-4 shrink-0" />
+                      <span>{overviewItem.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
@@ -249,7 +252,7 @@ export function AdminLayout() {
                     return (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton
-                          asChild
+                          render={<Link to={item.to} />}
                           isActive={isActive}
                           tooltip={item.label}
                           className={cn(
@@ -259,10 +262,8 @@ export function AdminLayout() {
                               : "text-muted-foreground hover:text-foreground",
                           )}
                         >
-                          <Link to={item.to}>
-                            <item.icon className="size-4 shrink-0" />
-                            <span>{item.label}</span>
-                          </Link>
+                          <item.icon className="size-4 shrink-0" />
+                          <span>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
@@ -277,49 +278,55 @@ export function AdminLayout() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton
-                      size="lg"
-                      tooltip={consoleTitle}
-                      className="gap-2.5 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
-                    >
-                      <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border">
-                        <User className="size-4" />
-                      </div>
-                      <div className="flex flex-col text-left min-w-0 flex-1">
-                        <span className="text-[10px] text-muted-foreground truncate">
-                          {consoleTitle}
-                        </span>
-                        <span className="text-xs font-bold text-foreground truncate">
-                          {user?.email}
-                        </span>
-                      </div>
-                      <ChevronUp className="size-4 text-muted-foreground shrink-0" />
-                    </SidebarMenuButton>
+                  <DropdownMenuTrigger
+                    render={
+                      <SidebarMenuButton
+                        size="lg"
+                        tooltip={consoleTitle}
+                        className="gap-2.5 data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
+                      />
+                    }
+                  >
+                    <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border">
+                      <User className="size-4" />
+                    </div>
+                    <div className="flex flex-col text-left min-w-0 flex-1">
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {consoleTitle}
+                      </span>
+                      <span className="text-xs font-bold text-foreground truncate">
+                        {user?.email}
+                      </span>
+                    </div>
+                    <ChevronUp className="size-4 text-muted-foreground shrink-0" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="w-(--radix-dropdown-menu-trigger-width) min-w-56 text-foreground"
+                    className="w-(--anchor-width) min-w-56 text-foreground"
                     align="end"
                     side="top"
                     sideOffset={8}
                   >
-                    <DropdownMenuLabel className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        {t("auth.account_label")}
-                      </span>
-                      <span className="truncate text-xs font-normal text-foreground">
-                        {user?.email}
-                      </span>
-                    </DropdownMenuLabel>
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {t("auth.account_label")}
+                        </span>
+                        <span className="truncate text-xs font-normal text-foreground">
+                          {user?.email}
+                        </span>
+                      </DropdownMenuLabel>
+                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={handleLogout}
-                      className="text-xs cursor-pointer"
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      {t("auth.logout_btn")}
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={handleLogout}
+                        className="text-xs cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        {t("auth.logout_btn")}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </SidebarMenuItem>
@@ -333,9 +340,7 @@ export function AdminLayout() {
         <SidebarInset className="flex flex-col min-w-0 overflow-hidden bg-background">
           {/* Dashboard Header Bar */}
           <header className="h-18 border-b border-border flex items-center gap-4 px-4 sm:px-6 shrink-0 bg-card/20 backdrop-blur-xs">
-            <SidebarTrigger className="cursor-pointer">
-              <PanelLeft className="h-4 w-4" />
-            </SidebarTrigger>
+            <SidebarTrigger className="cursor-pointer" />
             <Separator
               orientation="vertical"
               className="h-6 data-vertical:self-center"
@@ -359,19 +364,18 @@ export function AdminLayout() {
             {/* Right Side Controls: Language, Theme & User Switchers */}
             <div className="ml-auto flex items-center gap-2">
               {/* Back to Terminal Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="text-xs cursor-pointer flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground h-8 w-8 md:w-auto md:px-3 rounded-lg"
+              <Link
+                to="/terminal"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "text-xs cursor-pointer flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground h-8 w-8 md:w-auto md:px-3 rounded-lg",
+                )}
               >
-                <Link to="/terminal">
-                  <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                  <span className="hidden md:inline">
-                    {t("admin.back_to_terminal", "Kembali ke Terminal")}
-                  </span>
-                </Link>
-              </Button>
+                <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden md:inline">
+                  {t("admin.back_to_terminal", "Kembali ke Terminal")}
+                </span>
+              </Link>
 
               <Separator
                 orientation="vertical"
@@ -380,8 +384,11 @@ export function AdminLayout() {
 
               {/* Language Selector Dropdown */}
               <Select
+                items={LANGUAGES}
                 value={currentLang}
-                onValueChange={(v) => i18n.changeLanguage(v)}
+                onValueChange={(nextValue) => {
+                  if (nextValue !== null) void i18n.changeLanguage(nextValue);
+                }}
               >
                 <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                   <Languages className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
@@ -389,25 +396,34 @@ export function AdminLayout() {
                     <SelectValue />
                   </span>
                 </SelectTrigger>
-                <SelectContent position="popper" align="end" className="p-1">
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem
-                      key={lang.value}
-                      value={lang.value}
-                      className="uppercase tracking-wider text-[10px] cursor-pointer"
-                    >
-                      {lang.label}
-                    </SelectItem>
-                  ))}
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  align="end"
+                  className="p-1"
+                >
+                  <SelectGroup>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem
+                        key={lang.value}
+                        value={lang.value}
+                        className="uppercase tracking-wider text-[10px] cursor-pointer"
+                      >
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
 
               {/* Theme Selector Dropdown */}
               <Select
+                items={themeItems}
                 value={theme}
-                onValueChange={(v) =>
-                  setTheme(v as "light" | "dark" | "system")
-                }
+                onValueChange={(nextValue) => {
+                  if (nextValue !== null) {
+                    setTheme(nextValue as "light" | "dark" | "system");
+                  }
+                }}
               >
                 <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                   {theme === "dark" ? (
@@ -421,25 +437,22 @@ export function AdminLayout() {
                     <SelectValue />
                   </span>
                 </SelectTrigger>
-                <SelectContent position="popper" align="end" className="p-1">
-                  <SelectItem
-                    value="light"
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t("common.theme_light")}
-                  </SelectItem>
-                  <SelectItem
-                    value="dark"
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t("common.theme_dark")}
-                  </SelectItem>
-                  <SelectItem
-                    value="system"
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t("common.theme_system")}
-                  </SelectItem>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  align="end"
+                  className="p-1"
+                >
+                  <SelectGroup>
+                    {themeItems.map((item) => (
+                      <SelectItem
+                        key={item.value}
+                        value={item.value}
+                        className="uppercase tracking-wider text-[10px] cursor-pointer"
+                      >
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>

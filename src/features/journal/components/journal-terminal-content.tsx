@@ -12,9 +12,8 @@ import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 export interface JournalTerminalContentProps {
   requestedTradeId: string | null;
   detailOpen: boolean;
-  onTradeSelect: (tradeId: string, trigger: HTMLElement) => void;
+  onTradeSelect: (tradeId: string) => void;
   onDetailOpenChange: (open: boolean) => void;
-  onDetailCloseAutoFocus?: (event: Event) => void;
 }
 
 /**
@@ -27,7 +26,6 @@ export function JournalTerminalContent({
   detailOpen,
   onTradeSelect,
   onDetailOpenChange,
-  onDetailCloseAutoFocus,
 }: JournalTerminalContentProps) {
   const {
     trades,
@@ -98,7 +96,6 @@ export function JournalTerminalContent({
         onRetry={() => {
           void refetch();
         }}
-        onCloseAutoFocus={onDetailCloseAutoFocus}
       />
     </div>
   );

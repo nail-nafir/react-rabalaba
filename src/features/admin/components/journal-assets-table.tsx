@@ -193,16 +193,18 @@ function DeleteButton({
   const { t } = useTranslation();
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="link"
-          size="icon"
-          aria-label={t("admin.delete_confirm_title", { symbol })}
-          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant="link"
+            size="icon"
+            aria-label={t("admin.delete_confirm_title", { symbol })}
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        }
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">

@@ -53,20 +53,20 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
+      <DropdownMenuTrigger
+        render={<Button
           variant="ghost"
           aria-label={t("auth.account_label")}
           className="flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer"
         >
           <User className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
+        </Button>}
+      />
 
       <DropdownMenuContent align="end" className="w-48 text-foreground">
         {!isAuthenticated ? (
           <>
-            <div className="p-1 space-y-1.5">
+            <DropdownMenuGroup className="flex flex-col gap-1.5 p-1">
               <DropdownMenuItem
                 onClick={() => navigate("/login")}
                 className="text-xs cursor-pointer font-bold bg-primary text-primary-foreground hover:bg-primary/80 focus:bg-primary/80 focus:text-primary-foreground justify-center h-9 rounded-lg flex items-center gap-1.5 transition-all border-0 tracking-tight"
@@ -81,7 +81,7 @@ export function UserMenu() {
                 <UserPlus className="h-3.5 w-3.5" />
                 {t("auth.signup_btn")}
               </DropdownMenuItem>
-            </div>
+            </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
           </>
@@ -89,27 +89,31 @@ export function UserMenu() {
           <>
             {user?.email && (
               <>
-                <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("auth.account_label")}
-                  </span>
-                  <span className="truncate text-xs font-normal text-foreground">
-                    {user.email}
-                  </span>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {t("auth.account_label")}
+                    </span>
+                    <span className="truncate text-xs font-normal text-foreground">
+                      {user.email}
+                    </span>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
               </>
             )}
 
             {isAdmin && (
               <>
-                <DropdownMenuItem
-                  onClick={() => navigate("/admin")}
-                  className="text-xs cursor-pointer"
-                >
-                  <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                  {t("admin.console_entry", "Kelola Sistem")}
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/admin")}
+                    className="text-xs cursor-pointer"
+                  >
+                    <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                    {t("admin.console_entry", "Kelola Sistem")}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
               </>
             )}
@@ -128,72 +132,80 @@ export function UserMenu() {
         )}
 
         {/* Shared settings (available to everyone) */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-            <Languages className="h-4 w-4 text-muted-foreground" />
-            {t("common.language")}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={currentLang}
-              onValueChange={(v) => i18n.changeLanguage(v)}
-            >
-              {LANGUAGES.map((lang) => (
-                <DropdownMenuRadioItem
-                  key={lang.value}
-                  value={lang.value}
-                  className="text-xs cursor-pointer"
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+              <Languages className="h-4 w-4 text-muted-foreground" />
+              {t("common.language")}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuGroup>
+                <DropdownMenuRadioGroup
+                  value={currentLang}
+                  onValueChange={(v) => i18n.changeLanguage(v)}
                 >
-                  {lang.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+                  {LANGUAGES.map((lang) => (
+                    <DropdownMenuRadioItem
+                      key={lang.value}
+                      value={lang.value}
+                      className="text-xs cursor-pointer"
+                    >
+                      {lang.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-            <Moon className="h-4 w-4 text-muted-foreground" />
-            {t("common.theme")}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={theme}
-              onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
-            >
-              <DropdownMenuRadioItem
-                value="light"
-                className="text-xs cursor-pointer"
-              >
-                {t("common.theme_light")}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem
-                value="dark"
-                className="text-xs cursor-pointer"
-              >
-                {t("common.theme_dark")}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem
-                value="system"
-                className="text-xs cursor-pointer"
-              >
-                {t("common.theme_system")}
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+              <Moon className="h-4 w-4 text-muted-foreground" />
+              {t("common.theme")}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuGroup>
+                <DropdownMenuRadioGroup
+                  value={theme}
+                  onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
+                >
+                  <DropdownMenuRadioItem
+                    value="light"
+                    className="text-xs cursor-pointer"
+                  >
+                    {t("common.theme_light")}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="dark"
+                    className="text-xs cursor-pointer"
+                  >
+                    {t("common.theme_dark")}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="system"
+                    className="text-xs cursor-pointer"
+                  >
+                    {t("common.theme_system")}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
 
         {isAuthenticated && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={handleLogout}
-              className="text-xs cursor-pointer"
-            >
-              <LogOut className="h-4 w-4" />
-              {t("auth.logout_btn")}
-            </DropdownMenuItem>
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={handleLogout}
+                className="text-xs cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                {t("auth.logout_btn")}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
           </>
         )}
       </DropdownMenuContent>
