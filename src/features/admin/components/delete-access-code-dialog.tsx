@@ -50,17 +50,19 @@ export function DeleteAccessCodeDialog({
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="link"
-          size="icon"
-          aria-label={t("admin.codes_delete_confirm_title", {
-            code: code.code,
-          })}
-          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant="link"
+            size="icon"
+            aria-label={t("admin.codes_delete_confirm_title", {
+              code: code.code,
+            })}
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
+          />
+        }
+      >
+        <Trash2 className="h-4 w-4" />
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

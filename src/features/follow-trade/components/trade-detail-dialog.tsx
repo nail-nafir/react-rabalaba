@@ -62,7 +62,7 @@ export interface TradeDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   state?: TradeDetailDialogState;
   onRetry?: () => void;
-  onCloseAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (open: boolean) => void;
 }
 
 /**
@@ -118,9 +118,12 @@ function TradeDetailStatusDialog({
             "Transaksi ini tidak ditemukan atau tidak tersedia untuk akun Anda.",
         });
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onCloseAutoFocus}
+    >
       <DialogContent
-        onCloseAutoFocus={onCloseAutoFocus}
         className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
       >
         <DialogHeader>
@@ -159,14 +162,16 @@ function TradeDetailStatusDialog({
                     {t("common.retry")}
                   </Button>
                 )}
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    variant={isError ? "outline" : "default"}
-                    className="min-h-11"
-                  >
-                    {t("journal.close_short")}
-                  </Button>
+                <DialogClose
+                  render={
+                    <Button
+                      type="button"
+                      variant={isError ? "outline" : "default"}
+                      className="min-h-11"
+                    />
+                  }
+                >
+                  {t("journal.close_short")}
                 </DialogClose>
               </div>
             </div>
@@ -354,9 +359,12 @@ function TradeDetailReadyDialog({
     ? t("journal.trade_detail")
     : t("journal.open_position");
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onCloseAutoFocus}
+    >
       <DialogContent
-        onCloseAutoFocus={onCloseAutoFocus}
         className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
       >
         <DialogHeader className="shrink-0 bg-popover p-4 pb-0">

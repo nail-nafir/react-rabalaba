@@ -4,7 +4,7 @@ import { LicenseBadge } from "./license-badge";
 import { UserMenu } from "./user-menu";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { Button, buttonVariants } from "../ui/button";
+import { buttonVariants } from "../ui/button";
 
 const NAV_ITEMS = [
   { to: "/terminal", icon: BarChart3 },
@@ -55,21 +55,21 @@ export function Header() {
                 location.pathname === to ||
                 location.pathname.startsWith(`${to}/`);
               return (
-                <Button
-                  asChild
+                <Link
                   key={to}
-                  variant={isActive ? "default" : "ghost"}
-                  size="xs"
+                  to={to}
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-wider",
+                    buttonVariants({
+                      variant: isActive ? "default" : "ghost",
+                      size: "xs",
+                    }),
+                    "flex-row text-[10px] font-bold uppercase tracking-wider",
                     !isActive && "text-muted-foreground",
                   )}
                 >
-                  <Link to={to}>
-                    <Icon className="h-3.5 w-3.5" />
-                    {t(`common.${to.replace("/", "")}`)}
-                  </Link>
-                </Button>
+                  <Icon className="h-3.5 w-3.5" />
+                  {t(`common.${to.replace("/", "")}`)}
+                </Link>
               );
             })}
           </nav>

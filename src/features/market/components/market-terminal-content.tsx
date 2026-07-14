@@ -21,7 +21,7 @@ interface MarketTerminalContentProps {
   detailOpen: boolean;
   onAssetSelect: (symbol: string, trigger: HTMLElement) => void;
   onDetailOpenChange: (open: boolean) => void;
-  onDetailCloseAutoFocus?: (event: Event) => void;
+  onDetailCloseAutoFocus?: (open: boolean) => void;
 }
 
 /**

@@ -27,7 +27,6 @@ export function AuthLayout() {
       {/* Top Floating Navigation Controls */}
       <div className="absolute top-4 left-0 right-0 z-50 pointer-events-none md:top-6">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between w-full">
-          
           {/* Left: Back to Home Link */}
           <Link 
             to="/" 
@@ -39,23 +38,22 @@ export function AuthLayout() {
 
           {/* Right: Language and Theme Selects */}
           <div className="pointer-events-auto flex items-center gap-2">
-            
             {/* Language Selector Dropdown */}
-            <Select value={currentLang} onValueChange={(v) => i18n.changeLanguage(v)}>
+            <Select value={currentLang} onValueChange={(v) => v && i18n.changeLanguage(v)}>
               <SelectTrigger 
                 className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg"
               >
                 <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" align="end" className="p-1">
+              <SelectContent align="end" className="p-1">
                 <SelectItem value="id" className="uppercase tracking-wider text-[10px] cursor-pointer">Indonesia</SelectItem>
                 <SelectItem value="en" className="uppercase tracking-wider text-[10px] cursor-pointer">English</SelectItem>
               </SelectContent>
             </Select>
 
             {/* Theme Selector Dropdown */}
-            <Select value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
+            <Select value={theme} onValueChange={(v) => v && setTheme(v as 'light' | 'dark' | 'system')}>
               <SelectTrigger 
                 className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg"
               >
@@ -68,7 +66,7 @@ export function AuthLayout() {
                 )}
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" align="end" className="p-1">
+              <SelectContent align="end" className="p-1">
                 <SelectItem value="light" className="uppercase tracking-wider text-[10px] cursor-pointer">{t('common.theme_light')}</SelectItem>
                 <SelectItem value="dark" className="uppercase tracking-wider text-[10px] cursor-pointer">{t('common.theme_dark')}</SelectItem>
                 <SelectItem value="system" className="uppercase tracking-wider text-[10px] cursor-pointer">{t('common.theme_system')}</SelectItem>

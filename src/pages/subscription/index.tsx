@@ -195,23 +195,20 @@ export default function SubscriptionPage() {
                     <span>{t("license.activate_btn")}</span>
                   </Button>
                 )}
-                <Button
-                  asChild
-                  size="lg"
-                  variant="secondary"
-                  className="cursor-pointer transition-all group"
+                <a
+                  href="https://t.me/nailnafir"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    buttonVariants({ variant: "secondary", size: "lg" }),
+                    "cursor-pointer transition-all group",
+                  )}
                 >
-                  <a
-                    href="https://t.me/nailnafir"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    <span className="text-xs font-bold tracking-tight">
-                      {t("common.contact_team")}
-                    </span>
-                  </a>
-                </Button>
+                  <Send className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold tracking-tight">
+                    {t("common.contact_team")}
+                  </span>
+                </a>
               </div>
             </Card>
           </section>

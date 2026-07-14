@@ -228,11 +228,11 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("admin.billing.plan_icon", "Ikon")}
             </Label>
-            <Select value={icon} onValueChange={setIcon}>
+            <Select value={icon} onValueChange={(value) => value && setIcon(value)}>
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" position="popper" className="p-1">
+              <SelectContent align="start" className="p-1">
                 {ICON_OPTIONS.map((ic) => (
                   <SelectItem key={ic} value={ic} className="uppercase tracking-wider text-[10px] cursor-pointer">
                     {ic}
@@ -245,11 +245,14 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("admin.billing.plan_cta_kind", "Aksi Tombol")}
             </Label>
-            <Select value={ctaKind} onValueChange={setCtaKind}>
+            <Select
+              value={ctaKind}
+              onValueChange={(value) => value && setCtaKind(value)}
+            >
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" position="popper" className="p-1">
+              <SelectContent align="start" className="p-1">
                 {CTA_KINDS.map((k) => (
                   <SelectItem key={k} value={k} className="uppercase tracking-wider text-[10px] cursor-pointer">
                     {t(`admin.billing.cta_${k}`, k)}

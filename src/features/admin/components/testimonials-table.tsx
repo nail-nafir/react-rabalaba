@@ -310,22 +310,20 @@ function TestimonialActions({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-11 sm:size-8"
-            aria-label={t("admin.testimonials.open_actions", {
-              name: submission.display_name,
-              defaultValue: "Buka tindakan untuk ulasan {{name}}",
-            })}
-          >
-            {isWorking ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <MoreHorizontal />
-            )}
-          </Button>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 sm:size-8"
+              aria-label={t("admin.testimonials.open_actions", {
+                name: submission.display_name,
+                defaultValue: "Buka tindakan untuk ulasan {{name}}",
+              })}
+            />
+          }
+        >
+          {isWorking ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuGroup>
@@ -482,7 +480,7 @@ function TestimonialActions({
               <Select
                 value={selectedSlot}
                 disabled={isWorking}
-                onValueChange={setSelectedSlot}
+                onValueChange={(value) => value && setSelectedSlot(value)}
               >
                 <SelectTrigger
                   id={featureSlotId}
@@ -841,7 +839,10 @@ export function TestimonialsTable() {
         </CardDescription>
         <CardAction className="col-start-1 row-start-3 mt-2 w-full justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:justify-self-end">
           <div className="flex w-full items-center gap-2">
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => value && handleStatusChange(value)}
+            >
               <SelectTrigger
                 className="h-11 min-w-0 flex-1 sm:h-8 sm:w-40"
                 aria-label={t(

@@ -179,11 +179,14 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       {t("admin.codes_col_type", "Tipe")}
                     </label>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => value && field.onChange(value)}
+                    >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.codes_form_type_placeholder", "Pilih Tipe")} />
                       </SelectTrigger>
-                       <SelectContent align="start" position="popper" className="p-1">
+                       <SelectContent align="start" className="p-1">
                         <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_full", "Penuh")}</SelectItem>
                         <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_trial", "Uji Coba")}</SelectItem>
                       </SelectContent>

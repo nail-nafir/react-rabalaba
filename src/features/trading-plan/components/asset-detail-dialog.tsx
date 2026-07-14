@@ -107,7 +107,7 @@ interface AssetDetailDialogProps {
   symbol: string | null;
   availability: MarketDetailAvailability;
   onOpenChange: (open: boolean) => void;
-  onCloseAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (open: boolean) => void;
 }
 
 export function AssetDetailDialog({
@@ -240,11 +240,12 @@ export function AssetDetailDialog({
   if (availability !== "available" || !querySymbol) {
     const isChecking = availability === "checking";
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          onCloseAutoFocus={onCloseAutoFocus}
-          className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
-        >
+      <Dialog
+        open={open}
+        onOpenChange={onOpenChange}
+        onOpenChangeComplete={onCloseAutoFocus}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
               {t(
@@ -286,11 +287,12 @@ export function AssetDetailDialog({
 
   if (!chartLoading && (marketError || !asset)) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          onCloseAutoFocus={onCloseAutoFocus}
-          className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
-        >
+      <Dialog
+        open={open}
+        onOpenChange={onOpenChange}
+        onOpenChangeComplete={onCloseAutoFocus}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
               {t("dialog.market_error_title")}
@@ -333,11 +335,12 @@ export function AssetDetailDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        onCloseAutoFocus={onCloseAutoFocus}
-        className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
-      >
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onCloseAutoFocus}
+    >
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
             {querySymbol}

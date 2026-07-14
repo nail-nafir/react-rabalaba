@@ -35,7 +35,7 @@ export function FilterGroup<T extends string>({
 
   if (isMobile || variant === "select") {
     return (
-      <Select value={value} onValueChange={(v) => onChange(v as T)}>
+      <Select value={value} onValueChange={(v) => v && onChange(v as T)}>
         <SelectTrigger
           className={cn(
             "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8 cursor-pointer",
@@ -44,7 +44,7 @@ export function FilterGroup<T extends string>({
         >
           <SelectValue className="truncate text-left" />
         </SelectTrigger>
-        <SelectContent align="start" position="popper" className="p-1">
+        <SelectContent align="start" className="p-1">
           {options.map((option) => (
             <SelectItem
               key={option.value}

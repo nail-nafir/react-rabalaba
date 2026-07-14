@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { MessageSquareQuote, RefreshCw, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -82,12 +82,10 @@ export function TestimonialSection() {
       {t("testimonials.cta", "Bagikan pengalaman")}
     </Button>
   ) : (
-    <Button asChild>
-      <Link to={TESTIMONIAL_LOGIN_PATH}>
-        <MessageSquareQuote data-icon="inline-start" />
-        {t("testimonials.cta", "Bagikan pengalaman")}
-      </Link>
-    </Button>
+    <Link to={TESTIMONIAL_LOGIN_PATH} className={buttonVariants()}>
+      <MessageSquareQuote data-icon="inline-start" />
+      {t("testimonials.cta", "Bagikan pengalaman")}
+    </Link>
   );
 
   return (

@@ -53,14 +53,16 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          aria-label={t("auth.account_label")}
-          className="flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer"
-        >
-          <User className="h-4 w-4" />
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            aria-label={t("auth.account_label")}
+            className="flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer"
+          />
+        }
+      >
+        <User className="h-4 w-4" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-48 text-foreground">
@@ -136,7 +138,7 @@ export function UserMenu() {
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup
               value={currentLang}
-              onValueChange={(v) => i18n.changeLanguage(v)}
+              onValueChange={(v) => v && i18n.changeLanguage(v)}
             >
               {LANGUAGES.map((lang) => (
                 <DropdownMenuRadioItem
@@ -159,7 +161,9 @@ export function UserMenu() {
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup
               value={theme}
-              onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
+              onValueChange={(v) =>
+                v && setTheme(v as "light" | "dark" | "system")
+              }
             >
               <DropdownMenuRadioItem
                 value="light"

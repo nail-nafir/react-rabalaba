@@ -313,13 +313,15 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       {t("table.tier")}
                     </label>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => value && field.onChange(value)}
+                    >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_tier_placeholder", "Pilih Kasta")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
-                        position="popper"
                         className="p-1"
                       >
                         <SelectItem
@@ -354,13 +356,15 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       {t("table.role")}
                     </label>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => value && field.onChange(value)}
+                    >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_role_placeholder", "Pilih Peran")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
-                        position="popper"
                         className="p-1"
                       >
                         <SelectItem
@@ -424,14 +428,15 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
                     </label>
                     <Select
                       value={field.value ? "blocked" : "active"}
-                      onValueChange={(val) => field.onChange(val === "blocked")}
+                      onValueChange={(val) =>
+                        val && field.onChange(val === "blocked")
+                      }
                     >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.users_form_status_placeholder", "Pilih Status")} />
                       </SelectTrigger>
                       <SelectContent
                         align="start"
-                        position="popper"
                         className="p-1"
                       >
                         <SelectItem

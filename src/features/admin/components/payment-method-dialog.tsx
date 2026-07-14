@@ -94,11 +94,14 @@ function MethodForm({ method, onClose }: MethodFormProps) {
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("admin.billing.method_category", "Kategori")}
             </Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select
+              value={category}
+              onValueChange={(value) => value && setCategory(value)}
+            >
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" position="popper" className="p-1">
+              <SelectContent align="start" className="p-1">
                 {CATEGORIES.map((c) => (
                   <SelectItem
                     key={c}
@@ -184,11 +187,11 @@ function MethodForm({ method, onClose }: MethodFormProps) {
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {t("admin.billing.method_icon", "Ikon")}
           </Label>
-          <Select value={icon} onValueChange={setIcon}>
+          <Select value={icon} onValueChange={(value) => value && setIcon(value)}>
             <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent align="start" position="popper" className="p-1">
+            <SelectContent align="start" className="p-1">
               {ICON_OPTIONS.map((ic) => (
                 <SelectItem
                   key={ic}

@@ -93,11 +93,14 @@ function SettingSelect({
   renderLabel: (value: number) => string;
 }) {
   return (
-    <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+    <Select
+      value={String(value)}
+      onValueChange={(v) => v && onChange(Number(v))}
+    >
       <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px] cursor-pointer">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="start" position="popper" className="p-1">
+      <SelectContent align="start" className="p-1">
         {options.map((val) => (
           <SelectItem
             key={val}

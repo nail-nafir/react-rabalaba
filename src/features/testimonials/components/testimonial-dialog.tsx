@@ -333,12 +333,11 @@ export function TestimonialDialog({
                       {t("testimonials.form.rating", "Penilaian")}
                     </FieldLabel>
                     <ToggleGroup
-                      type="single"
                       variant="outline"
                       spacing={2}
-                      value={field.value ? String(field.value) : ""}
+                      value={field.value ? [String(field.value)] : []}
                       onValueChange={(value) =>
-                        field.onChange(value ? Number(value) : 0)
+                        field.onChange(value[0] ? Number(value[0]) : 0)
                       }
                       onBlur={field.onBlur}
                       aria-labelledby="testimonial-rating-label"
@@ -401,17 +400,19 @@ export function TestimonialDialog({
             <DialogFooter>
               {submission && (
                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="lg"
-                      disabled={isBusy}
-                      className="text-xs font-bold cursor-pointer shrink-0"
-                    >
-                      <Trash2 data-icon="inline-start" />
-                      {t("testimonials.form.delete", "Hapus")}
-                    </Button>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="lg"
+                        disabled={isBusy}
+                        className="text-xs font-bold cursor-pointer shrink-0"
+                      />
+                    }
+                  >
+                    <Trash2 data-icon="inline-start" />
+                    {t("testimonials.form.delete", "Hapus")}
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>

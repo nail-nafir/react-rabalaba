@@ -160,12 +160,12 @@ export default function TerminalPage() {
           {isMobile ? (
             <Select
               value={activeView}
-              onValueChange={(value) => setView(value as TerminalView)}
+              onValueChange={(value) => value && setView(value as TerminalView)}
             >
               <SelectTrigger className="h-11 w-fit min-w-[130px] cursor-pointer bg-card text-[10px] uppercase tracking-wider hover:bg-accent">
                 <SelectValue className="truncate text-left" />
               </SelectTrigger>
-              <SelectContent align="end" position="popper" className="p-1">
+              <SelectContent align="end" className="p-1">
                 <SelectItem
                   value="market"
                   className="cursor-pointer text-[10px] uppercase tracking-wider"

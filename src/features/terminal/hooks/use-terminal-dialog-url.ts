@@ -221,8 +221,8 @@ export function useTerminalDialogUrl({
   );
 
   const onCloseAutoFocus = useCallback(
-    (event: Event) => {
-      event.preventDefault();
+    (open: boolean) => {
+      if (open) return;
       const targetElement =
         openerRef.current?.isConnected === true
           ? openerRef.current

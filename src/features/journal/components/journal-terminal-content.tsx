@@ -14,7 +14,7 @@ export interface JournalTerminalContentProps {
   detailOpen: boolean;
   onTradeSelect: (tradeId: string, trigger: HTMLElement) => void;
   onDetailOpenChange: (open: boolean) => void;
-  onDetailCloseAutoFocus?: (event: Event) => void;
+  onDetailCloseAutoFocus?: (open: boolean) => void;
 }
 
 /**
