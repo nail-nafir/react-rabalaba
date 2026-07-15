@@ -91,14 +91,16 @@ export function UserMenu() {
           <>
             {user?.email && (
               <>
-                <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("auth.account_label")}
-                  </span>
-                  <span className="truncate text-xs font-normal text-foreground">
-                    {user.email}
-                  </span>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {t("auth.account_label")}
+                    </span>
+                    <span className="truncate text-xs font-normal text-foreground">
+                      {user.email}
+                    </span>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
               </>
             )}

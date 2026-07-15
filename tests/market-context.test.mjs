@@ -185,9 +185,9 @@ test("incomplete and stale quote snapshots are rejected", async () => {
   );
 });
 
-test("Garman-Klass matches the 20-day annualized formula", async () => {
+test("Garman-Klass matches the 30-day annualized formula", async () => {
   const { calculateGarmanKlassVolatility } = await loadAdapter();
-  const candles = makeCandles(20);
+  const candles = makeCandles(30);
   const actual = calculateGarmanKlassVolatility(makeResult(candles));
   const dailyVariance =
     0.5 * Math.log(103 / 98) ** 2 -
@@ -200,11 +200,11 @@ test("Garman-Klass matches the 20-day annualized formula", async () => {
 
 test("Garman-Klass returns zero for a flat market", async () => {
   const { calculateGarmanKlassVolatility } = await loadAdapter();
-  const flat = makeCandles(20, { open: 100, high: 100, low: 100, close: 100 });
+  const flat = makeCandles(30, { open: 100, high: 100, low: 100, close: 100 });
   assert.equal(calculateGarmanKlassVolatility(makeResult(flat)), 0);
 });
 
-test("Garman-Klass uses the latest 20 valid physical candles", async () => {
+test("Garman-Klass uses the latest 30 valid physical candles", async () => {
   const { calculateGarmanKlassVolatility } = await loadAdapter();
   const noisyOldCandles = makeCandles(5, {
     open: 100,
@@ -212,7 +212,7 @@ test("Garman-Klass uses the latest 20 valid physical candles", async () => {
     low: 80,
     close: 120,
   });
-  const flatLatestCandles = makeCandles(20, {
+  const flatLatestCandles = makeCandles(30, {
     open: 100,
     high: 100,
     low: 100,
@@ -246,23 +246,23 @@ test("Garman-Klass uses the latest 20 valid physical candles", async () => {
   );
 });
 
-test("Garman-Klass returns null with fewer than 20 valid candles", async () => {
+test("Garman-Klass returns null with fewer than 30 valid candles", async () => {
   const { calculateGarmanKlassVolatility } = await loadAdapter();
   assert.equal(
-    calculateGarmanKlassVolatility(makeResult(makeCandles(19))),
+    calculateGarmanKlassVolatility(makeResult(makeCandles(29))),
     null,
   );
 });
 
 test("IHSG context excludes the in-progress regular-session candle", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const completed = makeCandles(20, {
+  const completed = makeCandles(30, {
     open: 100,
     high: 100,
     low: 100,
     close: 100,
   });
-  const currentTimestamp = T0_SECONDS + 20 * DAY_SECONDS;
+  const currentTimestamp = T0_SECONDS + 30 * DAY_SECONDS;
   const liveCandle = {
     open: 100,
     high: 140,
@@ -300,9 +300,9 @@ test("IHSG context excludes the in-progress regular-session candle", async () =>
   );
   assert.ok(context);
   assert.equal(context.kind, "realized-volatility");
-  assert.equal(context.name, "IHSG Volatility");
+  assert.equal(context.name, "IHSG Volatility Index");
   assert.equal(context.sourceSymbol, "^JKSE");
-  assert.equal(context.lookbackDays, 20);
+  assert.equal(context.lookbackDays, 30);
   assert.equal(context.precision, 1);
   assert.equal(context.value, 0);
   assert.equal(context.timestamp, completed.at(-1).timestamp * 1000);
@@ -310,13 +310,13 @@ test("IHSG context excludes the in-progress regular-session candle", async () =>
 
 test("IHSG context keeps the final candle once the regular session has closed", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const completed = makeCandles(20, {
+  const completed = makeCandles(30, {
     open: 100,
     high: 100,
     low: 100,
     close: 100,
   });
-  const currentTimestamp = T0_SECONDS + 20 * DAY_SECONDS;
+  const currentTimestamp = T0_SECONDS + 30 * DAY_SECONDS;
   const finalCandle = {
     open: 100,
     high: 140,
@@ -371,8 +371,8 @@ function makeVolatileCandles(count, range, startIndex = 0) {
 
 test("IHSG volatility change is positive when the latest window is more volatile", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const calm = makeVolatileCandles(20, { low: 99, high: 101 });
-  const volatile = makeVolatileCandles(5, { low: 70, high: 140 }, 20);
+  const calm = makeVolatileCandles(30, { low: 99, high: 101 });
+  const volatile = makeVolatileCandles(5, { low: 70, high: 140 }, 30);
   const context = adaptIhsgVolatilityMarketContext(
     makeResult([...calm, ...volatile]),
   );
@@ -386,8 +386,8 @@ test("IHSG volatility change is positive when the latest window is more volatile
 
 test("IHSG volatility change is negative when the latest window is calmer", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const volatile = makeVolatileCandles(20, { low: 70, high: 140 });
-  const calm = makeVolatileCandles(5, { low: 99, high: 101 }, 20);
+  const volatile = makeVolatileCandles(30, { low: 70, high: 140 });
+  const calm = makeVolatileCandles(5, { low: 99, high: 101 }, 30);
   const context = adaptIhsgVolatilityMarketContext(
     makeResult([...volatile, ...calm]),
   );
@@ -398,9 +398,9 @@ test("IHSG volatility change is negative when the latest window is calmer", asyn
   assert.equal(context.direction, "down");
 });
 
-test("IHSG volatility omits change when fewer than 25 candles are available", async () => {
+test("IHSG volatility omits change when fewer than 35 candles are available", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const context = adaptIhsgVolatilityMarketContext(makeResult(makeCandles(24)));
+  const context = adaptIhsgVolatilityMarketContext(makeResult(makeCandles(34)));
 
   assert.ok(context);
   assert.equal(context.changePercent, undefined);
@@ -410,7 +410,7 @@ test("IHSG volatility omits change when fewer than 25 candles are available", as
 
 test("IHSG volatility omits change when the prior window is zero", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const flat = makeCandles(25, { open: 100, high: 100, low: 100, close: 100 });
+  const flat = makeCandles(35, { open: 100, high: 100, low: 100, close: 100 });
   const context = adaptIhsgVolatilityMarketContext(makeResult(flat));
 
   assert.ok(context);
@@ -421,7 +421,7 @@ test("IHSG volatility omits change when the prior window is zero", async () => {
 
 test("IHSG volatility change is flat when both windows match", async () => {
   const { adaptIhsgVolatilityMarketContext } = await loadAdapter();
-  const context = adaptIhsgVolatilityMarketContext(makeResult(makeCandles(25)));
+  const context = adaptIhsgVolatilityMarketContext(makeResult(makeCandles(35)));
 
   assert.ok(context);
   assert.equal(context.changePercent, 0);

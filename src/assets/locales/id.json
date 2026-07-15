@@ -296,7 +296,21 @@
     "us_equity": "Saham AS",
     "commodity": "Komoditas",
     "forex": "Valas",
-    "index_fallback": "Indeks"
+    "index_fallback": "Indeks",
+    "context_explainer": {
+      "crypto": "Suasana hati pasar koin. Naik berarti pembeli lagi semangat, turun berarti mulai takut.",
+      "id-equity": "Seberapa goyang IHSG akhir ini. Tinggi berarti volatile, rendah berarti tenang.",
+      "us-equity": "Penunjuk panik Wall Street. Tinggi berarti takut menular, rendah berarti santai.",
+      "commodities": "Permintaan industri versus rasa aman. Naik yakin ekonomi tumbuh, turun cari emas.",
+      "forex": "Kekuatan dolar versus mata uang lain. Dolar kuat menekan hampir semua aset lainnya."
+    },
+    "score_explainer": {
+      "crypto": "Selera risiko koin. Tinggi berarti pembeli percaya diri, rendah berarti ketakutan menguasai.",
+      "id-equity": "Selera risiko saham ID. Tinggi berarti investor percaya diri, rendah berarti ketakutan menguasai.",
+      "us-equity": "Selera risiko saham AS. Tinggi berarti investor percaya diri, rendah berarti ketakutan menguasai.",
+      "commodities": "Selera risiko komoditas. Tinggi berarti permintaan terasa kuat, rendah berarti terasa lemah.",
+      "forex": "Selera risiko rupiah. Tinggi berarti rupiah terasa kuat, rendah berarti rupiah terasa lemah."
+    }
   },
   "terminal": {
     "title": "Terminal Riset",

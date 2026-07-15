@@ -111,7 +111,7 @@ export function MarketTicker({ showTitle = false }: { showTitle?: boolean }) {
               (item, i, arr) => (
                 <div
                   key={`${item.symbol}-${i}`}
-                  className="inline-flex items-center gap-2 px-4 text-xs"
+                  className="inline-flex items-center gap-2 px-4 text-xs uppercase"
                 >
                   <span className="font-medium text-foreground">
                     {item.symbol}

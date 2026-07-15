@@ -92,6 +92,7 @@ export function JournalTerminalContent({
 
       <TradeDetailDialog
         trade={requestedTrade}
+        siblings={trades}
         open={detailOpen}
         state={detailState}
         onOpenChange={onDetailOpenChange}

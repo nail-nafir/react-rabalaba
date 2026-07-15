@@ -151,7 +151,7 @@ export function TpProgress({
         </span>
         {reversed && (
           <>
-            <span>∙</span>
+            <span>•</span>
             <span>
               REVERSED
             </span>

@@ -20,7 +20,9 @@ import {
 
 export const CMC_CRYPTO_200_SYMBOL = "^CMC200";
 export const CRYPTO_INDEX_FALLBACK_SYMBOL = "^NCI";
-export const IHSG_VOLATILITY_LOOKBACK_DAYS = 20;
+/** 30-day window mirrors the CBOE VIX horizon so the IHSG proxy reads on the
+ *  same time scale as the US volatility index. */
+export const IHSG_VOLATILITY_LOOKBACK_DAYS = 30;
 export const IHSG_VOLATILITY_CHANGE_OFFSET_DAYS = 5;
 
 /** Module-level and unique so Forex and Commodity never trigger two DXY queries. */

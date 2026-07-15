@@ -23,11 +23,17 @@ import {
   Gem,
   DollarSign,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import { memo, useMemo } from "react";
 import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { Sparkline } from "@/components/charts/sparkline";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -79,7 +85,7 @@ function ContextChange({
   return (
     <span className="inline-flex items-baseline gap-1">
       <span aria-hidden="true" className={cn("opacity-40", colorClass)}>
-        ∙
+        •
       </span>
       <PercentageChange
         value={changePercent}
@@ -123,7 +129,14 @@ const DONUT_TEXT_ROSE = "text-rose-400";
 const DONUT_TEXT_AMBER = "text-amber-400";
 const DONUT_TEXT_EMERALD = "text-emerald-400";
 
-const DonutGauge = memo(function DonutGauge({ value }: { value: number }) {
+const DonutGauge = memo(function DonutGauge({
+  value,
+  cardId,
+}: {
+  value: number;
+  cardId: string;
+}) {
+  const { t } = useTranslation();
   const normalizedValue = Number.isFinite(value)
     ? Math.min(100, Math.max(0, Math.round(value)))
     : 50;
@@ -148,41 +161,50 @@ const DonutGauge = memo(function DonutGauge({ value }: { value: number }) {
   );
 
   return (
-    <div
-      className="relative flex items-center justify-center"
-      style={{ width: DONUT_SIZE, height: DONUT_SIZE }}
-    >
-      <RadialBarChart
-        width={DONUT_SIZE}
-        height={DONUT_SIZE}
-        data={data}
-        startAngle={90}
-        endAngle={-270}
-        innerRadius={DONUT_INNER}
-        outerRadius={DONUT_OUTER}
-        margin={DONUT_MARGIN}
-        accessibilityLayer={false}
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <div
+            className="relative flex cursor-help items-center justify-center"
+            style={{ width: DONUT_SIZE, height: DONUT_SIZE }}
+          />
+        }
       >
-        <PolarAngleAxis
-          type="number"
-          domain={DONUT_DOMAIN}
-          tick={false}
-          axisLine={false}
-        />
-        <RadialBar
-          dataKey="v"
-          barSize={3.5}
-          cornerRadius={1.75}
-          background={DONUT_TRACK}
-        />
-      </RadialBarChart>
-      {/* Inner label */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className={cn("text-[10px] font-bold tabular-nums", textClass)}>
-          {normalizedValue}
-        </span>
-      </div>
-    </div>
+        <RadialBarChart
+          width={DONUT_SIZE}
+          height={DONUT_SIZE}
+          data={data}
+          startAngle={90}
+          endAngle={-270}
+          innerRadius={DONUT_INNER}
+          outerRadius={DONUT_OUTER}
+          margin={DONUT_MARGIN}
+          accessibilityLayer={false}
+        >
+          <PolarAngleAxis
+            type="number"
+            domain={DONUT_DOMAIN}
+            tick={false}
+            axisLine={false}
+          />
+          <RadialBar
+            dataKey="v"
+            barSize={3.5}
+            cornerRadius={1.75}
+            background={DONUT_TRACK}
+          />
+        </RadialBarChart>
+        {/* Inner label */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+          <span className={cn("text-[10px] font-bold tabular-nums", textClass)}>
+            {normalizedValue}
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-55 leading-relaxed">
+        {t(`market.score_explainer.${cardId}`, { defaultValue: "" })}
+      </TooltipContent>
+    </Tooltip>
   );
 });
 
@@ -190,10 +212,12 @@ function MarketContextFooter({
   context,
   isLoading,
   score,
+  cardId,
 }: {
   context: MarketContext | null;
   isLoading: boolean;
   score: number;
+  cardId: string;
 }) {
   const { t } = useTranslation();
 
@@ -217,12 +241,32 @@ function MarketContextFooter({
       <div className="flex flex-col items-start gap-1 min-w-0 flex-1">
         {context ? (
           <>
-            <span
-              className="line-clamp-1 wrap-break-word text-xs font-semibold leading-tight text-foreground"
-              title={context.name}
-            >
-              {context.name}
-            </span>
+            <div className="flex items-center gap-1 min-w-0">
+              <span
+                className="line-clamp-1 wrap-break-word text-xs font-semibold leading-tight text-foreground"
+                title={context.name}
+              >
+                {context.name}
+              </span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-help"
+                      aria-label={t("market.market_context")}
+                    />
+                  }
+                >
+                  <Info className="size-3" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-55 leading-relaxed">
+                  {t(`market.context_explainer.${cardId}`, {
+                    defaultValue: "",
+                  })}
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
             {context.kind === "quote" ? (
               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums">
@@ -260,7 +304,7 @@ function MarketContextFooter({
 
       {/* Right side: Score Donut */}
       <div className="flex flex-col items-center gap-1 shrink-0">
-        <DonutGauge value={score} />
+        <DonutGauge value={score} cardId={cardId} />
       </div>
     </CardFooter>
   );
@@ -520,6 +564,7 @@ export function MarketSummaryRow() {
                     context={marketContexts?.[card.assetGroup] ?? null}
                     isLoading={marketContextsLoading}
                     score={card.score}
+                    cardId={card.id}
                   />
                 </Card>
               );

@@ -323,7 +323,7 @@ export function FollowHistoryTable({
               <div className="text-foreground flex items-center gap-1 font-medium">
                 <LogIn className="h-3 w-3 text-foreground shrink-0" />
                 <span>{formatDayMonth(entrySec, i18n.language)}</span>
-                <span className="text-muted-foreground/40">∙</span>
+                <span className="text-muted-foreground/40">•</span>
                 <span className="text-[10px] font-normal text-muted-foreground/75">
                   {formatClock(entrySec)}
                 </span>
@@ -333,18 +333,18 @@ export function FollowHistoryTable({
               {closeSec != null ? (
                 <div className="text-muted-foreground flex items-center gap-1 font-medium">
                   <LogOut className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span>{formatDayMonth(closeSec, i18n.language)}</span>
-                  <span className="text-muted-foreground/40">∙</span>
-                  <span className="text-[10px] font-normal opacity-75">
+                <span>{formatDayMonth(closeSec, i18n.language)}</span>
+                <span className="text-muted-foreground/40">•</span>
+                <span className="text-[10px] font-normal opacity-75">
                     {formatClock(closeSec)}
                   </span>
                 </div>
               ) : (
                 <div className="text-amber-400 flex items-center gap-1 font-medium">
                   <Hourglass className="h-3 w-3 text-amber-400 shrink-0" />
-                  <span>{formatDayMonth(nowSec, i18n.language)}</span>
-                  <span className="text-amber-500/40">∙</span>
-                  <span className="text-[10px] font-normal opacity-75">
+                <span>{formatDayMonth(nowSec, i18n.language)}</span>
+                <span className="text-amber-500/40">•</span>
+                <span className="text-[10px] font-normal opacity-75">
                     {formatClock(nowSec)}
                   </span>
                 </div>
@@ -582,7 +582,7 @@ export function FollowHistoryTable({
                       : PALETTE.negative.textStrong,
                   )}
                 >
-                  ∙
+                  •
                 </span>
                 <span
                   className={cn(

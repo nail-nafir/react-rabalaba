@@ -296,7 +296,21 @@
     "us_equity": "US Equity",
     "commodity": "Commodity",
     "forex": "Forex",
-    "index_fallback": "Index"
+    "index_fallback": "Index",
+    "context_explainer": {
+      "crypto": "Crypto market mood. Rising means buyers are eager, falling means fear is spreading.",
+      "id-equity": "How shaky IHSG has been lately. High means volatile, low means calm and steady.",
+      "us-equity": "Wall Street panic gauge. High means fear is rising, low means traders are chill.",
+      "commodities": "Industrial demand versus safe haven. Rising bets on growth, falling seeks safety.",
+      "forex": "Dollar strength versus other currencies. Strong dollar pressures every other asset."
+    },
+    "score_explainer": {
+      "crypto": "Crypto risk appetite. High means buyers feel confident, low means fear is in control.",
+      "id-equity": "ID equity risk appetite. High means investors feel confident, low means fear is in control.",
+      "us-equity": "US equity risk appetite. High means investors feel confident, low means fear is in control.",
+      "commodities": "Commodity risk appetite. High means demand feels strong, low means demand feels weak.",
+      "forex": "Rupiah risk appetite. High means rupiah feels strong, low means rupiah feels weak."
+    }
   },
   "terminal": {
     "title": "Research Terminal",

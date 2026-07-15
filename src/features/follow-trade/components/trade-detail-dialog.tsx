@@ -56,6 +56,8 @@ export type TradeDetailDialogState =
   | "error"
   | "unavailable";
 
+const EMPTY_SIBLINGS: FollowedTrade[] = [];
+
 export interface TradeDetailDialogProps {
   trade: FollowedTrade | null;
   open: boolean;
@@ -63,6 +65,13 @@ export interface TradeDetailDialogProps {
   state?: TradeDetailDialogState;
   onRetry?: () => void;
   onCloseAutoFocus?: (open: boolean) => void;
+  /**
+   * Same-batch trade list used to derive a stable, human-readable per-symbol
+   * sequence number for the dialog header (e.g. "#3" = 3rd SOL-USD trade by
+   * open time). Cosmetic only — the URL/lookup still uses the trade UUID.
+   * Omit (or pass empty) to suppress the badge.
+   */
+  siblings?: FollowedTrade[];
 }
 
 /**
@@ -189,6 +198,7 @@ export function TradeDetailDialog({
   state = trade ? "ready" : "unavailable",
   onRetry,
   onCloseAutoFocus,
+  siblings = EMPTY_SIBLINGS,
 }: TradeDetailDialogProps) {
   if (state !== "ready" || !trade) {
     return (
@@ -205,6 +215,7 @@ export function TradeDetailDialog({
   return (
     <TradeDetailReadyDialog
       trade={trade}
+      siblings={siblings}
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
@@ -214,6 +225,7 @@ export function TradeDetailDialog({
 
 function TradeDetailReadyDialog({
   trade,
+  siblings = EMPTY_SIBLINGS,
   open,
   onOpenChange,
   onCloseAutoFocus,
@@ -223,6 +235,22 @@ function TradeDetailReadyDialog({
   const { t, i18n } = useTranslation();
 
   const isClosed = trade.status !== "open";
+
+  // Per-symbol sequence number (cosmetic). Only trades of the SAME symbol are
+  // counted, sorted by open time asc with a deterministic id tiebreak — stable
+  // across closes/updates since open time is immutable. Null when the trade is
+  // not found among siblings (e.g. the caller passed an empty/partial list), in
+  // which case the badge is hidden.
+  const tradeNumber = useMemo(() => {
+    if (siblings.length === 0) return null;
+    const sameSymbol = siblings.filter((s) => s.symbol === trade.symbol);
+    if (sameSymbol.length === 0) return null;
+    const sorted = sameSymbol.sort((a, b) =>
+      a.followedAt - b.followedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    );
+    const idx = sorted.findIndex((s) => s.id === trade.id);
+    return idx === -1 ? null : idx + 1;
+  }, [siblings, trade.id, trade.symbol]);
 
   // OPEN trades chart the live recent window (and need the live price), so
   // they go through useMarketData. Memoize the symbols array so its input is
@@ -381,9 +409,22 @@ function TradeDetailReadyDialog({
             >
               {t(SIGNAL_LABEL_KEYS[trade.signal])}
             </Badge>
+            {tradeNumber !== null && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "font-bold tracking-wider uppercase text-[10px] rounded-md",
+                  SIGNAL_COLORS.neutral.bg,
+                  SIGNAL_COLORS.neutral.text,
+                  SIGNAL_COLORS.neutral.border,
+                )}
+              >
+                #{tradeNumber}
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {trade.name} · {t(`common.asset_types.${trade.assetType}`)}
+            {trade.name} · {t(`common.asset_types.${trade.assetType}`)} · {formattedFollowedDate}
           </DialogDescription>
 
           {/* Price + P/L row */}
