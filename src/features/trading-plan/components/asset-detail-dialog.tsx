@@ -103,6 +103,97 @@ const getSmartMoneyLabelKey = (label: string): string => {
 
 export type MarketDetailAvailability = "checking" | "available" | "unavailable";
 
+function AssetDetailStatusDialog({
+  open,
+  onOpenChange,
+  state,
+  onRetry,
+  onCloseAutoFocus,
+}: Omit<AssetDetailDialogProps, "symbol" | "availability"> & {
+  state: "checking" | "unavailable" | "error";
+  onRetry?: () => void;
+}) {
+  const { t } = useTranslation();
+  const isChecking = state === "checking";
+  const isError = state === "error";
+
+  const title = isChecking
+    ? t("dialog.market_loading_title")
+    : isError
+      ? t("dialog.market_error_title")
+      : t("dialog.market_unavailable_title");
+
+  const description = isChecking
+    ? t("dialog.market_loading_desc")
+    : isError
+      ? t("dialog.market_error_desc")
+      : t("dialog.market_unavailable_desc");
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onOpenChangeComplete={onCloseAutoFocus}
+    >
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col space-y-6">
+          {isChecking ? (
+            <div className="flex min-h-48 flex-col gap-4" aria-busy="true">
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-11 w-full rounded-lg" />
+            </div>
+          ) : (
+            <EmptyState
+              variant="dialog"
+              icon={
+                isError ? (
+                  <CloudOff className="size-6" aria-hidden="true" />
+                ) : (
+                  <SearchX className="size-6" aria-hidden="true" />
+                )
+              }
+              description={isError ? undefined : t("dialog.market_unavailable_help")}
+              action={
+                isError && onRetry ? (
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
+                    <Button
+                      type="button"
+                      size="lg"
+                      onClick={onRetry}
+                      className="min-h-11"
+                    >
+                      <RotateCw className="size-4" aria-hidden="true" />
+                      {t("common.retry")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      onClick={() => onOpenChange(false)}
+                      className="min-h-11"
+                    >
+                      {t("dialog.close_action")}
+                    </Button>
+                  </div>
+                ) : undefined
+              }
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface AssetDetailDialogProps {
   open: boolean;
   symbol: string | null;
@@ -241,93 +332,24 @@ export function AssetDetailDialog({
   if (availability !== "available" || !querySymbol) {
     const isChecking = availability === "checking";
     return (
-      <Dialog
+      <AssetDetailStatusDialog
         open={open}
         onOpenChange={onOpenChange}
-        onOpenChangeComplete={onCloseAutoFocus}
-      >
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              {t(
-                isChecking
-                  ? "dialog.market_loading_title"
-                  : "dialog.market_unavailable_title",
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-              {t(
-                isChecking
-                  ? "dialog.market_loading_desc"
-                  : "dialog.market_unavailable_desc",
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col space-y-6">
-            {isChecking ? (
-              <div className="flex min-h-48 flex-col gap-4" aria-busy="true">
-                <Skeleton className="h-24 w-full rounded-xl" />
-                <Skeleton className="h-11 w-full rounded-lg" />
-              </div>
-            ) : (
-              <EmptyState
-                variant="dialog"
-                icon={<SearchX className="size-6" aria-hidden="true" />}
-                description={t("dialog.market_unavailable_help")}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        onCloseAutoFocus={onCloseAutoFocus}
+        state={isChecking ? "checking" : "unavailable"}
+      />
     );
   }
 
   if (!chartLoading && (marketError || !asset)) {
     return (
-      <Dialog
+      <AssetDetailStatusDialog
         open={open}
         onOpenChange={onOpenChange}
-        onOpenChangeComplete={onCloseAutoFocus}
-      >
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              {t("dialog.market_error_title")}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-              {t("dialog.market_error_desc")}
-            </DialogDescription>
-          </DialogHeader>
-
-            <EmptyState
-              variant="dialog"
-              icon={<CloudOff className="size-6" aria-hidden="true" />}
-              action={
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
-                  <Button
-                    type="button"
-                    size="lg"
-                    onClick={() => refetchMarket()}
-                    className="min-h-11"
-                  >
-                    <RotateCw className="size-4" aria-hidden="true" />
-                    {t("common.retry")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="min-h-11"
-                  >
-                    {t("dialog.close_action")}
-                  </Button>
-                </div>
-              }
-            />
-        </DialogContent>
-      </Dialog>
+        onCloseAutoFocus={onCloseAutoFocus}
+        state="error"
+        onRetry={refetchMarket}
+      />
     );
   }
 

@@ -159,6 +159,7 @@ function TradeDetailStatusDialog({
             <EmptyState
               variant="dialog"
               icon={<AlertTriangle className="size-6" aria-hidden="true" />}
+              description={isError ? undefined : t("journal.detail_unavailable_help")}
               action={
                 isError ? (
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
