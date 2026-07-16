@@ -41,6 +41,7 @@ import { useFundamentals } from "@/services/queries/use-fundamentals";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
 import { useQueryClient } from "@tanstack/react-query";
 import { PercentageChange } from "@/components/shared/percentage-change";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryScoreChart } from "@/components/charts/category-score-chart";
@@ -270,14 +271,11 @@ export function AssetDetailDialog({
                 <Skeleton className="h-11 w-full rounded-lg" />
               </div>
             ) : (
-              <div className="flex min-h-56 flex-col items-center justify-center gap-5 text-center">
-                <div className="flex size-14 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
-                  <SearchX className="size-6" aria-hidden="true" />
-                </div>
-                <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-                  {t("dialog.market_unavailable_help")}
-                </p>
-              </div>
+              <EmptyState
+                variant="dialog"
+                icon={<SearchX className="size-6" aria-hidden="true" />}
+                description={t("dialog.market_unavailable_help")}
+              />
             )}
           </div>
         </DialogContent>
@@ -302,33 +300,32 @@ export function AssetDetailDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col space-y-6">
-            <div className="flex min-h-56 flex-col items-center justify-center gap-5 text-center">
-              <div className="flex size-14 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
-                <CloudOff className="size-6" aria-hidden="true" />
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <Button
-                  type="button"
-                  size="lg"
-                  onClick={() => refetchMarket()}
-                  className="min-h-11"
-                >
-                  <RotateCw className="size-4" aria-hidden="true" />
-                  {t("common.retry")}
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="min-h-11"
-                >
-                  {t("dialog.close_action")}
-                </Button>
-              </div>
-            </div>
-          </div>
+            <EmptyState
+              variant="dialog"
+              icon={<CloudOff className="size-6" aria-hidden="true" />}
+              action={
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
+                  <Button
+                    type="button"
+                    size="lg"
+                    onClick={() => refetchMarket()}
+                    className="min-h-11"
+                  >
+                    <RotateCw className="size-4" aria-hidden="true" />
+                    {t("common.retry")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="min-h-11"
+                  >
+                    {t("dialog.close_action")}
+                  </Button>
+                </div>
+              }
+            />
         </DialogContent>
       </Dialog>
     );

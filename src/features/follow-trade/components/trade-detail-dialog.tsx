@@ -22,6 +22,7 @@ import {
 } from "@/lib/formatters";
 import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
+import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useShareSetup } from "@/features/trading-plan/hooks/use-share-setup";
@@ -155,35 +156,36 @@ function TradeDetailStatusDialog({
               <Skeleton className="h-44 w-full rounded-lg" />
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-5 py-6 text-center sm:py-8">
-              <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <AlertTriangle className="size-5" aria-hidden="true" />
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-                {isError && (
-                  <Button
-                    type="button"
-                    onClick={onRetry}
-                    disabled={!onRetry}
-                    className="min-h-11"
-                  >
-                    <RefreshCw className="size-4" aria-hidden="true" />
-                    {t("common.retry")}
-                  </Button>
-                )}
-                <DialogClose
-                  render={
+            <EmptyState
+              variant="dialog"
+              icon={<AlertTriangle className="size-6" aria-hidden="true" />}
+              action={
+                isError ? (
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
                     <Button
                       type="button"
-                      variant={isError ? "outline" : "default"}
+                      onClick={onRetry}
+                      disabled={!onRetry}
                       className="min-h-11"
-                    />
-                  }
-                >
-                  {t("journal.close_short")}
-                </DialogClose>
-              </div>
-            </div>
+                    >
+                      <RefreshCw className="size-4" aria-hidden="true" />
+                      {t("common.retry")}
+                    </Button>
+                    <DialogClose
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-11"
+                        />
+                      }
+                    >
+                      {t("journal.close_short")}
+                    </DialogClose>
+                  </div>
+                ) : undefined
+              }
+            />
           )}
         </div>
       </DialogContent>
