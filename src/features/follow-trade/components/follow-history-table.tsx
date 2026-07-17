@@ -124,7 +124,7 @@ interface FollowHistoryTableProps {
   isLoading: boolean;
   isFetching: boolean;
   onRefresh: () => void;
-  onTradeSelect: (tradeId: string, trigger: HTMLElement) => void;
+  onTradeSelect: (tradeId: string) => void;
 }
 
 export function FollowHistoryTable({
@@ -760,9 +760,7 @@ export function FollowHistoryTable({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  onClick={(event) =>
-                    onTradeSelect(row.original.id, event.currentTarget)
-                  }
+                  onClick={() => onTradeSelect(row.original.id)}
                   className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   tabIndex={0}
                   role="button"
@@ -771,7 +769,7 @@ export function FollowHistoryTable({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      onTradeSelect(row.original.id, e.currentTarget);
+                      onTradeSelect(row.original.id);
                     }
                   }}
                 >

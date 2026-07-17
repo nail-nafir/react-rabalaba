@@ -108,7 +108,6 @@ function AssetDetailStatusDialog({
   onOpenChange,
   state,
   onRetry,
-  onCloseAutoFocus,
 }: Omit<AssetDetailDialogProps, "symbol" | "availability"> & {
   state: "checking" | "unavailable" | "error";
   onRetry?: () => void;
@@ -130,11 +129,7 @@ function AssetDetailStatusDialog({
       : t("dialog.market_unavailable_desc");
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      onOpenChangeComplete={onCloseAutoFocus}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -199,7 +194,6 @@ interface AssetDetailDialogProps {
   symbol: string | null;
   availability: MarketDetailAvailability;
   onOpenChange: (open: boolean) => void;
-  onCloseAutoFocus?: (open: boolean) => void;
 }
 
 export function AssetDetailDialog({
@@ -207,7 +201,6 @@ export function AssetDetailDialog({
   symbol,
   availability,
   onOpenChange,
-  onCloseAutoFocus,
 }: AssetDetailDialogProps) {
   const { t } = useTranslation();
   const { openLicenseDialog } = useUIActions();
@@ -335,7 +328,6 @@ export function AssetDetailDialog({
       <AssetDetailStatusDialog
         open={open}
         onOpenChange={onOpenChange}
-        onCloseAutoFocus={onCloseAutoFocus}
         state={isChecking ? "checking" : "unavailable"}
       />
     );
@@ -346,7 +338,6 @@ export function AssetDetailDialog({
       <AssetDetailStatusDialog
         open={open}
         onOpenChange={onOpenChange}
-        onCloseAutoFocus={onCloseAutoFocus}
         state="error"
         onRetry={refetchMarket}
       />
@@ -354,11 +345,7 @@ export function AssetDetailDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      onOpenChangeComplete={onCloseAutoFocus}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">

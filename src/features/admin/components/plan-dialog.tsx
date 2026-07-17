@@ -25,6 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -120,6 +121,11 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
   const [ctaLink, setCtaLink] = useState(plan?.cta_link ?? "");
   const [active, setActive] = useState(plan?.active ?? true);
   const [saving, setSaving] = useState(false);
+  const iconItems = ICON_OPTIONS.map((value) => ({ value, label: value }));
+  const ctaKindItems = CTA_KINDS.map((value) => ({
+    value,
+    label: t(`admin.billing.cta_${value}`, value),
+  }));
 
   const canSave =
     slug.trim() && nameEn.trim() && nameId.trim() && priceEn.trim() && priceId.trim();
@@ -228,16 +234,32 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {t("admin.billing.plan_icon", "Ikon")}
             </Label>
-            <Select value={icon} onValueChange={(value) => value && setIcon(value)}>
+            <Select
+              items={iconItems}
+              value={icon}
+              onValueChange={(nextValue) => {
+                if (nextValue !== null) setIcon(nextValue);
+              }}
+            >
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" className="p-1">
-                {ICON_OPTIONS.map((ic) => (
-                  <SelectItem key={ic} value={ic} className="uppercase tracking-wider text-[10px] cursor-pointer">
-                    {ic}
-                  </SelectItem>
-                ))}
+              <SelectContent
+                align="start"
+                alignItemWithTrigger={false}
+                className="p-1"
+              >
+                <SelectGroup>
+                  {iconItems.map((item) => (
+                    <SelectItem
+                      key={item.value}
+                      value={item.value}
+                      className="uppercase tracking-wider text-[10px] cursor-pointer"
+                    >
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -246,18 +268,31 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               {t("admin.billing.plan_cta_kind", "Aksi Tombol")}
             </Label>
             <Select
+              items={ctaKindItems}
               value={ctaKind}
-              onValueChange={(value) => value && setCtaKind(value)}
+              onValueChange={(nextValue) => {
+                if (nextValue !== null) setCtaKind(nextValue);
+              }}
             >
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" className="p-1">
-                {CTA_KINDS.map((k) => (
-                  <SelectItem key={k} value={k} className="uppercase tracking-wider text-[10px] cursor-pointer">
-                    {t(`admin.billing.cta_${k}`, k)}
-                  </SelectItem>
-                ))}
+              <SelectContent
+                align="start"
+                alignItemWithTrigger={false}
+                className="p-1"
+              >
+                <SelectGroup>
+                  {ctaKindItems.map((item) => (
+                    <SelectItem
+                      key={item.value}
+                      value={item.value}
+                      className="uppercase tracking-wider text-[10px] cursor-pointer"
+                    >
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -289,7 +324,7 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               <Switch
                 checked={highlighted}
                 onCheckedChange={setHighlighted}
-                className="cursor-pointer data-[state=checked]:bg-amber-500"
+                className="cursor-pointer data-checked:bg-amber-500"
               />
             </div>
 
@@ -307,7 +342,7 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               <Switch
                 checked={active}
                 onCheckedChange={setActive}
-                className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                className="cursor-pointer data-checked:bg-emerald-500"
               />
             </div>
           </CardContent>

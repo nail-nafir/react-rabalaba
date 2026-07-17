@@ -53,6 +53,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -166,6 +167,12 @@ export function AdminLayout() {
       icon: ShieldAlert,
     },
   ];
+
+  const themeItems = [
+    { value: "light", label: t("common.theme_light") },
+    { value: "dark", label: t("common.theme_dark") },
+    { value: "system", label: t("common.theme_system") },
+  ] as const;
 
 
 
@@ -289,7 +296,7 @@ export function AdminLayout() {
                       <SidebarMenuButton
                         size="lg"
                         tooltip={consoleTitle}
-                        className="gap-2.5 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+                        className="gap-2.5 data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
                       />
                     }
                   >
@@ -307,7 +314,7 @@ export function AdminLayout() {
                     <ChevronUp className="size-4 text-muted-foreground shrink-0" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                    className="w-(--radix-dropdown-menu-trigger-width) min-w-56 text-foreground"
+                    className="w-(--anchor-width) min-w-56 text-foreground"
                     align="end"
                     side="top"
                     sideOffset={8}
@@ -323,14 +330,16 @@ export function AdminLayout() {
                       </DropdownMenuLabel>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => setShowLogoutConfirm(true)}
-                      className="text-xs cursor-pointer"
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      {t("auth.logout_btn")}
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setShowLogoutConfirm(true)}
+                        className="text-xs cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        {t("auth.logout_btn")}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </SidebarMenuItem>
@@ -390,8 +399,11 @@ export function AdminLayout() {
 
               {/* Language Selector Dropdown */}
               <Select
+                items={LANGUAGES}
                 value={currentLang}
-                onValueChange={(v) => v && i18n.changeLanguage(v)}
+                onValueChange={(nextValue) => {
+                  if (nextValue !== null) void i18n.changeLanguage(nextValue);
+                }}
               >
                 <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                   <Languages className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
@@ -399,25 +411,34 @@ export function AdminLayout() {
                     <SelectValue />
                   </span>
                 </SelectTrigger>
-                <SelectContent align="end" className="p-1">
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem
-                      key={lang.value}
-                      value={lang.value}
-                      className="uppercase tracking-wider text-[10px] cursor-pointer"
-                    >
-                      {lang.label}
-                    </SelectItem>
-                  ))}
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  align="end"
+                  className="p-1"
+                >
+                  <SelectGroup>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem
+                        key={lang.value}
+                        value={lang.value}
+                        className="uppercase tracking-wider text-[10px] cursor-pointer"
+                      >
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
 
               {/* Theme Selector Dropdown */}
               <Select
+                items={themeItems}
                 value={theme}
-                onValueChange={(v) =>
-                  v && setTheme(v as "light" | "dark" | "system")
-                }
+                onValueChange={(nextValue) => {
+                  if (nextValue !== null) {
+                    setTheme(nextValue as "light" | "dark" | "system");
+                  }
+                }}
               >
                 <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                   {theme === "dark" ? (
@@ -431,25 +452,22 @@ export function AdminLayout() {
                     <SelectValue />
                   </span>
                 </SelectTrigger>
-                <SelectContent align="end" className="p-1">
-                  <SelectItem
-                    value="light"
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t("common.theme_light")}
-                  </SelectItem>
-                  <SelectItem
-                    value="dark"
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t("common.theme_dark")}
-                  </SelectItem>
-                  <SelectItem
-                    value="system"
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {t("common.theme_system")}
-                  </SelectItem>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  align="end"
+                  className="p-1"
+                >
+                  <SelectGroup>
+                    {themeItems.map((item) => (
+                      <SelectItem
+                        key={item.value}
+                        value={item.value}
+                        className="uppercase tracking-wider text-[10px] cursor-pointer"
+                      >
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>

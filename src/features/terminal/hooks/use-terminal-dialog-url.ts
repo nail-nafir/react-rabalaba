@@ -2,8 +2,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
-  type RefObject,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -17,7 +15,6 @@ import {
   buildTerminalDialogHref,
   hasTerminalDialogOriginState,
   parseTerminalDialogParams,
-  shouldUseTerminalDialogFallbackFocus,
   withTerminalDialogOriginState,
   type TerminalDialogTarget,
 } from "@/features/terminal/lib/dialog-url";
@@ -26,10 +23,6 @@ export type TerminalDialogRequest =
   | { kind: "market"; symbol: string | null; isValid: boolean }
   | { kind: "journal"; tradeId: string | null; isValid: boolean }
   | null;
-
-interface UseTerminalDialogUrlOptions {
-  fallbackFocusRef: RefObject<HTMLElement | null>;
-}
 
 function buildCanonicalHref(
   pathname: string,
@@ -87,12 +80,9 @@ function withoutDialogOriginState(state: unknown) {
  * from location on every render—there is no mirrored dialog state—so browser
  * Back/Forward and reload naturally close/reopen the same detail.
  */
-export function useTerminalDialogUrl({
-  fallbackFocusRef,
-}: UseTerminalDialogUrlOptions) {
+export function useTerminalDialogUrl() {
   const location = useLocation();
   const navigate = useNavigate();
-  const openerRef = useRef<HTMLElement | null>(null);
 
   const parsed = useMemo(
     () => parseTerminalDialogParams(location.search),
@@ -151,8 +141,7 @@ export function useTerminalDialogUrl({
   ]);
 
   const openTarget = useCallback(
-    (target: TerminalDialogTarget, trigger?: HTMLElement | null) => {
-      openerRef.current = trigger ?? null;
+    (target: TerminalDialogTarget) => {
       navigate(buildTerminalDialogHref(target, location.search) + location.hash, {
         state: withTerminalDialogOriginState(location.state, target),
         preventScrollReset: true,
@@ -162,14 +151,12 @@ export function useTerminalDialogUrl({
   );
 
   const openMarket = useCallback(
-    (symbol: string, trigger?: HTMLElement | null) =>
-      openTarget({ kind: "market", symbol }, trigger),
+    (symbol: string) => openTarget({ kind: "market", symbol }),
     [openTarget],
   );
 
   const openJournal = useCallback(
-    (tradeId: string, trigger?: HTMLElement | null) =>
-      openTarget({ kind: "journal", tradeId }, trigger),
+    (tradeId: string) => openTarget({ kind: "journal", tradeId }),
     [openTarget],
   );
 
@@ -179,15 +166,6 @@ export function useTerminalDialogUrl({
       ? { kind: "market", symbol: request.symbol! }
       : { kind: "journal", tradeId: request.tradeId! };
   }, [request]);
-
-  useEffect(() => {
-    if (
-      target &&
-      shouldUseTerminalDialogFallbackFocus(location.state, target)
-    ) {
-      openerRef.current = null;
-    }
-  }, [location.state, target]);
 
   const close = useCallback(() => {
     if (target && hasTerminalDialogOriginState(location.state, target)) {
@@ -220,27 +198,11 @@ export function useTerminalDialogUrl({
     [close],
   );
 
-  const onCloseAutoFocus = useCallback(
-    (open: boolean) => {
-      if (open) return;
-      const targetElement =
-        openerRef.current?.isConnected === true
-          ? openerRef.current
-          : fallbackFocusRef.current;
-      // Keep the opener while this Terminal instance lives. The same history
-      // entry can reopen via Forward, and its next close must still return focus
-      // to the original row/card. A new UI open always replaces this ref.
-      requestAnimationFrame(() => targetElement?.focus({ preventScroll: true }));
-    },
-    [fallbackFocusRef],
-  );
-
   return {
     request,
     openMarket,
     openJournal,
     close,
     onOpenChange,
-    onCloseAutoFocus,
   };
 }

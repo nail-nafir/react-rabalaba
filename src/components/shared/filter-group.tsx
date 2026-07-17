@@ -3,6 +3,7 @@ import { useIsMobile } from "@/hooks/use-media-query";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -35,27 +36,33 @@ export function FilterGroup<T extends string>({
 
   if (isMobile || variant === "select") {
     return (
-      <Select value={value} onValueChange={(v) => v && onChange(v as T)}>
+      <Select
+        items={options}
+        value={value}
+        onValueChange={(nextValue) => {
+          if (nextValue !== null) onChange(nextValue as T);
+        }}
+      >
         <SelectTrigger
           className={cn(
             "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8 cursor-pointer",
             className,
           )}
         >
-          <SelectValue className="truncate text-left">
-            {(v) => options.find((opt) => opt.value === v)?.label || v}
-          </SelectValue>
+          <SelectValue className="truncate text-left" />
         </SelectTrigger>
-        <SelectContent align="start" className="p-1">
-          {options.map((option) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              className="uppercase tracking-wider text-[10px] cursor-pointer"
-            >
-              {option.label}
-            </SelectItem>
-          ))}
+        <SelectContent align="start" alignItemWithTrigger={false} className="p-1">
+          <SelectGroup>
+            {options.map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                className="uppercase tracking-wider text-[10px] cursor-pointer"
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
     );

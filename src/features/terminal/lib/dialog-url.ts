@@ -38,7 +38,6 @@ export type ParsedTerminalDialogParams = {
 type TerminalDialogOrigin = {
   kind: TerminalDialogTarget["kind"];
   id: string;
-  focus?: "fallback";
 };
 
 function toSearchParams(search: string | URLSearchParams) {
@@ -248,7 +247,6 @@ export function resolveMarketSymbolAvailability(
 export function withTerminalDialogOriginState(
   state: unknown,
   target: TerminalDialogTarget,
-  options?: { focus?: "fallback" },
 ) {
   const base =
     state !== null && typeof state === "object" && !Array.isArray(state)
@@ -257,10 +255,7 @@ export function withTerminalDialogOriginState(
 
   return {
     ...base,
-    [TERMINAL_DIALOG_ORIGIN_STATE_KEY]: {
-      ...targetOrigin(target),
-      ...(options?.focus ? { focus: options.focus } : {}),
-    },
+    [TERMINAL_DIALOG_ORIGIN_STATE_KEY]: targetOrigin(target),
   };
 }
 
@@ -282,15 +277,4 @@ export function hasTerminalDialogOriginState(
   const expected = targetOrigin(target);
   const candidate = marker as Record<string, unknown>;
   return candidate.kind === expected.kind && candidate.id === expected.id;
-}
-
-export function shouldUseTerminalDialogFallbackFocus(
-  state: unknown,
-  target: TerminalDialogTarget,
-) {
-  if (!hasTerminalDialogOriginState(state, target)) return false;
-  const marker = (state as Record<string, unknown>)[
-    TERMINAL_DIALOG_ORIGIN_STATE_KEY
-  ] as Record<string, unknown>;
-  return marker.focus === "fallback";
 }

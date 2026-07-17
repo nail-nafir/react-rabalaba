@@ -60,12 +60,7 @@ export function SearchCommand() {
   const handleSelect = (symbol: string) => {
     const target = { kind: "market" as const, symbol };
     navigate(buildTerminalDialogHref(target, location.search) + location.hash, {
-      // The result button lives inside this transient dialog, so it cannot be
-      // a valid focus return target after navigation. Tell Terminal to use its
-      // stable heading fallback and clear any retained row opener.
-      state: withTerminalDialogOriginState(location.state, target, {
-        focus: "fallback",
-      }),
+      state: withTerminalDialogOriginState(location.state, target),
       preventScrollReset: true,
     });
     handleClose();

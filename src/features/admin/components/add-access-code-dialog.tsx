@@ -15,7 +15,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAdminUsers } from "@/hooks/use-admin-users";
 import { Field, FieldError } from "@/components/ui/field";
 
@@ -28,6 +35,10 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
   const { t } = useTranslation();
   const { accessCodes, addAccessCode } = useAdminUsers();
   const [isSaving, setIsSaving] = useState(false);
+  const kindItems = [
+    { value: "full", label: t("admin.codes_form_type_full", "Penuh") },
+    { value: "trial", label: t("admin.codes_form_type_trial", "Uji Coba") },
+  ] as const;
 
   const schema = useMemo(() => {
     return z.object({
@@ -180,15 +191,31 @@ export function AddAccessCodeDialog({ open, onOpenChange }: AddAccessCodeDialogP
                       {t("admin.codes_col_type", "Tipe")}
                     </label>
                     <Select
+                      items={kindItems}
                       value={field.value}
-                      onValueChange={(value) => value && field.onChange(value)}
+                      onValueChange={(nextValue) => {
+                        if (nextValue !== null) field.onChange(nextValue);
+                      }}
                     >
                       <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                         <SelectValue placeholder={t("admin.codes_form_type_placeholder", "Pilih Tipe")} />
                       </SelectTrigger>
-                       <SelectContent align="start" className="p-1">
-                        <SelectItem value="full" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_full", "Penuh")}</SelectItem>
-                        <SelectItem value="trial" className="uppercase tracking-wider text-[10px] cursor-pointer">{t("admin.codes_form_type_trial", "Uji Coba")}</SelectItem>
+                      <SelectContent
+                        align="start"
+                        alignItemWithTrigger={false}
+                        className="p-1"
+                      >
+                        <SelectGroup>
+                          {kindItems.map((item) => (
+                            <SelectItem
+                              key={item.value}
+                              value={item.value}
+                              className="uppercase tracking-wider text-[10px] cursor-pointer"
+                            >
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>

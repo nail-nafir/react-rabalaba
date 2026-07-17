@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -63,6 +64,10 @@ function InviteFormContent({ origin }: InviteFormProps) {
   const [saving, setSaving] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const kindItems = [
+    { value: "full", label: t("admin.codes_form_type_full", "Penuh") },
+    { value: "trial", label: t("admin.codes_form_type_trial", "Uji Coba") },
+  ] as const;
 
   const schema = useMemo(() => {
     return z
@@ -236,28 +241,31 @@ function InviteFormContent({ origin }: InviteFormProps) {
                     {t("admin.invitations.field_kind", "Tipe")}
                   </Label>
                   <Select
+                    items={kindItems}
                     value={field.value}
-                    onValueChange={(value) => value && field.onChange(value)}
+                    onValueChange={(nextValue) => {
+                      if (nextValue !== null) field.onChange(nextValue);
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      align="start"
+                      alignItemWithTrigger={false}
+                      className="p-1"
                     >
-                      <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent
-                        align="start"
-                        className="p-1"
-                      >
-                      <SelectItem
-                        value="full"
-                        className="uppercase tracking-wider text-[10px] cursor-pointer"
-                      >
-                        {t("admin.codes_form_type_full", "Penuh")}
-                      </SelectItem>
-                      <SelectItem
-                        value="trial"
-                        className="uppercase tracking-wider text-[10px] cursor-pointer"
-                      >
-                        {t("admin.codes_form_type_trial", "Uji Coba")}
-                      </SelectItem>
+                      <SelectGroup>
+                        {kindItems.map((item) => (
+                          <SelectItem
+                            key={item.value}
+                            value={item.value}
+                            className="uppercase tracking-wider text-[10px] cursor-pointer"
+                          >
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>

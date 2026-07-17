@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -92,24 +93,38 @@ function SettingSelect({
   onChange: (value: number) => void;
   renderLabel: (value: number) => string;
 }) {
+  const items = options.map((option) => ({
+    value: String(option),
+    label: renderLabel(option),
+  }));
+
   return (
     <Select
+      items={items}
       value={String(value)}
-      onValueChange={(v) => v && onChange(Number(v))}
+      onValueChange={(nextValue) => {
+        if (nextValue !== null) onChange(Number(nextValue));
+      }}
     >
       <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px] cursor-pointer">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="start" className="p-1">
-        {options.map((val) => (
-          <SelectItem
-            key={val}
-            value={String(val)}
-            className="uppercase tracking-wider text-[10px] cursor-pointer"
-          >
-            {renderLabel(val)}
-          </SelectItem>
-        ))}
+      <SelectContent
+        align="start"
+        alignItemWithTrigger={false}
+        className="p-1"
+      >
+        <SelectGroup>
+          {items.map((item) => (
+            <SelectItem
+              key={item.value}
+              value={item.value}
+              className="uppercase tracking-wider text-[10px] cursor-pointer"
+            >
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectGroup>
       </SelectContent>
     </Select>
   );
@@ -333,7 +348,7 @@ function JournalSettingsForm({
                     checked={draftEnabled}
                     onCheckedChange={setDraftEnabled}
                     aria-label="Aktif atau jeda auto-journal"
-                    className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                    className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
 
@@ -418,7 +433,7 @@ function JournalSettingsForm({
                     checked={draftSummaryEnabled}
                     onCheckedChange={setDraftSummaryEnabled}
                     aria-label="Kirim rangkuman harian ke Discord"
-                    className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                    className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
 
@@ -430,7 +445,7 @@ function JournalSettingsForm({
                     checked={draftWeeklyEnabled}
                     onCheckedChange={setDraftWeeklyEnabled}
                     aria-label="Kirim rangkuman mingguan ke Discord"
-                    className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                    className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
 
@@ -442,7 +457,7 @@ function JournalSettingsForm({
                     checked={draftMonthlyEnabled}
                     onCheckedChange={setDraftMonthlyEnabled}
                     aria-label="Kirim rangkuman bulanan ke Discord"
-                    className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                    className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
               </div>
@@ -481,7 +496,7 @@ function JournalSettingsForm({
                     checked={draftSelectionEnabled}
                     onCheckedChange={setDraftSelectionEnabled}
                     aria-label="Aktif atau jeda seleksi aset otomatis"
-                    className="cursor-pointer data-[state=checked]:bg-emerald-500"
+                    className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
 

@@ -65,7 +65,6 @@ export interface TradeDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   state?: TradeDetailDialogState;
   onRetry?: () => void;
-  onCloseAutoFocus?: (open: boolean) => void;
   /**
    * Same-batch trade list used to derive a stable, human-readable per-symbol
    * sequence number for the dialog header (e.g. "#3" = 3rd SOL-USD trade by
@@ -100,7 +99,6 @@ function TradeDetailStatusDialog({
   onOpenChange,
   state,
   onRetry,
-  onCloseAutoFocus,
 }: Omit<TradeDetailDialogProps, "trade"> & {
   state: Exclude<TradeDetailDialogState, "ready">;
 }) {
@@ -128,11 +126,7 @@ function TradeDetailStatusDialog({
             "Transaksi ini tidak ditemukan atau tidak tersedia untuk akun Anda.",
         });
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      onOpenChangeComplete={onCloseAutoFocus}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
       >
@@ -200,7 +194,6 @@ export function TradeDetailDialog({
   onOpenChange,
   state = trade ? "ready" : "unavailable",
   onRetry,
-  onCloseAutoFocus,
   siblings = EMPTY_SIBLINGS,
 }: TradeDetailDialogProps) {
   if (state !== "ready" || !trade) {
@@ -210,7 +203,6 @@ export function TradeDetailDialog({
         onOpenChange={onOpenChange}
         state={state === "ready" ? "unavailable" : state}
         onRetry={onRetry}
-        onCloseAutoFocus={onCloseAutoFocus}
       />
     );
   }
@@ -221,7 +213,6 @@ export function TradeDetailDialog({
       siblings={siblings}
       open={open}
       onOpenChange={onOpenChange}
-      onCloseAutoFocus={onCloseAutoFocus}
     />
   );
 }
@@ -231,7 +222,6 @@ function TradeDetailReadyDialog({
   siblings = EMPTY_SIBLINGS,
   open,
   onOpenChange,
-  onCloseAutoFocus,
 }: Omit<TradeDetailDialogProps, "state" | "onRetry"> & {
   trade: FollowedTrade;
 }) {
@@ -390,11 +380,7 @@ function TradeDetailReadyDialog({
     ? t("journal.trade_detail")
     : t("journal.open_position");
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      onOpenChangeComplete={onCloseAutoFocus}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
       >

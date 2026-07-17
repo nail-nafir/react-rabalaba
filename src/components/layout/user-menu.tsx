@@ -83,7 +83,7 @@ export function UserMenu() {
         <DropdownMenuContent align="end" className="w-48 text-foreground">
           {!isAuthenticated ? (
             <>
-              <div className="p-1 space-y-1.5">
+              <DropdownMenuGroup className="flex flex-col gap-1.5 p-1">
                 <DropdownMenuItem
                   onClick={() => navigate("/login")}
                   className="text-xs cursor-pointer font-bold bg-primary text-primary-foreground hover:bg-primary/80 focus:bg-primary/80 focus:text-primary-foreground justify-center h-9 rounded-lg flex items-center gap-1.5 transition-all border-0 tracking-tight"
@@ -98,7 +98,7 @@ export function UserMenu() {
                   <UserPlus className="h-3.5 w-3.5" />
                   {t("auth.signup_btn")}
                 </DropdownMenuItem>
-              </div>
+              </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
             </>
@@ -122,13 +122,15 @@ export function UserMenu() {
 
               {isAdmin && (
                 <>
-                  <DropdownMenuItem
-                    onClick={() => navigate("/admin")}
-                    className="text-xs cursor-pointer"
-                  >
-                    <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                    {t("admin.console_entry", "Kelola Sistem")}
-                  </DropdownMenuItem>
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/admin")}
+                      className="text-xs cursor-pointer"
+                    >
+                      <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                      {t("admin.console_entry", "Kelola Sistem")}
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                 </>
               )}
@@ -147,74 +149,84 @@ export function UserMenu() {
           )}
 
           {/* Shared settings (available to everyone) */}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-              <Languages className="h-4 w-4 text-muted-foreground" />
-              {t("common.language")}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup
-                value={currentLang}
-                onValueChange={(v) => v && i18n.changeLanguage(v)}
-              >
-                {LANGUAGES.map((lang) => (
-                  <DropdownMenuRadioItem
-                    key={lang.value}
-                    value={lang.value}
-                    className="text-xs cursor-pointer"
+          <DropdownMenuGroup>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+                <Languages className="h-4 w-4 text-muted-foreground" />
+                {t("common.language")}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuGroup>
+                  <DropdownMenuRadioGroup
+                    value={currentLang}
+                    onValueChange={(nextValue) => {
+                      void i18n.changeLanguage(nextValue);
+                    }}
                   >
-                    {lang.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+                    {LANGUAGES.map((lang) => (
+                      <DropdownMenuRadioItem
+                        key={lang.value}
+                        value={lang.value}
+                        className="text-xs cursor-pointer"
+                      >
+                        {lang.label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
 
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs cursor-pointer">
-              <Moon className="h-4 w-4 text-muted-foreground" />
-              {t("common.theme")}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup
-                value={theme}
-                onValueChange={(v) =>
-                  v && setTheme(v as "light" | "dark" | "system")
-                }
-              >
-                <DropdownMenuRadioItem
-                  value="light"
-                  className="text-xs cursor-pointer"
-                >
-                  {t("common.theme_light")}
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem
-                  value="dark"
-                  className="text-xs cursor-pointer"
-                >
-                  {t("common.theme_dark")}
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem
-                  value="system"
-                  className="text-xs cursor-pointer"
-                >
-                  {t("common.theme_system")}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="text-xs cursor-pointer">
+                <Moon className="h-4 w-4 text-muted-foreground" />
+                {t("common.theme")}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuGroup>
+                  <DropdownMenuRadioGroup
+                    value={theme}
+                    onValueChange={(nextValue) =>
+                      setTheme(nextValue as "light" | "dark" | "system")
+                    }
+                  >
+                    <DropdownMenuRadioItem
+                      value="light"
+                      className="text-xs cursor-pointer"
+                    >
+                      {t("common.theme_light")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="dark"
+                      className="text-xs cursor-pointer"
+                    >
+                      {t("common.theme_dark")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="system"
+                      className="text-xs cursor-pointer"
+                    >
+                      {t("common.theme_system")}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuGroup>
 
           {isAuthenticated && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setShowLogoutConfirm(true)}
-                className="text-xs cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-                {t("auth.logout_btn")}
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="text-xs cursor-pointer"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t("auth.logout_btn")}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </>
           )}
         </DropdownMenuContent>

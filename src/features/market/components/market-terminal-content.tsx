@@ -19,9 +19,8 @@ interface MarketTerminalContentProps {
   requestedSymbol: string | null;
   requestIsValid: boolean;
   detailOpen: boolean;
-  onAssetSelect: (symbol: string, trigger: HTMLElement) => void;
+  onAssetSelect: (symbol: string) => void;
   onDetailOpenChange: (open: boolean) => void;
-  onDetailCloseAutoFocus?: (open: boolean) => void;
 }
 
 /**
@@ -35,7 +34,6 @@ export function MarketTerminalContent({
   detailOpen,
   onAssetSelect,
   onDetailOpenChange,
-  onDetailCloseAutoFocus,
 }: MarketTerminalContentProps) {
   const { isResolving: entitlementResolving } = usePremiumAccess();
   const universe = useScreenerUniverse();
@@ -83,7 +81,6 @@ export function MarketTerminalContent({
         symbol={requestedSymbol}
         availability={availability}
         onOpenChange={onDetailOpenChange}
-        onCloseAutoFocus={onDetailCloseAutoFocus}
       />
     </div>
   );
