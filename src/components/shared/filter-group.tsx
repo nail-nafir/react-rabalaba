@@ -42,7 +42,9 @@ export function FilterGroup<T extends string>({
             className,
           )}
         >
-          <SelectValue className="truncate text-left" />
+          <SelectValue className="truncate text-left">
+            {(v) => options.find((opt) => opt.value === v)?.label || v}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent align="start" className="p-1">
           {options.map((option) => (

@@ -427,7 +427,7 @@ function TradeDetailReadyDialog({
             )}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {trade.name} · {t(`common.asset_types.${trade.assetType}`)} · {formattedFollowedDate}
+            {trade.name} · {t(`common.asset_types.${trade.assetType}`)}
           </DialogDescription>
 
           {/* Price + P/L row */}

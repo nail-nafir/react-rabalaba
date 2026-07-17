@@ -550,9 +550,7 @@ export function MarketSummaryRow() {
                           {card.sparkline && card.sparkline.length > 0 && (
                             <Sparkline
                               values={card.sparkline}
-                              width={220}
-                              height={40}
-                              className="flex w-full"
+                              className="w-full h-full"
                             />
                           )}
                         </div>

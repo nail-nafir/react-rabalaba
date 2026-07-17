@@ -89,7 +89,8 @@
       "high": "Risiko Tinggi"
     },
     "confirm": "Konfirmasi",
-    "no": "Tidak"
+    "no": "Tidak",
+    "upgrade": "Tingkatkan"
   },
   "subscription": {
     "title": "Kasta Riset",
@@ -183,6 +184,8 @@
     "to_signup_q": "Belum punya akun?",
     "to_login_q": "Udah punya akun?",
     "logout_btn": "Keluar",
+    "logout_confirm_title": "Yakin Mau Keluar?",
+    "logout_confirm_desc": "Akses ke akun bakal terputus dan sesi riset segera berakhir.",
     "session_idle_logout": "Sesi berakhir otomatis karena seminggu tanpa aktivitas. Masuk lagi biar bisa lanjut.",
     "login_success": "Berhasil masuk.",
     "signup_success": "Akun berhasil dibuat.",

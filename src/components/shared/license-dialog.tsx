@@ -21,7 +21,7 @@ import { takeLicenseSuccessAction } from "@/store/slices/ui-slice";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { buildLoginRedirect } from "@/lib/auth-redirect";
-import { Eye, EyeOff, Lock, LogIn, Key } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Key, Zap } from "lucide-react";
 import {
   accessSchema,
   type AccessFormValues,
@@ -278,15 +278,17 @@ export function LicenseDialog() {
               </Button>
             </div>
           ) : (
-            <Button
-              type="button"
-              size="lg"
-              variant="secondary"
+            <Link
+              to="/subscription"
               onClick={() => handleOpenChange(false)}
-              className="text-xs cursor-pointer"
+              className={cn(
+                buttonVariants({ variant: "default", size: "lg" }),
+                "font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+              )}
             >
-              {t("license.close_btn")}
-            </Button>
+              <Zap className="h-3.5 w-3.5" />
+              <span>{t("common.upgrade")}</span>
+            </Link>
           )}
         </DialogFooter>
       </DialogContent>

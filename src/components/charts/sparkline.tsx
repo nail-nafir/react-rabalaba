@@ -1,5 +1,5 @@
 import { memo, useId, useMemo } from "react";
-import { AreaChart, Area, YAxis } from "recharts";
+import { AreaChart, Area, YAxis, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 
 const UP_COLOR = "var(--color-emerald-400)";
@@ -8,8 +8,8 @@ const DOWN_COLOR = "var(--color-rose-400)";
 interface SparklineProps {
   /** Raw close series from the query cache (nulls = missing candles). */
   values: (number | null)[] | undefined;
-  width: number;
-  height: number;
+  width?: number | string;
+  height?: number | string;
   className?: string;
   strokeWidth?: number;
   /** Uniform chart inset; a number (not an object) so the prop stays identity-stable. */
@@ -29,8 +29,8 @@ interface SparklineProps {
  */
 export const Sparkline = memo(function Sparkline({
   values,
-  width,
-  height,
+  width = "100%",
+  height = "100%",
   className,
   strokeWidth = 1,
   margin = 0,
@@ -62,34 +62,37 @@ export const Sparkline = memo(function Sparkline({
   if (!model) return null;
 
   return (
-    <div className={cn("pointer-events-none select-none", className)}>
-      <AreaChart
-        width={width}
-        height={height}
-        data={model.data}
-        margin={chartMargin}
-        accessibilityLayer={false}
-      >
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={model.color} stopOpacity={0.45} />
-            <stop offset="100%" stopColor={model.color} stopOpacity={0.05} />
-          </linearGradient>
-        </defs>
-        <YAxis hide domain={model.domain} />
-        <Area
-          type="monotone"
-          dataKey="v"
-          stroke={model.color}
-          strokeWidth={strokeWidth}
-          fill={`url(#${gradientId})`}
-          dot={false}
-          activeDot={false}
-          isAnimationActive
-          animationDuration={animationDuration}
-          animationBegin={animationBegin}
-        />
-      </AreaChart>
+    <div
+      className={cn("pointer-events-none select-none", className)}
+      style={{ width, height }}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart
+          data={model.data}
+          margin={chartMargin}
+          accessibilityLayer={false}
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={model.color} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={model.color} stopOpacity={0.05} />
+            </linearGradient>
+          </defs>
+          <YAxis hide domain={model.domain} />
+          <Area
+            type="monotone"
+            dataKey="v"
+            stroke={model.color}
+            strokeWidth={strokeWidth}
+            fill={`url(#${gradientId})`}
+            dot={false}
+            activeDot={false}
+            isAnimationActive
+            animationDuration={animationDuration}
+            animationBegin={animationBegin}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 });

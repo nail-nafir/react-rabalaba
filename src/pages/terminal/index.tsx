@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { LockKeyhole } from "lucide-react";
+import { LockKeyhole, Key } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { DisclaimerDialog } from "@/features/market/components/disclaimer-dialog";
 import { MarketTerminalContent } from "@/features/market/components/market-terminal-content";
@@ -59,8 +59,14 @@ function JournalAccessState({
             {t("license.login_required_desc")}
           </p>
         </div>
-        <Button type="button" size="lg" onClick={onUnlock} className="min-h-11">
-          {t("terminal.access_dialog_unlock_btn")}
+        <Button
+          type="button"
+          size="lg"
+          onClick={onUnlock}
+          className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+        >
+          <Key className="h-3.5 w-3.5" />
+          <span>{t("terminal.access_dialog_unlock_btn")}</span>
         </Button>
       </CardContent>
     </Card>
@@ -75,10 +81,7 @@ export default function TerminalPage() {
   const autoGateKeyRef = useRef<string | null>(null);
   const { hasAccess, isResolving: accessResolving } = usePremiumAccess();
   const { ready: authReady } = useAuth();
-  const {
-    needsAgreement,
-    isResolving: disclaimerResolving,
-  } = useDisclaimer();
+  const { needsAgreement, isResolving: disclaimerResolving } = useDisclaimer();
   const isLicenseDialogOpen = useAppSelector(
     (state) => state.ui.isLicenseDialogOpen,
   );
@@ -162,7 +165,7 @@ export default function TerminalPage() {
               value={activeView}
               onValueChange={(value) => value && setView(value as TerminalView)}
             >
-              <SelectTrigger className="h-11 w-fit min-w-[130px] cursor-pointer bg-card text-[10px] uppercase tracking-wider hover:bg-accent">
+              <SelectTrigger className="h-11 w-fit min-w-32.5 cursor-pointer bg-card text-[10px] uppercase tracking-wider hover:bg-accent">
                 <SelectValue className="truncate text-left" />
               </SelectTrigger>
               <SelectContent align="end" className="p-1">

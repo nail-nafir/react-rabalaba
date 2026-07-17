@@ -184,7 +184,7 @@ export function FollowHistoryTable({
   winrateRef.current = winrateByTradeId;
 
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "date", desc: false },
+    { id: "date", desc: true },
   ]);
   const [search, setSearch] = useState("");
   const [assetFilter, setAssetFilter] = useState<AssetFilterType>("all");
@@ -305,8 +305,8 @@ export function FollowHistoryTable({
     () => [
       {
         id: "date",
-        // Sort by closedAt only — open trades (null) naturally float to bottom.
-        accessorFn: (tr) => tr.closedAt ?? 0,
+        // Sort by closedAt descending — open trades float to top, closed trades sort newest to oldest.
+        accessorFn: (tr) => tr.closedAt ?? Infinity,
         header: ({ column }) => (
           <SortButton label={t("journal.col_date")} column={column} />
         ),
@@ -670,28 +670,28 @@ export function FollowHistoryTable({
         <FilterGroup
           value={assetFilter}
           options={assetOptions}
-          onChange={setAssetFilter}
+          onChange={(v) => setAssetFilter(v as AssetFilterType)}
           className="flex-1 sm:flex-none"
         />
         <Separator orientation="vertical" className="mx-1" />
         <FilterGroup
           value={dirFilter}
           options={dirOptions}
-          onChange={setDirFilter}
+          onChange={(v) => setDirFilter(v as DirFilter)}
           variant="select"
           className="flex-1 sm:flex-none"
         />
         <FilterGroup
           value={lifecycleFilter}
           options={activeLifecycleOptions}
-          onChange={handleLifecycleChange}
+          onChange={(v) => handleLifecycleChange(v as LifecycleFilter)}
           variant="select"
           className="flex-1 sm:flex-none"
         />
         <FilterGroup
           value={pnlFilter}
           options={activePnlOptions}
-          onChange={handlePnlChange}
+          onChange={(v) => handlePnlChange(v as PnlFilter)}
           variant="select"
           className="flex-1 sm:flex-none"
         />

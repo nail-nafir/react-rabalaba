@@ -1,4 +1,4 @@
-import { type CSSProperties } from "react";
+import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
@@ -6,6 +6,17 @@ import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { PageLoader } from "@/components/shared/page-loader";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -85,8 +96,8 @@ export function AdminLayout() {
   const { isAdmin, isOwner, isLoading } = usePremiumAccess();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
-
   const currentLang = i18n.language.split("-")[0];
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Gated: wait for auth & profile hydration
   if (!ready || isLoading) {
@@ -98,6 +109,7 @@ export function AdminLayout() {
   }
 
   const handleLogout = async () => {
+    setShowLogoutConfirm(false);
     await signOut();
     toast.success(t("auth.logout_success"));
   };
@@ -313,7 +325,7 @@ export function AdminLayout() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
-                      onClick={handleLogout}
+                      onClick={() => setShowLogoutConfirm(true)}
                       className="text-xs cursor-pointer"
                     >
                       <LogOut className="h-4 w-4 mr-2" />
@@ -451,6 +463,28 @@ export function AdminLayout() {
           </main>
         </SidebarInset>
       </SidebarProvider>
+
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+              <LogOut />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {t("auth.logout_confirm_title", { defaultValue: "Keluar?" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("auth.logout_confirm_desc", { defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleLogout}>
+              {t("auth.logout_btn", "Keluar")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 }

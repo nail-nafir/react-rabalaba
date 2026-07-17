@@ -89,7 +89,8 @@
       "high": "High Risk"
     },
     "confirm": "Confirm",
-    "no": "No"
+    "no": "No",
+    "upgrade": "Upgrade"
   },
   "subscription": {
     "title": "Research Tier",
@@ -183,6 +184,8 @@
     "to_signup_q": "No account yet?",
     "to_login_q": "Already have an account?",
     "logout_btn": "Log Out",
+    "logout_confirm_title": "Sure To Log Out?",
+    "logout_confirm_desc": "Account access will disconnect and research session ends soon.",
     "session_idle_logout": "Session ended automatically after a week without activity. Sign in again to keep going.",
     "login_success": "Logged in.",
     "signup_success": "Account created.",
