@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -33,7 +33,13 @@ import {
 } from "@/components/ui/table";
 import { SkeletonAssetSignalRow } from "@/components/shared/skeleton-card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
@@ -49,9 +55,9 @@ import {
   SIGNAL_FILTER_OPTIONS,
   ASSET_TYPE_OPTIONS,
 } from "@/constants";
-import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
-import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
-import { useAppSelector, useUIActions, useFilterActions } from "@/store/hooks";
+import { usePublicJournalSuccessRates } from "@/features/market/hooks/use-public-journal-success-rates";
+import { PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY } from "@/features/market/lib/public-journal-success-rates";
+import { useAppSelector, useFilterActions } from "@/store/hooks";
 import { type SignalFilterType } from "@/store/slices/filter-slice";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -72,8 +78,13 @@ import { useScreenerUniverse } from "@/hooks/use-screener-universe";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
 import { AddSignalAssetDialog } from "./add-signal-asset-dialog";
+import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
+import { LicenseDialog } from "@/components/shared/license-dialog";
 
 import { FilterGroup } from "@/components/shared/filter-group";
+
+const COMPACT_SIGNAL_BADGE_CLASSNAME =
+  "rounded-md text-[10px] font-bold uppercase tracking-wider";
 
 function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
   const isSorted = column.getIsSorted();
@@ -84,11 +95,7 @@ function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
   return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
 }
 
-interface AssetSignalTableProps {
-  onAssetSelect: (symbol: string) => void;
-}
-
-export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
+export function AssetSignalTable() {
   "use no memo";
   const { t } = useTranslation();
   const [sorting, setSorting] = useState<SortingState>([
@@ -98,7 +105,6 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
   // re-renders on unrelated UI changes (e.g. license-dialog open/close). That
   // decoupling is what kept a stray unstable reference from spiraling into a
   // page-unresponsive render loop.
-  const { openLicenseDialog } = useUIActions();
   const assetType = useAppSelector((s) => s.filter.assetType);
   const signalFilter = useAppSelector((s) => s.filter.signalFilter);
   const searchQuery = useAppSelector((s) => s.filter.searchQuery);
@@ -110,24 +116,14 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
   const { favoriteSymbols, removeSymbol } = useFavorites();
   const [showFavorites, setShowFavorites] = useState(false);
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-
-  // Fetch journal trades to compute historical win rate per symbol
-  const { openTrades, history } = useJournalTrades();
-  const winrateBySymbol = useMemo(() => {
-    const stat: Record<string, { wins: number; total: number }> = {};
-    for (const tr of [...openTrades, ...history]) {
-      if (tr.status === "open") continue;
-      const s = (stat[tr.symbol] ??= { wins: 0, total: 0 });
-      s.total += 1;
-      if (computePnl(tr, tr.closePrice ?? tr.entryPrice).r >= 0) s.wins += 1;
-    }
-    return stat;
-  }, [openTrades, history]);
-  const winrateRef = useRef<Record<string, { wins: number; total: number }>>(
-    {},
-  );
-  winrateRef.current = winrateBySymbol;
+  // Aggregate-only public track record. Raw journal rows remain premium-only,
+  // while every tier sees the same wins/total for the screener.
+  const {
+    bySymbol: successRateBySymbol,
+    isPending: successRatesPending,
+    isError: successRatesError,
+    isFetching: successRatesFetching,
+  } = usePublicJournalSuccessRates();
 
   // crypto / US / ID stocks come from the admin-managed DB universe for premium
   // (single source with the cron), DEFAULT_* for free — the hook handles the
@@ -156,7 +152,7 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
     isLoading: favoriteLoading,
   } = useMarketData(favoriteSymbols);
 
-  // Top-down crypto context (BTC regime + sentiment), shared & cached.
+  // Top-down crypto context (BTC regime + score), shared & cached.
   const { data: cryptoContext, isLoading: cryptoContextLoading } =
     useCryptoContext();
 
@@ -168,12 +164,18 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
   // to the same ^GSPC cache entry; only ^VIX/DX-Y.NYB are new fetches.
   const { data: usContext, isLoading: usContextLoading } = useUsContext();
 
-  // Refresh the whole screener: invalidate every asset-data query at once
-  // (all asset types + favorites share the ["asset-data", ...] key).
+  // Refresh the whole screener: market data + its public track-record aggregate.
   const queryClient = useQueryClient();
-  const refreshingCount = useIsFetching({ queryKey: ["asset-data"] });
-  const handleRefresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["asset-data"] });
+  const assetRefreshingCount = useIsFetching({ queryKey: ["asset-data"] });
+  const isRefreshing = assetRefreshingCount > 0 || successRatesFetching;
+  const handleRefresh = () => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
+      queryClient.invalidateQueries({
+        queryKey: PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY,
+      }),
+    ]);
+  };
 
   const translatedAssetOptions = ASSET_TYPE_OPTIONS.map((opt) => ({
     value: opt.value,
@@ -190,7 +192,7 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
     if (!favoriteFetching && favoriteAssets && favoriteSymbols.length > 0) {
       favoriteSymbols.forEach((sym) => {
         if (!favoriteAssets.some((asset) => asset.symbol === sym)) {
-          toast.error(t("market.ticker_not_found", { symbol: sym }));
+          toast.error(t("toasts.market.symbol_missing"));
           removeSymbol(sym);
         }
       });
@@ -475,27 +477,56 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
       {
         id: "successrate",
         accessorFn: (row) => {
-          const s = winrateRef.current[row.symbol];
-          return s && s.total > 0 ? s.wins / s.total : -1;
+          const stat = successRateBySymbol[row.symbol];
+          return stat && stat.total > 0 ? stat.wins / stat.total : undefined;
         },
+        sortUndefined: "last",
         header: ({ column }) => (
-          <Button
-            variant="link"
-            onClick={() => column.toggleSorting()}
-            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
-          >
-            {t("table.successrate")} <SortIcon column={column} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="link"
+                onClick={() => column.toggleSorting()}
+                className="flex h-auto items-center gap-2 p-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-primary hover:no-underline"
+              >
+                {t("table.successrate")} <SortIcon column={column} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {t("table.successrate_methodology")}
+            </TooltipContent>
+          </Tooltip>
         ),
         cell: ({ row }) => {
-          const s = winrateRef.current[row.original.symbol];
+          const stat = successRateBySymbol[row.original.symbol];
           return (
             <div className="py-1">
-              <SuccessRateBar
-                wins={s?.wins ?? 0}
-                total={s?.total ?? 0}
-                barWidth="w-16"
-              />
+              {successRatesPending ? (
+                <Skeleton
+                  className="h-8 w-28"
+                  role="status"
+                  aria-label={t("table.successrate_loading")}
+                />
+              ) : successRatesError ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    COMPACT_SIGNAL_BADGE_CLASSNAME,
+                    SIGNAL_COLORS.neutral.bg,
+                    SIGNAL_COLORS.neutral.text,
+                    SIGNAL_COLORS.neutral.border,
+                  )}
+                  title={t("table.successrate_load_error")}
+                >
+                  {t("table.successrate_unavailable")}
+                </Badge>
+              ) : (
+                <SuccessRateBar
+                  wins={stat?.wins ?? 0}
+                  total={stat?.total ?? 0}
+                  barWidth="w-16"
+                />
+              )}
             </div>
           );
         },
@@ -516,7 +547,7 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
             <Badge
               variant="outline"
               className={cn(
-                "font-bold tracking-wider uppercase text-[10px] rounded-md",
+                COMPACT_SIGNAL_BADGE_CLASSNAME,
                 colors.bg,
                 colors.text,
                 colors.border,
@@ -542,7 +573,7 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
         enableSorting: false,
       },
     ],
-    [t],
+    [successRateBySymbol, successRatesError, successRatesPending, t],
   );
 
   const table = useReactTable({
@@ -568,13 +599,13 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
             variant="link"
             size="icon"
             onClick={handleRefresh}
-            disabled={refreshingCount > 0}
+            disabled={isRefreshing}
             title={t("journal.refresh")}
             aria-label={t("journal.refresh")}
             className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
           >
             <RefreshCw
-              className={cn("h-4 w-4", refreshingCount > 0 && "animate-spin")}
+              className={cn("h-4 w-4", isRefreshing && "animate-spin")}
             />
           </Button>
         </div>
@@ -637,71 +668,101 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
           <Separator orientation="vertical" className="mx-2" />
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              size="lg"
-              variant={showFavorites ? "default" : "secondary"}
-              onClick={() => {
-                if (showFavorites) {
-                  setShowFavorites(false);
-                  return;
-                }
+            {hasAccess || showFavorites ? (
+              <Button
+                size="lg"
+                variant={showFavorites ? "default" : "secondary"}
+                onClick={() => {
+                  if (showFavorites) {
+                    setShowFavorites(false);
+                    return;
+                  }
 
-                if (hasAccess) {
                   setShowFavorites(true);
-                } else {
-                  openLicenseDialog(() => setShowFavorites(true));
-                }
-              }}
-              className={cn(
-                "cursor-pointer transition-all",
-                showFavorites &&
-                  "bg-amber-500/10 border-amber-500/50 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:border-amber-500",
-              )}
-            >
-              <Star
+                }}
                 className={cn(
-                  "h-3.5 w-3.5",
-                  showFavorites
-                    ? "fill-amber-500 text-amber-500 scale-110"
-                    : "text-muted-foreground/60",
+                  "cursor-pointer transition-all",
+                  showFavorites &&
+                    "bg-amber-500/10 border-amber-500/50 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 hover:border-amber-500",
                 )}
+              >
+                <Star
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    showFavorites
+                      ? "fill-amber-500 text-amber-500 scale-110"
+                      : "text-muted-foreground/60",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "hidden sm:inline text-xs font-bold tracking-tight",
+                    showFavorites && "text-amber-500",
+                  )}
+                >
+                  {t("common.favorite")}
+                </span>
+                <Badge
+                  className={cn(
+                    "text-xs rounded-md font-black leading-none transition-colors",
+                    showFavorites
+                      ? "bg-amber-500 text-background"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {displayFavCount}
+                </Badge>
+              </Button>
+            ) : (
+              <LicenseDialog
+                onSuccess={() => setShowFavorites(true)}
+                trigger={
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="cursor-pointer transition-all"
+                  >
+                    <Star className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span className="hidden sm:inline text-xs font-bold tracking-tight">
+                      {t("common.favorite")}
+                    </span>
+                    <Badge className="text-xs rounded-md font-black leading-none transition-colors text-muted-foreground">
+                      {displayFavCount}
+                    </Badge>
+                  </Button>
+                }
               />
-              <span
-                className={cn(
-                  "hidden sm:inline text-xs font-bold tracking-tight",
-                  showFavorites && "text-amber-500",
-                )}
-              >
-                {t("common.favorite")}
-              </span>
-              <Badge
-                className={cn(
-                  "text-xs rounded-md font-black leading-none transition-colors",
-                  showFavorites
-                    ? "bg-amber-500 text-background"
-                    : "text-muted-foreground",
-                )}
-              >
-                {displayFavCount}
-              </Badge>
-            </Button>
+            )}
 
-            <Button
-              size="lg"
-              onClick={() => {
-                if (hasAccess) {
-                  setIsAddDialogOpen(true);
-                } else {
-                  openLicenseDialog(() => setIsAddDialogOpen(true));
+            {hasAccess ? (
+              <AddSignalAssetDialog
+                trigger={
+                  <Button
+                    size="lg"
+                    className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">
+                      {t("market.add_ticker_btn")}
+                    </span>
+                  </Button>
                 }
-              }}
-              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">
-                {t("market.add_ticker_btn")}
-              </span>
-            </Button>
+              />
+            ) : (
+              <LicenseDialog
+                trigger={
+                  <Button
+                    size="lg"
+                    className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">
+                      {t("market.add_ticker_btn")}
+                    </span>
+                  </Button>
+                }
+              />
+            )}
           </div>
         </div>
       </div>
@@ -761,32 +822,35 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow
+                <AssetDetailDialog
                   key={row.id}
-                  onClick={() => onAssetSelect(row.original.symbol)}
-                  className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  tabIndex={0}
-                  role="button"
-                  aria-haspopup="dialog"
-                  aria-label={t("common.analyze_symbol", {
-                    symbol: row.original.symbol,
-                  })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onAssetSelect(row.original.symbol);
-                    }
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                  symbol={row.original.symbol}
+                  trigger={
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t("common.analyze_symbol", {
+                        symbol: row.original.symbol,
+                      })}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.currentTarget.click();
+                        }
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  }
+                />
               ))
             )}
           </TableBody>
@@ -794,12 +858,6 @@ export function AssetSignalTable({ onAssetSelect }: AssetSignalTableProps) {
       </div>
 
       {!isLoading && <DataTablePagination table={table} />}
-
-      {/* Add Ticker Dialog Popup */}
-      <AddSignalAssetDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-      />
     </>
   );
 }

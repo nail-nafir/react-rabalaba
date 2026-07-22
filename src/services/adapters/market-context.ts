@@ -7,6 +7,7 @@ import {
 } from "@/constants/us";
 import type { UnifiedAsset } from "@/types/asset";
 import type {
+  Dominance,
   MarketContextByAssetClass,
   MarketContextDirection,
   QuoteMarketContext,
@@ -18,8 +19,6 @@ import {
   type NormalizedYahooCandle,
 } from "@/services/adapters/yahoo-candles";
 
-export const CMC_CRYPTO_200_SYMBOL = "^CMC200";
-export const CRYPTO_INDEX_FALLBACK_SYMBOL = "^NCI";
 /** 30-day window mirrors the CBOE VIX horizon so the IHSG proxy reads on the
  *  same time scale as the US volatility index. */
 export const IHSG_VOLATILITY_LOOKBACK_DAYS = 30;
@@ -27,8 +26,6 @@ export const IHSG_VOLATILITY_CHANGE_OFFSET_DAYS = 5;
 
 /** Module-level and unique so Forex and Commodity never trigger two DXY queries. */
 export const MARKET_CONTEXT_QUOTE_SYMBOLS = [
-  CMC_CRYPTO_200_SYMBOL,
-  CRYPTO_INDEX_FALLBACK_SYMBOL,
   VIX_SYMBOL,
   DXY_SYMBOL,
   GOLD_SYMBOL,
@@ -36,10 +33,8 @@ export const MARKET_CONTEXT_QUOTE_SYMBOLS = [
 ] as const;
 
 const DAY_MS = 86_400_000;
-const CMC_MAX_AGE_MS = 2 * DAY_MS;
 // A weekly ceiling tolerates weekends and exchange holidays while still
-// rejecting abandoned Yahoo feeds. CMC is deliberately held to a stricter
-// limit because Yahoo's ^CMC200 feed has historically remained frozen.
+// rejecting abandoned Yahoo feeds.
 const STANDARD_QUOTE_MAX_AGE_MS = 7 * DAY_MS;
 const FUTURE_QUOTE_TOLERANCE_MS = 5 * 60_000;
 const TRADING_DAYS_PER_YEAR = 252;
@@ -113,6 +108,41 @@ export function adaptQuoteMarketContext(
     direction: marketContextDirection(asset.changePercent),
     precision: options.precision,
     timestamp: asset.quoteTime,
+  };
+}
+
+/** Map CoinGecko's upstream snapshot into the crypto card footer model. */
+export function adaptCryptoDominanceMarketContext(
+  dominance: Dominance | null | undefined,
+): QuoteMarketContext | null {
+  if (
+    !dominance ||
+    !Number.isFinite(dominance.btc) ||
+    dominance.btc <= 0 ||
+    dominance.btc > 100 ||
+    !Number.isFinite(dominance.updatedAt) ||
+    dominance.updatedAt <= 0
+  ) {
+    return null;
+  }
+
+  const changePercent = dominance.btcDominanceChangePercent24h;
+  const hasChange =
+    typeof changePercent === "number" && Number.isFinite(changePercent);
+
+  return {
+    kind: "quote",
+    symbol: "BTC.D",
+    name: "BTC Dominance Index",
+    value: dominance.btc,
+    precision: 1,
+    timestamp: dominance.updatedAt,
+    ...(hasChange
+      ? {
+          changePercent,
+          direction: marketContextDirection(changePercent),
+        }
+      : {}),
   };
 }
 
@@ -291,6 +321,13 @@ function adaptCopperGoldRatioContext(
   const ratio = copper.value / gold.value;
   if (!Number.isFinite(ratio) || ratio <= 0) return null;
 
+  if (
+    copper.changePercent === undefined ||
+    gold.changePercent === undefined
+  ) {
+    return null;
+  }
+
   const denominatorMove = 1 + gold.changePercent / 100;
   const changePercent =
     denominatorMove !== 0
@@ -316,23 +353,12 @@ function adaptCopperGoldRatioContext(
 export function buildMarketContextByAssetClass(
   assets: UnifiedAsset[],
   ihsgVolatility: RealizedVolatilityMarketContext | null,
+  dominance: Dominance | null | undefined,
   nowMs: number = Date.now(),
 ): MarketContextByAssetClass {
   const bySymbol = new Map(assets.map((asset) => [asset.symbol, asset]));
 
-  const primaryCrypto = adaptQuoteMarketContext(
-    bySymbol.get(CMC_CRYPTO_200_SYMBOL),
-    {
-      precision: 2,
-      nowMs,
-      maxAgeMs: CMC_MAX_AGE_MS,
-      name: "CMC Crypto 200 Index",
-    },
-  );
-  const fallbackCrypto = adaptQuoteMarketContext(
-    bySymbol.get(CRYPTO_INDEX_FALLBACK_SYMBOL),
-    { precision: 2, nowMs, name: "NCI Crypto Index" },
-  );
+  const cryptoDominance = adaptCryptoDominanceMarketContext(dominance);
   const vix = adaptQuoteMarketContext(bySymbol.get(VIX_SYMBOL), {
     precision: 1,
     nowMs,
@@ -350,7 +376,7 @@ export function buildMarketContextByAssetClass(
   );
 
   return {
-    crypto: primaryCrypto ?? fallbackCrypto,
+    crypto: cryptoDominance,
     "us-stock": vix,
     "id-stock": ihsgVolatility,
     forex: dxy,

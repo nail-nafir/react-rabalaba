@@ -105,8 +105,8 @@ export function useJournalAssets() {
   );
 
   const toggleActive = useCallback(
-    async (symbol: string, active: boolean) => {
-      if (!userId) return;
+    async (symbol: string, active: boolean): Promise<boolean> => {
+      if (!userId) return false;
       // Optimistic: flip locally so the toggle responds instantly.
       queryClient.setQueryData<JournalAssetRow[]>(QUERY_KEY, (prev) =>
         (prev ?? []).map((a) =>
@@ -122,14 +122,16 @@ export function useJournalAssets() {
         .eq("symbol", symbol);
       if (error) {
         await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        return false;
       }
+      return true;
     },
     [userId, queryClient],
   );
 
   const removeAsset = useCallback(
-    async (symbol: string) => {
-      if (!userId) return;
+    async (symbol: string): Promise<boolean> => {
+      if (!userId) return false;
       // Optimistic: drop locally first.
       queryClient.setQueryData<JournalAssetRow[]>(QUERY_KEY, (prev) =>
         (prev ?? []).filter((a) => a.symbol !== symbol),
@@ -140,7 +142,9 @@ export function useJournalAssets() {
         .eq("symbol", symbol);
       if (error) {
         await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        return false;
       }
+      return true;
     },
     [userId, queryClient],
   );

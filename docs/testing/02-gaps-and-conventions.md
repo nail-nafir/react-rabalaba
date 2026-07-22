@@ -16,9 +16,9 @@
 | Edge Function I/O handler | `supabase/functions/{auto-journal,daily-summary,asset-discovery}/index.ts` | I/O heavy (fetch, DB, Discord). Correctness di-anchor pure core yang di-bundle + manual `find-phantom-closes.mjs` diagnostic. | Bug di wiring fetch/DB/gating bisa lewat. Gating logic (`interval_minutes` clock-align, atomic send-once claim) kompleks & gak ter-test otomatis. |
 | UI components | `src/features/*/components/*.tsx`, `src/components/*` | React component butuh DOM/jsdom + render test. `node --test` gak punya jsdom env. | Render crash, prop drift, memoization bug (recharts cascade, react-query structural-sharing loop) gak tertangkap otomatis. |
 | Hooks (query/admin) | `src/hooks/use-*.ts`, `src/services/queries/*` | Butuh react-query + Supabase client + auth context mock. | queryKey drift, optimistic-update bug, RLS interaction gak tertangkap. |
-| Adapters (sebagian) | `yahoo-adapter.ts` | Hanya `engine-extras` test F&G scope + crypto daily change. Full `adaptYahooChart` path gak ter-test lengkap. | AssetType detect, HTF resample, signal fallback bug. |
+| Adapters (sebagian) | `yahoo-adapter.ts` | Hanya `engine-extras` test crypto daily change. Full `adaptYahooChart` path gak ter-test lengkap. | AssetType detect, HTF resample, signal fallback bug. |
 | Supabase mapper | `journal-mapper.ts` | Pure tapi gak ada test file langsung. | snake↔camel field drift. |
-| Calendar/fng API | `calendar.ts`, `fear-greed.ts` | Network; gak di-mock. | Auto-classify impact, flatten bug. |
+| Calendar API | `calendar.ts` | Network; gak di-mock. | Auto-classify impact, flatten bug. |
 
 ---
 
@@ -34,7 +34,7 @@
 ### Prioritas sedang / Medium
 
 5. **`yahoo-adapter.test.mjs`** — test `adaptYahooChart` full path dengan fixture `YahooChartResult` (detectAssetType, HTF resample factor, daily change baseline convention crypto vs equity, `createUnavailableSignal` fallback).
-6. **`react-query-key.test.mjs`** — test query key stability (fearGreedValue/`dominance` baked, `usePeriodCandles` `Infinity`, `useSmartMoney` plain object bukan Map). Butuh react-query test setup.
+6. **`react-query-key.test.mjs`** — test query key stability (`dominance` baked ke crypto context, `usePeriodCandles` `Infinity`, `useSmartMoney` plain object bukan Map). Butuh react-query test setup.
 7. **`recharts-memo.test.mjs`** (jsdom) — test chart component gak cascade-renders dengan identity-stable props (regresi `follow-history-table` / `journal-dashboard`).
 
 ### Prioritas rendah / Low

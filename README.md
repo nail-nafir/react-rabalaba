@@ -17,7 +17,7 @@ npm run dev            # http://localhost:5173
 
 Test & build:
 ```bash
-npm test               # 26 file / 268 case (node --test)
+npm test               # 31 file / 306 case (node --test)
 npm run build          # tsc -b + vite build → dist/
 npm run lint           # eslint
 ```
@@ -49,7 +49,7 @@ Kode jalan di **4 tempat**:
 - 🌐 **Browser** — React SPA (UI, screener, engine live)
 - 🦾 **Supabase Edge Function** (Deno) — 3 cron: `auto-journal` 30m, `daily-summary` hourly, `asset-discovery` daily
 - 🗄️ **Supabase Postgres** — DB + RLS + pg_cron + Auth
-- ☁️ **Cloudflare Pages** — host SPA + proxy data market (Yahoo/F&G; CoinGecko/Binance direct dari browser)
+- ☁️ **Cloudflare Pages** — host SPA + proxy Yahoo (CoinGecko/Binance direct dari browser)
 
 Engine sinyal **single-source** di `src/` — di-pake browser & di-bundle ke cron.
 

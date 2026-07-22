@@ -51,7 +51,7 @@ export function AuthLayout() {
           <div className="pointer-events-auto flex items-center gap-2">
             {/* Language Selector Dropdown */}
             <Select
-              items={LANGUAGE_ITEMS}
+
               value={currentLang}
               onValueChange={(nextValue) => {
                 if (nextValue !== null) void i18n.changeLanguage(nextValue);
@@ -63,7 +63,7 @@ export function AuthLayout() {
                 <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false} align="end" className="p-1">
+              <SelectContent align="end" className="p-1">
                 <SelectGroup>
                   {LANGUAGE_ITEMS.map((item) => (
                     <SelectItem
@@ -80,7 +80,7 @@ export function AuthLayout() {
 
             {/* Theme Selector Dropdown */}
             <Select
-              items={themeItems}
+
               value={theme}
               onValueChange={(nextValue) => {
                 if (nextValue !== null) {
@@ -100,7 +100,7 @@ export function AuthLayout() {
                 )}
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false} align="end" className="p-1">
+              <SelectContent align="end" className="p-1">
                 <SelectGroup>
                   {themeItems.map((item) => (
                     <SelectItem

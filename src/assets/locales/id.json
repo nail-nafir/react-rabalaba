@@ -36,14 +36,6 @@
       "bb_mid": "di tengah rentang",
       "div_bullish": " Terdeteksi Bullish Divergence (potensi reversal).",
       "div_bearish": " Terdeteksi Bearish Divergence (risiko exhaustion)."
-    },
-    "sentiment": {
-      "unavailable": "Data sentimen pasar lagi nggak tersedia. Mending pertimbangkan indikator eksternal buat konfirmasi sentimen.",
-      "extreme_fear": "Fear & Greed Index di {{value}} (Extreme Fear). Pasar mungkin lagi mendekati peluang contrarian buy.",
-      "fear": "Fear & Greed Index di {{value}} (Fear). Kondisi pasar lagi waspada. Pantau sinyal capitulation atau reversal.",
-      "neutral": "Fear & Greed Index di {{value}} (Neutral). Sentimen pasar lagi seimbang. Ikuti sinyal teknikal buat menentukan arah.",
-      "greed": "Fear & Greed Index di {{value}} (Greed). Pasar lagi optimis. Tren bisa lanjut tapi tetap waspada sama overextension.",
-      "extreme_greed": "Fear & Greed Index di {{value}} (Extreme Greed). Risiko pullback lagi tinggi. Mending mulai perketat stop."
     }
   },
   "common": {
@@ -90,7 +82,152 @@
     },
     "confirm": "Konfirmasi",
     "no": "Tidak",
-    "upgrade": "Tingkatkan"
+    "upgrade": "Tingkatkan",
+    "actions": {
+      "add": "Tambah",
+      "save": "Simpan",
+      "create": "Buat",
+      "confirm": "Konfirmasi",
+      "delete": "Hapus",
+      "activate": "Aktifkan",
+      "deactivate": "Nonaktifkan",
+      "publish": "Terbitkan",
+      "replace": "Ganti",
+      "move": "Pindah",
+      "submit": "Kirim",
+      "unlock": "Buka",
+      "login": "Masuk",
+      "logout": "Keluar",
+      "upgrade": "Tingkatkan",
+      "reject": "Tolak",
+      "feature": "Tampilkan"
+    }
+  },
+  "toasts": {
+    "access_code": {
+      "add_error": "Waduh, kode belum masuk",
+      "add_success": "Mantep, kode kini sudah aktif",
+      "delete_error": "Waduh, kode belum terhapus",
+      "delete_success": "Mantep, kode sudah dihapus",
+      "duplicate_error": "Waduh, kode sudah terdaftar"
+    },
+    "auth": {
+      "google_error": "Waduh, Google lagi zonk",
+      "login_success": "Mantep, sesi masuk sudah aman",
+      "logout_error": "Waduh, sesi belum selesai",
+      "logout_success": "Mantep, sesi keluar sudah beres",
+      "session_idle": "Santai, saatnya masuk lagi",
+      "session_required": "Waduh, sesi sudah lepas",
+      "signup_success": "Mantep, akun baru sudah jadi"
+    },
+    "automation": {
+      "discovery_error": "Waduh, seleksi lagi rungkad",
+      "discovery_paused": "Santai, seleksi sedang jeda",
+      "discovery_success": "Mantep, seleksi sudah kelar",
+      "scan_error": "Waduh, pemindaian zonk",
+      "scan_paused": "Santai, jurnal sedang jeda",
+      "scan_success": "Mantep, pemindaian selesai"
+    },
+    "disclaimer": {
+      "accept_error": "Waduh, persetujuan gagal",
+      "accept_success": "Mantep, radar sudah aktif",
+      "publish_success": "Mantep, versi baru meluncur",
+      "save_error": "Waduh, penafian belum aman",
+      "save_success": "Mantep, penafian sudah aman"
+    },
+    "invitation": {
+      "create_error": "Waduh, undangan belum jadi",
+      "create_success": "Mantep, undangan sudah jadi",
+      "delete_error": "Waduh, undangan masih ada",
+      "delete_success": "Mantep, undangan sudah dihapus",
+      "link_copied": "Mantep, tautan sudah disalin",
+      "status_error": "Waduh, status belum berubah",
+      "status_success": "Mantep, status sudah berubah"
+    },
+    "journal_asset": {
+      "add_success": "Mantep, aset baru sudah masuk",
+      "delete_error": "Waduh, aset masih nyangkut",
+      "delete_success": "Mantep, aset sudah dibersihkan",
+      "duplicate_info": "Santai, aset sudah terdaftar",
+      "invalid_error": "Waduh, simbol belum ketemu",
+      "save_error": "Waduh, aset belum tersimpan",
+      "status_error": "Waduh, status aset nyangkut",
+      "status_success": "Mantep, status aset sudah aman"
+    },
+    "journal_settings": {
+      "save_error": "Waduh, pengaturan belum aman",
+      "save_success": "Mantep, pengaturan sudah aman"
+    },
+    "license": {
+      "blocked_error": "Waduh, akun masih diblokir",
+      "exhausted_error": "Waduh, kuota kode habis",
+      "invalid_error": "Waduh, kode belum cocok",
+      "premium_success": "Mantep, premium aktif terus",
+      "redeemed_error": "Waduh, kode sudah dipakai",
+      "trial_success": "Mantep, uji coba sudah aktif",
+      "unknown_error": "Waduh, aktivasi lagi zonk"
+    },
+    "market": {
+      "favorite_added": "Mantep, favorit makin rame",
+      "favorite_removed": "Mantep, favorit sudah rapi",
+      "favorites_added": "Mantep, favorit sudah bertambah",
+      "favorites_error": "Waduh, favorit belum aman",
+      "symbol_missing": "Waduh, simbol tidak ketemu"
+    },
+    "password": {
+      "validation_error": "Waduh, kata sandi meleset",
+      "validation_success": "Mantep, validasi sudah aman"
+    },
+    "payment": {
+      "contact_opened": "Mantep, Telegram sudah terbuka",
+      "details_copied": "Mantep, detail sudah disalin"
+    },
+    "payment_method": {
+      "delete_error": "Waduh, metode masih nyangkut",
+      "delete_success": "Mantep, metode sudah dihapus",
+      "save_error": "Waduh, metode belum aman",
+      "save_success": "Mantep, metode sudah aman",
+      "status_error": "Waduh, status belum berubah",
+      "status_success": "Mantep, status sudah berubah"
+    },
+    "plan": {
+      "delete_error": "Waduh, paket masih nyangkut",
+      "delete_success": "Mantep, paket sudah dihapus",
+      "save_error": "Waduh, paket belum aman",
+      "save_success": "Mantep, paket sudah tersimpan",
+      "status_error": "Waduh, status belum berubah",
+      "status_success": "Mantep, status sudah berubah"
+    },
+    "share": {
+      "position_downloaded": "Mantep, gambar sudah diunduh",
+      "position_error": "Waduh, gambar posisi zonk",
+      "position_shared": "Mantep, posisi sudah dibagikan",
+      "signal_downloaded": "Mantep, gambar sudah diunduh",
+      "signal_error": "Waduh, gambar sinyal zonk",
+      "signal_shared": "Mantep, sinyal sudah dibagikan"
+    },
+    "testimonial": {
+      "delete_error": "Waduh, ulasan masih nyangkut",
+      "delete_success": "Mantep, ulasan sudah dihapus",
+      "save_error": "Waduh, ulasan belum aman",
+      "save_success": "Mantep, ulasan sudah meluncur"
+    },
+    "testimonial_admin": {
+      "action_error": "Waduh, tindakan masih zonk",
+      "approve_success": "Mantep, ulasan sudah lolos",
+      "delete_success": "Mantep, ulasan sudah bersih",
+      "feature_success": "Mantep, slot ulasan sudah gacor",
+      "reject_success": "Mantep, ulasan sudah ditolak",
+      "unfeature_success": "Mantep, halaman utama rapi"
+    },
+    "user": {
+      "add_error": "Waduh, pengguna belum masuk",
+      "add_success": "Mantep, pengguna sudah masuk",
+      "delete_error": "Waduh, pengguna masih ada",
+      "delete_success": "Mantep, pengguna sudah dihapus",
+      "edit_error": "Waduh, perubahan belum aman",
+      "edit_success": "Mantep, perubahan sudah aman"
+    }
   },
   "subscription": {
     "title": "Kasta Riset",
@@ -115,7 +252,7 @@
   },
   "payment": {
     "title": "Banyak Jalan Menuju Cuan Melimpah",
-    "subtitle": "Pilih cara bayar yang paling pas. Kita dukung berbagai metode biar prosesnya makin gacor gak pake lama.",
+    "subtitle": "Pilih cara bayar paling pas. Dukung berbagai metode biar prosesnya makin gacor gak pake lama.",
     "activation_notice_title": "Tinjauan Manual",
     "activation_notice_desc": "Setelah verifikasi pembayaran selesai, akun akan aktif dalam maksimal 1x24 jam. Tim akan memprosesnya secepat mungkin.",
     "methods": {
@@ -133,9 +270,7 @@
     "dialog": {
       "title": "Pembayaran",
       "subtitle": "Pilih metode pembayaran di bawah. Kirim bukti transfer ke tim via Telegram untuk aktivasi instan.",
-      "beneficiary": "Nama Pemilik",
-      "copied": "Berhasil disalin!",
-      "confirm_btn": "Konfirmasi"
+      "beneficiary": "Nama Pemilik"
     }
   },
   "license": {
@@ -159,7 +294,6 @@
     "auth_required": "Aktivasi sesi diperlukan",
     "login_required_title": "Premium Terkunci",
     "login_required_desc": "Masuk atau bikin akun baru untuk validasi kode akses dan aktivasi fitur premium secara instan.",
-    "login_required_btn": "Masuk",
     "close_btn": "Tutup"
   },
   "auth": {
@@ -186,22 +320,17 @@
     "logout_btn": "Keluar",
     "logout_confirm_title": "Yakin Mau Keluar?",
     "logout_confirm_desc": "Akses ke akun bakal terputus dan sesi riset segera berakhir.",
-    "session_idle_logout": "Sesi berakhir otomatis karena seminggu tanpa aktivitas. Masuk lagi biar bisa lanjut.",
-    "login_success": "Berhasil masuk.",
-    "signup_success": "Akun berhasil dibuat.",
-    "logout_success": "Berhasil keluar.",
     "login_failed": "Email atau password salah.",
     "confirm_email_title": "Cek email",
     "confirm_email_desc": "Link konfirmasi udah dikirim. Klik dulu buat ngaktifin akun, terus balik ke sini buat aktivasi kode.",
     "or_continue_with": "atau lanjut dengan",
     "continue_with_google": "Lanjut dengan Google",
-    "google_failed": "Gagal masuk dengan Google. Coba lagi.",
     "signing_in": "Sedang memproses…",
     "password_required": "Password wajib diisi.",
     "unauthenticated": "Silakan login kembali."
   },
   "faq": {
-    "title": "Bingung? Kita Kasih Paham",
+    "title": "Bingung? Sini Kasih Paham",
     "subtitle": "Kumpulan jawaban buat pertanyaan yang sering muncul. Biar makin paham.",
     "questions": [
       {
@@ -214,11 +343,11 @@
       },
       {
         "q": "Datanya terpercaya gak nih?",
-        "a": "Kita ambil data dari sumber level institusi kayak Yahoo Finance dan provider tepercaya lainnya. Datanya gacor dan terpercaya kok."
+        "a": "Data diambil dari sumber level institusi kayak Yahoo Finance dan provider tepercaya lainnya. Datanya gacor dan terpercaya kok."
       },
       {
         "q": "Bikin akunnya ribet gak sih?",
-        "a": "Tinggal daftar sat set pakai akun pribadi biar dapet akses penuh. Proses verifikasinya kilat kok biar bisa langsung mulai riset."
+        "a": "Tinggal daftar sat set pakai akun email biar dapet akses penuh. Proses verifikasinya kilat kok biar bisa langsung mulai riset."
       }
     ]
   },
@@ -232,11 +361,11 @@
     "description": "Terminal riset paling gacor buat riset beneran, bukan cuma FOMO.",
     "multi_asset": {
       "title": "Riset Multi Aset",
-      "description": "Pantau Saham Indonesia, Saham AS, Kripto, Komoditas, dan Valas dalam satu layar. Pokoknya gak pake ribet."
+      "description": "Pantau Saham Indonesia, Saham AS, Kripto, Komoditas, dan Valas dalam satu layar. Analisis antar pasar makin sat set tanpa ribet."
     },
     "sentiment": {
-      "title": "Sinyal Long/Short",
-      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kekuatan sinyal yang transparan, alat bantu keputusan bukan prediksi. Biarkan data bicara."
+      "title": "Sinyal Long Short",
+      "description": "Analisis sinyal beli dan jual berbasis aturan dengan skor kekuatan sinyal yang transparan, alat bantu keputusan bukan prediksi."
     },
     "trading_plan": {
       "title": "Susun Rencana Transaksi",
@@ -250,9 +379,9 @@
       "title": "Kalender Ekonomi",
       "description": "Pantau rilis data ekonomi dunia yang bikin market bergejolak. Tetap ikutin FOMC, CPI, dan berita penting biar strategi gak goyang."
     },
-    "fear_greed": {
-      "title": "Monitor Fear & Greed",
-      "description": "Pantau psikologi pasar lewat Indeks Fear & Greed. Beli pas yang lain takut, dan jual pas yang lain mulai serakah."
+    "auto_journal": {
+      "title": "Jurnal Pasar Otomatis",
+      "description": "Pembaruan data jurnal analisis otomatis sesuai jadwal eksekusi. Pantau pergerakan pasar tanpa perlu input manual yang ribet."
     }
   },
   "market": {
@@ -260,40 +389,28 @@
     "live_connection": "Koneksi Langsung",
     "ticker_title": "Pantauan Harga Terkini",
     "search_placeholder": "Cari aset berdasarkan nama atau simbol...",
-    "add_ticker_placeholder": "Tambah simbol (cth. AAPL, BBCA.JK, BTC-USD)",
-    "add_ticker_dialog_title": "Tambah Aset Favorit",
-    "add_ticker_dialog_desc": "Masukkan simbol pasar yang valid",
+    "add_ticker_placeholder": "Tambah simbol (AAPL, BBCA.JK, BTC-USD)",
+    "add_ticker_dialog_title": "Tambah Aset Pantauan Favorit",
+    "add_ticker_dialog_desc": "Pilih simbol pasar terverifikasi untuk pemantauan harga secara langsung dalam daftar favorit.",
     "ticker_not_found_suggestion": "Aset tidak ditemukan",
-    "ticker_not_found": "Simbol {{symbol}} tidak ditemukan",
     "favorite_empty_desc": "Tambah aset pake tombol di atas, atau bintangi aset di kategori lain.",
     "favorite_empty": "Daftar favorit masih kosong nih",
-    "favorite_added": "{{symbol}} berhasil ditambahkan ke favorit",
-    "favorite_removed": "{{symbol}} berhasil dihapus dari favorit",
     "add_ticker_btn": "Tambah Aset",
-    "add_ticker_save_all_with_count": "Tambah ({{count}})",
     "add_ticker_pending_label": "Akan ditambahkan ({{count}})",
     "add_ticker_chip_remove": "Hapus {{symbol}}",
     "add_ticker_already_favorite_badge": "Sudah di favorit",
-    "favorites_added_bulk": "{{count}} ticker berhasil ditambahkan ke favorit",
-    "favorites_save_failed": "Gagal menyimpan favorit, silakan coba lagi",
     "assets_found": "Aset",
     "screener": "Pemindai Aset",
-    "loading_dominance": "Memuat dominasi...",
     "data_unavailable": "Data pasar lagi istirahat dulu",
     "data_unavailable_desc": "API lagi gak merespons nih. Coba cek koneksi internet terus ulangi lagi.",
-    "dominance_unavailable": "Dominasi lagi istirahat",
-    "sentiment_unavailable": "Sentimen lagi istirahat",
-    "crypto_unavailable": "Data crypto lagi istirahat",
     "market_context": "Konteks Pasar",
     "market_context_unavailable": "Konteks pasar tidak tersedia",
     "no_assets_found": "Aset gak ditemukan",
     "no_assets_found_desc": "Coba ubah filternya sebentar.",
     "search_no_results": "Aset \"{{query}}\" gak ditemukan",
-    "fng_change_points_one": "{{value}} poin",
-    "fng_change_points_other": "{{value}} poin",
     "score": "Skor",
-    "data_offline": "Data Offline",
-    "data_offline_desc": "Gagal memuat harga benchmark utama",
+    "data_offline": "Koneksi Terputus",
+    "data_offline_desc": "Pantauan harga pasar belum tersedia.",
     "crypto": "Kripto",
     "id_equity": "Saham ID",
     "us_equity": "Saham AS",
@@ -301,37 +418,35 @@
     "forex": "Valas",
     "index_fallback": "Indeks",
     "context_explainer": {
-      "crypto": "Suasana hati pasar koin. Naik berarti pembeli lagi semangat, turun berarti mulai takut.",
-      "id-equity": "Seberapa goyang IHSG akhir ini. Tinggi berarti volatile, rendah berarti tenang.",
-      "us-equity": "Penunjuk panik Wall Street. Tinggi berarti takut menular, rendah berarti santai.",
-      "commodities": "Permintaan industri versus rasa aman. Naik yakin ekonomi tumbuh, turun cari emas.",
-      "forex": "Kekuatan dolar versus mata uang lain. Dolar kuat menekan hampir semua aset lainnya."
+      "crypto": "Arah Bitcoin dan altcoin. Tinggi Bitcoin naik, rendah altcoin naik.",
+      "id-equity": "Arah gejolak saham ID. Tinggi gerakan liar, rendah tenang.",
+      "us-equity": "Arah gejolak saham AS. Tinggi gerakan liar, rendah tenang.",
+      "commodities": "Arah industri dan emas. Tinggi industri naik, rendah emas naik.",
+      "forex": "Arah dolar dan valas. Tinggi dolar naik, rendah valas lain naik."
     },
     "score_explainer": {
-      "crypto": "Selera risiko koin. Tinggi berarti pembeli percaya diri, rendah berarti ketakutan menguasai.",
-      "id-equity": "Selera risiko saham ID. Tinggi berarti investor percaya diri, rendah berarti ketakutan menguasai.",
-      "us-equity": "Selera risiko saham AS. Tinggi berarti investor percaya diri, rendah berarti ketakutan menguasai.",
-      "commodities": "Selera risiko komoditas. Tinggi berarti permintaan terasa kuat, rendah berarti terasa lemah.",
-      "forex": "Selera risiko rupiah. Tinggi berarti rupiah terasa kuat, rendah berarti rupiah terasa lemah."
+      "crypto": "Sinyal pasar kripto. Tinggi optimis, rendah ragu naik.",
+      "id-equity": "Sinyal saham ID. Tinggi percaya diri, rendah ragu naik.",
+      "us-equity": "Sinyal saham AS. Tinggi percaya diri, rendah ragu naik.",
+      "commodities": "Sinyal komoditas. Tinggi permintaan, rendah lesu naik.",
+      "forex": "Sinyal rupiah. Tinggi mata uang melaju, rendah tekanan."
     }
   },
   "terminal": {
     "title": "Terminal Riset",
     "subtitle": "Analisis multi aset dengan data langsung dan sinyal akurat.",
-    "access_dialog_placeholder": "Masukkan kode akses (cth. 1453)...",
+    "access_dialog_placeholder": "Masukkan kode akses (1453, 7777, 9999)...",
     "access_dialog_no_access": "Belum punya kode akses?",
     "access_dialog_no_access_link": "Dapatkan akses",
     "access_dialog_invalid_code": "Kode akses salah! Silakan coba lagi.",
-    "access_dialog_success": "Akses diberikan! Fitur premium kebuka selamanya.",
     "access_dialog_unlock_btn": "Buka",
-    "access_dialog_code_required": "Kode akses wajib diisi",
-    "access_trial_success": "Akses diberikan! Fitur premium sekarang kebuka."
+    "access_dialog_code_required": "Kode akses wajib diisi"
   },
   "calendar": {
     "title": "Kalender Ekonomi",
     "subtitle": "Jadwal mingguan peristiwa ekonomi penggerak pasar di seluruh dunia.",
     "agenda": "Agenda",
-    "no_events": "Yah, gak ada event yang cocok sama filternya",
+    "no_events": "Gak ada event yang cocok sama filternya",
     "no_events_desc": "Coba atur ulang filter atau pilih tanggal lain.",
     "events_found": "Acara",
     "scheduled_event": "Acara Terjadwal",
@@ -369,6 +484,14 @@
     "trend": "Tren",
     "signal": "Sinyal",
     "successrate": "Keberhasilan",
+    "successrate_methodology": "Rasio trade tertutup yang berakhir impas atau untung untuk simbol ini.",
+    "successrate_summary": "{{percent}}% berhasil: {{wins}} dari {{total}} trade tertutup.",
+    "successrate_sample": "{{wins}}/{{total}}",
+    "successrate_new_data": "Baru",
+    "successrate_new_data_description": "Belum ada trade tertutup untuk simbol ini.",
+    "successrate_loading": "Memuat data keberhasilan.",
+    "successrate_unavailable": "Tidak tersedia",
+    "successrate_load_error": "Data keberhasilan gagal dimuat. Segarkan untuk mencoba lagi.",
     "strength": "Kekuatan",
     "page": "Halaman",
     "of": "dari",
@@ -434,7 +557,6 @@
     "suppressed_reason_countertrend": "tren besar lagi berlawanan",
     "analysis": "Analisis",
     "indicators": "Indikator Teknikal",
-    "sentiment": "Sentimen",
     "decision_support": "Skor Pendukung",
     "regime_trending": "Tren",
     "regime_ranging": "Konsolidasi",
@@ -518,12 +640,6 @@
     "tp3": "TP3",
     "take_profit": "Take Profit",
     "share": "Bagikan sinyal",
-    "shared_signal": "Gambar sinyal dibagikan",
-    "downloaded_signal": "Gambar sinyal diunduh",
-    "share_failed_signal": "Gagal membuat gambar sinyal",
-    "shared_position": "Gambar posisi dibagikan",
-    "downloaded_position": "Gambar posisi diunduh",
-    "share_failed_position": "Gagal membuat gambar posisi",
     "sm_labels": {
       "neutral_positioning": "Posisi netral",
       "no_positioning_data": "Tidak ada data posisi",
@@ -536,9 +652,8 @@
     }
   },
   "disclaimer": {
-    "confirm": "Saya telah membaca dan memahami risiko investasi",
+    "confirm": "Sudah baca dan paham seluruh risiko investasi",
     "agree": "Paham & Lanjutkan",
-    "toast_success": "Sip, radar aktif. Selamat datang di pusat cuan!",
     "load_error_title": "Penafian risiko belum dapat dimuat",
     "load_error_description": "Koneksi ke data penafian sedang bermasalah. Coba lagi sebelum melanjutkan."
   },
@@ -675,20 +790,13 @@
       "display_name": "Nama tampilan",
       "display_name_placeholder": "Nama yang ingin ditampilkan",
       "persona": "Persona atau pasar favorit",
-      "persona_placeholder": "Contoh: Swing trader saham Indonesia",
+      "persona_placeholder": "Trader Harian, Swing Trader, Investor",
       "rating": "Penilaian",
       "body": "Ulasan",
       "body_placeholder": "Tulis bagian paling juara dan membantu dari RabaLaba...",
       "delete": "Hapus",
       "delete_title": "Hapus ulasan?",
       "delete_description": "Penghapusan ulasan bersifat permanen dan ulasan bakal langsung hilang dari halaman utama.",
-      "confirm_delete": "Hapus",
-      "submit": "Kirim",
-      "saving": "Menyimpan...",
-      "save_success": "Ulasan sukses tersimpan dan meluncur ke antrean tinjau.",
-      "save_error": "Gagal menyimpan ulasan. Coba ulangi beberapa saat lagi.",
-      "delete_success": "Penghapusan ulasan berhasil dijalankan.",
-      "delete_error": "Gagal menghapus ulasan. Silakan coba kembali sebentar lagi.",
       "load_error_title": "Gagal memuat ulasan.",
       "load_error_description": "Periksa koneksi internet lalu coba lagi sebelum edit ulasan.",
       "automatic_profile_hint": "Data nama dan status tersinkron otomatis."
@@ -696,20 +804,15 @@
   },
   "admin": {
     "add_asset_dialog_title": "Tambah Aset Jurnal Otomatis",
-    "add_asset_dialog_desc": "Simbol divalidasi otomatis lewat Yahoo. Perubahan aktif di eksekusi jadwal berikutnya tanpa perlu meluncurkan ulang aplikasi.",
+    "add_asset_dialog_desc": "Pilih simbol pasar terverifikasi untuk pembaruan jurnal secara otomatis sesuai jadwal analisis.",
     "empty_title": "Belum ada aset nih",
     "empty_filter_desc": "Gak ada hasil yang cocok sama filter pencarian",
     "empty_desc": "Tinggal tambah simbol pertama pakai tombol tambah aset",
     "add_asset_already_exists": "sudah ada",
     "add_asset_selected": "dipilih",
     "add_asset_ready_to_add": "{{count}} siap ditambahkan",
-    "add_asset_toast_success": "{{count}} aset berhasil ditambahkan ke daftar jurnal otomatis",
-    "add_asset_toast_info": "{{count}} aset sudah ada di dalam daftar",
-    "add_asset_toast_error": "{{count}} simbol tidak ditemukan di Yahoo — harap periksa kembali formatnya",
     "add_asset_not_found": "Simbol tidak ditemukan",
     "add_asset_not_found_desc": "Silakan coba kata kunci lain, atau ketik simbol Yahoo secara tepat lalu tekan Enter.",
-    "add_asset_btn_add": "Tambah",
-    "add_asset_btn_add_with_count": "Tambah ({{count}})",
     "settings_btn": "Ubah Pengaturan",
     "settings_dialog_title": "Pengaturan Jurnal Otomatis",
     "settings_dialog_desc": "Kelola jadwal jurnal otomatis, rangkuman harian, dan seleksi aset.",
@@ -735,8 +838,6 @@
     "settings_weekly_desc": "Rangkum satu minggu penuh Senin sampai Minggu begitu minggunya selesai.",
     "settings_monthly_label": "Rangkuman bulanan Discord",
     "settings_monthly_desc": "Rangkum satu bulan kalender penuh begitu bulannya selesai.",
-    "settings_toast_success": "Pengaturan jadwal berhasil disimpan",
-    "settings_toast_error": "Gagal menyimpan pengaturan",
     "settings_save_btn": "Simpan",
     "scan_btn": "Scan Sekarang",
     "scan_loading": "Memindai…",
@@ -744,8 +845,6 @@
     "scan_never": "belum pernah",
     "scan_paused_hint": "Aktifkan auto journal dulu untuk scan manual",
     "scan_unsaved_hint": "Simpan perubahan dulu",
-    "scan_toast_success": "Scan selesai · {{emitted}} sinyal baru, {{closed}} ditutup",
-    "scan_toast_error": "Gagal scan market",
     "scan_manual_title": "Pemicu Manual",
     "scan_manual_desc": "Langsung pantau pergerakan pasar detik ini juga buat dapetin sinyal paling terbaru.",
     "scan_last_run_title": "Pindai Terakhir",
@@ -762,8 +861,6 @@
     "selection_btn": "Seleksi Sekarang",
     "selection_loading": "Menyeleksi…",
     "selection_paused_hint": "Aktifkan seleksi otomatis dulu untuk seleksi manual",
-    "selection_toast_success": "Seleksi selesai · {{added}} baru, {{reactivated}} aktif lagi, {{pruned}} dipangkas",
-    "selection_toast_error": "Gagal menjalankan seleksi aset",
     "selection_manual_title": "Seleksi Manual",
     "selection_manual_desc": "Pindai market paling ramai sekarang buat masukin aset paling segar ke list aset.",
     "selection_last_run_title": "Seleksi Terakhir",
@@ -825,14 +922,10 @@
     "users_add_email_required": "Email wajib diisi",
     "users_add_invalid_email": "Format email tidak valid",
     "users_add_already_exists": "Pengguna sudah terdaftar di sistem",
-    "users_add_toast_success_single": "Berhasil menambahkan pengguna {{email}}",
-    "users_add_toast_error_single": "Gagal menambahkan pengguna {{email}}",
     "users_edit_dialog_title": "Edit Pengguna",
     "users_edit_dialog_desc": "Ubah kasta atau peranan pengguna dalam sistem.",
     "users_edit_btn_save": "Simpan",
     "users_add_btn_save": "Tambah",
-    "users_edit_toast_success": "Berhasil mengubah pengguna {{email}}",
-    "users_edit_toast_error": "Gagal mengubah pengguna {{email}}",
     "users_form_tier_placeholder": "Pilih Kasta",
     "users_form_role_placeholder": "Pilih Peran",
     "users_form_trial_label": "Masa Berlaku Trial (Opsional)",
@@ -861,14 +954,12 @@
     "codes_add_invalid_number": "Harus berupa angka positif",
     "codes_add_btn_save": "Tambah",
     "codes_add_already_exists": "Kode akses sudah terdaftar",
-    "codes_add_toast_success": "Berhasil menambahkan kode akses {{code}}",
-    "codes_add_toast_error": "Gagal menambahkan kode akses {{code}}",
     "codes_form_type_placeholder": "Pilih Tipe",
     "codes_form_type_full": "Penuh",
     "codes_form_type_trial": "Uji Coba",
     "codes_form_max_uses_placeholder": "∞ (Unlimited)",
-    "codes_form_trial_days_placeholder": "Jumlah hari trial (cth: 30)",
-    "codes_form_note_placeholder": "Catatan opsional (cth: Promo Juni 2026)",
+    "codes_form_trial_days_placeholder": "Jumlah hari trial (7, 14, 30)",
+    "codes_form_note_placeholder": "Catatan opsional (Promo Juni, Anggota VIP, Acara 2026)",
     "codes_col_created": "Diubah",
     "menu_assets": "Manajemen Aset",
     "menu_users": "Manajemen Pengguna",
@@ -954,10 +1045,8 @@
       "cta_contact": "Kontak",
       "save_btn": "Simpan",
       "add_action_btn": "Tambah",
-      "plan_saved": "Paket tersimpan",
-      "plan_save_error": "Gagal menyimpan paket",
       "plan_delete_title": "Hapus paket {{name}}?",
-      "plan_delete_desc": "Apakah Anda yakin ingin menghapus paket {{name}}? Paket akan hilang dari halaman langganan.",
+      "plan_delete_desc": "Yakin mau hapus paket {{name}}? Paket bakal hilang dari halaman langganan.",
       "method_category": "Kategori",
       "method_name": "Nama",
       "method_account_no": "Nomor / Alamat",
@@ -973,8 +1062,6 @@
       "method_add_title": "Tambah Metode",
       "method_edit_title": "Ubah Metode",
       "method_dialog_desc": "Atur rekening, e-wallet, alamat kripto pembayaran.",
-      "method_saved": "Metode tersimpan",
-      "method_save_error": "Gagal menyimpan metode",
       "method_delete_title": "Hapus metode ini?",
       "method_delete_desc": "Metode akan hilang dari dialog pembayaran.",
       "col_category": "Tipe"
@@ -991,9 +1078,6 @@
       "agree_label": "Teks Tombol Setuju",
       "save_btn": "Simpan",
       "publish_btn": "Terbitkan",
-      "saved": "Disclaimer tersimpan",
-      "published": "Versi baru diterbitkan — semua user akan diminta setuju ulang",
-      "save_error": "Gagal menyimpan disclaimer",
       "publish_confirm_title": "Terbitkan versi baru?",
       "publish_confirm_desc": "Semua pengguna (masuk & anonim) akan diminta menyetujui ulang pada kunjungan berikutnya."
     },
@@ -1009,7 +1093,6 @@
       "col_expires": "Kadaluarsa",
       "empty_title": "Belum ada undangan",
       "empty_desc": "Buat link undangan premium/trial pertama.",
-      "link_copied": "Link undangan disalin",
       "copy_link": "Salin link",
       "add_title": "Buat Undangan",
       "add_desc": "Buat link undangan yang memberi akses premium atau trial saat diklaim.",
@@ -1017,17 +1100,14 @@
       "field_trial_days": "Hari Trial",
       "field_max": "Maksimal Pakai",
       "field_recipient": "Untuk Siapa (opsional)",
-      "field_recipient_ph": "cth: Budi / promo Juni",
+      "field_recipient_ph": "Budi, Andi, Promo Juni",
       "field_expires": "Kadaluarsa (opsional)",
       "create_btn": "Buat",
-      "create_error": "Gagal membuat undangan",
       "created_title": "Undangan Dibuat",
       "created_desc": "Bagikan link ini ke calon member.",
       "create_another": "Buat",
       "delete_title": "Hapus undangan ini?",
       "delete_desc": "Link undangan langsung tidak bisa dipakai lagi.",
-      "delete_success": "Undangan dihapus",
-      "delete_error": "Gagal menghapus undangan",
       "deactivate_title": "Jeda undangan {{name}}?",
       "activate_title": "Aktifkan undangan {{name}}?",
       "deactivate_desc": "Undangan {{name}} bakal dijeda dulu dan gak bisa diklaim sementara.",
@@ -1039,9 +1119,6 @@
     "admin_console_codes_desc": "Pantau penggunaan dan pembuatan kode akses premium di sistem.",
     "codes_delete_confirm_title": "Hapus Kode Akses?",
     "codes_delete_confirm_desc": "Yakin mau hapus kode akses {{code}}? Pengguna yang sudah pakai kode ini tetap terdaftar, tapi kodenya nggak bisa dipakai lagi.",
-    "codes_delete_success": "Kode akses berhasil dihapus.",
-    "codes_delete_error": "Gagal menghapus kode akses.",
-    "password_validated_success": "Password berhasil divalidasi.",
     "payments": {
       "page_desc": "Kelola akun bank, e-wallet, dan alamat pembayaran kripto."
     },
@@ -1076,16 +1153,10 @@
       "action_move": "Ubah slot",
       "action_unfeature": "Hapus dari landing",
       "action_delete": "Hapus permanen",
-      "action_error": "Tindakan gagal. Silakan coba lagi.",
-      "approve_success": "Ulasan disetujui.",
-      "reject_success": "Ulasan ditolak.",
-      "feature_success": "Slot ulasan berhasil diperbarui.",
-      "unfeature_success": "Ulasan dihapus dari landing.",
-      "delete_success": "Ulasan dihapus permanen.",
       "reject_title": "Tolak ulasan",
       "reject_desc": "Alasan bersifat opsional dan hanya dapat dilihat oleh pengguna serta admin.",
       "rejection_reason_label": "Alasan penolakan (opsional)",
-      "rejection_reason_placeholder": "Contoh: mohon hindari informasi pribadi.",
+      "rejection_reason_placeholder": "Informasi pribadi, Kata kurang sopan, Promosi berlebihan",
       "feature_title": "Pilih slot landing",
       "feature_desc": "Ulasan yang disetujui dapat menempati salah satu dari enam slot publik.",
       "slot_label": "Slot",
@@ -1094,7 +1165,6 @@
       "slot_replace_hint": "Slot ini sedang ditempati {{name}}. Penggantian memerlukan konfirmasi.",
       "replace_title": "Ganti ulasan di slot?",
       "replace_desc": "Slot {{slot}} sedang ditempati {{name}}. Ulasan tersebut akan langsung digantikan.",
-      "replace_confirm": "Ganti slot",
       "another_testimonial": "ulasan lain",
       "delete_title": "Hapus ulasan permanen?",
       "delete_desc": "Ulasan milik {{name}} akan dihapus permanen, termasuk dari landing. Tindakan ini tidak dapat dibatalkan.",
@@ -1108,8 +1178,6 @@
     "summary_log_scheduler_status": "Penjadwal otomatis: status = {{status}}, jeda eksekusi = {{interval}} menit.",
     "users_delete_confirm_title": "Hapus Pengguna?",
     "users_delete_confirm_desc": "Yakin mau hapus pengguna {{email}}? Semua data terkait pengguna ini bakal kehapus permanen.",
-    "users_delete_success": "Pengguna berhasil dihapus.",
-    "users_delete_error": "Gagal menghapus pengguna.",
     "validate_password_title": "Validasi Password",
     "validate_password_desc": "Masukkan password buat verifikasi tindakan sensitif ini."
   },
@@ -1118,14 +1186,14 @@
     "claiming": "Mengklaim undangan...",
     "success_premium_title": "Premium Aktif!",
     "success_trial_title": "Trial Aktif!",
-    "success_desc": "Mantap! Akses kamu sudah terbuka. Langsung gas ke terminal.",
+    "success_desc": "Mantap! Akses sudah terbuka. Langsung gas ke terminal.",
     "go_terminal": "Masuk Terminal",
     "already_title": "Sudah Diklaim",
     "already_premium_title": "Sudah Premium",
     "invalid_title": "Undangan Tidak Berlaku",
     "invalid_desc": "Undangan ini tidak bisa dipakai lagi.",
-    "reason_already": "Kamu sudah pernah klaim undangan ini, akses kamu aktif.",
-    "reason_already_premium": "Akun kamu sudah premium, jadi undangan ini nggak terpakai. Tetap aman buat dibagikan ke orang lain.",
+    "reason_already": "Undangan ini udah pernah diklaim, status akses masih aktif.",
+    "reason_already_premium": "Status akun udah premium, jadi undangan ini nggak terpakai. Tetap aman buat dibagikan ke orang lain.",
     "reason_expired": "Undangan ini sudah kadaluarsa.",
     "reason_revoked": "Undangan ini sudah dibatalkan.",
     "reason_exhausted": "Undangan ini sudah mencapai batas klaim.",
@@ -1137,7 +1205,7 @@
     "offer_trial_desc": "Klaim undangan ini untuk buka akses premium uji coba. Masuk atau daftar dulu biar bisa langsung gas.",
     "login_to_claim": "Masuk untuk Klaim",
     "register_to_claim": "Daftar Akun Baru",
-    "footer_note": "Undangan otomatis terklaim setelah kamu masuk.",
+    "footer_note": "Undangan otomatis terklaim setelah berhasil masuk.",
     "days": "hari"
   },
   "not_found": {

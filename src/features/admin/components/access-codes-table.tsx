@@ -75,8 +75,6 @@ export function AccessCodesTable() {
   const [revealedCodes, setRevealedCodes] = useState<Record<string, boolean>>(
     {},
   );
-  const [codeToReveal, setCodeToReveal] = useState<string | null>(null);
-  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<AccessCodeRow>[]>(
     () => [
@@ -196,29 +194,41 @@ export function AccessCodesTable() {
           const isRevealed = !!revealedCodes[row.original.code];
           return (
             <div className="flex items-center justify-end gap-1">
-              <Button
-                variant="link"
-                size="icon"
-                onClick={() => {
-                  if (isRevealed) {
+              {isRevealed ? (
+                <Button
+                  variant="link"
+                  size="icon"
+                  onClick={() =>
                     setRevealedCodes((prev) => ({
                       ...prev,
                       [row.original.code]: false,
-                    }));
-                  } else {
-                    setCodeToReveal(row.original.code);
-                    setIsPasswordDialogOpen(true);
+                    }))
                   }
-                }}
-                className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
-                title={isRevealed ? "Sembunyikan" : "Tampilkan"}
-              >
-                {isRevealed ? (
+                  className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
+                  title="Sembunyikan"
+                >
                   <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
+                </Button>
+              ) : (
+                <ValidatePasswordDialog
+                  trigger={
+                    <Button
+                      variant="link"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
+                      title="Tampilkan"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  }
+                  onSuccess={() =>
+                    setRevealedCodes((prev) => ({
+                      ...prev,
+                      [row.original.code]: true,
+                    }))
+                  }
+                />
+              )}
               <DeleteAccessCodeDialog
                 code={row.original}
                 onDelete={deleteAccessCode}
@@ -228,13 +238,7 @@ export function AccessCodesTable() {
         },
       },
     ],
-    [
-      t,
-      deleteAccessCode,
-      revealedCodes,
-      setCodeToReveal,
-      setIsPasswordDialogOpen,
-    ],
+    [t, deleteAccessCode, revealedCodes],
   );
 
   const table = useReactTable({
@@ -308,22 +312,6 @@ export function AccessCodesTable() {
         table={table}
         hideWhenSinglePage
         className="pt-3 border-t border-border/60"
-      />
-
-
-
-      <ValidatePasswordDialog
-        open={isPasswordDialogOpen}
-        onOpenChange={setIsPasswordDialogOpen}
-        onSuccess={() => {
-          if (codeToReveal) {
-            setRevealedCodes((prev) => ({
-              ...prev,
-              [codeToReveal]: true,
-            }));
-            setCodeToReveal(null);
-          }
-        }}
       />
     </div>
   );

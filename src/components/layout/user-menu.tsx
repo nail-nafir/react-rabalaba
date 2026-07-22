@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   User,
@@ -42,6 +43,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { useTheme } from "@/components/theme-provider";
 import { TESTIMONIAL_PATH } from "@/features/testimonials/constants";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 
 const LANGUAGES = [
   { value: "id", label: "Indonesia" },
@@ -57,27 +59,46 @@ export function UserMenu() {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const currentLang = i18n.language.split("-")[0];
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
-    setShowLogoutConfirm(false);
-    await signOut();
-    toast.success(t("auth.logout_success"));
+  const handleLogout = async (): Promise<boolean> => {
+    try {
+      await signOut();
+      toast.success(t("toasts.auth.logout_success"));
+      return true;
+    } catch {
+      toast.error(t("toasts.auth.logout_error"));
+      return false;
+    }
+  };
+  const handleLogoutAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      if (await handleLogout()) setLogoutOpen(false);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
-    <>
+    <AlertDialog
+      open={logoutOpen}
+      onOpenChange={(nextOpen) => {
+        if (!isLoggingOut) setLogoutOpen(nextOpen);
+      }}
+    >
       <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              aria-label={t("auth.account_label")}
-              className="flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer"
-            />
-          }
-        >
-          <User className="h-4 w-4" />
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            aria-label={t("auth.account_label")}
+            className="flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer"
+          >
+            <User className="h-4 w-4" />
+          </Button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-48 text-foreground">
@@ -218,41 +239,52 @@ export function UserMenu() {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setShowLogoutConfirm(true)}
-                  className="text-xs cursor-pointer"
-                >
-                  <LogOut className="h-4 w-4" />
-                  {t("auth.logout_btn")}
-                </DropdownMenuItem>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="text-xs cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {t("auth.logout_btn")}
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
               </DropdownMenuGroup>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-              <LogOut />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {t("auth.logout_confirm_title", { defaultValue: "Keluar?" })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("auth.logout_confirm_desc", { defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleLogout}>
-              {t("auth.logout_btn", "Keluar")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+            <LogOut />
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {t("auth.logout_confirm_title", { defaultValue: "Keluar?" })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("auth.logout_confirm_desc", {
+              defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?",
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoggingOut}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={isLoggingOut}
+            aria-busy={isLoggingOut}
+            onClick={handleLogoutAction}
+          >
+            <ActionButtonContent
+              label={t("common.actions.logout")}
+              pending={isLoggingOut}
+            />
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

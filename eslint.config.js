@@ -36,4 +36,11 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['src/hooks/use-mobile.ts'],
+    rules: {
+      // Stock shadcn-generated hook; keep the registry file byte-for-byte default.
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
 ])

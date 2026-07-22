@@ -16,29 +16,21 @@ import { applyBenchmarkDerate, fightsBenchmark } from "./benchmark-derate";
  * react-query cache and must not be mutated).
  */
 
-/** Derive the net crypto risk posture from BTC's regime-weighted score and
- *  sentiment. */
+/** Derive the net crypto risk posture from BTC's regime-weighted score. */
 export function deriveCryptoRiskState(
   btcDirectionScore: number,
-  fearGreed?: number,
 ): RiskState {
-  const { RISK_SCORE_THRESHOLD, EXTREME_FEAR, EXTREME_GREED } = CRYPTO_CONTEXT;
+  const { RISK_SCORE_THRESHOLD } = CRYPTO_CONTEXT;
   if (btcDirectionScore <= -RISK_SCORE_THRESHOLD) return "risk_off";
   if (btcDirectionScore >= RISK_SCORE_THRESHOLD) return "risk_on";
-  // BTC indecisive: let sentiment extremes break the tie.
-  if (typeof fearGreed === "number") {
-    if (fearGreed <= EXTREME_FEAR) return "risk_off";
-    if (fearGreed >= EXTREME_GREED) return "risk_on";
-  }
   return "neutral";
 }
 
-/** Package BTC's computed outlook (+ optional sentiment / dominance / returns)
+/** Package BTC's computed outlook (+ optional dominance / returns)
  *  into the shared CryptoContext consumed by the screener, summary row, and
  *  dialog. btcReturns feeds relative-strength (alt vs BTC). */
 export function deriveCryptoContext(
   btcOutlook: Outlook,
-  fearGreed?: number,
   dominance?: CryptoContext["dominance"],
   btcReturns?: CryptoContext["btcReturns"],
 ): CryptoContext {
@@ -46,8 +38,7 @@ export function deriveCryptoContext(
     btcTrend: btcOutlook.trend,
     btcRegime: btcOutlook.regime,
     btcDirectionScore: btcOutlook.directionScore,
-    riskState: deriveCryptoRiskState(btcOutlook.directionScore, fearGreed),
-    fearGreed,
+    riskState: deriveCryptoRiskState(btcOutlook.directionScore),
     dominance,
     btcReturns,
     lastUpdated: Date.now(),

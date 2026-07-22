@@ -53,7 +53,7 @@ Tiap context deriving `RiskState` (`risk_on`/`risk_off`/`neutral`) dari benchmar
 
 | Context | File | Benchmark | Tiebreak |
 |---|---|---|---|
-| **Crypto** | `crypto-context.ts:92` | BTC directionScore | Fear & Greed extreme |
+| **Crypto** | `crypto-context.ts:92` | BTC directionScore | — (BTC score only) |
 | **IDX** | `idx-context.ts:96` | IHSG directionScore | USDIDR 1w % (rupiah lemah = risk-off) |
 | **US** | `us-context.ts:128` | S&P 500 directionScore | VIX level/1w + DXY 1w (harus agree) |
 
@@ -103,9 +103,8 @@ File: `src/features/engine/enrichment.ts:81` (`enrichAsset`).
 
 ---
 
-## 🧮 Sentiment & Analysis Text
+## 🧮 Analysis Text
 
-- `sentiment.ts:65` — Fear & Greed context (sengaja **gak** di-score ke directionScore — lagging/crypto-heavy). `fearGreedContextWarning` (extreme-against-lean), `generateSentimentAnalysis` (5 band → i18n key).
 - `analysis-text.ts:41` — `AnalysisText { key, params? }` + `resolveAnalysisText(t, text)`. Jaga engine pure (no i18n dep) tapi dialog render narasi bahasa aktif.
 
 ---

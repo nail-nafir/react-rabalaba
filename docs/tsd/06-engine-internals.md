@@ -24,7 +24,6 @@
 | `accumulation.ts` | 199 | `deriveAccumulation`, `applyAccumulation`, `supportsAccumulation` |
 | `relative-strength.ts` | 152 | `computeWindowReturns`, `deriveRelativeStrength`, `applyRelativeStrength` |
 | `fundamentals.ts` | 108 | `applyFundamentals` |
-| `sentiment.ts` | 65 | `fearGreedContextWarning`, `generateSentimentAnalysis` |
 | `analysis-text.ts` | 41 | `AnalysisText`, `resolveAnalysisText` |
 | `../core/auto-journal-core.ts` | 235 | `runAutoJournal`, `AutoJournalPlan`, `JournalClosure` |
 | `../core/asset-discovery-core.ts` | 631 | feed parsers, rankers, `planDiscovery`, `binancePerpBase`, `pickYahooCryptoSymbol`, `dedupeCandidates`, `formatDiscoveryForDiscord` |
@@ -128,7 +127,7 @@ else → ranging
 Tiap context: `derive*Context` (package outlook+extras) + `apply*Context` (de-rate). De-rate via `applyBenchmarkDerate(factor=COUNTER_MARKET_DERATE 0.6)` — skala `directionScore`+`strength` ×0.6, re-tier, append warning. **Gak pernah** hide/flip.
 
 ### crypto-context.ts
-- `deriveCryptoRiskState`: `|btcDirectionScore| ≥ RISK_SCORE_THRESHOLD (0.3)` → risk_on/risk_off; tiebreak F&G extreme (`EXTREME_FEAR 25` / `EXTREME_GREED 80`).
+- `deriveCryptoRiskState`: `btcDirectionScore ≤ -0.3` → risk_off, `≥ 0.3` → risk_on, selain itu neutral.
 - `applyCryptoContext`: de-rate counter-trend crypto. BTC-self & non-crypto unchanged (same-ref).
 
 ### idx-context.ts
@@ -226,7 +225,7 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ## 🧭 core/context-pipeline.ts — `buildEngineContexts` (`:128`) + `passesEmissionGate`
 
-`buildEngineContexts(assetBySymbol, {fearGreed}) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. `passesEmissionGate(trade, contexts)` — aligned + benchmark-less always pass; counter-trend gated post-context strength ≥60.
+`buildEngineContexts(assetBySymbol) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. `passesEmissionGate(trade, contexts)` — aligned + benchmark-less always pass; counter-trend gated post-context strength ≥60.
 
 ---
 
@@ -257,10 +256,8 @@ WIB (UTC+7) calendar-window math. `period ∈ daily|weekly|monthly`. Weekly star
 
 ---
 
-## 😌 sentiment.ts & analysis-text.ts
+## 📝 analysis-text.ts
 
-- `fearGreedContextWarning(fearGreed, score)` — null kalau undefined; fire cuman kalau sentiment lean AGAINST score (boundary 20, 0→null).
-- `generateSentimentAnalysis(fearGreed) → AnalysisText` — 5 band → i18n key. Sengaja **gak** di-score ke directionScore (lagging/crypto-heavy).
 - `AnalysisText { key, params? }` + `resolveAnalysisText(t, text)` — jaga engine pure (no i18n dep).
 
 ---

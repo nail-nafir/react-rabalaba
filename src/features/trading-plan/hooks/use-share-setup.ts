@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { buildTradeSetupModel } from "@/features/trading-plan/lib/trade-setup-model";
 import {
   buildShareCardSvg,
@@ -96,18 +96,37 @@ export function useShareSetup() {
         SHARE_CARD_SIZE.width,
         SHARE_CARD_SIZE.height,
       );
-      const filename = isPosition ? `${symbol}-position.png` : `${symbol}-setup.png`;
+      const filename = isPosition
+        ? `${symbol}-position.png`
+        : `${symbol}-setup.png`;
       const result = await shareOrDownloadPng(blob, filename);
 
-      const successKey = isPosition
-        ? (result === "shared" ? "dialog.shared_position" : "dialog.downloaded_position")
-        : (result === "shared" ? "dialog.shared_signal" : "dialog.downloaded_signal");
-
-      toast.success(t(successKey));
+      if (isPosition) {
+        toast.success(
+          t(
+            result === "shared"
+              ? "toasts.share.position_shared"
+              : "toasts.share.position_downloaded",
+          ),
+        );
+      } else {
+        toast.success(
+          t(
+            result === "shared"
+              ? "toasts.share.signal_shared"
+              : "toasts.share.signal_downloaded",
+          ),
+        );
+      }
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
-        const errorKey = isPosition ? "dialog.share_failed_position" : "dialog.share_failed_signal";
-        toast.error(t(errorKey));
+        toast.error(
+          t(
+            isPosition
+              ? "toasts.share.position_error"
+              : "toasts.share.signal_error",
+          ),
+        );
       }
     } finally {
       setIsSharing(false);

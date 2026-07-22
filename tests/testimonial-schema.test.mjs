@@ -23,20 +23,16 @@ test.after(async () => {
 const SRC = "/src/features/testimonials/schemas/testimonial-schema.ts";
 const translate = (_key, fallback) => fallback;
 
-test("testimonial schema accepts valid content and trims text fields", async () => {
+test("testimonial schema accepts valid content and trims the body", async () => {
   const { createTestimonialSchema } = await loadModule(SRC);
   const schema = createTestimonialSchema(translate);
 
   assert.deepEqual(
     schema.parse({
-      display_name: "  Rani  ",
-      persona: "  Swing trader IDX  ",
       body: "  RabaLaba membantu saya merapikan proses riset harian.  ",
       rating: 5,
     }),
     {
-      display_name: "Rani",
-      persona: "Swing trader IDX",
       body: "RabaLaba membantu saya merapikan proses riset harian.",
       rating: 5,
     },
@@ -47,15 +43,11 @@ test("testimonial schema rejects missing, oversized, and fractional ratings", as
   const { createTestimonialSchema, TESTIMONIAL_LIMITS } = await loadModule(SRC);
   const schema = createTestimonialSchema(translate);
   const valid = {
-    display_name: "Rani",
-    persona: "Swing trader IDX",
     body: "RabaLaba membantu saya merapikan proses riset harian.",
     rating: 5,
   };
 
   const invalidCases = [
-    { ...valid, display_name: "R" },
-    { ...valid, persona: "X" },
     { ...valid, body: "terlalu pendek" },
     { ...valid, body: "x".repeat(TESTIMONIAL_LIMITS.body.max + 1) },
     { ...valid, rating: 0 },

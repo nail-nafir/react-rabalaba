@@ -108,9 +108,6 @@ export const CRYPTO_CONTEXT = {
   /** Multiplier applied to directionScore & strength when a setup fights the
    *  prevailing market risk state. <1 = de-rate. */
   COUNTER_MARKET_DERATE: 0.6,
-  /** Fear & Greed extremes that break a tie when BTC is indecisive. */
-  EXTREME_FEAR: 25,
-  EXTREME_GREED: 80,
 };
 
 /** Top-down IDX-context gating. Mirrors CRYPTO_CONTEXT with IHSG in BTC's

@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFearGreedIndex } from "@/services/queries/use-fear-greed";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
@@ -95,19 +94,6 @@ function ContextChange({
   );
 }
 
-function QuoteChange({
-  context,
-}: {
-  context: Extract<MarketContext, { kind: "quote" }>;
-}) {
-  return (
-    <ContextChange
-      changePercent={context.changePercent}
-      direction={context.direction}
-    />
-  );
-}
-
 // All recharts inputs are hoisted/memoized — identity churn on data/domain/
 // margin restarts mount animations whose effect cleanup calls setState, which
 // can cascade into "Maximum update depth exceeded" (see sparkline.tsx).
@@ -162,43 +148,41 @@ const DonutGauge = memo(function DonutGauge({
 
   return (
     <Tooltip>
-      <TooltipTrigger
-        render={
-          <div
-            className="relative flex cursor-help items-center justify-center"
-            style={{ width: DONUT_SIZE, height: DONUT_SIZE }}
-          />
-        }
-      >
-        <RadialBarChart
-          width={DONUT_SIZE}
-          height={DONUT_SIZE}
-          data={data}
-          startAngle={90}
-          endAngle={-270}
-          innerRadius={DONUT_INNER}
-          outerRadius={DONUT_OUTER}
-          margin={DONUT_MARGIN}
-          accessibilityLayer={false}
+      <TooltipTrigger asChild>
+        <div
+          className="relative flex cursor-help items-center justify-center"
+          style={{ width: DONUT_SIZE, height: DONUT_SIZE }}
         >
-          <PolarAngleAxis
-            type="number"
-            domain={DONUT_DOMAIN}
-            tick={false}
-            axisLine={false}
-          />
-          <RadialBar
-            dataKey="v"
-            barSize={3.5}
-            cornerRadius={1.75}
-            background={DONUT_TRACK}
-          />
-        </RadialBarChart>
-        {/* Inner label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-          <span className={cn("text-[10px] font-bold tabular-nums", textClass)}>
-            {normalizedValue}
-          </span>
+          <RadialBarChart
+            width={DONUT_SIZE}
+            height={DONUT_SIZE}
+            data={data}
+            startAngle={90}
+            endAngle={-270}
+            innerRadius={DONUT_INNER}
+            outerRadius={DONUT_OUTER}
+            margin={DONUT_MARGIN}
+            accessibilityLayer={false}
+          >
+            <PolarAngleAxis
+              type="number"
+              domain={DONUT_DOMAIN}
+              tick={false}
+              axisLine={false}
+            />
+            <RadialBar
+              dataKey="v"
+              barSize={3.5}
+              cornerRadius={1.75}
+              background={DONUT_TRACK}
+            />
+          </RadialBarChart>
+          {/* Inner label */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+            <span className={cn("text-[10px] font-bold tabular-nums", textClass)}>
+              {normalizedValue}
+            </span>
+          </div>
         </div>
       </TooltipTrigger>
       <TooltipContent className="max-w-55 leading-relaxed">
@@ -249,16 +233,14 @@ function MarketContextFooter({
                 {context.name}
               </span>
               <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-help"
-                      aria-label={t("market.market_context")}
-                    />
-                  }
-                >
-                  <Info className="size-3" />
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="shrink-0 text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-help"
+                    aria-label={t("market.market_context")}
+                  >
+                    <Info className="size-3" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-55 leading-relaxed">
                   {t(`market.context_explainer.${cardId}`, {
@@ -268,18 +250,12 @@ function MarketContextFooter({
               </Tooltip>
             </div>
 
-            {context.kind === "quote" ? (
+            {context.changePercent !== undefined &&
+            context.direction !== undefined ? (
               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums">
                 <span className="text-sm font-bold text-foreground">
                   {formatValue(context.value, context.precision)}
-                </span>
-                <QuoteChange context={context} />
-              </div>
-            ) : context.changePercent !== undefined &&
-              context.direction !== undefined ? (
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 tabular-nums">
-                <span className="text-sm font-bold text-foreground">
-                  {formatValue(context.value, context.precision)}
+                  {context.kind === "quote" ? context.suffix : undefined}
                 </span>
                 <ContextChange
                   changePercent={context.changePercent}
@@ -289,6 +265,7 @@ function MarketContextFooter({
             ) : (
               <span className="text-sm font-bold tabular-nums text-foreground">
                 {formatValue(context.value, context.precision)}
+                {context.kind === "quote" ? context.suffix : undefined}
               </span>
             )}
           </>
@@ -321,13 +298,6 @@ export function MarketSummaryRow() {
   } = useMarketData(MARKET_PULSE_SYMBOLS);
 
   const {
-    data: fearGreed,
-    isLoading: fearGreedLoading,
-    isFetching: fgFetching,
-    refetch: refetchFearGreed,
-  } = useFearGreedIndex();
-
-  const {
     data: cryptoContext,
     isLoading: cryptoContextLoading,
     refetch: refetchCryptoContext,
@@ -348,8 +318,7 @@ export function MarketSummaryRow() {
     assetsLoading ||
     cryptoContextLoading ||
     idxContextLoading ||
-    usContextLoading ||
-    fearGreedLoading;
+    usContextLoading;
 
   const showEmptyState = !assets?.length && !assetsLoading && !isLoading;
 
@@ -385,7 +354,6 @@ export function MarketSummaryRow() {
   // Map each card
   const cryptoCard = mapCryptoCard(
     cryptoContext,
-    fearGreed,
     assets?.find((a) => a.symbol === "BTC-USD"),
     assets?.find((a) => a.symbol === "ETH-USD"),
   );
@@ -432,7 +400,7 @@ export function MarketSummaryRow() {
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("market.pulse")}
           </h2>
-          {(assetsFetching || fgFetching || marketContextsFetching) && (
+          {(assetsFetching || marketContextsFetching) && (
             <Loader2 className="size-3.5 animate-spin text-primary opacity-50" />
           )}
         </div>
@@ -459,7 +427,6 @@ export function MarketSummaryRow() {
                   size="sm"
                   onClick={() => {
                     refetchAssets();
-                    refetchFearGreed();
                     refetchCryptoContext();
                     refetchMarketContexts();
                   }}

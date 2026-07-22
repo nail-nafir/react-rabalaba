@@ -8,7 +8,6 @@ import { AddInvitationDialog } from "@/features/admin/components/add-invitation-
 
 export default function AdminInvitationsPage() {
   const { t } = useTranslation();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [origin] = useState(() =>
     typeof window !== "undefined" ? window.location.origin : "",
   );
@@ -37,25 +36,23 @@ export default function AdminInvitationsPage() {
             </p>
           </div>
 
-          <Button
-            size="lg"
-            onClick={() => setIsAddDialogOpen(true)}
-            className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("admin.invitations.add_btn", "Buat Undangan")}</span>
-          </Button>
+          <AddInvitationDialog
+            origin={origin}
+            trigger={
+              <Button
+                size="lg"
+                className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("admin.invitations.add_btn", "Buat Undangan")}</span>
+              </Button>
+            }
+          />
         </div>
         <div className="w-full">
           <InvitationsTable />
         </div>
       </div>
-
-      <AddInvitationDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        origin={origin}
-      />
     </div>
   );
 }

@@ -6,8 +6,9 @@ const STALE_TTL_SECONDS = 6 * 60 * 60;
 
 /**
  * CoinGecko free/public traffic is rate-limited by upstream infrastructure.
- * Keep the browser on our own Pages Function path, inject an optional demo key
- * server-side, and only cache healthy JSON responses.
+ * This proxy is retained for low-frequency asset-discovery cron requests. The
+ * browser calls CoinGecko directly with the visitor's IP. Inject an optional
+ * demo key server-side and only cache healthy JSON responses here.
  */
 export const onRequest: PagesFunction = (context) =>
   proxyJsonGet(context, {

@@ -15,10 +15,7 @@ import {
   classifyRegime,
   detectSwingLevels,
 } from "./indicators";
-import {
-  generateSentimentAnalysis,
-  fearGreedContextWarning,
-} from "./sentiment";
+
 import type { AnalysisParam, AnalysisText } from "./analysis-text";
 import type {
   AssetType,
@@ -51,7 +48,6 @@ export interface SignalInput {
   lowPrices: number[]; // historical low prices per candle
   periodHigh: number; // period high
   periodLow: number; // period low
-  fearGreedValue?: number; // 0-100
   assetType?: AssetType; // used for conservative volatility/risk thresholds
   timeframe?: TimeframePresetKey; // active signal profile; default is "swing"
   /** Higher-timeframe trend for multi-timeframe confirmation (Layer 2). When
@@ -136,7 +132,6 @@ export interface Outlook {
     trend: AnalysisText;
     volume: AnalysisText;
     momentum: AnalysisText;
-    sentiment: AnalysisText;
   };
 }
 
@@ -180,7 +175,6 @@ export function computeSignal(input: SignalInput): Outlook {
     lowPrices,
     periodHigh,
     periodLow,
-    fearGreedValue,
     assetType,
     timeframe = "swing",
     higherTimeframeTrend = "sideways",
@@ -188,7 +182,7 @@ export function computeSignal(input: SignalInput): Outlook {
 
   const close = prices[prices.length - 1];
   if (!Number.isFinite(close)) {
-    return createUnavailableSignal(fearGreedValue);
+    return createUnavailableSignal();
   }
 
   const profile = TIMEFRAME_PRESETS[timeframe].signalProfile;
@@ -626,18 +620,6 @@ export function computeSignal(input: SignalInput): Outlook {
     );
   }
 
-  // 12. Fear & Greed Sentiment Context (warning only)
-  // Not scored because the index is lagging and crypto-heavy, but extreme
-  // readings are surfaced so users have the context for risk management.
-  // Delegated to the sentiment engine (see ./sentiment).
-  const sentimentWarning = fearGreedContextWarning(
-    fearGreedValue,
-    directionScore,
-  );
-  if (sentimentWarning) {
-    reasons.warnings.push(sentimentWarning);
-  }
-
   // ─── Determine signal ────────────────────────────────────
   let signal: SignalDirection;
   if (dataQuality.ready && directionScore >= profile.directionThreshold) {
@@ -753,7 +735,6 @@ export function computeSignal(input: SignalInput): Outlook {
       bollingerBands,
       rsiDivergence,
     ),
-    sentiment: generateSentimentAnalysis(fearGreedValue),
   };
 
   return {
@@ -796,7 +777,7 @@ export function computeSignal(input: SignalInput): Outlook {
   };
 }
 
-export function createUnavailableSignal(fearGreedValue?: number): Outlook {
+export function createUnavailableSignal(): Outlook {
   const reasons: SignalReasons = {
     bullish: [],
     bearish: [],
@@ -843,7 +824,6 @@ export function createUnavailableSignal(fearGreedValue?: number): Outlook {
       trend: { key: "analysis.trend.no_data" },
       volume: { key: "analysis.volume.unavailable" },
       momentum: { key: "analysis.momentum.no_data" },
-      sentiment: generateSentimentAnalysis(fearGreedValue),
     },
   };
 }

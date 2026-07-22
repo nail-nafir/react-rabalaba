@@ -72,29 +72,7 @@ function makeChartResult(symbol) {
   };
 }
 
-test("Fear & Greed is scoped to crypto only", async () => {
-  const { adaptYahooChart } = await loadModule(
-    "/src/services/adapters/yahoo-adapter.ts",
-  );
-  // Extreme-fear reading (12) passed for both a crypto and a stock.
-  const eth = adaptYahooChart(makeChartResult("ETH-USD"), 12);
-  const aapl = adaptYahooChart(makeChartResult("AAPL"), 12);
 
-  assert.equal(eth.assetType, "crypto");
-  assert.equal(aapl.assetType, "us-stock");
-  // Sentiment is now a localizable descriptor: crypto carries the F&G value,
-  // the stock falls back to the "unavailable" key (index not applied).
-  assert.equal(
-    eth.outlook.analysis.sentiment.params.value,
-    12,
-    "crypto sentiment reflects the F&G index",
-  );
-  assert.equal(
-    aapl.outlook.analysis.sentiment.key,
-    "analysis.sentiment.unavailable",
-    "stock sentiment does NOT apply the crypto F&G index",
-  );
-});
 
 /** Hourly chart spanning `hours` bars ending at `refSec`, with per-bar closes
  *  supplied by `closeAt(hoursAgo)` — hoursAgo counts back from the ref bar. */

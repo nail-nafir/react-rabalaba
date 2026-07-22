@@ -1,9 +1,10 @@
-import { type CSSProperties, useState } from "react";
+import { useState, type CSSProperties, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Outlet, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { PageLoader } from "@/components/shared/page-loader";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Sidebar,
@@ -98,7 +100,29 @@ export function AdminLayout() {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const currentLang = i18n.language.split("-")[0];
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async (): Promise<boolean> => {
+    try {
+      await signOut();
+      toast.success(t("toasts.auth.logout_success"));
+      return true;
+    } catch {
+      toast.error(t("toasts.auth.logout_error"));
+      return false;
+    }
+  };
+  const handleLogoutAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      if (await handleLogout()) setLogoutOpen(false);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   // Gated: wait for auth & profile hydration
   if (!ready || isLoading) {
@@ -108,12 +132,6 @@ export function AdminLayout() {
   if (!isAuthenticated || !isAdmin) {
     return <Navigate to="/" replace />;
   }
-
-  const handleLogout = async () => {
-    setShowLogoutConfirm(false);
-    await signOut();
-    toast.success(t("auth.logout_success"));
-  };
 
   const consoleTitle = isOwner
     ? t("admin.owner_console_title", "Pemilik")
@@ -174,8 +192,6 @@ export function AdminLayout() {
     { value: "system", label: t("common.theme_system") },
   ] as const;
 
-
-
   // Breadcrumb resolve: determine parent group and child page label based on route.
   const isStatistics = location.pathname.startsWith("/admin/statistics");
   const parentLabel = isStatistics
@@ -184,305 +200,306 @@ export function AdminLayout() {
 
   const currentLabel = isStatistics
     ? t("admin.menu_summary", "Statistics")
-    : (managementItems.find((item) => location.pathname.startsWith(item.to))?.label ?? t("admin.console_label", "Dashboard"));
+    : (managementItems.find((item) => location.pathname.startsWith(item.to))
+        ?.label ?? t("admin.console_label", "Dashboard"));
 
   return (
     <TooltipProvider>
       {/* Top progress bar on route change — same primary loader as the public
           layout, which the admin shell was missing. */}
       <PageLoader />
-      <SidebarProvider
-        className="h-svh overflow-hidden"
-        style={{ "--sidebar-width": "17rem" } as CSSProperties}
+      <AlertDialog
+        open={logoutOpen}
+        onOpenChange={(nextOpen) => {
+          if (!isLoggingOut) setLogoutOpen(nextOpen);
+        }}
       >
-        {/* Floating Sidebar (collapses to an icon rail) */}
-        <Sidebar variant="floating" collapsible="icon">
-          {/* Brand */}
-          <SidebarHeader className="h-16 border-b border-sidebar-border pb-2">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  size="lg"
-                  render={<Link to="/terminal" />}
-                  tooltip={consoleTitle}
-                  className="group/brand gap-2.5 hover:bg-transparent"
-                >
-                  <div className="relative flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary via-primary/80 to-primary/60 text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-300 group-hover/brand:scale-110 group-hover/brand:shadow-primary/30">
-                    <Radio className="size-4 relative z-10" />
-                    <div className="absolute inset-0 rounded-lg border border-white/20 z-0" />
-                  </div>
-                  <div className="flex flex-col -space-y-0.5 leading-none">
-                    <span className="text-[13px] font-black tracking-tighter uppercase text-foreground leading-none">
-                      Raba<span className="text-primary">Laba</span>
-                    </span>
-                    <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
-                      {t("admin.console_label", "Dashboard")}
-                    </span>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarHeader>
+        <SidebarProvider
+          className="h-svh overflow-hidden"
+          style={{ "--sidebar-width": "17rem" } as CSSProperties}
+        >
+          {/* Floating Sidebar (collapses to an icon rail) */}
+          <Sidebar variant="floating" collapsible="icon">
+            {/* Brand */}
+            <SidebarHeader className="h-16 border-b border-sidebar-border pb-2">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
+                    asChild
+                    tooltip={consoleTitle}
+                    className="group/brand gap-2.5 hover:bg-transparent"
+                  >
+                    <Link to="/terminal">
+                      <div className="relative flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary via-primary/80 to-primary/60 text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-300 group-hover/brand:scale-110 group-hover/brand:shadow-primary/30">
+                        <Radio className="size-4 relative z-10" />
+                        <div className="absolute inset-0 rounded-lg border border-white/20 z-0" />
+                      </div>
+                      <div className="flex flex-col -space-y-0.5 leading-none">
+                        <span className="text-[13px] font-black tracking-tighter uppercase text-foreground leading-none">
+                          Raba<span className="text-primary">Laba</span>
+                        </span>
+                        <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
+                          {t("admin.console_label", "Dashboard")}
+                        </span>
+                      </div>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarHeader>
 
-          {/* Navigation Links */}
-          <SidebarContent className="py-2 flex flex-col gap-2">
-            {/* Overview / Stats Group */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {t("admin.nav_group_overview", "Ikhtisar")}
-              </SidebarGroupLabel>
-              <SidebarGroupContent className="mt-1">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      render={<Link to={overviewItem.to} />}
-                      isActive={location.pathname.startsWith(overviewItem.to)}
-                      tooltip={overviewItem.label}
-                      className={cn(
-                        "gap-3 text-sm font-medium transition-all duration-200 cursor-pointer",
-                        location.pathname.startsWith(overviewItem.to)
-                          ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <overviewItem.icon className="size-4 shrink-0" />
-                      <span>{overviewItem.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* Navigation Links */}
+            <SidebarContent className="py-2 flex flex-col gap-2">
+              {/* Overview / Stats Group */}
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {t("admin.nav_group_overview", "Ikhtisar")}
+                </SidebarGroupLabel>
+                <SidebarGroupContent className="mt-1">
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname.startsWith(overviewItem.to)}
+                        tooltip={overviewItem.label}
+                        className={cn(
+                          "gap-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+                          location.pathname.startsWith(overviewItem.to)
+                            ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <Link to={overviewItem.to}>
+                          <overviewItem.icon className="size-4 shrink-0" />
+                          <span>{overviewItem.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
 
-            {/* Management Group */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {t("admin.nav_group_management", "Manajemen")}
-              </SidebarGroupLabel>
-              <SidebarGroupContent className="mt-1">
-                <SidebarMenu className="gap-1">
-                  {managementItems.map((item) => {
-                    const isActive = location.pathname.startsWith(item.to);
-                    return (
-                      <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton
-                          render={<Link to={item.to} />}
-                          isActive={isActive}
-                          tooltip={item.label}
-                          className={cn(
-                            "gap-3 text-sm font-medium transition-all duration-200 cursor-pointer",
-                            isActive
-                              ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
-                              : "text-muted-foreground hover:text-foreground",
-                          )}
-                        >
-                          <item.icon className="size-4 shrink-0" />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
+              {/* Management Group */}
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {t("admin.nav_group_management", "Manajemen")}
+                </SidebarGroupLabel>
+                <SidebarGroupContent className="mt-1">
+                  <SidebarMenu className="gap-1">
+                    {managementItems.map((item) => {
+                      const isActive = location.pathname.startsWith(item.to);
+                      return (
+                        <SidebarMenuItem key={item.to}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={isActive}
+                            tooltip={item.label}
+                            className={cn(
+                              "gap-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+                              isActive
+                                ? "bg-primary text-primary-foreground font-bold shadow-md shadow-primary/10 hover:bg-primary hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
+                                : "text-muted-foreground hover:text-foreground",
+                            )}
+                          >
+                            <Link to={item.to}>
+                              <item.icon className="size-4 shrink-0" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
 
-          {/* Footer with settings + profile */}
-          <SidebarFooter className="border-t border-sidebar-border">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
+            {/* Footer with settings + profile */}
+            <SidebarFooter className="border-t border-sidebar-border">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <SidebarMenuButton
                         size="lg"
                         tooltip={consoleTitle}
-                        className="gap-2.5 data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
-                      />
-                    }
-                  >
-                    <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border">
-                      <User className="size-4" />
-                    </div>
-                    <div className="flex flex-col text-left min-w-0 flex-1">
-                      <span className="text-[10px] text-muted-foreground truncate">
-                        {consoleTitle}
-                      </span>
-                      <span className="text-xs font-bold text-foreground truncate">
-                        {user?.email}
-                      </span>
-                    </div>
-                    <ChevronUp className="size-4 text-muted-foreground shrink-0" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-(--anchor-width) min-w-56 text-foreground"
-                    align="end"
-                    side="top"
-                    sideOffset={8}
-                  >
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {t("auth.account_label")}
-                        </span>
-                        <span className="truncate text-xs font-normal text-foreground">
-                          {user?.email}
-                        </span>
-                      </DropdownMenuLabel>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setShowLogoutConfirm(true)}
-                        className="text-xs cursor-pointer"
+                        className="gap-2.5 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
                       >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        {t("auth.logout_btn")}
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarFooter>
+                        <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border">
+                          <User className="size-4" />
+                        </div>
+                        <div className="flex flex-col text-left min-w-0 flex-1">
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {consoleTitle}
+                          </span>
+                          <span className="text-xs font-bold text-foreground truncate">
+                            {user?.email}
+                          </span>
+                        </div>
+                        <ChevronUp className="size-4 text-muted-foreground shrink-0" />
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-(--radix-dropdown-menu-trigger-width) min-w-56 text-foreground"
+                      align="end"
+                      side="top"
+                      sideOffset={8}
+                    >
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel className="flex flex-col gap-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {t("auth.account_label")}
+                          </span>
+                          <span className="truncate text-xs font-normal text-foreground">
+                            {user?.email}
+                          </span>
+                        </DropdownMenuLabel>
+                      </DropdownMenuGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            className="text-xs cursor-pointer"
+                          >
+                            <LogOut className="h-4 w-4 mr-2" />
+                            {t("auth.logout_btn")}
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarFooter>
 
-          <SidebarRail />
-        </Sidebar>
+            <SidebarRail />
+          </Sidebar>
 
-        {/* Main Content Area */}
-        <SidebarInset className="flex flex-col min-w-0 overflow-hidden bg-background">
-          {/* Dashboard Header Bar */}
-          <header className="h-18 border-b border-border flex items-center gap-4 px-4 sm:px-6 shrink-0 bg-card/20 backdrop-blur-xs">
-            <SidebarTrigger className="cursor-pointer">
-              <PanelLeft className="h-4 w-4" />
-            </SidebarTrigger>
-            <Separator
-              orientation="vertical"
-              className="h-6 data-vertical:self-center"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden sm:block">
-                  <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-                    {parentLabel}
-                  </span>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden sm:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
-                    {currentLabel}
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-
-            {/* Right Side Controls: Language, Theme & User Switchers */}
-            <div className="ml-auto flex items-center gap-2">
-              {/* Back to Terminal Button */}
-              <Link
-                to="/terminal"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  "text-xs cursor-pointer flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground h-8 w-8 md:w-auto md:px-3 rounded-lg",
-                )}
-              >
-                <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden md:inline">
-                  {t("admin.back_to_terminal", "Kembali ke Terminal")}
-                </span>
-              </Link>
-
+          {/* Main Content Area */}
+          <SidebarInset className="flex flex-col min-w-0 overflow-hidden bg-background">
+            {/* Dashboard Header Bar */}
+            <header className="h-18 border-b border-border flex items-center gap-4 px-4 sm:px-6 shrink-0 bg-card/20 backdrop-blur-xs">
+              <SidebarTrigger className="cursor-pointer">
+                <PanelLeft className="h-4 w-4" />
+              </SidebarTrigger>
               <Separator
                 orientation="vertical"
                 className="h-6 data-vertical:self-center"
               />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="hidden sm:block">
+                    <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                      {parentLabel}
+                    </span>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden sm:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="text-xs font-bold text-foreground tracking-wider uppercase">
+                      {currentLabel}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
 
-              {/* Language Selector Dropdown */}
-              <Select
-                items={LANGUAGES}
-                value={currentLang}
-                onValueChange={(nextValue) => {
-                  if (nextValue !== null) void i18n.changeLanguage(nextValue);
-                }}
-              >
-                <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
-                  <Languages className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
-                  <span className="hidden sm:inline">
-                    <SelectValue />
-                  </span>
-                </SelectTrigger>
-                <SelectContent
-                  alignItemWithTrigger={false}
-                  align="end"
-                  className="p-1"
-                >
-                  <SelectGroup>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem
-                        key={lang.value}
-                        value={lang.value}
-                        className="uppercase tracking-wider text-[10px] cursor-pointer"
-                      >
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              {/* Theme Selector Dropdown */}
-              <Select
-                items={themeItems}
-                value={theme}
-                onValueChange={(nextValue) => {
-                  if (nextValue !== null) {
-                    setTheme(nextValue as "light" | "dark" | "system");
-                  }
-                }}
-              >
-                <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
-                  {theme === "dark" ? (
-                    <Moon className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
-                  ) : theme === "light" ? (
-                    <Sun className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
-                  ) : (
-                    <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
+              {/* Right Side Controls: Language, Theme & User Switchers */}
+              <div className="ml-auto flex items-center gap-2">
+                {/* Back to Terminal Button */}
+                <Link
+                  to="/terminal"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "text-xs cursor-pointer flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground h-8 w-8 md:w-auto md:px-3 rounded-lg",
                   )}
-                  <span className="hidden sm:inline">
-                    <SelectValue />
-                  </span>
-                </SelectTrigger>
-                <SelectContent
-                  alignItemWithTrigger={false}
-                  align="end"
-                  className="p-1"
                 >
-                  <SelectGroup>
-                    {themeItems.map((item) => (
-                      <SelectItem
-                        key={item.value}
-                        value={item.value}
-                        className="uppercase tracking-wider text-[10px] cursor-pointer"
-                      >
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </header>
+                  <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden md:inline">
+                    {t("admin.back_to_terminal", "Kembali ke Terminal")}
+                  </span>
+                </Link>
 
-          {/* Page Content Scrollport */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto w-full">
-              <Outlet />
-            </div>
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+                <Separator
+                  orientation="vertical"
+                  className="h-6 data-vertical:self-center"
+                />
 
-      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+                {/* Language Selector Dropdown */}
+                <Select
+                  value={currentLang}
+                  onValueChange={(nextValue) => {
+                    if (nextValue !== null) void i18n.changeLanguage(nextValue);
+                  }}
+                >
+                  <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
+                    <Languages className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
+                    <span className="hidden sm:inline">
+                      <SelectValue />
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent align="end" className="p-1">
+                    <SelectGroup>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem
+                          key={lang.value}
+                          value={lang.value}
+                          className="uppercase tracking-wider text-[10px] cursor-pointer"
+                        >
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+
+                {/* Theme Selector Dropdown */}
+                <Select
+                  value={theme}
+                  onValueChange={(nextValue) => {
+                    if (nextValue !== null) {
+                      setTheme(nextValue as "light" | "dark" | "system");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
+                    {theme === "dark" ? (
+                      <Moon className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
+                    ) : theme === "light" ? (
+                      <Sun className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
+                    ) : (
+                      <Laptop className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
+                    )}
+                    <span className="hidden sm:inline">
+                      <SelectValue />
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent align="end" className="p-1">
+                    <SelectGroup>
+                      {themeItems.map((item) => (
+                        <SelectItem
+                          key={item.value}
+                          value={item.value}
+                          className="uppercase tracking-wider text-[10px] cursor-pointer"
+                        >
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </header>
+
+            {/* Page Content Scrollport */}
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+              <div className="max-w-7xl mx-auto w-full">
+                <Outlet />
+              </div>
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
@@ -492,13 +509,25 @@ export function AdminLayout() {
               {t("auth.logout_confirm_title", { defaultValue: "Keluar?" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("auth.logout_confirm_desc", { defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?" })}
+              {t("auth.logout_confirm_desc", {
+                defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleLogout}>
-              {t("auth.logout_btn", "Keluar")}
+            <AlertDialogCancel disabled={isLoggingOut}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isLoggingOut}
+              aria-busy={isLoggingOut}
+              onClick={handleLogoutAction}
+            >
+              <ActionButtonContent
+                label={t("common.actions.logout")}
+                pending={isLoggingOut}
+              />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

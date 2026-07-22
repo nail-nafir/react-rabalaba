@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/hooks/use-auth";
 import {
   buildLoginRedirectForTarget,
   sanitizeInternalRedirect,
 } from "@/lib/auth-redirect";
+import { toast } from "sonner";
 
 /**
  * OAuth landing route (/auth/callback). Google → Supabase → here with a `?code`
@@ -35,7 +35,7 @@ export default function AuthCallbackPage() {
 
     if (error) {
       handled.current = true;
-      toast.error(t("auth.google_failed"));
+      toast.error(t("toasts.auth.google_error"));
       navigate(buildLoginRedirectForTarget(redirect), { replace: true });
       return;
     }
@@ -50,7 +50,7 @@ export default function AuthCallbackPage() {
     const timeout = setTimeout(() => {
       if (handled.current) return;
       handled.current = true;
-      toast.error(t("auth.google_failed"));
+      toast.error(t("toasts.auth.google_error"));
       navigate(buildLoginRedirectForTarget(redirect), { replace: true });
     }, 8000);
     return () => clearTimeout(timeout);

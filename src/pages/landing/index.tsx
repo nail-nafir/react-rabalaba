@@ -7,7 +7,7 @@ import {
   Target,
   Activity,
   CalendarDays,
-  Gauge,
+  NotebookPen,
   Monitor,
   CreditCard,
 } from "lucide-react";
@@ -72,10 +72,10 @@ export default function LandingPage() {
         description: t("features.calendar.description"),
       },
       {
-        id: "fear_greed",
-        icon: Gauge,
-        title: t("features.fear_greed.title"),
-        description: t("features.fear_greed.description"),
+        id: "auto_journal",
+        icon: NotebookPen,
+        title: t("features.auto_journal.title"),
+        description: t("features.auto_journal.description"),
       },
     ],
     [t],
@@ -205,7 +205,7 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto">
             <Card className="border border-border bg-background">
               <CardContent>
-                <Accordion>
+                <Accordion type="single" collapsible>
                   {faqQuestions.map((item, i) => (
                     <AccordionItem key={i} value={`item-${i}`}>
                       <AccordionTrigger className="hover:text-primary text-base tracking-tight font-bold text-foreground">

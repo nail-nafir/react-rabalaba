@@ -79,7 +79,7 @@ test("risk-appetite helpers normalize, clamp, and blend predictably", async () =
   assert.equal(combineRiskAppetiteScore(undefined, undefined), 50);
 });
 
-test("mapCryptoCard maps crypto context, F&G, and dominance correctly", async () => {
+test("mapCryptoCard score stays 100% BTC technical regardless of dominance", async () => {
   const { mapCryptoCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
 
   const cryptoContext = {
@@ -87,25 +87,44 @@ test("mapCryptoCard maps crypto context, F&G, and dominance correctly", async ()
     btcRegime: "trending",
     btcDirectionScore: 0.6,
     riskState: "risk_on",
-    dominance: { btc: 55.4, eth: 18.2 },
+    dominance: {
+      btc: 55.4,
+      eth: 18.2,
+      btcDominanceChangePercent24h: -0.4,
+      updatedAt: 900
+    },
     lastUpdated: 1000
   };
 
-  const fearGreed = { value: 75, label: "Greed" };
   const btcAsset = makeMockAsset("BTC-USD", 65000, 2.5);
   const ethAsset = makeMockAsset("ETH-USD", 3500, 1.2);
 
-  const result = mapCryptoCard(cryptoContext, fearGreed, btcAsset, ethAsset);
+  const result = mapCryptoCard(cryptoContext, btcAsset, ethAsset);
 
   assert.equal(result.id, "crypto");
-  assert.equal(result.score, 79);
+  assert.equal(result.score, 80);
   assert.equal(result.scoreKind, "risk_appetite");
   assert.equal(result.trend, "bullish");
   assert.equal(result.headlineValue, "$65,000");
   assert.equal(result.status, "active");
+
+  const changedDominance = mapCryptoCard(
+    {
+      ...cryptoContext,
+      dominance: {
+        btc: 63.2,
+        eth: 9.7,
+        btcDominanceChangePercent24h: 3.1,
+        updatedAt: 950
+      }
+    },
+    btcAsset,
+    ethAsset
+  );
+  assert.equal(changedDominance.score, 80);
 });
 
-test("mapCryptoCard degrades status on missing F&G or dominance", async () => {
+test("mapCryptoCard degrades status on missing dominance", async () => {
   const { mapCryptoCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
 
   const cryptoContext = {
@@ -118,10 +137,9 @@ test("mapCryptoCard degrades status on missing F&G or dominance", async () => {
 
   const btcAsset = makeMockAsset("BTC-USD", 65000, 2.5);
 
-  const result = mapCryptoCard(cryptoContext, null, btcAsset, null);
+  const result = mapCryptoCard(cryptoContext, btcAsset, null);
 
   assert.equal(result.id, "crypto");
-  // since F&G is null, it should fallback to mapped BTC direction score: (0.6 + 1) * 50 = 80
   assert.equal(result.score, 80);
   assert.equal(result.scoreKind, "risk_appetite");
   assert.equal(result.status, "degraded");

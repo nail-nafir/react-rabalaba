@@ -7,9 +7,9 @@
 
 ## TL;DR
 
-🇮🇩 Halaman `/terminal` (default) nampilin **Market Pulse** (kartu crypto sentiment + kartu indeks) di atas, terus **screener tabel** aset multi-kelas dengan sinyal, strength, grade, success-rate, sparkline. Klik baris → **Asset Detail Dialog** dengan chart candlestick + rencana trading + evidence. Tombol Share → **share card PNG**.
+🇮🇩 Halaman `/terminal` (default) nampilin lima kartu **Market Pulse** di atas, terus **screener tabel** aset multi-kelas dengan sinyal, strength, grade, success-rate, sparkline. Klik baris → **Asset Detail Dialog** dengan chart candlestick + rencana trading + evidence. Tombol Share → **share card PNG**.
 
-🇺🇸 The `/terminal` page (default) shows **Market Pulse** (crypto sentiment card + index cards) on top, then the multi-asset **screener table** with signal, strength, grade, success-rate, sparkline. Row click → **Asset Detail Dialog** with candlestick chart + trade plan + evidence. Share button → **share card PNG**.
+🇺🇸 The `/terminal` page (default) shows five **Market Pulse** cards on top, then the multi-asset **screener table** with signal, strength, grade, success-rate, sparkline. Row click → **Asset Detail Dialog** with candlestick chart + trade plan + evidence. Share button → **share card PNG**.
 
 > Entry point: `src/pages/terminal/index.tsx:25` → market view at `:122-133`.
 
@@ -17,21 +17,21 @@
 
 ## 📊 Market Pulse
 
-Komponen: `src/features/market/components/market-summary-row.tsx:29` (`MarketSummaryRow`).
+Komponen: `src/features/market/components/market-summary-row.tsx` (`MarketSummaryRow`). Semua kartu memakai komposisi Nova `Card`/`CardFooter` yang sama: benchmark utama, sparkline, footer konteks, dan donut skor 0–100.
 
-### Kartu Crypto Sentiment (`:106-255`)
-| Bagian / Section | Data source | Komponen |
-|---|---|---|
-| BTC regime + trend | `useCryptoContext()` (`:45`) | badge regime + trend arrow |
-| Dominance donut (BTC/ETH/Others) | `useCryptoDominance()` (`:46`) → CoinGecko `/global` direct | `DominanceChart` |
-| Fear & Greed bar | `useFearGreedIndex()` (`:31-37`) → alternative.me | `FearGreedBar` |
-| Market momentum % | `useMarketMomentum()` (`:47`) | breadth % bullish/bearish |
+| Kartu | Benchmark utama | Rumus donut | Footer konteks |
+|---|---|---|---|
+| Kripto | BTC/USD | 100% arah teknikal BTC | BTC Dominance dari CoinGecko |
+| Saham ID | IHSG | 70% teknikal IHSG + 30% kebalikan perubahan mingguan USD/IDR | volatilitas IHSG |
+| Saham AS | S&P 500 | 70% teknikal S&P + 30% konteks VIX/DXY | CBOE Volatility Index |
+| Komoditas | Gold (dibalik menjadi risk appetite) | 70% teknikal + 30% konteks VIX/DXY | Copper/Gold Ratio |
+| Valas | USD/IDR (dibalik menjadi kekuatan rupiah) | 70% teknikal + 30% konteks VIX/DXY | US Dollar Index |
 
-> 🇮🇩 Tiap bagian punya fallback "unavailable" + tombol Retry kalau sumber gagal (`:49-56`, `:128-146`).
-> 🇺🇸 Each section has an "unavailable" fallback + Retry button if a source fails.
+🇮🇩 BTC.D adalah persentase kapitalisasi pasar kripto yang dikuasai Bitcoin. Nilai naik berarti modal makin terkonsentrasi di BTC; turun berarti aset kripto lain mengambil porsi. Browser mengambil `/api/v3/global` dan `/api/v3/coins/markets` langsung memakai IP visitor. Delta 24 jam dihitung relatif dari market cap BTC dan total market yang direkonstruksi ke nilai 24 jam sebelumnya. Kalau payload Bitcoin gagal, nilai BTC.D tetap tampil tanpa delta; kalau snapshot global gagal, hanya footer kripto yang unavailable.
 
-### Kartu Indeks (`:257-325`)
-`useMarketData(MARKET_INDICES)` → sparkline + harga + `PercentageChange` + `TrendIndicator`. BTC/ETH difilter (`:266-269`) karena kartu crypto udah nutupin. Indeks: IHSG, S&P 500, NASDAQ, Dow, Nikkei, KOSPI, Gold, Silver, Oil, DXY (dari `constants/assets.ts` `MARKET_INDICES`).
+🇺🇸 BTC.D is Bitcoin's share of total crypto market capitalization. A rise means capital is concentrating in BTC; a fall means other crypto assets are gaining share. The browser calls `/api/v3/global` and `/api/v3/coins/markets` directly with the visitor's IP. The relative 24-hour delta is reconstructed from BTC and total-market caps. If the Bitcoin payload fails, BTC.D remains visible without a delta; if the global snapshot fails, only the crypto footer becomes unavailable.
+
+> BTC Dominance is informative context only. It does not enter the crypto donut formula. The other four cards use the shared 70/30 combiner when both inputs exist and fall back to the available input when one is missing.
 
 ---
 
@@ -47,7 +47,7 @@ Komponen: `src/features/market/components/asset-signal-table.tsx:90` (`AssetSign
 | Komoditas/Forex | selalu `DEFAULT_COMMODITY_TICKERS` / `DEFAULT_FOREX_TICKERS` (`:142-147`) |
 
 ### Data fetching (`:133-154`)
-`useMarketData(...)` per kategori (crypto/usStock/idStock/commodities/forex/favorites), semua share query key `["asset-data",…]` jadi satu invalidate refresh semua (`:170-173`).
+`useMarketData(...)` per kategori (crypto/usStock/idStock/commodities/forex/favorites), semua share query key `["asset-data",…]`. `usePublicJournalSuccessRates()` mengambil agregat `{symbol,wins,total}` lewat RPC publik tanpa membuka row jurnal mentah. Tombol refresh meng-invalidasi kedua query family sekaligus.
 
 ### Top-down context (`:156-166`)
 `useCryptoContext` (BTC), `useIdxContext` (IHSG+rapih), `useUsContext` (S&P+VIX+DXY) — subscribe cache shared, nyaris nol fetch ekstra.
@@ -71,7 +71,7 @@ TanStack Table, `pageSize 10` (`:553`):
 | Trend | `TrendIndicator` (bullish/bearish/sideways) |
 | **Strength** | `StrengthBar` (default sort desc) |
 | **Grade / Tier** | badge A/B/C + hint suppressed |
-| **Success rate** | bar win-rate historis per-symbol dari `useJournalTrades` + `computePnl` (`:114-127`) |
+| **Success rate** | agregat all-time per-symbol dari RPC `get_public_journal_success_rates`; anon/free/premium melihat angka identik, jurnal mentah tetap premium |
 | Signal | badge LONG/SHORT/NEUTRAL |
 | Sparkline | `Sparkline` mini price line |
 
@@ -86,8 +86,10 @@ TanStack Table, `pageSize 10` (`:553`):
 ### Loading strategy (`:255-275`)
 Skeleton ditahan sampai **semua** sumber (aset dasar + BTC context + smart-money) selesai `isLoading`/`isPending` awal, jadi tabel muncul ter-sort sekaligus (tanpa per-kategori flash). Background refetch update nilai in-place.
 
+Success-rate adalah data sekunder: cell memakai skeleton berukuran tetap saat RPC masih pending, `Tidak tersedia` saat gagal, dan `Belum ada` hanya kalau simbol benar-benar belum punya trade tertutup.
+
 ### Row click (`:766`)
-`openDetailDialog(symbol)` → buka `AssetDetailDialog` (lihat bawah).
+Setiap row menjadi `DialogTrigger` untuk `AssetDetailDialog` miliknya. Tidak ada query parameter URL atau visibility state global; Radix menangani buka, tutup, fokus, Escape, dan restore-focus.
 
 ---
 
@@ -95,9 +97,9 @@ Skeleton ditahan sampai **semua** sumber (aset dasar + BTC context + smart-money
 
 Komponen: `src/features/trading-plan/components/asset-detail-dialog.tsx:92` (`AssetDetailDialog`).
 
-🇮🇩 Dialog analisis per-aset. State buka via Redux `ui.isDetailDialogOpen` / `selectedAssetSymbol`. Re-fetch aset + re-jalanin **enrichment chain yang sama** dengan screener (jaga conviction/tier konsisten). Selain itu jalanin `runBacktest` (`:171`) + `calibrateConfidence` (`:182`) buat win-rate historis yang jujur.
+🇮🇩 Dialog analisis per-aset dibuka oleh `DialogTrigger` pada row. Content baru mount setelah dibuka, lalu re-fetch aset + re-jalanin **enrichment chain yang sama** dengan screener (jaga conviction/tier konsisten). Selain itu jalanin `runBacktest` + `calibrateConfidence` buat win-rate historis yang jujur.
 
-🇺🇸 Per-asset analysis dialog. Open state via Redux `ui.isDetailDialogOpen` / `selectedAssetSymbol`. Re-fetches the asset + re-runs the **same enrichment chain** as the screener (keeps conviction/tier consistent). Also runs `runBacktest` (`:171`) + `calibrateConfidence` (`:182`) for an honest historical win-rate.
+🇺🇸 The per-asset analysis dialog is opened by the row's `DialogTrigger`. Its content mounts only when opened, then re-fetches the asset and re-runs the **same enrichment chain** as the screener. It also runs `runBacktest` + `calibrateConfidence` for an honest historical win-rate.
 
 ### Section yang dirender
 | Section | Isi |

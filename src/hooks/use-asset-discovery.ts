@@ -1,14 +1,10 @@
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { supabase } from "@/services/supabase/client";
+import { toast } from "sonner";
 
 interface DiscoveryResult {
-  ok?: boolean;
-  added?: number;
-  reactivated?: number;
-  pruned?: number;
   skipped?: string;
 }
 
@@ -36,7 +32,7 @@ export function useAssetDiscovery() {
 
       // Safety net: server still honors pause even if the button slipped through.
       if (data?.skipped === "disabled") {
-        toast.error(t("admin.discover_paused_hint"));
+        toast.info(t("toasts.automation.discovery_paused"));
         return;
       }
 
@@ -47,15 +43,9 @@ export function useAssetDiscovery() {
         queryClient.invalidateQueries({ queryKey: ["screener-universe"] }),
       ]);
 
-      toast.success(
-        t("admin.discover_toast_success", {
-          added: data?.added ?? 0,
-          reactivated: data?.reactivated ?? 0,
-          pruned: data?.pruned ?? 0,
-        }),
-      );
+      toast.success(t("toasts.automation.discovery_success"));
     } catch {
-      toast.error(t("admin.discover_toast_error"));
+      toast.error(t("toasts.automation.discovery_error"));
     } finally {
       setIsDiscovering(false);
     }

@@ -43,7 +43,6 @@ function detectAssetType(symbol: string, instrumentType?: string): AssetType {
 
 export function adaptYahooChart(
   result: YahooChartResult | null | undefined,
-  fearGreedValue?: number,
 ): UnifiedAsset | null {
   if (!result) return null;
 
@@ -54,11 +53,6 @@ export function adaptYahooChart(
   const currentPrice = meta.regularMarketPrice ?? 0;
   const volume = meta.regularMarketVolume ?? 0;
   const assetType = detectAssetType(meta.symbol, meta.instrumentType);
-
-  // Fear & Greed (alternative.me) is a CRYPTO sentiment index. Applying it to
-  // stocks/forex/commodities is misleading, so scope it to crypto only.
-  const effectiveFearGreed =
-    assetType === "crypto" ? fearGreedValue : undefined;
 
   // Normalize candles ONCE — reused for change%, signal computation and UI.
   const candles = quote ? normalizeYahooCandles(quote, result.timestamp) : [];
@@ -129,7 +123,6 @@ export function adaptYahooChart(
       ...signalSeries,
       assetType,
       timeframe: timeframeKey,
-      fearGreedValue: effectiveFearGreed,
       higherTimeframeTrend,
     });
 
@@ -139,7 +132,7 @@ export function adaptYahooChart(
   }
 
   if (!outlook) {
-    outlook = createUnavailableSignal(effectiveFearGreed);
+    outlook = createUnavailableSignal();
     // If we have price change but no full signal, we can still set a basic trend
     if (changePercent > 1) {
       outlook.trend = "bullish";

@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePremiumAccess, type LicenseTier } from "@/hooks/use-premium-access";
-import { useUIActions } from "@/store/hooks";
 import { cn } from "@/lib/utils";
+import { LicenseDialog } from "@/components/shared/license-dialog";
 
 const TIER_ICONS: Record<LicenseTier, React.ElementType> = {
   free: Lock,
@@ -23,7 +23,6 @@ const TIER_STYLES: Record<LicenseTier, string> = {
 export function LicenseBadge() {
   const { t } = useTranslation();
   const { tier, daysLeft, isConfigured, isResolving } = usePremiumAccess();
-  const { openLicenseDialog } = useUIActions();
 
   if (!isConfigured) return null;
 
@@ -45,19 +44,22 @@ export function LicenseBadge() {
       : `${t("license.badge_label")}: ${tierLabel}`;
 
   return (
-    <Button
-      variant="ghost"
-      onClick={() => openLicenseDialog()}
-      aria-label={ariaLabel}
-      className={cn(
-        "flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer",
-        TIER_STYLES[tier],
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      <span className="text-[10px] font-bold uppercase tracking-wider">
-        {label}
-      </span>
-    </Button>
+    <LicenseDialog
+      trigger={
+        <Button
+          variant="ghost"
+          aria-label={ariaLabel}
+          className={cn(
+            "flex justify-center border border-accent-foreground/20! py-4! bg-card! hover:bg-accent! cursor-pointer",
+            TIER_STYLES[tier],
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">
+            {label}
+          </span>
+        </Button>
+      }
+    />
   );
 }

@@ -1,13 +1,10 @@
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { supabase } from "@/services/supabase/client";
+import { toast } from "sonner";
 
 interface ScanResult {
-  ok?: boolean;
-  emitted?: number;
-  closed?: number;
   skipped?: string;
 }
 
@@ -34,7 +31,7 @@ export function useMarketScan() {
 
       // Safety net: server still honors pause even if the button slipped through.
       if (data?.skipped === "disabled") {
-        toast.error(t("admin.scan_paused_hint"));
+        toast.info(t("toasts.automation.scan_paused"));
         return;
       }
 
@@ -44,14 +41,9 @@ export function useMarketScan() {
         queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
       ]);
 
-      toast.success(
-        t("admin.scan_toast_success", {
-          emitted: data?.emitted ?? 0,
-          closed: data?.closed ?? 0,
-        }),
-      );
+      toast.success(t("toasts.automation.scan_success"));
     } catch {
-      toast.error(t("admin.scan_toast_error"));
+      toast.error(t("toasts.automation.scan_error"));
     } finally {
       setIsScanning(false);
     }

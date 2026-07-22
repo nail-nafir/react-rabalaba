@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -16,7 +15,6 @@ import {
   Terminal,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { useUIActions } from "@/store/hooks";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -34,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
 import { pickLocale } from "@/lib/localized";
 import { PaymentDialog } from "./components/payment-dialog";
+import { LicenseDialog } from "@/components/shared/license-dialog";
 
 /** lucide icon names stored on a plan row → component. Falls back to Terminal. */
 const ICON_MAP: Record<string, React.ElementType> = { Terminal, Zap, Shield };
@@ -58,10 +57,8 @@ function ctaConfig(kind: string): {
 export default function SubscriptionPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const { openLicenseDialog } = useUIActions();
   const { isConfigured } = usePremiumAccess();
   const { plans, isLoading } = useSubscriptionPlans();
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   const activePlans = plans.filter((p) => p.active);
 
@@ -97,12 +94,6 @@ export default function SubscriptionPage() {
                     const cfg = ctaConfig(plan.cta_kind);
                     const isExternal =
                       !!plan.cta_link && /^https?:\/\//.test(plan.cta_link);
-                    const onCtaClick =
-                      plan.cta_kind === "payment"
-                        ? () => setIsPaymentDialogOpen(true)
-                        : plan.cta_kind === "license"
-                          ? () => openLicenseDialog()
-                          : undefined;
                     return (
                       <SubscriptionCard
                         key={plan.slug}
@@ -124,7 +115,8 @@ export default function SubscriptionPage() {
                         isExternal={isExternal}
                         icon={ICON_MAP[plan.icon ?? ""] ?? Terminal}
                         highlighted={plan.highlighted}
-                        onCtaClick={onCtaClick}
+                        isPayment={plan.cta_kind === "payment"}
+                        isLicense={plan.cta_kind === "license"}
                         btnIcon={cfg.icon}
                       />
                     );
@@ -186,14 +178,17 @@ export default function SubscriptionPage() {
               </div>
               <div className="flex flex-row items-center justify-center gap-2 mt-2">
                 {isConfigured && (
-                  <Button
-                    size="lg"
-                    onClick={() => openLicenseDialog()}
-                    className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
-                  >
-                    <KeyRound className="h-3.5 w-3.5" />
-                    <span>{t("license.activate_btn")}</span>
-                  </Button>
+                  <LicenseDialog
+                    trigger={
+                      <Button
+                        size="lg"
+                        className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                        <span>{t("license.activate_btn")}</span>
+                      </Button>
+                    }
+                  />
                 )}
                 <a
                   href="https://t.me/nailnafir"
@@ -214,10 +209,6 @@ export default function SubscriptionPage() {
           </section>
         </div>
       </div>
-      <PaymentDialog
-        open={isPaymentDialogOpen}
-        onOpenChange={setIsPaymentDialogOpen}
-      />
     </div>
   );
 }
@@ -366,7 +357,8 @@ interface SubscriptionCardProps {
   isExternal?: boolean;
   icon: React.ElementType;
   highlighted?: boolean;
-  onCtaClick?: () => void;
+  isPayment?: boolean;
+  isLicense?: boolean;
   btnIcon?: React.ElementType;
 }
 
@@ -381,7 +373,8 @@ function SubscriptionCard({
   isExternal,
   icon: Icon,
   highlighted,
-  onCtaClick,
+  isPayment,
+  isLicense,
   btnIcon: BtnIcon,
 }: SubscriptionCardProps) {
   const { t } = useTranslation();
@@ -489,22 +482,44 @@ function SubscriptionCard({
       </CardContent>
 
       <CardFooter>
-        {onCtaClick ? (
-          <Button
-            size="lg"
-            onClick={onCtaClick}
-            variant={highlighted ? "default" : "outline"}
-            className={cn(
-              "w-full text-xs font-bold transition-all cursor-pointer items-center justify-center gap-1.5 tracking-tight",
-              highlighted &&
-                "shadow-lg shadow-primary/10 hover:shadow-primary/20",
-            )}
-          >
-            {BtnIcon && (
-              <BtnIcon className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110" />
-            )}
-            <span>{ctaText}</span>
-          </Button>
+        {isPayment ? (
+          <PaymentDialog
+            trigger={
+              <Button
+                size="lg"
+                variant={highlighted ? "default" : "outline"}
+                className={cn(
+                  "w-full text-xs font-bold transition-all cursor-pointer items-center justify-center gap-1.5 tracking-tight",
+                  highlighted &&
+                    "shadow-lg shadow-primary/10 hover:shadow-primary/20",
+                )}
+              >
+                {BtnIcon && (
+                  <BtnIcon className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110" />
+                )}
+                <span>{ctaText}</span>
+              </Button>
+            }
+          />
+        ) : isLicense ? (
+          <LicenseDialog
+            trigger={
+              <Button
+                size="lg"
+                variant={highlighted ? "default" : "outline"}
+                className={cn(
+                  "w-full text-xs font-bold transition-all cursor-pointer items-center justify-center gap-1.5 tracking-tight",
+                  highlighted &&
+                    "shadow-lg shadow-primary/10 hover:shadow-primary/20",
+                )}
+              >
+                {BtnIcon && (
+                  <BtnIcon className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110" />
+                )}
+                <span>{ctaText}</span>
+              </Button>
+            }
+          />
         ) : (
           <Link
             to={ctaLink}

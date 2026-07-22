@@ -18,7 +18,7 @@ export interface FilterOption<T extends string> {
 interface FilterGroupProps<T extends string> {
   value: T;
   options: readonly FilterOption<T>[];
-  onChange: (value: T) => void;
+  onChange: (value: NoInfer<T>) => void;
   className?: string;
   /** "tabs" (default) = segmented control on desktop; "select" forces the
    *  dropdown on every breakpoint (mobile always renders the dropdown). */
@@ -37,7 +37,6 @@ export function FilterGroup<T extends string>({
   if (isMobile || variant === "select") {
     return (
       <Select
-        items={options}
         value={value}
         onValueChange={(nextValue) => {
           if (nextValue !== null) onChange(nextValue as T);
@@ -51,7 +50,7 @@ export function FilterGroup<T extends string>({
         >
           <SelectValue className="truncate text-left" />
         </SelectTrigger>
-        <SelectContent align="start" alignItemWithTrigger={false} className="p-1">
+        <SelectContent position="popper" className="p-0.5">
           <SelectGroup>
             {options.map((option) => (
               <SelectItem

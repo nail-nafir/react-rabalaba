@@ -70,8 +70,8 @@ export function useSubscriptionPlans() {
   );
 
   const toggleActive = useCallback(
-    async (slug: string, active: boolean) => {
-      if (!userId) return;
+    async (slug: string, active: boolean): Promise<boolean> => {
+      if (!userId) return false;
       // Optimistic: flip locally so the toggle responds instantly.
       queryClient.setQueryData<SubscriptionPlanRow[]>(QUERY_KEY, (prev) =>
         (prev ?? []).map((p) => (p.slug === slug ? { ...p, active } : p)),
@@ -80,14 +80,18 @@ export function useSubscriptionPlans() {
         .from("subscription_plans")
         .update({ active, updated_by: userId } as never)
         .eq("slug", slug);
-      if (error) await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      if (error) {
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        return false;
+      }
+      return true;
     },
     [userId, queryClient],
   );
 
   const removePlan = useCallback(
-    async (slug: string) => {
-      if (!userId) return;
+    async (slug: string): Promise<boolean> => {
+      if (!userId) return false;
       queryClient.setQueryData<SubscriptionPlanRow[]>(QUERY_KEY, (prev) =>
         (prev ?? []).filter((p) => p.slug !== slug),
       );
@@ -95,7 +99,11 @@ export function useSubscriptionPlans() {
         .from("subscription_plans")
         .delete()
         .eq("slug", slug);
-      if (error) await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      if (error) {
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        return false;
+      }
+      return true;
     },
     [userId, queryClient],
   );

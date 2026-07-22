@@ -47,7 +47,7 @@ function makeOutlook(overrides = {}) {
       volumeReliable: true,
     },
     indicators: {},
-    analysis: { trend: "", volume: "", momentum: "", sentiment: "" },
+    analysis: { trend: "", volume: "", momentum: "" },
     ...overrides,
   };
 }

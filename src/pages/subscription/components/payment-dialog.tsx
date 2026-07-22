@@ -1,26 +1,28 @@
 import { useTranslation } from "react-i18next";
-import { Send, Copy } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { toast } from "sonner";
 import { usePaymentMethods } from "@/hooks/use-payment-methods";
 import { pickLocale } from "@/lib/localized";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import type { ReactElement } from "react";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 
 interface PaymentDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  trigger: ReactElement;
 }
 
-export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
+export function PaymentDialog({ trigger }: PaymentDialogProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const { methods, isLoading } = usePaymentMethods();
@@ -30,7 +32,8 @@ export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
   const beneficiary = active.find((m) => m.account_name)?.account_name ?? "";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md border border-border text-foreground max-w-[calc(100%-2rem)]">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
@@ -87,9 +90,7 @@ export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
                       variant="ghost"
                       onClick={() => {
                         navigator.clipboard.writeText(value);
-                        toast.success(t("payment.dialog.copied"), {
-                          description: `${item.name}: ${value}`,
-                        });
+                        toast.success(t("toasts.payment.details_copied"));
                       }}
                       className="shrink-0 h-7 w-7 rounded-lg hover:bg-muted border border-transparent hover:border-border cursor-pointer transition-all active:scale-95"
                     >
@@ -103,18 +104,20 @@ export function PaymentDialog({ open, onOpenChange }: PaymentDialogProps) {
         </div>
 
         <DialogFooter>
-          <a
-            href="https://t.me/nailnafir"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ size: "lg" }),
-              "w-full text-xs font-bold cursor-pointer",
-            )}
-          >
-            <Send className="h-3.5 w-3.5" />
-            <span>{t("payment.dialog.confirm_btn")}</span>
-          </a>
+          <DialogClose asChild>
+            <Button asChild size="lg" className="w-full">
+              <a
+                href="https://t.me/nailnafir"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() =>
+                  toast.success(t("toasts.payment.contact_opened"))
+                }
+              >
+                <ActionButtonContent label={t("common.actions.confirm")} />
+              </a>
+            </Button>
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

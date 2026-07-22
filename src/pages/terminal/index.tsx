@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { LockKeyhole, Key } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -14,7 +13,6 @@ import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { useAuth } from "@/hooks/use-auth";
 import { useDisclaimer } from "@/hooks/use-disclaimer";
 import { useIsMobile } from "@/hooks/use-media-query";
-import { useAppSelector, useUIActions } from "@/store/hooks";
 import {
   Select,
   SelectContent,
@@ -23,17 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { buildTerminalDialogCloseHref } from "@/features/terminal/lib/dialog-url";
-import { useTerminalDialogUrl } from "@/features/terminal/hooks/use-terminal-dialog-url";
+import { LicenseDialog } from "@/components/shared/license-dialog";
 
 type TerminalView = "market" | "journal";
 
 function JournalAccessState({
   resolving,
-  onUnlock,
 }: {
   resolving: boolean;
-  onUnlock: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -60,15 +55,18 @@ function JournalAccessState({
             {t("license.login_required_desc")}
           </p>
         </div>
-        <Button
-          type="button"
-          size="lg"
-          onClick={onUnlock}
-          className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
-        >
-          <Key className="h-3.5 w-3.5" />
-          <span>{t("terminal.access_dialog_unlock_btn")}</span>
-        </Button>
+        <LicenseDialog
+          trigger={
+            <Button
+              type="button"
+              size="lg"
+              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+            >
+              <Key className="h-3.5 w-3.5" />
+              <span>{t("terminal.access_dialog_unlock_btn")}</span>
+            </Button>
+          }
+        />
       </CardContent>
     </Card>
   );
@@ -78,23 +76,19 @@ export default function TerminalPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const autoGateKeyRef = useRef<string | null>(null);
   const { hasAccess, isResolving: accessResolving } = usePremiumAccess();
   const { ready: authReady } = useAuth();
-  const { needsAgreement, isResolving: disclaimerResolving } = useDisclaimer();
-  const isLicenseDialogOpen = useAppSelector(
-    (state) => state.ui.isLicenseDialogOpen,
-  );
-  const { openLicenseDialog } = useUIActions();
+  const {
+    needsAgreement,
+    hasLoadError: disclaimerLoadError,
+    isResolving: disclaimerResolving,
+  } = useDisclaimer();
   const isMobile = useIsMobile();
-  const dialogUrl = useTerminalDialogUrl();
 
   const activeView: TerminalView =
     location.pathname === "/terminal/journal" ? "journal" : "market";
   const journalAccessReady = authReady && !accessResolving && hasAccess;
   const journalGateResolving = !authReady || accessResolving;
-  const detailLayerReady =
-    !disclaimerResolving && !needsAgreement && !isLicenseDialogOpen;
   const terminalViewItems: Array<{ label: string; value: TerminalView }> = [
     { value: "market", label: t("journal.view_market") },
     { value: "journal", label: t("journal.view_journal") },
@@ -103,49 +97,8 @@ export default function TerminalPage() {
   const setView = (view: TerminalView) => {
     const pathname =
       view === "journal" ? "/terminal/journal" : "/terminal/market";
-    navigate(
-      buildTerminalDialogCloseHref(pathname, location.search) + location.hash,
-      { preventScrollReset: true },
-    );
+    navigate(pathname, { preventScrollReset: true });
   };
-
-  // A Journal URL remains untouched while the gates run. The license modal is
-  // opened only after disclaimer + auth/profile resolution, and only once per
-  // semantic location so dismissing it does not create an inescapable loop.
-  useEffect(() => {
-    const shouldGate =
-      activeView === "journal" &&
-      !disclaimerResolving &&
-      !needsAgreement &&
-      authReady &&
-      !accessResolving &&
-      !hasAccess;
-
-    if (!shouldGate) {
-      if (hasAccess || activeView !== "journal") autoGateKeyRef.current = null;
-      return;
-    }
-
-    const gateKey = `${location.pathname}${location.search}`;
-    if (autoGateKeyRef.current === gateKey) return;
-    autoGateKeyRef.current = gateKey;
-    openLicenseDialog();
-  }, [
-    accessResolving,
-    activeView,
-    authReady,
-    disclaimerResolving,
-    hasAccess,
-    location.pathname,
-    location.search,
-    needsAgreement,
-    openLicenseDialog,
-  ]);
-
-  const marketRequest =
-    dialogUrl.request?.kind === "market" ? dialogUrl.request : null;
-  const journalRequest =
-    dialogUrl.request?.kind === "journal" ? dialogUrl.request : null;
 
   return (
     <div className="w-full bg-background py-10">
@@ -162,10 +115,10 @@ export default function TerminalPage() {
 
           {isMobile ? (
             <Select
-              items={terminalViewItems}
+
               value={activeView}
               onValueChange={(value) => {
-                if (value !== null) setView(value);
+                setView(value as TerminalView);
               }}
             >
               <SelectTrigger className="h-11 w-fit min-w-32.5 cursor-pointer bg-card text-[10px] uppercase tracking-wider hover:bg-accent">
@@ -173,7 +126,7 @@ export default function TerminalPage() {
               </SelectTrigger>
               <SelectContent
                 align="end"
-                alignItemWithTrigger={false}
+
                 className="p-1"
               >
                 <SelectGroup>
@@ -221,29 +174,22 @@ export default function TerminalPage() {
 
         <Separator />
 
-        {activeView === "market" ? (
-          <MarketTerminalContent
-            requestedSymbol={marketRequest?.symbol ?? null}
-            requestIsValid={marketRequest?.isValid ?? false}
-            detailOpen={!!marketRequest && detailLayerReady}
-            onAssetSelect={dialogUrl.openMarket}
-            onDetailOpenChange={dialogUrl.onOpenChange}
-          />
+        {disclaimerResolving && !disclaimerLoadError ? (
+          <div className="flex flex-col gap-4" aria-busy="true">
+            <Skeleton className="h-28 w-full rounded-xl" />
+            <Skeleton className="h-64 w-full rounded-xl" />
+          </div>
+        ) : needsAgreement || disclaimerLoadError ? (
+          <DisclaimerDialog />
+        ) : activeView === "market" ? (
+          <MarketTerminalContent />
         ) : journalAccessReady ? (
-          <JournalTerminalContent
-            requestedTradeId={journalRequest?.tradeId ?? null}
-            detailOpen={!!journalRequest && detailLayerReady}
-            onTradeSelect={dialogUrl.openJournal}
-            onDetailOpenChange={dialogUrl.onOpenChange}
-          />
+          <JournalTerminalContent />
         ) : (
           <JournalAccessState
             resolving={journalGateResolving}
-            onUnlock={openLicenseDialog}
           />
         )}
-
-        <DisclaimerDialog />
       </div>
     </div>
   );

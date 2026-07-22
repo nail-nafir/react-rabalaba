@@ -41,7 +41,7 @@
 | [`tsd/01-tech-stack.md`](tsd/01-tech-stack.md) | Tech stack, dependency, tooling |
 | [`tsd/02-data-flow.md`](tsd/02-data-flow.md) | API → adapter → react-query → engine → UI + state (Redux/RQ/Context/i18n) |
 | [`tsd/03-database-schema.md`](tsd/03-database-schema.md) | 15 tabel, 24 function/RPC, RLS, 29 migrasi |
-| [`tsd/04-cloudflare-proxy.md`](tsd/04-cloudflare-proxy.md) | 4 route proxy, cache engine fresh/stale/error, Yahoo crumb |
+| [`tsd/04-cloudflare-proxy.md`](tsd/04-cloudflare-proxy.md) | 3 route proxy, cache engine fresh/stale/error, Yahoo crumb |
 | [`tsd/05-edge-functions.md`](tsd/05-edge-functions.md) | 3 Edge Function cron, scheduling/gating, Discord |
 | [`tsd/06-engine-internals.md`](tsd/06-engine-internals.md) | Mendalam: tiap export signals/indicators/contexts/enrichment/backtest + formula |
 | [`tsd/07-deployment.md`](tsd/07-deployment.md) | Build edge, deploy, schedule cron, env vars |
@@ -51,7 +51,7 @@
 | File | Topik / Topic |
 |---|---|
 | [`testing/00-overview.md`](testing/00-overview.md) | Framework `node --test`, Vite SSR load real `.ts`, cara run |
-| [`testing/01-coverage-inventory.md`](testing/01-coverage-inventory.md) | 26 file / 268 case map per modul |
+| [`testing/01-coverage-inventory.md`](testing/01-coverage-inventory.md) | 31 file / 306 case map per modul |
 | [`testing/02-gaps-and-conventions.md`](testing/02-gaps-and-conventions.md) | Gap coverage + rekomendasi test baru + convention |
 
 ### Ops

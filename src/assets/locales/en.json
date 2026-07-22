@@ -36,14 +36,6 @@
       "bb_mid": "mid-range",
       "div_bullish": " Bullish Divergence detected (reversal potential).",
       "div_bearish": " Bearish Divergence detected (exhaustion risk)."
-    },
-    "sentiment": {
-      "unavailable": "Market sentiment data unavailable. Consider external indicators for sentiment confirmation.",
-      "extreme_fear": "Fear & Greed Index at {{value}} (Extreme Fear). Market may be approaching a contrarian buy opportunity.",
-      "fear": "Fear & Greed Index at {{value}} (Fear). Cautious market conditions. Watch for capitulation or reversal signals.",
-      "neutral": "Fear & Greed Index at {{value}} (Neutral). Balanced market sentiment. Follow technical signals for direction.",
-      "greed": "Fear & Greed Index at {{value}} (Greed). Optimistic market. Trend may continue but watch for overextension.",
-      "extreme_greed": "Fear & Greed Index at {{value}} (Extreme Greed). Elevated risk of pullback. Consider tightening stops."
     }
   },
   "common": {
@@ -90,7 +82,152 @@
     },
     "confirm": "Confirm",
     "no": "No",
-    "upgrade": "Upgrade"
+    "upgrade": "Upgrade",
+    "actions": {
+      "add": "Add",
+      "save": "Save",
+      "create": "Create",
+      "confirm": "Confirm",
+      "delete": "Delete",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "publish": "Publish",
+      "replace": "Replace",
+      "move": "Move",
+      "submit": "Submit",
+      "unlock": "Unlock",
+      "login": "Login",
+      "logout": "Logout",
+      "upgrade": "Upgrade",
+      "reject": "Reject",
+      "feature": "Feature"
+    }
+  },
+  "toasts": {
+    "access_code": {
+      "add_error": "Bummer, code was not added",
+      "add_success": "Nice, code is now active",
+      "delete_error": "Bummer, code is still listed",
+      "delete_success": "Nice, code is now deleted",
+      "duplicate_error": "Bummer, code already exists"
+    },
+    "auth": {
+      "google_error": "Bummer, Google hit a snag",
+      "login_success": "Nice, session is secured",
+      "logout_error": "Bummer, session stayed open",
+      "logout_success": "Nice, sign out is complete",
+      "session_idle": "Chill, fresh sign in is due",
+      "session_required": "Bummer, session has expired",
+      "signup_success": "Nice, account is ready"
+    },
+    "automation": {
+      "discovery_error": "Bummer, selection tanked",
+      "discovery_paused": "Chill, selection is paused",
+      "discovery_success": "Nice, selection is complete",
+      "scan_error": "Bummer, market scan tanked",
+      "scan_paused": "Chill, journal is paused",
+      "scan_success": "Nice, market scan is done"
+    },
+    "disclaimer": {
+      "accept_error": "Bummer, consent did not stick",
+      "accept_success": "Nice, radar is now active",
+      "publish_success": "Nice, fresh version is live",
+      "save_error": "Bummer, disclaimer not saved",
+      "save_success": "Nice, disclaimer is secured"
+    },
+    "invitation": {
+      "create_error": "Bummer, invite was not made",
+      "create_success": "Nice, invite is now ready",
+      "delete_error": "Bummer, invite is still there",
+      "delete_success": "Nice, invite is now deleted",
+      "link_copied": "Nice, link is now copied",
+      "status_error": "Bummer, status did not change",
+      "status_success": "Nice, status is now updated"
+    },
+    "journal_asset": {
+      "add_success": "Nice, assets are now listed",
+      "delete_error": "Bummer, asset is still stuck",
+      "delete_success": "Nice, asset is now cleared",
+      "duplicate_info": "Chill, assets already exist",
+      "invalid_error": "Bummer, symbols not found",
+      "save_error": "Bummer, assets are not saved",
+      "status_error": "Bummer, asset status is stuck",
+      "status_success": "Nice, asset status secured"
+    },
+    "journal_settings": {
+      "save_error": "Bummer, settings are not safe",
+      "save_success": "Nice, settings are secured"
+    },
+    "license": {
+      "blocked_error": "Bummer, account stays blocked",
+      "exhausted_error": "Bummer, code quota is empty",
+      "invalid_error": "Bummer, code did not match",
+      "premium_success": "Nice, premium stays unlocked",
+      "redeemed_error": "Bummer, code was already used",
+      "trial_success": "Nice, trial is now active",
+      "unknown_error": "Bummer, activation tanked"
+    },
+    "market": {
+      "favorite_added": "Nice, favorites got bigger",
+      "favorite_removed": "Nice, favorites are tidy",
+      "favorites_added": "Nice, favorites are stacked",
+      "favorites_error": "Bummer, favorites not saved",
+      "symbol_missing": "Bummer, symbol was not found"
+    },
+    "password": {
+      "validation_error": "Bummer, password missed",
+      "validation_success": "Nice, validation is secured"
+    },
+    "payment": {
+      "contact_opened": "Nice, Telegram is now open",
+      "details_copied": "Nice, details are now copied"
+    },
+    "payment_method": {
+      "delete_error": "Bummer, method is still stuck",
+      "delete_success": "Nice, method is now deleted",
+      "save_error": "Bummer, method is not safe",
+      "save_success": "Nice, method is secured",
+      "status_error": "Bummer, status did not change",
+      "status_success": "Nice, status is now updated"
+    },
+    "plan": {
+      "delete_error": "Bummer, plan is still stuck",
+      "delete_success": "Nice, plan is now deleted",
+      "save_error": "Bummer, plan is not safe",
+      "save_success": "Nice, plan is now saved",
+      "status_error": "Bummer, status did not change",
+      "status_success": "Nice, status is now updated"
+    },
+    "share": {
+      "position_downloaded": "Nice, image is downloaded",
+      "position_error": "Bummer, position image tanked",
+      "position_shared": "Nice, position is now shared",
+      "signal_downloaded": "Nice, image is downloaded",
+      "signal_error": "Bummer, signal image tanked",
+      "signal_shared": "Nice, signal is now shared"
+    },
+    "testimonial": {
+      "delete_error": "Bummer, review is still stuck",
+      "delete_success": "Nice, review is now deleted",
+      "save_error": "Bummer, review is not safe",
+      "save_success": "Nice, review is rolling"
+    },
+    "testimonial_admin": {
+      "action_error": "Bummer, review action failed",
+      "approve_success": "Nice, review made the cut",
+      "delete_success": "Nice, review is now cleared",
+      "feature_success": "Nice, the slot is locked in",
+      "reject_success": "Nice, review was rejected",
+      "unfeature_success": "Nice, landing page is tidy"
+    },
+    "user": {
+      "add_error": "Bummer, user was not added",
+      "add_success": "Nice, user is now listed",
+      "delete_error": "Bummer, user is still listed",
+      "delete_success": "Nice, user is now deleted",
+      "edit_error": "Bummer, changes are not safe",
+      "edit_success": "Nice, changes are secured"
+    }
   },
   "subscription": {
     "title": "Research Tier",
@@ -133,9 +270,7 @@
     "dialog": {
       "title": "Payment",
       "subtitle": "Choose a payment method below. Send the transfer receipt to the team via Telegram for instant activation.",
-      "beneficiary": "Account Owner",
-      "copied": "Copied to clipboard!",
-      "confirm_btn": "Confirm"
+      "beneficiary": "Account Owner"
     }
   },
   "license": {
@@ -159,7 +294,6 @@
     "auth_required": "Session activation needed",
     "login_required_title": "Premium Locked",
     "login_required_desc": "Sign in or sign up to validate access codes and activate all premium features without hassle.",
-    "login_required_btn": "Sign In",
     "close_btn": "Close"
   },
   "auth": {
@@ -176,8 +310,8 @@
     "password_placeholder": "At least 6 characters",
     "password_min": "Password must be at least 6 characters.",
     "confirm_password_label": "Confirm Password",
-    "confirm_password_placeholder": "Re-enter your password",
-    "confirm_password_required": "Please confirm your password.",
+    "confirm_password_placeholder": "Re-enter password",
+    "confirm_password_required": "Password confirmation is required.",
     "confirm_password_mismatch": "Passwords do not match.",
     "login_btn": "Log In",
     "signup_btn": "Sign Up",
@@ -186,22 +320,17 @@
     "logout_btn": "Log Out",
     "logout_confirm_title": "Sure To Log Out?",
     "logout_confirm_desc": "Account access will disconnect and research session ends soon.",
-    "session_idle_logout": "Session ended automatically after a week without activity. Sign in again to keep going.",
-    "login_success": "Logged in.",
-    "signup_success": "Account created.",
-    "logout_success": "Logged out.",
     "login_failed": "Wrong email or password.",
     "confirm_email_title": "Check the inbox",
     "confirm_email_desc": "A confirmation link is on its way. Click it to activate the account, then head back here to redeem a code.",
     "or_continue_with": "or continue with",
     "continue_with_google": "Continue with Google",
-    "google_failed": "Google sign-in failed. Try again.",
-    "signing_in": "Signing you in…",
+    "signing_in": "Signing in…",
     "password_required": "Password is required.",
     "unauthenticated": "Please log in again."
   },
   "faq": {
-    "title": "Curious? We Got Answers",
+    "title": "Curious? Got Answers",
     "subtitle": "Everything needed to kickstart the journey and stop the guesswork.",
     "questions": [
       {
@@ -214,7 +343,7 @@
       },
       {
         "q": "Is the data reliable?",
-        "a": "We source our data from institutional grade providers like Yahoo Finance and other trusted giants. It is real time and credible."
+        "a": "Data comes straight from institutional grade providers like Yahoo Finance and other trusted giants. Real time and credible."
       },
       {
         "q": "Is the sign up process quick?",
@@ -232,11 +361,11 @@
     "description": "High impact research terminal built for those who value data over FOMO.",
     "multi_asset": {
       "title": "Multi Asset Research",
-      "description": "Monitor Indonesia stocks, US stocks, crypto, commodities, and forex in one screen. Instant execution."
+      "description": "Monitor Indonesia stocks, US stocks, crypto, commodities, and forex on one screen. Cross market research made effortless."
     },
     "sentiment": {
-      "title": "Long/Short Sentiment",
-      "description": "Analyze rule based buy and sell signals with transparent signal strength scores, decision support not predictions. Let the data speak for itself."
+      "title": "Long Short Sentiment",
+      "description": "Analyze rule based buy and sell signals with transparent signal strength scores, decision support not predictions."
     },
     "trading_plan": {
       "title": "Trading Plan Setup",
@@ -250,9 +379,9 @@
       "title": "Economic Calendar",
       "description": "Track major global economic events that trigger market volatility. Stay updated on CPI, FOMC, and high impact news to keep edge."
     },
-    "fear_greed": {
-      "title": "Fear & Greed Monitor",
-      "description": "Track market psychology with our Fear & Greed Index. Buy when others are fearful, and sell when they get greedy."
+    "auto_journal": {
+      "title": "Automated Market Journal",
+      "description": "Automatic market analysis updates following execution schedules. Track market action effortlessly with zero manual input."
     }
   },
   "market": {
@@ -260,40 +389,28 @@
     "live_connection": "Live Connection",
     "ticker_title": "Real Time Price Action",
     "search_placeholder": "Filter assets by name or symbol...",
-    "add_ticker_placeholder": "Add symbol (e.g. AAPL, BBCA.JK, BTC-USD)",
-    "add_ticker_dialog_title": "Add Favorite Assets",
-    "add_ticker_dialog_desc": "Enter a valid market symbol",
+    "add_ticker_placeholder": "Add symbol (AAPL, BBCA.JK, BTC-USD)",
+    "add_ticker_dialog_title": "Add Favorite Watchlist Assets",
+    "add_ticker_dialog_desc": "Select verified market symbols for real time price tracking inside the favorite list.",
     "ticker_not_found_suggestion": "Asset not found",
-    "ticker_not_found": "Symbol {{symbol}} not found",
     "favorite_empty_desc": "Add assets using the button up top, or star assets in other categories.",
     "favorite_empty": "Favorites list is still empty",
-    "favorite_added": "Added {{symbol}} to favorites",
-    "favorite_removed": "Removed {{symbol}} from favorites",
     "add_ticker_btn": "Add Asset",
-    "add_ticker_save_all_with_count": "Add ({{count}})",
     "add_ticker_pending_label": "To be added ({{count}})",
     "add_ticker_chip_remove": "Remove {{symbol}}",
     "add_ticker_already_favorite_badge": "Favorited",
-    "favorites_added_bulk": "Added {{count}} ticker(s) to favorites",
-    "favorites_save_failed": "Failed to save favorites, please try again",
     "assets_found": "Assets",
     "screener": "Asset Screener",
-    "loading_dominance": "Loading dominance...",
     "data_unavailable": "Market data is taking a break",
-    "data_unavailable_desc": "The API isn't responding right now. A quick connection check should sort it out.",
-    "dominance_unavailable": "Dominance is taking a break",
-    "sentiment_unavailable": "Sentiment is taking a break",
-    "crypto_unavailable": "Crypto data is taking a break",
+    "data_unavailable_desc": "The API is not responding right now. A quick connection check should sort it out.",
     "market_context": "Market Context",
     "market_context_unavailable": "Market context unavailable",
     "no_assets_found": "No assets found here",
     "no_assets_found_desc": "Try switching up the filters.",
     "search_no_results": "No assets found for \"{{query}}\"",
-    "fng_change_points_one": "{{value}} point",
-    "fng_change_points_other": "{{value}} points",
     "score": "Score",
-    "data_offline": "Data Offline",
-    "data_offline_desc": "Failed to load core benchmark prices",
+    "data_offline": "Offline Connection",
+    "data_offline_desc": "Live market price updates unavailable.",
     "crypto": "Crypto",
     "id_equity": "ID Equity",
     "us_equity": "US Equity",
@@ -301,31 +418,29 @@
     "forex": "Forex",
     "index_fallback": "Index",
     "context_explainer": {
-      "crypto": "Crypto market mood. Rising means buyers are eager, falling means fear is spreading.",
-      "id-equity": "How shaky IHSG has been lately. High means volatile, low means calm and steady.",
-      "us-equity": "Wall Street panic gauge. High means fear is rising, low means traders are chill.",
-      "commodities": "Industrial demand versus safe haven. Rising bets on growth, falling seeks safety.",
-      "forex": "Dollar strength versus other currencies. Strong dollar pressures every other asset."
+      "crypto": "Bitcoin and altcoin setup. High Bitcoin up, low altcoins up.",
+      "id-equity": "ID equity market setup. High wild moves, low chill moves.",
+      "us-equity": "US equity market setup. High wild moves, low chill moves.",
+      "commodities": "Industry and gold market setup. High industry up, low gold up.",
+      "forex": "Dollar and forex setup. High dollar up, low other forex up."
     },
     "score_explainer": {
-      "crypto": "Crypto risk appetite. High means buyers feel confident, low means fear is in control.",
-      "id-equity": "ID equity risk appetite. High means investors feel confident, low means fear is in control.",
-      "us-equity": "US equity risk appetite. High means investors feel confident, low means fear is in control.",
-      "commodities": "Commodity risk appetite. High means demand feels strong, low means demand feels weak.",
-      "forex": "Rupiah risk appetite. High means rupiah feels strong, low means rupiah feels weak."
+      "crypto": "Crypto market pulse. High optimism up, low caution up.",
+      "id-equity": "ID equity pulse. High confidence up, low hesitation up.",
+      "us-equity": "US equity pulse. High confidence up, low hesitation up.",
+      "commodities": "Commodity market pulse. High demand up, low slowdown.",
+      "forex": "Rupiah market pulse. High score currency, low pressure."
     }
   },
   "terminal": {
     "title": "Research Terminal",
     "subtitle": "Multi asset analysis with real time data and accurate signals.",
-    "access_dialog_placeholder": "Enter access code (e.g. 1453)...",
+    "access_dialog_placeholder": "Enter access code (1453, 7777, 9999)...",
     "access_dialog_no_access": "Don't have an access code?",
     "access_dialog_no_access_link": "Get access",
     "access_dialog_invalid_code": "Invalid access code! Please try again.",
-    "access_dialog_success": "Access granted! Premium features are unlocked forever.",
     "access_dialog_unlock_btn": "Unlock",
-    "access_dialog_code_required": "Access code is required",
-    "access_trial_success": "Access granted! Premium features are now unlocked."
+    "access_dialog_code_required": "Access code is required"
   },
   "calendar": {
     "title": "Economic Calendar",
@@ -369,6 +484,14 @@
     "trend": "Trend",
     "signal": "Signal",
     "successrate": "Success Rate",
+    "successrate_methodology": "Ratio of closed trades that finished at breakeven or profit for this symbol.",
+    "successrate_summary": "{{percent}}% successful: {{wins}} of {{total}} closed trades.",
+    "successrate_sample": "{{wins}}/{{total}}",
+    "successrate_new_data": "New Data",
+    "successrate_new_data_description": "No closed trades for this symbol yet.",
+    "successrate_loading": "Loading success-rate data.",
+    "successrate_unavailable": "Unavailable",
+    "successrate_load_error": "Success-rate data could not be loaded. Refresh to try again.",
     "strength": "Strength",
     "page": "Page",
     "of": "of",
@@ -434,7 +557,6 @@
     "suppressed_reason_countertrend": "big trend is disagreeing",
     "analysis": "Analysis",
     "indicators": "Technical Indicators",
-    "sentiment": "Sentiment",
     "decision_support": "Supporting Score",
     "regime_trending": "Trending",
     "regime_ranging": "Ranging",
@@ -518,12 +640,6 @@
     "tp3": "TP3",
     "take_profit": "Take Profit",
     "share": "Share signal",
-    "shared_signal": "Signal image shared",
-    "downloaded_signal": "Signal image downloaded",
-    "share_failed_signal": "Could not generate the signal image",
-    "shared_position": "Position image shared",
-    "downloaded_position": "Position image downloaded",
-    "share_failed_position": "Could not generate the position image",
     "sm_labels": {
       "neutral_positioning": "Neutral positioning",
       "no_positioning_data": "No positioning data",
@@ -536,9 +652,8 @@
     }
   },
   "disclaimer": {
-    "confirm": "I have read and understood the risk disclosure",
+    "confirm": "Read and understood the risk disclosure",
     "agree": "Understand & Proceed",
-    "toast_success": "System locked in. Welcome to the Command Center!",
     "load_error_title": "Risk disclaimer could not be loaded",
     "load_error_description": "There was a problem loading the disclaimer. Try again before continuing."
   },
@@ -622,14 +737,14 @@
     "status_reversed": "REVERSED Reached"
   },
   "testimonials": {
-    "title": "Stories from Our Users",
+    "title": "Stories from Real Users",
     "subtitle": "Real experiences from RabaLaba users researching markets and building trade setups to stay sharp and avoid getting wrecked.",
     "cta": "Share experience",
     "menu_entry": "Personal Testimonial",
     "empty_title": "Be the first story",
-    "empty_description": "There are no featured testimonials so far. If RabaLaba helped, share the real experience honestly so more people can catch the same gains.",
+    "empty_description": "There are no featured testimonials so far. Share the real experience honestly so more people can catch the same gains.",
     "load_error_title": "Testimonials couldn't be loaded",
-    "load_error_description": "Try loading them again, or share an experience in the meantime.",
+    "load_error_description": "Retry loading, or share an experience in the meantime.",
     "rating": {
       "1": "1 out of 5 stars",
       "2": "2 out of 5 stars",
@@ -673,43 +788,31 @@
       "rejection_reason": "Private note from the admin",
       "no_rejection_reason": "Admin did not write any additional notes.",
       "display_name": "Display name",
-      "display_name_placeholder": "The name you want to display",
+      "display_name_placeholder": "Preferred display name",
       "persona": "Persona or favorite market",
-      "persona_placeholder": "Example: Indonesian stock swing trader",
+      "persona_placeholder": "Day Trader, Swing Trader, Investor",
       "rating": "Rating",
       "body": "Testimonial",
       "body_placeholder": "Write the most helpful and ultimate part of RabaLaba...",
       "delete": "Delete",
       "delete_title": "Delete testimonial?",
       "delete_description": "Deleting reviews is permanent and reviews will immediately disappear from the main page.",
-      "confirm_delete": "Delete",
-      "submit": "Submit",
-      "saving": "Saving...",
-      "save_success": "Review successfully saved and sent to the review queue.",
-      "save_error": "Failed to save review. Try repeating in a short moment.",
-      "delete_success": "Review deletion successfully executed.",
-      "delete_error": "Failed to delete review. Please try again in a short moment.",
       "load_error_title": "Failed to load review.",
       "load_error_description": "Check internet connection and try again before editing review.",
       "automatic_profile_hint": "Name and status data are auto synchronized."
     }
   },
   "admin": {
-    "add_asset_dialog_title": "Add Auto Journal Asset",
-    "add_asset_dialog_desc": "Symbols validate automatically with Yahoo. Changes apply on the next scheduled run with no system redeployment.",
+    "add_asset_dialog_title": "Add Automatic Journal Assets",
+    "add_asset_dialog_desc": "Select verified market symbols for automated journal updates following scheduled analysis.",
     "empty_title": "No assets listed yet",
     "empty_filter_desc": "No results match the current search filters",
     "empty_desc": "Add the first symbol using the button above",
     "add_asset_already_exists": "already exists",
     "add_asset_selected": "selected",
     "add_asset_ready_to_add": "{{count}} ready to add",
-    "add_asset_toast_success": "{{count}} assets added to auto journal asset list",
-    "add_asset_toast_info": "{{count}} assets already in the list",
-    "add_asset_toast_error": "{{count}} symbols not found on Yahoo — check format",
     "add_asset_not_found": "Symbol not found",
     "add_asset_not_found_desc": "Try another keyword, or type the exact Yahoo symbol and press Enter.",
-    "add_asset_btn_add": "Add",
-    "add_asset_btn_add_with_count": "Add ({{count}})",
     "settings_btn": "Edit Settings",
     "settings_dialog_title": "Auto Journal Settings",
     "settings_dialog_desc": "Manage the auto journal schedule, daily recap, and asset selection.",
@@ -735,17 +838,13 @@
     "settings_weekly_desc": "Recap the full Monday to Sunday week once it completes.",
     "settings_monthly_label": "Monthly Discord recap",
     "settings_monthly_desc": "Recap the full calendar month once it completes.",
-    "settings_toast_success": "Schedule settings saved successfully",
-    "settings_toast_error": "Failed to save schedule settings",
     "settings_save_btn": "Save",
     "scan_btn": "Scan Now",
     "scan_loading": "Scanning…",
     "scan_last_run": "{{ago}} ago",
     "scan_never": "never",
     "scan_paused_hint": "Enable auto journal first to run a manual scan",
-    "scan_unsaved_hint": "Save your changes first",
-    "scan_toast_success": "Scan done · {{emitted}} new signals, {{closed}} closed",
-    "scan_toast_error": "Failed to run market scan",
+    "scan_unsaved_hint": "Save pending changes first",
     "scan_manual_title": "Manual Trigger",
     "scan_manual_desc": "Instantly track the market movement right now to get the most updated signals.",
     "scan_last_run_title": "Last Scan",
@@ -762,8 +861,6 @@
     "selection_btn": "Select Now",
     "selection_loading": "Selecting…",
     "selection_paused_hint": "Enable auto-selection first to run it manually",
-    "selection_toast_success": "Selection done · {{added}} added, {{reactivated}} reactivated, {{pruned}} pruned",
-    "selection_toast_error": "Failed to run asset selection",
     "selection_manual_title": "Manual Selection",
     "selection_manual_desc": "Scan the busiest markets right now to import the freshest assets to the universe.",
     "selection_last_run_title": "Last Selection",
@@ -782,7 +879,7 @@
     "admin_console_title": "Admin Dashboard",
     "console_entry": "Manage System",
     "admin_console_desc": "Manage the asset list and auto journal cron schedules.",
-    "admin_console_users_desc": "Manage registered users, their tier statuses, and track redeemed premium access codes.",
+    "admin_console_users_desc": "Manage registered users, tier statuses, and track redeemed premium access codes.",
     "status_active": "Active",
     "status_inactive": "Inactive",
     "status_all": "All Status",
@@ -825,14 +922,10 @@
     "users_add_email_required": "Email is required",
     "users_add_invalid_email": "Invalid email format",
     "users_add_already_exists": "User already registered in the system",
-    "users_add_toast_success_single": "Successfully added user {{email}}",
-    "users_add_toast_error_single": "Failed to add user {{email}}",
     "users_edit_dialog_title": "Edit User",
     "users_edit_dialog_desc": "Change the users tier or role in the system.",
     "users_edit_btn_save": "Save",
     "users_add_btn_save": "Add",
-    "users_edit_toast_success": "Successfully updated user {{email}}",
-    "users_edit_toast_error": "Failed to update user {{email}}",
     "users_form_tier_placeholder": "Select Tier",
     "users_form_role_placeholder": "Select Role",
     "users_form_trial_label": "Trial Expiry (Optional)",
@@ -861,14 +954,12 @@
     "codes_add_invalid_number": "Must be a positive number",
     "codes_add_btn_save": "Add",
     "codes_add_already_exists": "Access code already exists",
-    "codes_add_toast_success": "Successfully added access code {{code}}",
-    "codes_add_toast_error": "Failed to add access code {{code}}",
     "codes_form_type_placeholder": "Select Type",
     "codes_form_type_full": "Full",
     "codes_form_type_trial": "Trial",
     "codes_form_max_uses_placeholder": "∞ (Unlimited)",
-    "codes_form_trial_days_placeholder": "Trial days (e.g. 30)",
-    "codes_form_note_placeholder": "Optional note (e.g. June 2026 Promo)",
+    "codes_form_trial_days_placeholder": "Trial days (7, 14, 30)",
+    "codes_form_note_placeholder": "Optional note (June Promo, VIP Member, 2026 Event)",
     "codes_col_created": "Modified",
     "menu_assets": "Asset Management",
     "menu_users": "User Management",
@@ -923,14 +1014,14 @@
       "col_highlight": "Best Seller",
       "col_active": "Status",
       "plans_empty_title": "No plans yet",
-      "plans_empty_desc": "Add your first subscription plan.",
+      "plans_empty_desc": "Add the first subscription plan.",
       "methods_title": "Payment Methods List",
       "methods_desc": "List of payment methods for the payment dialog.",
       "add_method_btn": "Add Method",
       "col_method": "Method",
       "col_account": "Number Address",
-      "methods_empty_title": "No methods yet",
-      "methods_empty_desc": "Add your first payment method.",
+      "methods_empty_title": "No payment methods listed yet",
+      "methods_empty_desc": "Add the first payment method.",
       "plan_add_title": "Add Plan",
       "plan_edit_title": "Edit Plan",
       "plan_dialog_desc": "Set the plan price and benefits (EN + ID).",
@@ -954,10 +1045,8 @@
       "cta_contact": "Contact",
       "save_btn": "Save",
       "add_action_btn": "Add",
-      "plan_saved": "Plan saved",
-      "plan_save_error": "Failed to save plan",
       "plan_delete_title": "Delete plan {{name}}?",
-      "plan_delete_desc": "Are you sure you want to delete the plan {{name}}? The plan will disappear from the subscription page.",
+      "plan_delete_desc": "Sure to delete plan {{name}}? The plan will disappear from the subscription page.",
       "method_category": "Category",
       "method_name": "Name",
       "method_account_no": "Number / Address",
@@ -973,8 +1062,6 @@
       "method_add_title": "Add Method",
       "method_edit_title": "Edit Method",
       "method_dialog_desc": "Set the payment account, e-wallet, crypto address.",
-      "method_saved": "Method saved",
-      "method_save_error": "Failed to save method",
       "method_delete_title": "Delete this method?",
       "method_delete_desc": "The method will disappear from the payment dialog.",
       "col_category": "Type"
@@ -991,11 +1078,8 @@
       "agree_label": "Agree Button Text",
       "save_btn": "Save",
       "publish_btn": "Publish",
-      "saved": "Disclaimer saved",
-      "published": "New version published — every user will be asked to accept again",
-      "save_error": "Failed to save disclaimer",
       "publish_confirm_title": "Publish a new version?",
-      "publish_confirm_desc": "All users (logged-in and anonymous) will be asked to accept again on their next visit."
+      "publish_confirm_desc": "All visitors (logged in and anonymous) receive a prompt to re-accept upon the next visit."
     },
     "invitations": {
       "page_title": "Invitations",
@@ -1008,8 +1092,7 @@
       "col_uses": "Uses",
       "col_expires": "Expires",
       "empty_title": "No invitations yet",
-      "empty_desc": "Create your first premium/trial invite link.",
-      "link_copied": "Invite link copied",
+      "empty_desc": "Create the first premium or trial invite link.",
       "copy_link": "Copy link",
       "add_title": "Create Invitation",
       "add_desc": "Create an invite link that grants premium or trial when claimed.",
@@ -1017,17 +1100,14 @@
       "field_trial_days": "Trial Days",
       "field_max": "Max Uses",
       "field_recipient": "Recipient (optional)",
-      "field_recipient_ph": "e.g. Budi / June promo",
+      "field_recipient_ph": "John, Budi, June promo",
       "field_expires": "Expiry (optional)",
       "create_btn": "Create",
-      "create_error": "Failed to create invitation",
       "created_title": "Invitation Created",
       "created_desc": "Share this link with the prospective member.",
       "create_another": "Create",
       "delete_title": "Delete this invitation?",
       "delete_desc": "The invite link will stop working immediately.",
-      "delete_success": "Invitation deleted",
-      "delete_error": "Failed to delete invitation",
       "deactivate_title": "Pause invite {{name}}?",
       "activate_title": "Activate invite {{name}}?",
       "deactivate_desc": "Invite {{name}} will be paused and cannot be claimed for now.",
@@ -1039,9 +1119,6 @@
     "admin_console_codes_desc": "Track how premium access codes get created and used across the system.",
     "codes_delete_confirm_title": "Delete Access Code?",
     "codes_delete_confirm_desc": "Delete access code {{code}}? Anyone who already used it stays registered, but the code stops working for good.",
-    "codes_delete_success": "Access code deleted.",
-    "codes_delete_error": "Couldn't delete the access code.",
-    "password_validated_success": "Password validated.",
     "payments": {
       "page_desc": "Manage bank accounts, e-wallets, and crypto payment addresses."
     },
@@ -1076,16 +1153,10 @@
       "action_move": "Change slot",
       "action_unfeature": "Remove from landing",
       "action_delete": "Delete permanently",
-      "action_error": "The action failed. Please try again.",
-      "approve_success": "Testimonial approved.",
-      "reject_success": "Testimonial rejected.",
-      "feature_success": "Testimonial slot updated.",
-      "unfeature_success": "Testimonial removed from the landing page.",
-      "delete_success": "Testimonial permanently deleted.",
       "reject_title": "Reject testimonial",
       "reject_desc": "The reason is optional and visible only to the user and admins.",
       "rejection_reason_label": "Rejection reason (optional)",
-      "rejection_reason_placeholder": "Example: please remove personal information.",
+      "rejection_reason_placeholder": "Personal info, Excessive profanity, Unsolicited spam",
       "feature_title": "Choose a landing slot",
       "feature_desc": "An approved testimonial can occupy one of six public slots.",
       "slot_label": "Slot",
@@ -1094,7 +1165,6 @@
       "slot_replace_hint": "This slot is occupied by {{name}}. Replacing it requires confirmation.",
       "replace_title": "Replace the testimonial in this slot?",
       "replace_desc": "Slot {{slot}} is occupied by {{name}}. That testimonial will be replaced immediately.",
-      "replace_confirm": "Replace slot",
       "another_testimonial": "another testimonial",
       "delete_title": "Permanently delete testimonial?",
       "delete_desc": "{{name}}'s testimonial will be permanently deleted, including from the landing page. This cannot be undone.",
@@ -1108,8 +1178,6 @@
     "summary_log_scheduler_status": "Auto scheduler: status = {{status}}, run interval = {{interval}} minutes.",
     "users_delete_confirm_title": "Delete User?",
     "users_delete_confirm_desc": "Delete user {{email}}? Everything tied to this user gets wiped for good.",
-    "users_delete_success": "User deleted.",
-    "users_delete_error": "Couldn't delete the user.",
     "validate_password_title": "Validate Password",
     "validate_password_desc": "Enter the password to verify this sensitive action."
   },
@@ -1118,14 +1186,14 @@
     "claiming": "Claiming invitation...",
     "success_premium_title": "Premium Active!",
     "success_trial_title": "Trial Active!",
-    "success_desc": "You're all set — your access is unlocked. Head into the terminal.",
+    "success_desc": "All set! Access is unlocked. Head right into the terminal.",
     "go_terminal": "Enter Terminal",
     "already_title": "Already Claimed",
     "already_premium_title": "Already Premium",
     "invalid_title": "Invitation Not Valid",
     "invalid_desc": "This invitation can't be used anymore.",
-    "reason_already": "You've already claimed this invite, your access is active.",
-    "reason_already_premium": "Your account is already premium, so this invite wasn't used up. It's still good to share with someone else.",
+    "reason_already": "This invite was already claimed, access remains active.",
+    "reason_already_premium": "Account is already premium, so this invite wasn't used up. Still good to share with someone else.",
     "reason_expired": "This invitation has expired.",
     "reason_revoked": "This invitation was revoked.",
     "reason_exhausted": "This invitation has reached its claim limit.",
@@ -1137,7 +1205,7 @@
     "offer_trial_desc": "Claim this invite to unlock premium trial access. Log in or sign up first to get started now.",
     "login_to_claim": "Log In to Claim",
     "register_to_claim": "Create New Account",
-    "footer_note": "The invite is claimed automatically once you sign in.",
+    "footer_note": "The invite is claimed automatically once signed in.",
     "days": "days"
   },
   "not_found": {

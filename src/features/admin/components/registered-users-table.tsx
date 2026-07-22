@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useReactTable,
@@ -17,12 +17,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Loader2,
   Trash2,
   Pencil,
 } from "lucide-react";
 import { UserDialog } from "./user-dialog";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import {
   AlertDialog,
@@ -51,6 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonAdminUserRow } from "@/components/shared/skeleton-card";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 import {
   FilterGroup,
   type FilterOption,
@@ -59,7 +58,7 @@ import { useAdminUsers } from "@/hooks/use-admin-users";
 import type { AdminUserRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-
+import { toast } from "sonner";
 
 /* ── Tiny helpers (same style as journal-asset-manager) ──────────────── */
 
@@ -121,9 +120,6 @@ function TierBadge({ tier }: { tier: string }) {
   );
 }
 
-
-
-
 /** Format a timestamptz ISO string to DD-MM-YYYY + HH:MM; returns null if missing. */
 function formatTs(iso: string | null): { date: string; time: string } | null {
   if (!iso) return null;
@@ -140,42 +136,46 @@ function DeleteUserButton({
   onDelete: (userId: string) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
+  const handleDelete = async (): Promise<boolean> => {
     const success = await onDelete(user.user_id);
-    setIsDeleting(false);
     if (success) {
-      toast.success(
-        t("admin.users_delete_success", {
-          defaultValue: `Berhasil menghapus pengguna ${user.email}`,
-        }),
-      );
+      toast.success(t("toasts.user.delete_success"));
     } else {
-      toast.error(
-        t("admin.users_delete_error", {
-          defaultValue: `Gagal menghapus pengguna ${user.email}`,
-        }),
-      );
+      toast.error(t("toasts.user.delete_error"));
+    }
+    return success;
+  };
+  const handleAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      if (await handleDelete()) setOpen(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger
-        render={
-          <Button
-            variant="link"
-            size="icon"
-            aria-label={t("admin.users_delete_confirm_title", {
-              email: user.email,
-            })}
-            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
-          />
-        }
-      >
-        <Trash2 className="h-4 w-4" />
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isDeleting) setOpen(nextOpen);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="link"
+          size="icon"
+          aria-label={t("admin.users_delete_confirm_title", {
+            email: user.email,
+          })}
+          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -195,17 +195,19 @@ function DeleteUserButton({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            onClick={handleDelete}
+            onClick={handleAction}
             disabled={isDeleting}
+            aria-busy={isDeleting}
           >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              t("admin.delete_btn", "Hapus")
-            )}
+            <ActionButtonContent
+              label={t("common.actions.delete")}
+              pending={isDeleting}
+            />
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -228,9 +230,6 @@ export function RegisteredUsersTable() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "created_at", desc: true },
   ]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [userToEdit, setUserToEdit] = useState<AdminUserRow | null>(null);
 
   const roleOptions: FilterOption<RoleFilter>[] = [
     { value: "all", label: t("admin.users_role_all") },
@@ -356,7 +355,8 @@ export function RegisteredUsersTable() {
             )}
             {row.original.tier === "trial" && row.original.trial_expires_at && (
               <div className="text-[10px] text-muted-foreground mt-0.5 font-medium whitespace-nowrap">
-                {t("admin.tier_expires")} {formatTs(row.original.trial_expires_at)?.date}
+                {t("admin.tier_expires")}{" "}
+                {formatTs(row.original.trial_expires_at)?.date}
               </div>
             )}
           </div>
@@ -425,25 +425,26 @@ export function RegisteredUsersTable() {
 
           return (
             <div className="flex items-center justify-end gap-1">
-              <Button
-                variant="link"
-                size="icon"
-                onClick={() => {
-                  setUserToEdit(row.original);
-                  setIsEditDialogOpen(true);
-                }}
-                className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
-                title={t("common.edit", "Edit")}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <UserDialog
+                user={row.original}
+                trigger={
+                  <Button
+                    variant="link"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
+                    title={t("common.edit", "Edit")}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                }
+              />
               <DeleteUserButton user={row.original} onDelete={deleteUser} />
             </div>
           );
         },
       },
     ],
-    [t, deleteUser, currentUserEmail, setUserToEdit, setIsEditDialogOpen],
+    [t, deleteUser, currentUserEmail],
   );
 
   const table = useReactTable({
@@ -506,16 +507,19 @@ export function RegisteredUsersTable() {
 
             <Separator orientation="vertical" className="mx-1 h-8" />
 
-            <Button
-              size="lg"
-              onClick={() => setIsAddDialogOpen(true)}
-              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">
-                {t("admin.users_add_btn", "Tambah Pengguna")}
-              </span>
-            </Button>
+            <UserDialog
+              trigger={
+                <Button
+                  size="lg"
+                  className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">
+                    {t("admin.users_add_btn", "Tambah Pengguna")}
+                  </span>
+                </Button>
+              }
+            />
           </div>
         </div>
 
@@ -585,16 +589,6 @@ export function RegisteredUsersTable() {
           className="pt-3 border-t border-border/60"
         />
       </div>
-
-      <UserDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
-      <UserDialog
-        open={isEditDialogOpen}
-        onOpenChange={(open) => {
-          setIsEditDialogOpen(open);
-          if (!open) setUserToEdit(null);
-        }}
-        user={userToEdit}
-      />
     </div>
   );
 }

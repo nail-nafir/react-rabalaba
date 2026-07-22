@@ -93,28 +93,33 @@ function makeCandles(count, values = {}) {
   }));
 }
 
-test("quote contexts expose direction and the required precision", async () => {
+test("BTC.D and quote contexts expose direction and required formatting", async () => {
   const { buildMarketContextByAssetClass } = await loadAdapter();
   const contexts = buildMarketContextByAssetClass(
     [
-      makeAsset({
-        symbol: "^CMC200",
-        name: "Yahoo primary name",
-        price: 742.35,
-        changePercent: 1.42,
-      }),
       makeAsset({ symbol: "^VIX", price: 15.2, changePercent: -2.4 }),
       makeAsset({ symbol: "DX-Y.NYB", price: 104.28, changePercent: 0 }),
       makeAsset({ symbol: "GC=F", price: 2350, changePercent: 1.2 }),
       makeAsset({ symbol: "HG=F", price: 4.2, changePercent: 0.5 }),
     ],
     null,
+    {
+      btc: 56.1,
+      eth: 12.8,
+      btcDominanceChangePercent24h: -0.4,
+      updatedAt: NOW_MS - 30_000,
+    },
     NOW_MS,
   );
 
-  assert.equal(contexts.crypto.name, "CMC Crypto 200 Index");
-  assert.equal(contexts.crypto.direction, "up");
-  assert.equal(contexts.crypto.precision, 2);
+  assert.equal(contexts.crypto.symbol, "BTC.D");
+  assert.equal(contexts.crypto.name, "BTC Dominance Index");
+  assert.equal(contexts.crypto.value, 56.1);
+  assert.equal(contexts.crypto.suffix, undefined);
+  assert.equal(contexts.crypto.changePercent, -0.4);
+  assert.equal(contexts.crypto.direction, "down");
+  assert.equal(contexts.crypto.precision, 1);
+  assert.equal(contexts.crypto.timestamp, NOW_MS - 30_000);
   assert.equal(contexts["us-stock"].name, "CBOE Volatility Index");
   assert.equal(contexts["us-stock"].direction, "down");
   assert.equal(contexts["us-stock"].precision, 1);
@@ -131,39 +136,27 @@ test("quote contexts expose direction and the required precision", async () => {
   );
 });
 
-test("stale or candle-less CMC falls back to the live index fallback", async () => {
+test("BTC.D keeps its value without a delta and fails closed without global data", async () => {
   const { buildMarketContextByAssetClass } = await loadAdapter();
-  const fallback = makeAsset({
-    symbol: "^NCI",
-    name: "Nasdaq Crypto Index",
-    price: 4_321.5,
-    changePercent: -0.25,
-  });
+  const withoutDelta = buildMarketContextByAssetClass(
+    [],
+    null,
+    { btc: 56.1, eth: 12.8, updatedAt: NOW_MS - 30_000 },
+    NOW_MS,
+  );
+  assert.equal(withoutDelta.crypto.symbol, "BTC.D");
+  assert.equal(withoutDelta.crypto.value, 56.1);
+  assert.equal(withoutDelta.crypto.suffix, undefined);
+  assert.equal(withoutDelta.crypto.changePercent, undefined);
+  assert.equal(withoutDelta.crypto.direction, undefined);
 
-  const fromStalePrimary = buildMarketContextByAssetClass(
-    [
-      makeAsset({
-        symbol: "^CMC200",
-        quoteTime: NOW_MS - 49 * 60 * 60 * 1000,
-      }),
-      fallback,
-    ],
+  const withoutGlobal = buildMarketContextByAssetClass(
+    [],
+    null,
     null,
     NOW_MS,
   );
-  assert.equal(fromStalePrimary.crypto.symbol, "^NCI");
-  assert.equal(fromStalePrimary.crypto.name, "NCI Crypto Index");
-
-  const fromEmptyPrimary = buildMarketContextByAssetClass(
-    [
-      makeAsset({ symbol: "^CMC200", quoteIndicators: {} }),
-      fallback,
-    ],
-    null,
-    NOW_MS,
-  );
-  assert.equal(fromEmptyPrimary.crypto.symbol, "^NCI");
-  assert.equal(fromEmptyPrimary.crypto.name, "NCI Crypto Index");
+  assert.equal(withoutGlobal.crypto, null);
 });
 
 test("incomplete and stale quote snapshots are rejected", async () => {

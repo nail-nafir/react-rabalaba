@@ -4,10 +4,8 @@
  * pattern: a keyed inner form initializes its draft state straight from props
  * (no useEffect setState), the container mounts it fresh per plan.
  */
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-import { Loader2, Save, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +31,16 @@ import {
 } from "@/components/ui/select";
 import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
 import type { SubscriptionPlanRow } from "@/services/supabase/database.types";
-
+import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { toast } from "sonner";
 
 const ICON_OPTIONS = ["Terminal", "Zap", "Shield"];
 const CTA_KINDS = ["link", "payment", "license", "contact"] as const;
 const toList = (s: string) =>
-  s.split("\n").map((x) => x.trim()).filter(Boolean);
+  s
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 function LangField({
   value,
@@ -86,8 +89,18 @@ function Bilingual({ label, en, id, onEn, onId, textarea }: BilingualProps) {
         {label}
       </Label>
       <div className="grid grid-cols-2 gap-2">
-        <LangField value={en} onChange={onEn} placeholder="EN" textarea={textarea} />
-        <LangField value={id} onChange={onId} placeholder="ID" textarea={textarea} />
+        <LangField
+          value={en}
+          onChange={onEn}
+          placeholder="EN"
+          textarea={textarea}
+        />
+        <LangField
+          value={id}
+          onChange={onId}
+          placeholder="ID"
+          textarea={textarea}
+        />
       </div>
     </div>
   );
@@ -96,9 +109,11 @@ function Bilingual({ label, en, id, onEn, onId, textarea }: BilingualProps) {
 interface PlanFormProps {
   plan: SubscriptionPlanRow | null;
   onClose: () => void;
+  saving: boolean;
+  setSaving: (pending: boolean) => void;
 }
 
-function PlanForm({ plan, onClose }: PlanFormProps) {
+function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
   const { t } = useTranslation();
   const { addPlan, updatePlan } = useSubscriptionPlans();
   const isEdit = !!plan;
@@ -120,19 +135,63 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
   const [ctaKind, setCtaKind] = useState<string>(plan?.cta_kind ?? "link");
   const [ctaLink, setCtaLink] = useState(plan?.cta_link ?? "");
   const [active, setActive] = useState(plan?.active ?? true);
-  const [saving, setSaving] = useState(false);
   const iconItems = ICON_OPTIONS.map((value) => ({ value, label: value }));
   const ctaKindItems = CTA_KINDS.map((value) => ({
     value,
     label: t(`admin.billing.cta_${value}`, value),
   }));
 
-  const canSave =
-    slug.trim() && nameEn.trim() && nameId.trim() && priceEn.trim() && priceId.trim();
+  const isValid = Boolean(
+    slug.trim() &&
+    nameEn.trim() &&
+    nameId.trim() &&
+    priceEn.trim() &&
+    priceId.trim(),
+  );
+  const draftSnapshot = JSON.stringify({
+    slug: slug.trim().toLowerCase(),
+    sortOrder: Number(sortOrder) || 0,
+    nameEn: nameEn.trim(),
+    nameId: nameId.trim(),
+    priceEn: priceEn.trim(),
+    priceId: priceId.trim(),
+    origEn: origEn.trim(),
+    origId: origId.trim(),
+    descEn: descEn.trim(),
+    descId: descId.trim(),
+    featEn: toList(featEn),
+    featId: toList(featId),
+    icon,
+    highlighted,
+    ctaKind,
+    ctaLink: ctaLink.trim(),
+    active,
+  });
+  const initialSnapshot = plan
+    ? JSON.stringify({
+        slug: plan.slug.trim().toLowerCase(),
+        sortOrder: plan.sort_order ?? 0,
+        nameEn: plan.name?.en?.trim() ?? "",
+        nameId: plan.name?.id?.trim() ?? "",
+        priceEn: plan.price?.en?.trim() ?? "",
+        priceId: plan.price?.id?.trim() ?? "",
+        origEn: plan.original_price?.en?.trim() ?? "",
+        origId: plan.original_price?.id?.trim() ?? "",
+        descEn: plan.description?.en?.trim() ?? "",
+        descId: plan.description?.id?.trim() ?? "",
+        featEn: toList((plan.features?.en ?? []).join("\n")),
+        featId: toList((plan.features?.id ?? []).join("\n")),
+        icon: plan.icon ?? "Terminal",
+        highlighted: plan.highlighted ?? false,
+        ctaKind: plan.cta_kind ?? "link",
+        ctaLink: plan.cta_link?.trim() ?? "",
+        active: plan.active ?? true,
+      })
+    : null;
+  const canSave = isValid && (!isEdit || draftSnapshot !== initialSnapshot);
 
   const handleSave = async () => {
     if (!canSave) return;
-    setSaving(true);
     const payload = {
       sort_order: Number(sortOrder) || 0,
       name: { en: nameEn.trim(), id: nameId.trim() },
@@ -149,16 +208,22 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
       cta_link: ctaLink.trim() || null,
       active,
     };
-
-    const ok = isEdit
-      ? await updatePlan(plan!.slug, payload)
-      : (await addPlan({ slug: slug.trim().toLowerCase(), ...payload })) === "added";
-    setSaving(false);
-    if (ok) {
-      toast.success(t("admin.billing.plan_saved", "Paket tersimpan"));
-      onClose();
-    } else {
-      toast.error(t("admin.billing.plan_save_error", "Gagal menyimpan paket"));
+    setSaving(true);
+    try {
+      const ok = isEdit
+        ? await updatePlan(plan!.slug, payload)
+        : (await addPlan({ slug: slug.trim().toLowerCase(), ...payload })) ===
+          "added";
+      if (ok) {
+        toast.success(t("toasts.plan.save_success"));
+        onClose();
+      } else {
+        toast.error(t("toasts.plan.save_error"));
+      }
+    } catch {
+      toast.error(t("toasts.plan.save_error"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -206,7 +271,10 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
           onId={setPriceId}
         />
         <Bilingual
-          label={t("admin.billing.plan_original_price", "Harga Coret (opsional)")}
+          label={t(
+            "admin.billing.plan_original_price",
+            "Harga Coret (opsional)",
+          )}
           en={origEn}
           id={origId}
           onEn={setOrigEn}
@@ -235,7 +303,6 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               {t("admin.billing.plan_icon", "Ikon")}
             </Label>
             <Select
-              items={iconItems}
               value={icon}
               onValueChange={(nextValue) => {
                 if (nextValue !== null) setIcon(nextValue);
@@ -244,11 +311,7 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent
-                align="start"
-                alignItemWithTrigger={false}
-                className="p-1"
-              >
+              <SelectContent align="start" className="p-1">
                 <SelectGroup>
                   {iconItems.map((item) => (
                     <SelectItem
@@ -268,7 +331,6 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               {t("admin.billing.plan_cta_kind", "Aksi Tombol")}
             </Label>
             <Select
-              items={ctaKindItems}
               value={ctaKind}
               onValueChange={(nextValue) => {
                 if (nextValue !== null) setCtaKind(nextValue);
@@ -277,11 +339,7 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent
-                align="start"
-                alignItemWithTrigger={false}
-                className="p-1"
-              >
+              <SelectContent align="start" className="p-1">
                 <SelectGroup>
                   {ctaKindItems.map((item) => (
                     <SelectItem
@@ -318,7 +376,10 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
                   {t("admin.billing.plan_highlighted", "Tandai best seller")}
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed max-w-72">
-                  {t("admin.billing.plan_highlighted_desc", "Tampilkan badge Best Seller dan highlight paket.")}
+                  {t(
+                    "admin.billing.plan_highlighted_desc",
+                    "Tampilkan badge Best Seller dan highlight paket.",
+                  )}
                 </p>
               </div>
               <Switch
@@ -336,7 +397,10 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
                   {t("admin.billing.plan_active", "Tampilkan di halaman")}
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed max-w-72">
-                  {t("admin.billing.plan_active_desc", "Paket akan ditampilkan publik di halaman langganan.")}
+                  {t(
+                    "admin.billing.plan_active_desc",
+                    "Paket akan ditampilkan publik di halaman langganan.",
+                  )}
                 </p>
               </div>
               <Switch
@@ -355,21 +419,12 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
           onClick={handleSave}
           size="lg"
           disabled={saving || !canSave}
-          className="text-xs font-bold cursor-pointer shrink-0"
+          aria-busy={saving}
         >
-          {saving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : isEdit ? (
-            <>
-              <Save data-icon="inline-start" className="h-3.5 w-3.5" />
-              {t("admin.billing.save_btn", "Simpan")}
-            </>
-          ) : (
-            <>
-              <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
-              {t("admin.billing.add_action_btn", "Tambah")}
-            </>
-          )}
+          <ActionButtonContent
+            label={t(isEdit ? "common.actions.save" : "common.actions.add")}
+            pending={saving}
+          />
         </Button>
       </DialogFooter>
     </>
@@ -377,16 +432,27 @@ function PlanForm({ plan, onClose }: PlanFormProps) {
 }
 
 interface PlanDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  trigger: ReactElement;
   plan?: SubscriptionPlanRow | null;
 }
 
-export function PlanDialog({ open, onOpenChange, plan }: PlanDialogProps) {
+export function PlanDialog({ trigger, plan }: PlanDialogProps) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg border border-border text-foreground">
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!saving) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent
+        className="sm:max-w-lg border border-border text-foreground"
+        showCloseButton={!saving}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {plan
@@ -394,16 +460,19 @@ export function PlanDialog({ open, onOpenChange, plan }: PlanDialogProps) {
               : t("admin.billing.plan_add_title", "Tambah Paket")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t("admin.billing.plan_dialog_desc", "Atur harga dan benefit paket langganan (EN + ID).")}
+            {t(
+              "admin.billing.plan_dialog_desc",
+              "Atur harga dan benefit paket langganan (EN + ID).",
+            )}
           </DialogDescription>
         </DialogHeader>
-        {open && (
-          <PlanForm
-            key={plan?.slug ?? "new"}
-            plan={plan ?? null}
-            onClose={() => onOpenChange(false)}
-          />
-        )}
+        <PlanForm
+          key={plan?.slug ?? "new"}
+          plan={plan ?? null}
+          onClose={() => setOpen(false)}
+          saving={saving}
+          setSaving={setSaving}
+        />
       </DialogContent>
     </Dialog>
   );

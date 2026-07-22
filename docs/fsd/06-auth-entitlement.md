@@ -7,9 +7,9 @@
 
 ## TL;DR
 
-🇮🇩 Auth = Supabase (email/password + Google OAuth PKCE). Entitlement = **server truth** dari `profiles` row + RLS `is_premium()`/`is_admin()`/`is_owner()`. Tier di-grant lewat RPC `redeem_access_code` / `redeem_invitation` (SECURITY DEFINER, row-locked). Browser cuma **baca** profile sendiri (publishable key, RLS). Cron pakai service-role. Disclaimer gate hybrid (DB untuk logged-in, localStorage untuk anon).
+🇮🇩 Auth = Supabase (email/password + Google OAuth PKCE). Entitlement = **server truth** dari `profiles` row + RLS `is_premium()`/`is_admin()`/`is_owner()`. Tier di-grant lewat RPC `redeem_access_code` / `redeem_invitation` (SECURITY DEFINER, row-locked). Browser cuma **baca** profile sendiri (publishable key, RLS). Jurnal mentah tetap premium; anon/free hanya mendapat agregat success-rate per simbol lewat RPC publik. Cron pakai service-role. Disclaimer gate hybrid (DB untuk logged-in, localStorage untuk anon).
 
-🇺🇸 Auth = Supabase (email/password + Google OAuth PKCE). Entitlement = **server truth** from the `profiles` row + RLS `is_premium()`/`is_admin()`/`is_owner()`. Tier granted via `redeem_access_code` / `redeem_invitation` RPCs (SECURITY DEFINER, row-locked). The browser only **reads** its own profile (publishable key, RLS). The cron uses the service-role key. Disclaimer gate is hybrid (DB for logged-in, localStorage for anon).
+🇺🇸 Auth = Supabase (email/password + Google OAuth PKCE). Entitlement = **server truth** from the `profiles` row + RLS `is_premium()`/`is_admin()`/`is_owner()`. Tier granted via `redeem_access_code` / `redeem_invitation` RPCs (SECURITY DEFINER, row-locked). The browser only **reads** its own profile (publishable key, RLS). Raw journal rows remain premium; anonymous/free users only receive per-symbol success-rate aggregates through a public RPC. The cron uses the service-role key. Disclaimer gate is hybrid (DB for logged-in, localStorage for anon).
 
 ---
 
@@ -29,7 +29,7 @@
 | `/auth/callback` | `pages/auth-callback/index.tsx:18` | OAuth PKCE landing — tunggu session, forward ke `?redirect` (default `/terminal`); `?error`/8s timeout → `/login` + toast |
 
 ### Supabase client
-`src/services/supabase/client.ts:20` — **publishable key only** (RLS-bound, read-only `journal_trades`). Cron bangun client service-role sendiri server-side (gak pernah di bundle).
+`src/services/supabase/client.ts:20` — **publishable key only**. RLS membatasi row `journal_trades` ke premium/trial aktif; `get_public_journal_success_rates()` sengaja mengekspos hanya `symbol/wins/total` ke anon dan authenticated. Cron bangun client service-role sendiri server-side (gak pernah di bundle).
 
 ---
 
@@ -43,7 +43,7 @@
 - `isAdmin`/`isOwner` dari `profile.is_admin`/`is_owner` (`:124-125`), `isResolving` (`:131`).
 
 ### License dialog — `src/components/shared/license-dialog.tsx:30`
-Global dialog (mounted di `root-layout.tsx`). Buka via `openLicenseDialog` UI action. Tampilkan plan saat ini + field redeem code kalau logged-in, atau CTA ke `/login` & `/register` kalau logged-out.
+Reusable trigger-first dialog. Setiap CTA/badge memakai `LicenseDialog` + `DialogTrigger` langsung; visibility tidak disimpan di Redux. Dialog menampilkan plan saat ini + field redeem code kalau logged-in, atau CTA ke `/login` kalau logged-out.
 
 ### Tiers
 | Tier | Sumber / Source | Kedaluwarsa |
@@ -83,9 +83,9 @@ Halaman `/subscription` (`pages/subscription/index.tsx`). Kartu plan dari `useSu
 
 Hook: `src/hooks/use-disclaimer.ts:34` (`useDisclaimer`).
 
-🇮🇩 Disclaimer berbasis DB (singleton `disclaimer`, JSONB bilingual + version). **Hybrid acceptance**: logged-in → row `disclaimer_agreements`; anon → localStorage `rabalaba_disclaimer_v`. `needsAgreement` cuma true kalau klausa + status resolve (hindari flash). `agree()` + admin `update(patch, bumpVersion)` (bump version = re-prompt semua user). Komponen `DisclaimerDialog` (`features/market/components/disclaimer-dialog.tsx:121`) — gate first-touch, non-dismissable sampai Agree.
+🇮🇩 Disclaimer berbasis DB (singleton `disclaimer`, JSONB bilingual + version). **Hybrid acceptance**: logged-in → row `disclaimer_agreements`; anon → localStorage `rabalaba_disclaimer_v`. `needsAgreement` cuma true kalau klausa + status resolve (hindari flash). `agree()` + admin `update(patch, bumpVersion)` (bump version = re-prompt semua user). Komponen gate dirender **inline** di terminal sampai pengguna setuju; tidak memakai dialog yang dipaksa terbuka.
 
-🇺🇸 DB-backed disclaimer (singleton `disclaimer`, bilingual JSONB + version). **Hybrid acceptance**: logged-in → `disclaimer_agreements` row; anon → localStorage. `needsAgreement` only true once clauses+status resolve (avoids flash). `agree()` + admin `update(patch, bumpVersion)` (version bump re-prompts all users).
+🇺🇸 The DB-backed disclaimer uses hybrid acceptance (`disclaimer_agreements` for signed-in users, localStorage for anonymous users). The terminal renders the gate inline until accepted; it is not a force-open modal.
 
 ---
 

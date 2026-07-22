@@ -7,42 +7,20 @@ import type { AssetType } from "@/constants/taxonomy/asset";
 export type { TrendDirection } from "@/constants/taxonomy/trend";
 export type { MarketRegime } from "@/constants/taxonomy/regime";
 
-export interface MarketIndex {
-  symbol: string;
-  name: string;
-  value: number;
-  change: number;
-  changePercent: number;
-  trend: TrendDirection;
-}
-
-export interface FearGreedData {
-  value: number;
-  label: string;
-  timestamp: number;
-  previousClose: number;
-  change: number;
-}
-
-export interface MarketSummary {
-  fearGreed: FearGreedData;
-  indices: MarketIndex[];
-  lastUpdated: number;
-}
-
 /** Net market risk posture (BTC-led for crypto, IHSG-led for ID, S&P-led for
  *  US). Drives whether counter-trend setups are de-rated. */
 export type RiskState = "risk_on" | "risk_off" | "neutral";
 
-/** Market dominance metrics (Phase 2 — CoinGecko /global). Optional until the
- *  proxy lands. */
+/** Market dominance metrics from CoinGecko's public API. */
 export interface Dominance {
   /** BTC dominance, % of total crypto market cap. */
   btc: number;
   /** ETH dominance, % of total crypto market cap. */
   eth: number;
-  /** Alt-season proxy 0-100 (higher = alts outperforming BTC). */
-  altSeasonIndex?: number;
+  /** Relative change in BTC dominance over the trailing 24 hours. */
+  btcDominanceChangePercent24h?: number;
+  /** CoinGecko upstream timestamp, in epoch milliseconds. */
+  updatedAt: number;
 }
 
 /** Top-down crypto context, computed once per cycle and shared across the
@@ -54,10 +32,8 @@ export interface CryptoContext {
   btcRegime: MarketRegime;
   /** BTC regime-weighted direction score [-1..1] from the signal engine. */
   btcDirectionScore: number;
-  /** Net risk posture derived from BTC trend/score + sentiment (+ dominance). */
+  /** Net risk posture derived from BTC trend/score (+ dominance). */
   riskState: RiskState;
-  /** Crypto Fear & Greed value 0-100 (undefined when unavailable). */
-  fearGreed?: number;
   dominance?: Dominance;
   /** BTC window returns in percent, reused by relative-strength (alt vs BTC). */
   btcReturns?: { r1w?: number; r1m?: number };
@@ -109,28 +85,18 @@ export interface UsContext {
   lastUpdated: number;
 }
 
-/** Universe momentum over a single asset class (crypto card by default). */
-export interface Breadth {
-  total: number;
-  bullish: number;
-  bearish: number;
-  /** Percent of the universe that is bullish, 0-100. */
-  bullishPercent: number;
-  /** Percent of the universe that is bearish, 0-100. */
-  bearishPercent: number;
-}
-
 export type MarketContextDirection = "up" | "down" | "flat";
 
-/** A Yahoo quote used as the market-level context for an asset class. */
+/** A quoted market-level context, including derived upstream snapshots. */
 export interface QuoteMarketContext {
   kind: "quote";
   symbol: string;
   name: string;
   value: number;
-  changePercent: number;
-  direction: MarketContextDirection;
+  changePercent?: number;
+  direction?: MarketContextDirection;
   precision: number;
+  suffix?: "%";
   /** Epoch milliseconds, matching UnifiedAsset.quoteTime. */
   timestamp: number;
 }

@@ -11,17 +11,16 @@ import { SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TradeDetailDialog } from "@/features/follow-trade/components/trade-detail-dialog";
 
 interface TopPerformersProps {
   history: FollowedTrade[];
   isLoading: boolean;
-  onTradeSelect: (tradeId: string) => void;
 }
 
 export function TopPerformers({
   history,
   isLoading,
-  onTradeSelect,
 }: TopPerformersProps) {
   const { t } = useTranslation();
   type TopPerformerPeriod = "1D" | "1W" | "1M" | "ALL";
@@ -166,13 +165,15 @@ export function TopPerformers({
               className="border border-border bg-muted/50 py-0 transition-colors duration-200 group hover:bg-muted/80 hover:shadow-xs"
             >
               <CardContent className="p-0">
-                <button
-                  type="button"
-                  onClick={() => onTradeSelect(trade.id)}
-                  aria-haspopup="dialog"
-                  aria-label={`${t("journal.view_detail")} ${trade.symbol}`}
-                  className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
+                <TradeDetailDialog
+                  trade={trade}
+                  siblings={history}
+                  trigger={
+                    <button
+                      type="button"
+                      aria-label={`${t("journal.view_detail")} ${trade.symbol}`}
+                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
                   <div className="flex min-w-0 items-center gap-3">
                     <Badge
                       variant="outline"
@@ -228,7 +229,9 @@ export function TopPerformers({
                       {formatDateNumeric(dateSecs)}
                     </div>
                   </div>
-                </button>
+                    </button>
+                  }
+                />
               </CardContent>
             </Card>
           );

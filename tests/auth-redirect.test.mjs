@@ -85,7 +85,7 @@ test("a lone '?' search is treated as no query", async () => {
 
 test("safe internal redirects preserve path, query, and hash exactly", async () => {
   const { sanitizeInternalRedirect } = await loadModule(SRC);
-  const target = "/terminal/journal?trade=123#detail";
+  const target = "/terminal/journal?tab=history#results";
 
   assert.equal(sanitizeInternalRedirect(target), target);
 });
@@ -156,14 +156,14 @@ test("login URL builder preserves a section hash", async () => {
   assert.equal(
     buildLoginRedirect(
       "/terminal/journal",
-      "?trade=65d4f534-6a14-4f42-9f56-65fe1397142e",
+      "?tab=history",
       "#history",
     ),
-    "/login?redirect=%2Fterminal%2Fjournal%3Ftrade%3D65d4f534-6a14-4f42-9f56-65fe1397142e%23history",
+    "/login?redirect=%2Fterminal%2Fjournal%3Ftab%3Dhistory%23history",
   );
 });
 
-test("testimonial login deep link preserves its query and section hash", async () => {
+test("testimonial login deep link preserves its section hash", async () => {
   const { TESTIMONIAL_LOGIN_PATH, TESTIMONIAL_PATH } =
     await loadModule(TESTIMONIAL_SRC);
   const loginUrl = new URL(TESTIMONIAL_LOGIN_PATH, "https://rabalaba.app");
@@ -174,6 +174,6 @@ test("testimonial login deep link preserves its query and section hash", async (
 
   const target = new URL(redirect, "https://rabalaba.app");
   assert.equal(target.pathname, "/");
-  assert.equal(target.searchParams.get("testimonial"), "open");
+  assert.equal(target.search, "");
   assert.equal(target.hash, "#testimonials");
 });

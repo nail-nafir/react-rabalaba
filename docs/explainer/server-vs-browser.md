@@ -22,7 +22,7 @@
 | 🌐 **Browser** (HP/laptop user) | Aplikasi React: tampilan, chart, dialog, screener | The React app: UI, charts, dialogs, screener |
 | 🦾 **Supabase Edge Function** (Deno) | Robot auto-journal (cron) — server, tanpa browser | The auto-journal robot (cron) — server, no browser |
 | 🗄️ **Supabase Postgres** (+ pg_cron + RLS) | Database, jadwal cron, keamanan, login | Database, cron schedule, security, auth |
-| ☁️ **Cloudflare** (Pages + Functions) | Hosting web statis + proxy data market (Yahoo/CoinGecko/Binance/F&G) | Static site host + market-data proxies (Yahoo/CoinGecko/Binance/F&G) |
+| ☁️ **Cloudflare** (Pages + Functions) | Hosting web statis + proxy data market (Yahoo/CoinGecko/Binance) | Static site host + market-data proxies (Yahoo/CoinGecko/Binance) |
 
 ---
 
@@ -65,9 +65,10 @@ One source, two execution sites. So "does the engine run on server or browser?" 
 upstream**. Pemisahannya dipilih supaya gak kena rate-limit IP shared Cloudflare:
 
 - **Browser** →
-  - **lewat proxy CF** (`/api/yahoo`, `/api/fng`) — Yahoo butuh crumb/cookie
-    gating yang cuman proxy bisa lakuin; F&G sekalian lewat proxy biar konsisten.
-  - **langsung ke upstream** untuk CoinGecko `/global` (dominance) dan Binance
+  - **lewat proxy CF** (`/api/yahoo`) — Yahoo butuh crumb/cookie gating yang
+    cuman proxy bisa lakuin.
+  - **langsung ke upstream** untuk CoinGecko `/global` + `/coins/markets`
+    (dominance) dan Binance
     derivatives (`fapi.binance.com`). Tiap visitor pakai **IP-nya sendiri**,
     bukan IP egress Cloudflare yang dipake bareng semua tenant CF. Alasan: IP
     shared CF gampang kena 429 di free tier CoinGecko / limit Binance padahal
@@ -88,9 +89,10 @@ direct to upstream**. The split is chosen to avoid the shared-IP rate-limiting
 problem:
 
 - **Browser** →
-  - **through the CF proxy** (`/api/yahoo`, `/api/fng`) — Yahoo needs crumb/cookie
-    gating only the proxy can do; F&G goes through too for consistency.
-  - **direct to upstream** for CoinGecko `/global` (dominance) and Binance
+  - **through the CF proxy** (`/api/yahoo`) — Yahoo needs crumb/cookie gating
+    only the proxy can do.
+  - **direct to upstream** for CoinGecko `/global` + `/coins/markets`
+    (dominance) and Binance
     derivatives (`fapi.binance.com`). Each visitor uses their **own IP**, not
     the shared Cloudflare egress IP used by every CF tenant. Reason: the shared
     CF IP easily hits 429 on CoinGecko's free tier / Binance's limits even though
@@ -138,8 +140,8 @@ problem:
         - React UI / charts                    - Pages (host situs statis)
         - screener: engine live                - Functions: market-data proxy
         - market data:                              (fresh/stale/error cache)
-            Yahoo + F&G  ──proxy──▶  ☁️  ──▶  upstream
-            CoinGecko /global  ────────────▶  api.coingecko.com  (IP visitor)
+            Yahoo        ──proxy──▶  ☁️  ──▶  upstream
+            CoinGecko /global + /coins/markets ─▶ api.coingecko.com (IP visitor)
             Binance derivatives ───────────▶  fapi.binance.com   (IP visitor)
                                        ▲
         🦾 EDGE FUNCTION (Deno) ──────┘  (cron, lewat proxy CF)

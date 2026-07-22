@@ -92,7 +92,7 @@ function makeOutlook(overrides = {}) {
       volumeReliable: true,
     },
     indicators: {},
-    analysis: { trend: "", volume: "", momentum: "", sentiment: "" },
+    analysis: { trend: "", volume: "", momentum: "" },
     ...overrides,
   };
 }
@@ -118,7 +118,6 @@ function makeMarketCtx(overrides = {}) {
     btcRegime: "trending",
     btcDirectionScore: -0.6,
     riskState: "risk_off",
-    fearGreed: 30,
     lastUpdated: 0,
     ...overrides,
   };

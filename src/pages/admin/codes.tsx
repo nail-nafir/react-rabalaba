@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AccessCodesTable } from "@/features/admin/components/access-codes-table";
 import { Separator } from "@/components/ui/separator";
@@ -8,7 +7,6 @@ import { AddAccessCodeDialog } from "@/features/admin/components/add-access-code
 
 export default function AdminCodesPage() {
   const { t } = useTranslation();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -37,24 +35,22 @@ export default function AdminCodesPage() {
             </p>
           </div>
 
-          <Button
-            size="lg"
-            onClick={() => setIsAddDialogOpen(true)}
-            className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("admin.codes_add_btn", "Tambah Kode")}</span>
-          </Button>
+          <AddAccessCodeDialog
+            trigger={
+              <Button
+                size="lg"
+                className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("admin.codes_add_btn", "Tambah Kode")}</span>
+              </Button>
+            }
+          />
         </div>
         <div className="w-full">
           <AccessCodesTable />
         </div>
       </div>
-
-      <AddAccessCodeDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-      />
     </div>
   );
 }

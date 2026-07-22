@@ -9,12 +9,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { EmptyState } from "@/components/shared/empty-state";
 import type { CalendarEvent } from "@/types/calendar";
+import type { ReactElement } from "react";
 
 function DetailBox({ label, value }: { label: string; value: string }) {
   return (
@@ -30,27 +31,21 @@ function DetailBox({ label, value }: { label: string; value: string }) {
 }
 
 interface CalendarDetailDialogProps {
-  event: CalendarEvent | undefined;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  event: CalendarEvent;
+  trigger: ReactElement;
 }
 
 export function CalendarDetailDialog({
   event,
-  open,
-  onOpenChange,
+  trigger,
 }: CalendarDetailDialogProps) {
   const { t } = useTranslation();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto border border-border text-foreground">
-        {!event ? (
-          <EmptyState
-            title={t("calendar.no_events")}
-          />
-        ) : (
-          <>
+        <>
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
                 {event.title}
@@ -138,8 +133,7 @@ export function CalendarDetailDialog({
                 </div>
               </div>
             </div>
-          </>
-        )}
+        </>
       </DialogContent>
     </Dialog>
   );

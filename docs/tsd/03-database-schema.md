@@ -1,15 +1,15 @@
 # TSD 03 — Database Schema
 
-> 🇮🇩 Schema Supabase Postgres: 15 tabel, 24 function/RPC, RLS, 29 migrasi.
-> 🇺🇸 Supabase Postgres schema: 15 tables, 24 functions/RPCs, RLS, 29 migrations.
+> 🇮🇩 Schema Supabase Postgres: 15 tabel, 25 function/RPC, RLS, 30 migrasi.
+> 🇺🇸 Supabase Postgres schema: 15 tables, 25 functions/RPCs, RLS, 30 migrations.
 
 ---
 
 ## TL;DR
 
-🇮🇩 29 migrasi timestamp-order (idempotent) di `supabase/migrations/` bikin 15 tabel + 24 function/RPC + 5 trigger + RLS penuh. Ekstensi: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Tipe schema hand-written ada di `src/services/supabase/database.types.ts` (type-only, edge-safe).
+🇮🇩 30 migrasi timestamp-order (idempotent) di `supabase/migrations/` bikin 15 tabel + 25 function/RPC + 5 trigger + RLS penuh. Ekstensi: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Tipe schema hand-written ada di `src/services/supabase/database.types.ts` (type-only, edge-safe).
 
-🇺🇸 29 timestamp-ordered idempotent migrations in `supabase/migrations/` create 15 tables + 24 functions/RPCs + 5 triggers + full RLS. Extensions: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Hand-written schema types live in `src/services/supabase/database.types.ts` (type-only, edge-safe).
+🇺🇸 30 timestamp-ordered idempotent migrations in `supabase/migrations/` create 15 tables + 25 functions/RPCs + 5 triggers + full RLS. Extensions: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Hand-written schema types live in `src/services/supabase/database.types.ts` (type-only, edge-safe).
 
 ---
 
@@ -17,7 +17,7 @@
 
 | Tabel / Table | PK | Kunci / Key columns | RLS policy |
 |---|---|---|---|
-| `journal_trades` | id | symbol, signal, status `open\|tp1\|tp2\|tp3\|sl\|reversed\|manual`, opened_at, closed_at, reversed | `journal_trades_premium_read` — authenticated + `is_premium()`. Write: service-role only. Unique partial index one-open-per-symbol+tf |
+| `journal_trades` | id | symbol, signal, status `open\|tp1\|tp2\|tp3\|sl\|reversed\|manual`, opened_at, closed_at, reversed | `journal_trades_premium_read` — authenticated + `is_premium()`. Write: service-role only; unique partial index menjaga satu trade terbuka per simbol/timeframe. Public aggregate hanya lewat `get_public_journal_success_rates()` |
 | `journal_assets` | symbol | name, asset_type, active, source `admin\|auto`, discovery_reason, last_discovered_at, sort_order, created_by | premium read (`is_premium()`) OR admin (`is_admin()`). Admin all (FOR ALL) |
 | `journal_settings` | bool singleton | enabled, interval_minutes, market_hours_only, last_run_at, daily/weekly/monthly summary flags+hour+stamps, discovery flags+caps+prune | admin all |
 | `profiles` | user_id→auth.users | tier `free\|trial\|premium`, trial_expires_at, is_admin, is_owner, is_blocked, last_active_at | own-row select |
@@ -37,7 +37,7 @@
 
 ---
 
-## ⚙️ Function/RPC (24)
+## ⚙️ Function/RPC (25)
 
 | RPC | Guard | Fungsi / Purpose |
 |---|---|---|
@@ -48,6 +48,7 @@
 | `is_owner()` | — | owner (respect blocked) |
 | `handle_new_user()` | trigger | auto-create `free` profile on signup |
 | `set_updated_at()` | trigger | stamp `updated_at` |
+| `get_public_journal_success_rates()` | anon-safe aggregate | per-symbol `{symbol,wins,total}` dari trade tertutup; tidak mengekspos row jurnal |
 | `touch_last_active()` | own-row | stamp `profiles.last_active_at` |
 | `admin_list_users()` | `is_admin()` | join auth.users↔profiles↔redemptions↔codes↔disclaimer |
 | `admin_list_access_codes()` | `is_admin()` | list codes |
@@ -86,7 +87,7 @@
 
 ---
 
-## 📜 Migrasi (29, timestamp order)
+## 📜 Migrasi (30, timestamp order)
 
 | # | File | Bikin / Creates |
 |---|---|---|
@@ -113,6 +114,7 @@
 | 27 | `20260702000001_asset_discovery.sql` | `journal_assets.source` + discovery cols on `journal_settings` |
 | 28 | `20260702000002_journal_periodic_summary.sql` | weekly/monthly summary cols |
 | 29 | `20260713093413_user_testimonials.sql` | private submissions + public featured snapshots, constraints, RLS/grants, moderation/snapshot triggers, 2 admin RPCs |
+| 30 | `20260722025846_public_journal_success_rates.sql` | partial covering index + public aggregate-only success-rate RPC |
 
 > Cron wiring (bukan migrasi): `schedule-auto-journal.sql`, `schedule-daily-summary.sql`, `schedule-asset-discovery.sql` — jalankan terakhir setelah function di-deploy.
 
@@ -120,7 +122,7 @@
 
 ## 🧩 Tipe schema frontend
 
-`src/services/supabase/database.types.ts` — Row/Insert/Update type per tabel + `Database` generic (11 tabel + 19 RPC terdaftar). Type-only import → runtime-pure, dipake Vite app AND esbuild cron bundle. Mapper: `src/services/supabase/journal-mapper.ts` (`rowToFollowedTrade`, `followedTradeToInsert`) — pure, dipake app (read) + cron (write).
+`src/services/supabase/database.types.ts` — Row/Insert/Update type per tabel + `Database` generic (11 tabel + 20 RPC terdaftar). Type-only import → runtime-pure, dipake Vite app AND esbuild cron bundle. Mapper: `src/services/supabase/journal-mapper.ts` (`rowToFollowedTrade`, `followedTradeToInsert`) — pure, dipake app (read) + cron (write).
 
 ---
 

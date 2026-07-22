@@ -7,9 +7,9 @@
 
 ## TL;DR
 
-🇮🇩 Pengguna login yang tidak diblokir bisa membuat, mengubah, atau menghapus satu testimoni berisi nama tampilan, persona, isi, dan rating 1–5. Pengajuan baru berstatus `pending`. Admin bisa menyetujui/menolak dengan alasan privat opsional, lalu menempatkan testimoni yang disetujui ke slot publik 1–6. Mengubah testimoni yang sudah disetujui otomatis mengembalikannya ke `pending` dan mencabutnya dari landing sampai ditinjau ulang.
+🇮🇩 Pengguna login yang tidak diblokir bisa membuat, mengubah, atau menghapus satu testimoni berisi isi dan rating 1–5; identitas tampilan diambil dari profil akun. Pengajuan baru berstatus `pending`. Admin bisa menyetujui/menolak dengan alasan privat opsional, lalu menempatkan testimoni yang disetujui ke slot publik 1–6. Mengubah testimoni yang sudah disetujui otomatis mengembalikannya ke `pending` dan mencabutnya dari landing sampai ditinjau ulang.
 
-🇺🇸 A signed-in, non-blocked user can create, edit, or delete one testimonial containing a display name, persona, body, and 1–5 rating. New submissions start as `pending`. Admins can approve or reject them with an optional private reason, then place approved testimonials in public slots 1–6. Editing approved content automatically returns it to `pending` and removes it from the landing page until another review.
+🇺🇸 A signed-in, non-blocked user can create, edit, or delete one testimonial containing a body and 1–5 rating; display identity comes from the account profile. New submissions start as `pending`. Admins can approve or reject them with an optional private reason, then place approved testimonials in public slots 1–6. Editing approved content automatically returns it to `pending` and removes it from the landing page until another review.
 
 ---
 
@@ -17,15 +17,16 @@
 
 | Aksi / Action | Entry | Hasil / Result |
 |---|---|---|
-| Buka form / Open form | CTA bagian testimonial atau menu akun "Testimoni Saya" / testimonial CTA or account menu | Dialog URL-driven di `/?testimonial=open#testimonials` |
-| Belum login / Signed out | CTA landing | Login dengan `redirect` yang mempertahankan query + hash, lalu kembali membuka dialog |
+| Buka form / Open form | CTA bagian testimonial / testimonial CTA | Tombol menjadi `DialogTrigger`; URL tidak berubah |
+| Menu akun / Account menu | "Ulasan Pribadi" | Navigasi ke `/#testimonials`; pengguna membuka form lewat CTA |
+| Belum login / Signed out | CTA landing | Login dengan `redirect=/#testimonials`, lalu kembali ke bagian testimonial |
 | Kirim pertama / First submit | Form valid + rating wajib | Satu row privat `pending`; unique per `user_id` |
 | Ubah / Edit | Dialog memuat pengajuan sendiri | Konten tersimpan; approval lama dicabut otomatis |
 | Hapus / Delete | Konfirmasi destruktif | Row privat dan snapshot publik terkait langsung dihapus |
 
-Form membatasi nama 2–40 karakter, persona 2–60, isi 20–500, dan rating integer 1–5. Kutipan tidak diterjemahkan; hanya chrome UI yang mengikuti pilihan bahasa.
+Form membatasi isi 20–500 karakter dan rating integer 1–5. Kutipan tidak diterjemahkan; hanya chrome UI yang mengikuti pilihan bahasa.
 
-The form limits display name to 2–40 characters, persona to 2–60, body to 20–500, and rating to an integer from 1–5. Quotes stay in their original language; only the UI chrome follows the selected locale.
+The form limits the body to 20–500 characters and rating to an integer from 1–5. Quotes stay in their original language; only the UI chrome follows the selected locale.
 
 ---
 

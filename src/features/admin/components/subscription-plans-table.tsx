@@ -4,7 +4,7 @@
  * useReactTable + skeleton loading) — same visual language as the
  * registered-users / journal-assets / access-codes tables.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useReactTable,
@@ -13,14 +13,7 @@ import {
   flexRender,
   type ColumnDef,
 } from "@tanstack/react-table";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Power,
-  Play,
-  Pause,
-} from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Play, Pause } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -50,9 +43,11 @@ import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
 import { pickLocale } from "@/lib/localized";
 import type { SubscriptionPlanRow } from "@/services/supabase/database.types";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { PlanDialog } from "./plan-dialog";
 import { TIER_COLORS } from "@/constants/taxonomy/colors";
 import { badgeClass } from "@/constants/taxonomy/palette";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 
 function StatusBadge({ active }: { active: boolean }) {
   const { t } = useTranslation();
@@ -63,7 +58,7 @@ function StatusBadge({ active }: { active: boolean }) {
         "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
         active
           ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          : "border-border bg-muted/30 text-muted-foreground"
+          : "border-border bg-muted/30 text-muted-foreground",
       )}
     >
       {active ? t("admin.status_active") : t("admin.status_inactive")}
@@ -77,60 +72,177 @@ function ToggleStatusButton({
   name,
 }: {
   active: boolean;
-  onToggle: () => void;
+  onToggle: () => Promise<boolean>;
   name: string;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button
-        variant="link"
-        size="icon"
-        onClick={() => setOpen(true)}
-        aria-label={active ? `Nonaktifkan ${name}` : `Aktifkan ${name}`}
-        className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
-        title={active ? t("admin.action_pause") : t("admin.action_activate")}
-      >
-        {active ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
-      </Button>
+  const [isPending, setIsPending] = useState(false);
+  const confirmToggle = async () => {
+    const success = await onToggle();
+    if (success) toast.success(t("toasts.plan.status_success"));
+    else toast.error(t("toasts.plan.status_error"));
+    return success;
+  };
+  const handleAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      if (await confirmToggle()) setOpen(false);
+    } finally {
+      setIsPending(false);
+    }
+  };
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia
-              className={cn(
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) setOpen(nextOpen);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="link"
+          size="icon"
+          aria-label={active ? `Nonaktifkan ${name}` : `Aktifkan ${name}`}
+          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+          title={active ? t("admin.action_pause") : t("admin.action_activate")}
+        >
+          {active ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia
+            className={cn(
+              active
+                ? "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400"
+                : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+            )}
+          >
+            <Power />
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {active ? `Nonaktifkan ${name}?` : `Aktifkan ${name}?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {active
+              ? `Apakah Anda yakin ingin menonaktifkan paket ${name}?`
+              : `Apakah Anda yakin ingin mengaktifkan paket ${name}?`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            aria-busy={isPending}
+            onClick={handleAction}
+          >
+            <ActionButtonContent
+              label={t(
                 active
-                  ? "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400"
-                  : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+                  ? "common.actions.deactivate"
+                  : "common.actions.activate",
               )}
-            >
-              <Power />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {active
-                ? `Nonaktifkan ${name}?`
-                : `Aktifkan ${name}?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {active
-                ? `Apakah Anda yakin ingin menonaktifkan paket ${name}?`
-                : `Apakah Anda yakin ingin mengaktifkan paket ${name}?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { onToggle(); setOpen(false); }}>
-              {active ? t("admin.action_deactivate") : t("admin.action_activate")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+              pending={isPending}
+            />
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function DeletePlanButton({
+  plan,
+  name,
+  onDelete,
+}: {
+  plan: SubscriptionPlanRow;
+  name: string;
+  onDelete: (slug: string) => Promise<boolean>;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const confirmDelete = async () => {
+    const success = await onDelete(plan.slug);
+    if (success) toast.success(t("toasts.plan.delete_success"));
+    else toast.error(t("toasts.plan.delete_error"));
+    return success;
+  };
+  const handleAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      if (await confirmDelete()) setOpen(false);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) setOpen(nextOpen);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="link"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-muted"
+          title={t("admin.delete_btn", "Hapus")}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+            <Trash2 />
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {t("admin.billing.plan_delete_title", {
+              name,
+              defaultValue: `Hapus paket ${name}?`,
+            })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("admin.billing.plan_delete_desc", {
+              name,
+              defaultValue: `Apakah Anda yakin ingin menghapus paket ${name}? Paket akan hilang dari halaman langganan.`,
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel", "Batal")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={isPending}
+            aria-busy={isPending}
+            onClick={handleAction}
+          >
+            <ActionButtonContent
+              label={t("common.actions.delete")}
+              pending={isPending}
+            />
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -139,18 +251,6 @@ export function SubscriptionPlansTable() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const { plans, isLoading, toggleActive, removePlan } = useSubscriptionPlans();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<SubscriptionPlanRow | null>(null);
-
-  const openAdd = () => {
-    setEditing(null);
-    setDialogOpen(true);
-  };
-  const openEdit = (plan: SubscriptionPlanRow) => {
-    setEditing(plan);
-    setDialogOpen(true);
-  };
-
   const columns = useMemo<ColumnDef<SubscriptionPlanRow>[]>(
     () => [
       {
@@ -215,10 +315,12 @@ export function SubscriptionPlansTable() {
               "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
               row.original.highlighted
                 ? badgeClass(TIER_COLORS.A)
-                : badgeClass(TIER_COLORS.C)
+                : badgeClass(TIER_COLORS.C),
             )}
           >
-            {row.original.highlighted ? t("admin.billing.col_highlight", "Terlaris") : t("common.no", "Tidak")}
+            {row.original.highlighted
+              ? t("admin.billing.col_highlight", "Terlaris")
+              : t("common.no", "Tidak")}
           </Badge>
         ),
       },
@@ -246,57 +348,24 @@ export function SubscriptionPlansTable() {
                 onToggle={() => toggleActive(plan.slug, !plan.active)}
                 name={planName}
               />
-              <Button
-                variant="link"
-                size="icon"
-                onClick={() => openEdit(plan)}
-                className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-muted"
-                title={t("common.edit", "Ubah")}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger
-                  render={
-                    <Button
-                      variant="link"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-muted"
-                      title={t("admin.delete_btn", "Hapus")}
-                    />
-                  }
-                >
-                  <Trash2 className="h-4 w-4" />
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
-                      <Trash2 />
-                    </AlertDialogMedia>
-                    <AlertDialogTitle>
-                      {t("admin.billing.plan_delete_title", {
-                        name: planName,
-                        defaultValue: `Hapus paket ${planName}?`,
-                      })}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t("admin.billing.plan_delete_desc", {
-                        name: planName,
-                        defaultValue: `Apakah Anda yakin ingin menghapus paket ${planName}? Paket akan hilang dari halaman langganan.`,
-                      })}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.cancel", "Batal")}</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => removePlan(plan.slug)}
-                    >
-                      {t("admin.delete_btn", "Hapus")}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <PlanDialog
+                plan={plan}
+                trigger={
+                  <Button
+                    variant="link"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-muted"
+                    title={t("common.edit", "Ubah")}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                }
+              />
+              <DeletePlanButton
+                plan={plan}
+                name={planName}
+                onDelete={removePlan}
+              />
             </div>
           );
         },
@@ -321,17 +390,25 @@ export function SubscriptionPlansTable() {
             {t("admin.billing.plans_title", "Daftar Paket Langganan")}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {t("admin.billing.plans_desc", "Kelola dan atur konfigurasi paket langganan aktif beserta harga dan fiturnya.")}
+            {t(
+              "admin.billing.plans_desc",
+              "Kelola dan atur konfigurasi paket langganan aktif beserta harga dan fiturnya.",
+            )}
           </p>
         </div>
-        <Button
-          size="lg"
-          onClick={openAdd}
-          className="font-bold text-xs cursor-pointer items-center gap-1.5 shrink-0"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{t("admin.billing.add_plan_btn", "Tambah Paket")}</span>
-        </Button>
+        <PlanDialog
+          trigger={
+            <Button
+              size="lg"
+              className="font-bold text-xs cursor-pointer items-center gap-1.5 shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">
+                {t("admin.billing.add_plan_btn", "Tambah Paket")}
+              </span>
+            </Button>
+          }
+        />
       </div>
 
       {/* Table */}
@@ -362,10 +439,19 @@ export function SubscriptionPlansTable() {
               ))
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={columns.length} className="h-32 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-32 text-center"
+                >
                   <EmptyState
-                    title={t("admin.billing.plans_empty_title", "Belum ada paket")}
-                    description={t("admin.billing.plans_empty_desc", "Tambahkan paket langganan pertama.")}
+                    title={t(
+                      "admin.billing.plans_empty_title",
+                      "Belum ada paket",
+                    )}
+                    description={t(
+                      "admin.billing.plans_empty_desc",
+                      "Tambahkan paket langganan pertama.",
+                    )}
                   />
                 </TableCell>
               </TableRow>
@@ -393,8 +479,6 @@ export function SubscriptionPlansTable() {
         hideWhenSinglePage
         className="pt-3 border-t border-border/60"
       />
-
-      <PlanDialog open={dialogOpen} onOpenChange={setDialogOpen} plan={editing} />
     </div>
   );
 }

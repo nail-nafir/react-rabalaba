@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useReactTable,
@@ -65,6 +65,8 @@ import { PercentageChange } from "@/components/shared/percentage-change";
 import { cn } from "@/lib/utils";
 import { AddJournalAssetDialog } from "./add-journal-asset-dialog";
 import { JournalSettingsDialog } from "./journal-settings-dialog";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { toast } from "sonner";
 
 type StatusFilter = "all" | "active" | "inactive";
 type SourceFilter = "all" | "admin" | "auto";
@@ -106,7 +108,7 @@ function StatusBadge({ active }: { active: boolean }) {
         "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
         active
           ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          : "border-border bg-muted/30 text-muted-foreground"
+          : "border-border bg-muted/30 text-muted-foreground",
       )}
     >
       {active ? t("admin.status_active") : t("admin.status_inactive")}
@@ -120,60 +122,98 @@ function ToggleStatusButton({
   onToggle,
 }: {
   asset: JournalAssetRow;
-  onToggle: (symbol: string, active: boolean) => void;
+  onToggle: (symbol: string, active: boolean) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const active = asset.active;
-  return (
-    <>
-      <Button
-        variant="link"
-        size="icon"
-        onClick={() => setOpen(true)}
-        aria-label={active ? t("admin.deactivate_confirm_title", { symbol: asset.symbol }) : t("admin.activate_confirm_title", { symbol: asset.symbol })}
-        className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
-        title={active ? t("admin.action_pause") : t("admin.action_activate")}
-      >
-        {active ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
-      </Button>
+  const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const confirmToggle = async () => {
+    const success = await onToggle(asset.symbol, !active);
+    if (success) toast.success(t("toasts.journal_asset.status_success"));
+    else toast.error(t("toasts.journal_asset.status_error"));
+    return success;
+  };
+  const handleAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      if (await confirmToggle()) setOpen(false);
+    } finally {
+      setIsPending(false);
+    }
+  };
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia
-              className={cn(
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) setOpen(nextOpen);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="link"
+          size="icon"
+          aria-label={
+            active
+              ? t("admin.deactivate_confirm_title", { symbol: asset.symbol })
+              : t("admin.activate_confirm_title", { symbol: asset.symbol })
+          }
+          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+          title={active ? t("admin.action_pause") : t("admin.action_activate")}
+        >
+          {active ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia
+            className={cn(
+              active
+                ? "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400"
+                : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+            )}
+          >
+            <Power />
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {active
+              ? t("admin.deactivate_confirm_title", { symbol: asset.symbol })
+              : t("admin.activate_confirm_title", { symbol: asset.symbol })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {active
+              ? t("admin.deactivate_confirm_desc", { symbol: asset.symbol })
+              : t("admin.activate_confirm_desc", { symbol: asset.symbol })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            aria-busy={isPending}
+            onClick={handleAction}
+          >
+            <ActionButtonContent
+              label={t(
                 active
-                  ? "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400"
-                  : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+                  ? "common.actions.deactivate"
+                  : "common.actions.activate",
               )}
-            >
-              <Power />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {active
-                ? t("admin.deactivate_confirm_title", { symbol: asset.symbol })
-                : t("admin.activate_confirm_title", { symbol: asset.symbol })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {active
-                ? t("admin.deactivate_confirm_desc", { symbol: asset.symbol })
-                : t("admin.activate_confirm_desc", { symbol: asset.symbol })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onToggle(asset.symbol, !active)}>
-              {active ? t("admin.action_deactivate") : t("admin.action_activate")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+              pending={isPending}
+            />
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -188,29 +228,53 @@ function DeleteButton({
 }: {
   symbol: string;
   isAuto: boolean;
-  onRemove: (symbol: string) => void;
+  onRemove: (symbol: string) => Promise<boolean>;
 }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const confirmDelete = async () => {
+    const success = await onRemove(symbol);
+    if (success) toast.success(t("toasts.journal_asset.delete_success"));
+    else toast.error(t("toasts.journal_asset.delete_error"));
+    return success;
+  };
+  const handleAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      if (await confirmDelete()) setOpen(false);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   return (
-    <AlertDialog>
-      <AlertDialogTrigger
-        render={
-          <Button
-            variant="link"
-            size="icon"
-            aria-label={t("admin.delete_confirm_title", { symbol })}
-            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted"
-          />
-        }
-      >
-        <Trash2 className="h-4 w-4" />
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) setOpen(nextOpen);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="link"
+          size="icon"
+          aria-label={t("admin.delete_confirm_title", { symbol })}
+          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
             <Trash2 />
           </AlertDialogMedia>
-          <AlertDialogTitle>{t("admin.delete_confirm_title", { symbol })}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("admin.delete_confirm_title", { symbol })}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {isAuto
               ? t("admin.delete_confirm_desc_auto", { symbol })
@@ -218,12 +282,19 @@ function DeleteButton({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            onClick={() => onRemove(symbol)}
+            disabled={isPending}
+            aria-busy={isPending}
+            onClick={handleAction}
           >
-            {t("admin.delete_btn")}
+            <ActionButtonContent
+              label={t("common.actions.delete")}
+              pending={isPending}
+            />
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -243,7 +314,10 @@ export function JournalAssetsTable() {
   const { users } = useAdminUsers();
 
   const userMap = useMemo(() => {
-    const map = new Map<string, { email: string; is_admin: boolean; is_owner: boolean }>();
+    const map = new Map<
+      string,
+      { email: string; is_admin: boolean; is_owner: boolean }
+    >();
     users.forEach((u) => {
       if (u.user_id && u.email) {
         map.set(u.user_id, {
@@ -272,8 +346,6 @@ export function JournalAssetsTable() {
   }, [marketData]);
 
   // ── Add dialog (Yahoo search + suggestions live inside the dialog now) ──
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // ── List filters ──
   const [search, setSearch] = useState("");
@@ -293,9 +365,9 @@ export function JournalAssetsTable() {
       if (statusFilter === "inactive" && a.active) return false;
       if (sourceFilter !== "all" && a.source !== sourceFilter) return false;
       if (
-          q &&
-          !a.symbol.toLowerCase().includes(q) &&
-          !(a.name?.toLowerCase().includes(q) ?? false)
+        q &&
+        !a.symbol.toLowerCase().includes(q) &&
+        !(a.name?.toLowerCase().includes(q) ?? false)
       )
         return false;
       return true;
@@ -374,12 +446,12 @@ export function JournalAssetsTable() {
           const userId = row.original.created_by;
           const userMeta = userId ? userMap.get(userId) : null;
           if (!userId && !userMeta) {
-            return (
-              <span className="text-xs text-muted-foreground">—</span>
-            );
+            return <span className="text-xs text-muted-foreground">—</span>;
           }
           const isOwner = userMeta?.is_owner ?? false;
-          const roleLabel = isOwner ? t("admin.owner_console_title") : t("admin.source_admin");
+          const roleLabel = isOwner
+            ? t("admin.owner_console_title")
+            : t("admin.source_admin");
           return (
             <div className="py-1">
               <div className="font-bold text-sm tracking-tight text-foreground uppercase">
@@ -396,9 +468,13 @@ export function JournalAssetsTable() {
       },
       {
         accessorKey: "symbol",
-        header: ({ column }) => <SortButton label={t("table.symbol")} column={column} />,
+        header: ({ column }) => (
+          <SortButton label={t("table.symbol")} column={column} />
+        ),
         cell: ({ row }) => {
-          const liveAsset = marketDataMap.get(row.original.symbol.toUpperCase());
+          const liveAsset = marketDataMap.get(
+            row.original.symbol.toUpperCase(),
+          );
           const displayName = liveAsset?.name || row.original.name;
           return (
             <div className="py-1">
@@ -438,7 +514,9 @@ export function JournalAssetsTable() {
           </span>
         ),
         cell: ({ row }) => {
-          const liveAsset = marketDataMap.get(row.original.symbol.toUpperCase());
+          const liveAsset = marketDataMap.get(
+            row.original.symbol.toUpperCase(),
+          );
           if (!liveAsset || liveAsset.price === undefined) {
             return <span className="text-xs text-muted-foreground">—</span>;
           }
@@ -457,7 +535,9 @@ export function JournalAssetsTable() {
           </span>
         ),
         cell: ({ row }) => {
-          const liveAsset = marketDataMap.get(row.original.symbol.toUpperCase());
+          const liveAsset = marketDataMap.get(
+            row.original.symbol.toUpperCase(),
+          );
           if (!liveAsset || liveAsset.changePercent === undefined) {
             return <span className="text-xs text-muted-foreground">—</span>;
           }
@@ -472,9 +552,7 @@ export function JournalAssetsTable() {
             {t("table.status")}
           </span>
         ),
-        cell: ({ row }) => (
-          <StatusBadge active={row.original.active} />
-        ),
+        cell: ({ row }) => <StatusBadge active={row.original.active} />,
       },
       {
         id: "actions",
@@ -564,24 +642,34 @@ export function JournalAssetsTable() {
 
             <Separator orientation="vertical" className="mx-1 h-8" />
 
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setIsSettingsOpen(true)}
-              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("admin.settings_btn")}</span>
-            </Button>
+            <JournalSettingsDialog
+              trigger={
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">
+                    {t("admin.settings_btn")}
+                  </span>
+                </Button>
+              }
+            />
 
-            <Button
-              size="lg"
-              onClick={() => setIsAddDialogOpen(true)}
-              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("admin.add_asset_btn")}</span>
-            </Button>
+            <AddJournalAssetDialog
+              trigger={
+                <Button
+                  size="lg"
+                  className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">
+                    {t("admin.add_asset_btn")}
+                  </span>
+                </Button>
+              }
+            />
           </div>
         </div>
 
@@ -653,16 +741,6 @@ export function JournalAssetsTable() {
           className="pt-3 border-t border-border/60"
         />
       </div>
-
-      <AddJournalAssetDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-      />
-
-      <JournalSettingsDialog
-        open={isSettingsOpen}
-        onOpenChange={setIsSettingsOpen}
-      />
     </div>
   );
 }

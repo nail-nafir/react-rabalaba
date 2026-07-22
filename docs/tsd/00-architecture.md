@@ -20,7 +20,7 @@
 | 🌐 **Browser** (HP/laptop user) | Aplikasi React: UI, chart, dialog, screener, engine live. *The React app: UI, charts, dialogs, screener, live engine.* | |
 | 🦾 **Supabase Edge Function** (Deno) | Robot cron (auto-journal 30m / daily-summary hourly / asset-discovery daily). *Cron robots.* | |
 | 🗄️ **Supabase Postgres** (+ pg_cron + RLS) | Database, jadwal cron, keamanan, auth. *Database, cron schedule, security, auth.* | |
-| ☁️ **Cloudflare** (Pages + Functions) | Hosting SPA statis + proxy data market (Yahoo/F&G lewat proxy; CoinGecko/Binance direct dari browser). *Static SPA host + market-data proxies.* | |
+| ☁️ **Cloudflare** (Pages + Functions) | Hosting SPA statis + proxy Yahoo; CoinGecko/Binance direct dari browser. *Static SPA host + market-data proxies.* | |
 
 ---
 
@@ -36,7 +36,7 @@ edge-engine.ts (facade)
     ↓ re-export
 {auto-journal-core, asset-discovery-core, context-pipeline, alerts, period-summary}
     ↓
-features/engine/* (signals, indicators, regime, 3 contexts, enrichment, backtest, calibration, smart-money, accumulation, relative-strength, fundamentals, sentiment, trading-plan, analysis-text)
+features/engine/* (signals, indicators, regime, 3 contexts, enrichment, backtest, calibration, smart-money, accumulation, relative-strength, fundamentals, trading-plan, analysis-text)
     ↓
 features/follow-trade/lib (follow-trade-model, trade-chart-window)
     ↓
@@ -64,11 +64,11 @@ One source, two execution sites. `edge-engine.ts` (`src/core/edge-engine.ts:12`)
 ## 🌐 + 🛰️ Jalur Data Market / Market Data Path
 
 🇮🇩 Browser & cron **sebagian lewat proxy Cloudflare, sebagian langsung** (split = hindari IP-shared rate-limit):
-- **Browser** → Yahoo + F&G lewat proxy CF (`/api/yahoo`, `/api/fng`); CoinGecko `/global` + Binance derivatives **direct** ke upstream (IP visitor sendiri).
+- **Browser** → Yahoo lewat proxy CF (`/api/yahoo`); CoinGecko `/global` + `/coins/markets` dan Binance derivatives **direct** ke upstream (IP visitor sendiri).
 - **Cron** → semua lewat proxy CF (cache selalu warm, traffic dikit).
 
 🇺🇸 Browser & cron **partly through the Cloudflare proxy, partly direct** (split avoids shared-IP rate-limiting):
-- **Browser** → Yahoo + F&G via CF proxy; CoinGecko `/global` + Binance derivatives **direct** to upstream (visitor's own IP).
+- **Browser** → Yahoo via CF proxy; CoinGecko `/global` + `/coins/markets` and Binance derivatives **direct** to upstream (visitor's own IP).
 - **Cron** → all via CF proxy (cache always warm, low traffic).
 
 > Detail: [`04-cloudflare-proxy.md`](04-cloudflare-proxy.md).
@@ -96,8 +96,8 @@ One source, two execution sites. `edge-engine.ts` (`src/core/edge-engine.ts:12`)
         - React UI / charts                    - Pages (host situs statis)
         - screener: engine live                - Functions: market-data proxy
         - market data:                              (fresh/stale/error cache)
-            Yahoo + F&G  ──proxy──▶  ☁️  ──▶  upstream
-            CoinGecko /global  ────────────▶  api.coingecko.com  (IP visitor)
+            Yahoo        ──proxy──▶  ☁️  ──▶  upstream
+            CoinGecko /global + /coins/markets ─▶ api.coingecko.com (IP visitor)
             Binance derivatives ───────────▶  fapi.binance.com   (IP visitor)
                                        ▲
         🦾 EDGE FUNCTION (Deno) ──────┘  (cron, lewat proxy CF)

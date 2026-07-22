@@ -3,17 +3,9 @@
  * the shareable /invite/:code link with a copy button (the code is generated
  * server-side by admin_create_invitation).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-import {
-  Loader2,
-  Copy,
-  CheckCircle2,
-  Calendar as CalendarIcon,
-  X,
-  Plus,
-} from "lucide-react";
+import { Copy, CheckCircle2, Calendar as CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
 import { useForm, Controller } from "react-hook-form";
@@ -26,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,27 +36,28 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
 import { useAdminInvitations } from "@/hooks/use-admin-invitations";
 import { cn } from "@/lib/utils";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 
 interface AddInvitationDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  trigger: ReactElement;
   origin: string;
 }
 
 interface InviteFormProps {
   origin: string;
+  saving: boolean;
+  setSaving: (pending: boolean) => void;
 }
 
-function InviteFormContent({ origin }: InviteFormProps) {
+function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
   const { t, i18n } = useTranslation();
   const { createInvitation } = useAdminInvitations();
 
-  const [saving, setSaving] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const kindItems = [
     { value: "full", label: t("admin.codes_form_type_full", "Penuh") },
     { value: "trial", label: t("admin.codes_form_type_trial", "Uji Coba") },
@@ -127,20 +121,24 @@ function InviteFormContent({ origin }: InviteFormProps) {
 
   const onSubmit = async (data: InviteFormValues) => {
     setSaving(true);
-    const code = await createInvitation(
-      data.kind,
-      data.kind === "trial" ? Number(data.trialDays) || 30 : null,
-      data.maxRedemptions.trim() ? Number(data.maxRedemptions) : null,
-      data.recipient.trim() || null,
-      data.expiresAt ? data.expiresAt.toISOString() : null,
-    );
-    setSaving(false);
-    if (code) {
-      setCreatedCode(code);
-    } else {
-      toast.error(
-        t("admin.invitations.create_error", "Gagal membuat undangan"),
+    try {
+      const code = await createInvitation(
+        data.kind,
+        data.kind === "trial" ? Number(data.trialDays) || 30 : null,
+        data.maxRedemptions.trim() ? Number(data.maxRedemptions) : null,
+        data.recipient.trim() || null,
+        data.expiresAt ? data.expiresAt.toISOString() : null,
       );
+      if (code) {
+        toast.success(t("toasts.invitation.create_success"));
+        setCreatedCode(code);
+      } else {
+        toast.error(t("toasts.invitation.create_error"));
+      }
+    } catch {
+      toast.error(t("toasts.invitation.create_error"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -149,7 +147,10 @@ function InviteFormContent({ origin }: InviteFormProps) {
   if (createdCode) {
     const url = `${origin}/invite/${createdCode}`;
     return (
-      <DialogContent className="sm:max-w-md border border-border text-foreground min-w-0">
+      <DialogContent
+        className="sm:max-w-md border border-border text-foreground min-w-0"
+        showCloseButton={!saving}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {t("admin.invitations.add_title", "Buat Undangan")}
@@ -186,9 +187,7 @@ function InviteFormContent({ origin }: InviteFormProps) {
               variant="ghost"
               onClick={() => {
                 navigator.clipboard.writeText(url);
-                toast.success(
-                  t("admin.invitations.link_copied", "Link undangan disalin"),
-                );
+                toast.success(t("toasts.invitation.link_copied"));
               }}
               className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
             >
@@ -198,13 +197,8 @@ function InviteFormContent({ origin }: InviteFormProps) {
         </div>
 
         <DialogFooter>
-          <Button
-            onClick={() => setCreatedCode(null)}
-            size="lg"
-            className="text-xs font-bold cursor-pointer shrink-0"
-          >
-            <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
-            {t("admin.invitations.create_another", "Buat Lagi")}
+          <Button onClick={() => setCreatedCode(null)} size="lg">
+            <ActionButtonContent label={t("common.actions.create")} />
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -212,7 +206,10 @@ function InviteFormContent({ origin }: InviteFormProps) {
   }
 
   return (
-    <DialogContent className="sm:max-w-md border border-border text-foreground min-w-0">
+    <DialogContent
+      className="sm:max-w-md border border-border text-foreground min-w-0"
+      showCloseButton={!saving}
+    >
       <DialogHeader>
         <DialogTitle className="text-lg font-bold text-foreground">
           {t("admin.invitations.add_title", "Buat Undangan")}
@@ -241,7 +238,6 @@ function InviteFormContent({ origin }: InviteFormProps) {
                     {t("admin.invitations.field_kind", "Tipe")}
                   </Label>
                   <Select
-                    items={kindItems}
                     value={field.value}
                     onValueChange={(nextValue) => {
                       if (nextValue !== null) field.onChange(nextValue);
@@ -250,11 +246,7 @@ function InviteFormContent({ origin }: InviteFormProps) {
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent
-                      align="start"
-                      alignItemWithTrigger={false}
-                      className="p-1"
-                    >
+                    <SelectContent align="start" className="p-1">
                       <SelectGroup>
                         {kindItems.map((item) => (
                           <SelectItem
@@ -324,32 +316,30 @@ function InviteFormContent({ origin }: InviteFormProps) {
                   )}
                 </Label>
                 <div className="relative w-full">
-                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger
-                      render={
-                        <Button
-                          variant="outline"
-                          type="button"
-                          className={cn(
-                            "w-full h-8 justify-start text-left font-normal text-sm cursor-pointer pr-8",
-                            !field.value && "text-muted-foreground",
-                          )}
-                        />
-                      }
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      {field.value ? (
-                        format(field.value, "dd MMM yyyy", {
-                          locale: currentLocale,
-                        })
-                      ) : (
-                        <span>
-                          {t(
-                            "admin.invitations.select_date",
-                            "Pilih tanggal",
-                          )}
-                        </span>
-                      )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className={cn(
+                          "w-full h-8 justify-start text-left font-normal text-sm cursor-pointer pr-8",
+                          !field.value && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {field.value ? (
+                          format(field.value, "dd MMM yyyy", {
+                            locale: currentLocale,
+                          })
+                        ) : (
+                          <span>
+                            {t(
+                              "admin.invitations.select_date",
+                              "Pilih tanggal",
+                            )}
+                          </span>
+                        )}
+                      </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
@@ -357,7 +347,6 @@ function InviteFormContent({ origin }: InviteFormProps) {
                         selected={field.value}
                         onSelect={(date) => {
                           field.onChange(date);
-                          setCalendarOpen(false);
                         }}
                       />
                     </PopoverContent>
@@ -407,16 +396,12 @@ function InviteFormContent({ origin }: InviteFormProps) {
           form="add-invitation-form"
           size="lg"
           disabled={saving || !isValid}
-          className="text-xs font-bold cursor-pointer shrink-0"
+          aria-busy={saving}
         >
-          {saving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <>
-              <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
-              {t("admin.invitations.create_btn", "Buat")}
-            </>
-          )}
+          <ActionButtonContent
+            label={t("common.actions.create")}
+            pending={saving}
+          />
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -424,13 +409,27 @@ function InviteFormContent({ origin }: InviteFormProps) {
 }
 
 export function AddInvitationDialog({
-  open,
-  onOpenChange,
+  trigger,
   origin,
 }: AddInvitationDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {open && <InviteFormContent key="invite-form" origin={origin} />}
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!saving) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {open && (
+        <InviteFormContent
+          origin={origin}
+          saving={saving}
+          setSaving={setSaving}
+        />
+      )}
     </Dialog>
   );
 }

@@ -133,7 +133,6 @@ function hasCompleteGlobalAppetiteContext(
 
 export function mapCryptoCard(
   cryptoContext: CryptoContext | null | undefined,
-  fearGreed: { value: number; label: string } | null | undefined,
   btcAsset: UnifiedAsset | null | undefined,
   ethAsset: UnifiedAsset | null | undefined,
 ): MarketPulseCardModel {
@@ -159,14 +158,13 @@ export function mapCryptoCard(
       ? directionScoreToPercent(btcDirectionScore)
       : 50;
 
-  const score = combineRiskAppetiteScore(btcScore, fearGreed?.value);
+  const score = Math.round(btcScore);
   const trend = cryptoContext?.btcTrend || btcAsset.outlook?.trend || "sideways";
   const headlineValue = btcAsset.price ? `$${btcAsset.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "N/A";
   const changePercent = btcAsset.changePercent || 0;
 
   const hasAllData =
     !!cryptoContext &&
-    isFiniteNumber(fearGreed?.value) &&
     !!cryptoContext.dominance &&
     !!ethAsset;
 

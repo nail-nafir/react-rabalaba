@@ -1,4 +1,10 @@
-import { useId, useMemo, useState } from "react";
+import {
+  useId,
+  useMemo,
+  useState,
+  type MouseEvent,
+  type ReactElement,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   flexRender,
@@ -25,6 +31,7 @@ import { toast } from "sonner";
 
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +62,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -152,6 +161,377 @@ function formatSubmissionDate(value: string, locale: string) {
   }).format(date);
 }
 
+function RejectTestimonialDialog({
+  trigger,
+  working,
+  onConfirm,
+}: {
+  trigger: ReactElement;
+  working: WorkingAction;
+  onConfirm: (reason: string) => Promise<boolean>;
+}) {
+  const { t } = useTranslation();
+  const rejectionReasonId = useId();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const isWorking = working !== null;
+
+  const confirm = async () => {
+    if (await onConfirm(reason)) {
+      setReason("");
+      setOpen(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isWorking) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-md" showCloseButton={!isWorking}>
+        <DialogHeader>
+          <DialogTitle>
+            {t("admin.testimonials.reject_title", "Tolak ulasan")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(
+              "admin.testimonials.reject_desc",
+              "Alasan bersifat opsional dan hanya dapat dilihat oleh pengguna serta admin.",
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={rejectionReasonId}>
+              {t(
+                "admin.testimonials.rejection_reason_label",
+                "Alasan penolakan (opsional)",
+              )}
+            </FieldLabel>
+            <Textarea
+              id={rejectionReasonId}
+              value={reason}
+              maxLength={500}
+              disabled={isWorking}
+              placeholder={t(
+                "admin.testimonials.rejection_reason_placeholder",
+                "Contoh: mohon hindari informasi pribadi.",
+              )}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="destructive"
+            size="lg"
+            disabled={isWorking}
+            aria-busy={isWorking}
+            onClick={() => void confirm()}
+          >
+            <ActionButtonContent
+              label={t("common.actions.reject")}
+              pending={working === "reject"}
+            />
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FeatureTestimonialDialog({
+  trigger,
+  submission,
+  featured,
+  working,
+  onConfirm,
+}: {
+  trigger: ReactElement;
+  submission: TestimonialSubmissionRow;
+  featured: FeaturedTestimonialRow[];
+  working: WorkingAction;
+  onConfirm: (slot: number) => Promise<boolean>;
+}) {
+  const { t } = useTranslation();
+  const featureSlotId = useId();
+  const [open, setOpen] = useState(false);
+  const [replacementOpen, setReplacementOpen] = useState(false);
+  const [isConfirmingReplacement, setIsConfirmingReplacement] = useState(false);
+  const currentFeatured = featured.find(
+    (item) => item.submission_id === submission.id,
+  );
+  const firstAvailable =
+    currentFeatured?.slot ??
+    FEATURE_SLOTS.find(
+      (slot) => !featured.some((item) => item.slot === slot),
+    ) ??
+    1;
+  const [selectedSlot, setSelectedSlot] = useState(String(firstAvailable));
+  const selectedSlotNumber = Number(selectedSlot);
+  const occupiedSlot = featured.find(
+    (item) => item.slot === selectedSlotNumber,
+  );
+  const replacementRequired = Boolean(
+    occupiedSlot && occupiedSlot.submission_id !== submission.id,
+  );
+  const isWorking = working !== null;
+  const hasSlotChanged =
+    !currentFeatured || currentFeatured.slot !== selectedSlotNumber;
+  const slotItems = FEATURE_SLOTS.map((slot) => {
+    const occupant = featured.find((item) => item.slot === slot);
+    return {
+      value: String(slot),
+      label: occupant
+        ? t("admin.testimonials.slot_occupied", {
+            slot,
+            name: occupant.display_name,
+            defaultValue: "Slot {{slot}} — {{name}}",
+          })
+        : t("admin.testimonials.slot_available", {
+            slot,
+            defaultValue: "Slot {{slot}} — kosong",
+          }),
+    };
+  });
+
+  const confirm = () => onConfirm(selectedSlotNumber);
+  const isReplacementWorking = isWorking || isConfirmingReplacement;
+  const handleReplacementAction = async (
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    if (isReplacementWorking) return;
+
+    setIsConfirmingReplacement(true);
+    try {
+      if (await confirm()) {
+        setReplacementOpen(false);
+        setOpen(false);
+      }
+    } finally {
+      setIsConfirmingReplacement(false);
+    }
+  };
+  const confirmAndClose = async () => {
+    if (await confirm()) {
+      setOpen(false);
+    }
+  };
+
+  const actionButton = (
+    <Button
+      type="button"
+      size="lg"
+      disabled={isWorking || !hasSlotChanged}
+      aria-busy={isWorking}
+      onClick={replacementRequired ? undefined : () => void confirmAndClose()}
+    >
+      <ActionButtonContent
+        label={t(
+          currentFeatured ? "common.actions.move" : "common.actions.feature",
+        )}
+        pending={working === "feature"}
+      />
+    </Button>
+  );
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isReplacementWorking) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent
+        className="sm:max-w-sm"
+        showCloseButton={!isReplacementWorking}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {t("admin.testimonials.feature_title", "Pilih slot landing")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(
+              "admin.testimonials.feature_desc",
+              "Ulasan yang disetujui dapat menempati salah satu dari enam slot publik.",
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={featureSlotId}>
+              {t("admin.testimonials.slot_label", "Slot")}
+            </FieldLabel>
+            <Select
+              value={selectedSlot}
+              disabled={isWorking}
+              onValueChange={(nextValue) => {
+                if (nextValue !== null) setSelectedSlot(nextValue);
+              }}
+            >
+              <SelectTrigger id={featureSlotId} className="h-11 w-full sm:h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {slotItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {replacementRequired && occupiedSlot && (
+              <FieldDescription>
+                {t("admin.testimonials.slot_replace_hint", {
+                  name: occupiedSlot.display_name,
+                  defaultValue:
+                    "Slot ini sedang ditempati {{name}}. Penggantian memerlukan konfirmasi.",
+                })}
+              </FieldDescription>
+            )}
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          {replacementRequired ? (
+            <AlertDialog
+              open={replacementOpen}
+              onOpenChange={(nextOpen) => {
+                if (!isReplacementWorking) setReplacementOpen(nextOpen);
+              }}
+            >
+              <AlertDialogTrigger asChild>{actionButton}</AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogMedia>
+                    <Pin />
+                  </AlertDialogMedia>
+                  <AlertDialogTitle>
+                    {t(
+                      "admin.testimonials.replace_title",
+                      "Ganti ulasan di slot?",
+                    )}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("admin.testimonials.replace_desc", {
+                      slot: selectedSlotNumber,
+                      name:
+                        occupiedSlot?.display_name ??
+                        t(
+                          "admin.testimonials.another_testimonial",
+                          "ulasan lain",
+                        ),
+                      defaultValue:
+                        "Slot {{slot}} sedang ditempati {{name}}. Ulasan tersebut akan langsung digantikan.",
+                    })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isReplacementWorking}>
+                    {t("common.cancel", "Batal")}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isReplacementWorking}
+                    aria-busy={isReplacementWorking}
+                    onClick={handleReplacementAction}
+                  >
+                    <ActionButtonContent
+                      label={t("common.actions.replace")}
+                      pending={isReplacementWorking}
+                    />
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            actionButton
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteTestimonialDialog({
+  trigger,
+  submission,
+  working,
+  onConfirm,
+}: {
+  trigger: ReactElement;
+  submission: TestimonialSubmissionRow;
+  working: WorkingAction;
+  onConfirm: () => Promise<boolean>;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const isWorking = working !== null || isPending;
+
+  const handleAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isWorking) return;
+
+    setIsPending(true);
+    try {
+      if (await onConfirm()) setOpen(false);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isWorking) setOpen(nextOpen);
+      }}
+    >
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <Trash2 />
+          </AlertDialogMedia>
+          <AlertDialogTitle>
+            {t("admin.testimonials.delete_title", "Hapus ulasan permanen?")}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("admin.testimonials.delete_desc", {
+              name: submission.display_name,
+              defaultValue:
+                "Ulasan milik {{name}} akan dihapus permanen, termasuk dari landing. Tindakan ini tidak dapat dibatalkan.",
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isWorking}>
+            {t("common.cancel", "Batal")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={isWorking}
+            aria-busy={isWorking}
+            onClick={handleAction}
+          >
+            <ActionButtonContent
+              label={t("common.actions.delete")}
+              pending={isWorking}
+            />
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 type TestimonialActionsProps = {
   submission: TestimonialSubmissionRow;
   featured: FeaturedTestimonialRow[];
@@ -172,60 +552,21 @@ function TestimonialActions({
   onDelete,
 }: TestimonialActionsProps) {
   const { t } = useTranslation();
-  const rejectionReasonId = useId();
-  const featureSlotId = useId();
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [featureOpen, setFeatureOpen] = useState(false);
-  const [replacementOpen, setReplacementOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [selectedSlot, setSelectedSlot] = useState("1");
   const [working, setWorking] = useState<WorkingAction>(null);
-  const slotItems = FEATURE_SLOTS.map((slot) => {
-    const occupant = featured.find((item) => item.slot === slot);
-
-    return {
-      value: String(slot),
-      label: occupant
-        ? t("admin.testimonials.slot_occupied", {
-            slot,
-            name: occupant.display_name,
-            defaultValue: "Slot {{slot}} — {{name}}",
-          })
-        : t("admin.testimonials.slot_available", {
-            slot,
-            defaultValue: "Slot {{slot}} — kosong",
-          }),
-    };
-  });
 
   const currentFeatured = featured.find(
     (item) => item.submission_id === submission.id,
   );
-  const selectedSlotNumber = Number(selectedSlot);
-  const occupiedSlot = featured.find(
-    (item) => item.slot === selectedSlotNumber,
-  );
-  const replacementRequired = Boolean(
-    occupiedSlot && occupiedSlot.submission_id !== submission.id,
-  );
 
   const showError = () => {
-    toast.error(
-      t(
-        "admin.testimonials.action_error",
-        "Tindakan gagal. Silakan coba lagi.",
-      ),
-    );
+    toast.error(t("toasts.testimonial_admin.action_error"));
   };
 
   const handleApprove = async () => {
     setWorking("approve");
     try {
       await onApprove(submission.id);
-      toast.success(
-        t("admin.testimonials.approve_success", "Ulasan disetujui."),
-      );
+      toast.success(t("toasts.testimonial_admin.approve_success"));
     } catch {
       showError();
     } finally {
@@ -233,36 +574,29 @@ function TestimonialActions({
     }
   };
 
-  const handleReject = async () => {
+  const handleReject = async (rejectionReason: string) => {
     setWorking("reject");
     try {
       await onReject(submission.id, rejectionReason);
-      toast.success(
-        t("admin.testimonials.reject_success", "Ulasan ditolak."),
-      );
-      setRejectOpen(false);
-      setRejectionReason("");
+      toast.success(t("toasts.testimonial_admin.reject_success"));
+      return true;
     } catch {
       showError();
+      return false;
     } finally {
       setWorking(null);
     }
   };
 
-  const handleFeature = async () => {
+  const handleFeature = async (selectedSlot: number) => {
     setWorking("feature");
     try {
-      await onFeature(submission.id, selectedSlotNumber);
-      toast.success(
-        t(
-          "admin.testimonials.feature_success",
-          "Slot ulasan berhasil diperbarui.",
-        ),
-      );
-      setReplacementOpen(false);
-      setFeatureOpen(false);
+      await onFeature(submission.id, selectedSlot);
+      toast.success(t("toasts.testimonial_admin.feature_success"));
+      return true;
     } catch {
       showError();
+      return false;
     } finally {
       setWorking(null);
     }
@@ -272,12 +606,7 @@ function TestimonialActions({
     setWorking("unfeature");
     try {
       await onUnfeature(submission.id);
-      toast.success(
-        t(
-          "admin.testimonials.unfeature_success",
-          "Ulasan dihapus dari landing.",
-        ),
-      );
+      toast.success(t("toasts.testimonial_admin.unfeature_success"));
     } catch {
       showError();
     } finally {
@@ -285,41 +614,18 @@ function TestimonialActions({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<boolean> => {
     setWorking("delete");
     try {
       await onDelete(submission.id);
-      toast.success(
-        t("admin.testimonials.delete_success", "Ulasan dihapus permanen."),
-      );
-      setDeleteOpen(false);
+      toast.success(t("toasts.testimonial_admin.delete_success"));
+      return true;
     } catch {
       showError();
+      return false;
     } finally {
       setWorking(null);
     }
-  };
-
-  const openFeatureDialog = () => {
-    const firstAvailable =
-      currentFeatured?.slot ??
-      FEATURE_SLOTS.find(
-        (slot) => !featured.some((item) => item.slot === slot),
-      ) ??
-      1;
-
-    setSelectedSlot(String(firstAvailable));
-    setFeatureOpen(true);
-  };
-
-  const requestFeature = () => {
-    if (replacementRequired) {
-      setFeatureOpen(false);
-      setReplacementOpen(true);
-      return;
-    }
-
-    void handleFeature();
   };
 
   const isWorking = working !== null;
@@ -327,20 +633,22 @@ function TestimonialActions({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-11 sm:size-8"
-              aria-label={t("admin.testimonials.open_actions", {
-                name: submission.display_name,
-                defaultValue: "Buka tindakan untuk ulasan {{name}}",
-              })}
-            />
-          }
-        >
-          {isWorking ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 sm:size-8"
+            aria-label={t("admin.testimonials.open_actions", {
+              name: submission.display_name,
+              defaultValue: "Buka tindakan untuk ulasan {{name}}",
+            })}
+          >
+            {isWorking ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <MoreHorizontal />
+            )}
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuGroup>
@@ -355,26 +663,38 @@ function TestimonialActions({
               </DropdownMenuItem>
             )}
             {submission.status !== "rejected" && (
-              <DropdownMenuItem
-                disabled={isWorking}
-                className="min-h-11 sm:min-h-8"
-                onClick={() => setRejectOpen(true)}
-              >
-                <X />
-                {t("admin.testimonials.action_reject", "Tolak")}
-              </DropdownMenuItem>
+              <RejectTestimonialDialog
+                working={working}
+                onConfirm={handleReject}
+                trigger={
+                  <DropdownMenuItem
+                    disabled={isWorking}
+                    className="min-h-11 sm:min-h-8"
+                  >
+                    <X />
+                    {t("admin.testimonials.action_reject", "Tolak")}
+                  </DropdownMenuItem>
+                }
+              />
             )}
             {submission.status === "approved" && (
-              <DropdownMenuItem
-                disabled={isWorking}
-                className="min-h-11 sm:min-h-8"
-                onClick={openFeatureDialog}
-              >
-                <Pin />
-                {currentFeatured
-                  ? t("admin.testimonials.action_move", "Ubah slot")
-                  : t("admin.testimonials.action_feature", "Tampilkan")}
-              </DropdownMenuItem>
+              <FeatureTestimonialDialog
+                submission={submission}
+                featured={featured}
+                working={working}
+                onConfirm={handleFeature}
+                trigger={
+                  <DropdownMenuItem
+                    disabled={isWorking}
+                    className="min-h-11 sm:min-h-8"
+                  >
+                    <Pin />
+                    {currentFeatured
+                      ? t("admin.testimonials.action_move", "Ubah slot")
+                      : t("admin.testimonials.action_feature", "Tampilkan")}
+                  </DropdownMenuItem>
+                }
+              />
             )}
             {currentFeatured && (
               <DropdownMenuItem
@@ -389,250 +709,24 @@ function TestimonialActions({
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={isWorking}
-              className="min-h-11 sm:min-h-8"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 />
-              {t("admin.testimonials.action_delete", "Hapus permanen")}
-            </DropdownMenuItem>
+            <DeleteTestimonialDialog
+              submission={submission}
+              working={working}
+              onConfirm={handleDelete}
+              trigger={
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={isWorking}
+                  className="min-h-11 sm:min-h-8"
+                >
+                  <Trash2 />
+                  {t("admin.testimonials.action_delete", "Hapus permanen")}
+                </DropdownMenuItem>
+              }
+            />
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog
-        open={rejectOpen}
-        onOpenChange={(open) => {
-          if (!isWorking) setRejectOpen(open);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {t("admin.testimonials.reject_title", "Tolak ulasan")}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                "admin.testimonials.reject_desc",
-                "Alasan bersifat opsional dan hanya dapat dilihat oleh pengguna serta admin.",
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor={rejectionReasonId}>
-                {t(
-                  "admin.testimonials.rejection_reason_label",
-                  "Alasan penolakan (opsional)",
-                )}
-              </FieldLabel>
-              <Textarea
-                id={rejectionReasonId}
-                value={rejectionReason}
-                maxLength={500}
-                disabled={isWorking}
-                placeholder={t(
-                  "admin.testimonials.rejection_reason_placeholder",
-                  "Contoh: mohon hindari informasi pribadi.",
-                )}
-                onChange={(event) => setRejectionReason(event.target.value)}
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              disabled={isWorking}
-              className="text-xs font-bold cursor-pointer shrink-0"
-              onClick={() => setRejectOpen(false)}
-            >
-              {t("common.cancel", "Batal")}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="lg"
-              disabled={isWorking}
-              className="text-xs font-bold cursor-pointer shrink-0"
-              onClick={() => void handleReject()}
-            >
-              {working === "reject" ? (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              ) : (
-                <X data-icon="inline-start" className="h-3.5 w-3.5" />
-              )}
-              {t("admin.testimonials.action_reject", "Tolak")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={featureOpen}
-        onOpenChange={(open) => {
-          if (!isWorking) setFeatureOpen(open);
-        }}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {t("admin.testimonials.feature_title", "Pilih slot landing")}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                "admin.testimonials.feature_desc",
-                "Ulasan yang disetujui dapat menempati salah satu dari enam slot publik.",
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor={featureSlotId}>
-                {t("admin.testimonials.slot_label", "Slot")}
-              </FieldLabel>
-              <Select
-                items={slotItems}
-                value={selectedSlot}
-                disabled={isWorking}
-                onValueChange={(nextValue) => {
-                  if (nextValue !== null) setSelectedSlot(nextValue);
-                }}
-              >
-                <SelectTrigger
-                  id={featureSlotId}
-                  className="h-11 w-full sm:h-8"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false}>
-                  <SelectGroup>
-                    {slotItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {replacementRequired && occupiedSlot && (
-                <FieldDescription>
-                  {t("admin.testimonials.slot_replace_hint", {
-                    name: occupiedSlot.display_name,
-                    defaultValue:
-                      "Slot ini sedang ditempati {{name}}. Penggantian memerlukan konfirmasi.",
-                  })}
-                </FieldDescription>
-              )}
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              disabled={isWorking}
-              className="text-xs font-bold cursor-pointer shrink-0"
-              onClick={() => setFeatureOpen(false)}
-            >
-              {t("common.cancel", "Batal")}
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              disabled={isWorking}
-              className="text-xs font-bold cursor-pointer shrink-0"
-              onClick={requestFeature}
-            >
-              {working === "feature" ? (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              ) : currentFeatured ? (
-                <Check data-icon="inline-start" className="h-3.5 w-3.5" />
-              ) : (
-                <Star data-icon="inline-start" className="h-3.5 w-3.5" />
-              )}
-              {currentFeatured
-                ? t("admin.testimonials.action_move", "Ubah slot")
-                : t("admin.testimonials.action_feature", "Tampilkan")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={replacementOpen} onOpenChange={setReplacementOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Pin />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {t("admin.testimonials.replace_title", "Ganti ulasan di slot?")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("admin.testimonials.replace_desc", {
-                slot: selectedSlotNumber,
-                name:
-                  occupiedSlot?.display_name ??
-                  t("admin.testimonials.another_testimonial", "ulasan lain"),
-                defaultValue:
-                  "Slot {{slot}} sedang ditempati {{name}}. Ulasan tersebut akan langsung digantikan.",
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isWorking}>
-              {t("common.cancel", "Batal")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isWorking}
-              onClick={() => void handleFeature()}
-            >
-              {working === "feature" && (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              )}
-              {t("admin.testimonials.replace_confirm", "Ganti slot")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Trash2 />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {t("admin.testimonials.delete_title", "Hapus ulasan permanen?")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("admin.testimonials.delete_desc", {
-                name: submission.display_name,
-                defaultValue:
-                  "Ulasan milik {{name}} akan dihapus permanen, termasuk dari landing. Tindakan ini tidak dapat dibatalkan.",
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isWorking}>
-              {t("common.cancel", "Batal")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={isWorking}
-              onClick={() => void handleDelete()}
-            >
-              {working === "delete" && (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              )}
-              {t("admin.testimonials.action_delete", "Hapus permanen")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
@@ -640,13 +734,27 @@ function TestimonialActions({
 function SkeletonRows() {
   return Array.from({ length: 5 }, (_, row) => (
     <TableRow key={row} className="hover:bg-transparent">
-      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-      <TableCell><Skeleton className="h-9 w-36" /></TableCell>
-      <TableCell><Skeleton className="h-12 w-72" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-14" /></TableCell>
-      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-      <TableCell><Skeleton className="ml-auto size-8" /></TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-28" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-9 w-36" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-12 w-72" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-14" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-20" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-12" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="ml-auto size-8" />
+      </TableCell>
     </TableRow>
   ));
 }
@@ -701,11 +809,17 @@ export function TestimonialsTable() {
               {row.original.display_name}
             </span>
             {row.original.verified_purchase ? (
-              <Badge variant="outline" className="bg-emerald-500/10 text-[9px] font-bold text-emerald-500 border-emerald-500/20 px-1.5 py-0 uppercase">
+              <Badge
+                variant="outline"
+                className="bg-emerald-500/10 text-[9px] font-bold text-emerald-500 border-emerald-500/20 px-1.5 py-0 uppercase"
+              >
                 {t("testimonials.membership.member_premium", "anggota premium")}
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-muted text-[9px] font-bold text-muted-foreground border-transparent px-1.5 py-0 uppercase">
+              <Badge
+                variant="outline"
+                className="bg-muted text-[9px] font-bold text-muted-foreground border-transparent px-1.5 py-0 uppercase"
+              >
                 {t("testimonials.membership.member_free", "anggota gratis")}
               </Badge>
             )}
@@ -840,17 +954,12 @@ export function TestimonialsTable() {
           {t("admin.testimonials.list_desc", {
             filtered: filteredSubmissions.length,
             total: submissions.length,
-            defaultValue:
-              "{{filtered}} dari {{total}} ulasan ditampilkan.",
+            defaultValue: "{{filtered}} dari {{total}} ulasan ditampilkan.",
           })}
         </CardDescription>
         <CardAction className="col-start-1 row-start-3 mt-2 w-full justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:justify-self-end">
           <div className="flex w-full items-center gap-2">
-            <Select
-              items={statusOptions}
-              value={statusFilter}
-              onValueChange={handleStatusChange}
-            >
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger
                 className="h-11 min-w-0 flex-1 sm:h-8 sm:w-40"
                 aria-label={t(
@@ -860,7 +969,7 @@ export function TestimonialsTable() {
               >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="end" alignItemWithTrigger={false}>
+              <SelectContent align="end">
                 <SelectGroup>
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
@@ -889,10 +998,7 @@ export function TestimonialsTable() {
         {isError ? (
           <EmptyState
             icon={<AlertCircle className="size-12 text-destructive" />}
-            title={t(
-              "admin.testimonials.error_title",
-              "Ulasan gagal dimuat",
-            )}
+            title={t("admin.testimonials.error_title", "Ulasan gagal dimuat")}
             description={t(
               "admin.testimonials.error_desc",
               "Periksa koneksi atau izin admin, lalu coba lagi.",

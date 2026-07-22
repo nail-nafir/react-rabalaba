@@ -10,7 +10,6 @@ import {
   type NormalizedYahooCandle,
 } from "@/services/adapters/yahoo-candles";
 import { DEFAULT_TIMEFRAME } from "@/constants/timeframes";
-import { useFearGreedIndex } from "./use-fear-greed";
 import type { TradeChartWindow } from "@/features/follow-trade/lib/trade-chart-window";
 import type { UnifiedAsset } from "@/types/asset";
 
@@ -19,23 +18,16 @@ import type { UnifiedAsset } from "@/types/asset";
  * Uses useQueries to cache each symbol individually, enabling synchronization
  * between different components (e.g., Table and Detail Dialog) that might
  * request the same asset at different times.
- *
- * fearGreedValue is included in the queryKey so that the cached signal is
- * always computed with the same sentiment context. Without it, the first
- * fetch (before Fear & Greed loads) would be cached with `undefined` and
- * served stale until staleTime expires.
  */
 export function useMarketData(symbols: string[]) {
   const { range, interval } = DEFAULT_TIMEFRAME;
-  const { data: fearGreed } = useFearGreedIndex();
-  const fearGreedValue = fearGreed?.value;
 
   return useQueries({
     queries: symbols.map((symbol) => ({
-      queryKey: ["asset-data", symbol, range, interval, fearGreedValue],
+      queryKey: ["asset-data", symbol, range, interval],
       queryFn: async (): Promise<UnifiedAsset | null> => {
         const result = await fetchYahooChart(symbol, range, interval);
-        return adaptYahooChart(result, fearGreedValue);
+        return adaptYahooChart(result);
       },
       staleTime: 1_800_000, // 30 minutes
       refetchInterval: 1_800_000, // signals are on 1h candles — 30 min is plenty

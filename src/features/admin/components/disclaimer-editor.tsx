@@ -4,10 +4,9 @@
  * re-prompted. Shows how many users accepted the current version. Keyed-form
  * pattern (drafts initialized straight from props).
  */
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Loader2, Save, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,11 +29,20 @@ import {
 import { supabase } from "@/services/supabase/client";
 import { useDisclaimer } from "@/hooks/use-disclaimer";
 import type { DisclaimerRow } from "@/services/supabase/database.types";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { toast } from "sonner";
 
-const toList = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+const toList = (s: string) =>
+  s
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 type ClausePatch = Partial<
-  Pick<DisclaimerRow, "title" | "description" | "points" | "confirm_label" | "agree_label">
+  Pick<
+    DisclaimerRow,
+    "title" | "description" | "points" | "confirm_label" | "agree_label"
+  >
 >;
 
 interface EditorFormProps {
@@ -49,13 +57,19 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
   const [titleId, setTitleId] = useState(clauses.title?.id ?? "");
   const [descEn, setDescEn] = useState(clauses.description?.en ?? "");
   const [descId, setDescId] = useState(clauses.description?.id ?? "");
-  const [pointsEn, setPointsEn] = useState((clauses.points?.en ?? []).join("\n"));
-  const [pointsId, setPointsId] = useState((clauses.points?.id ?? []).join("\n"));
+  const [pointsEn, setPointsEn] = useState(
+    (clauses.points?.en ?? []).join("\n"),
+  );
+  const [pointsId, setPointsId] = useState(
+    (clauses.points?.id ?? []).join("\n"),
+  );
   const [confirmEn, setConfirmEn] = useState(clauses.confirm_label?.en ?? "");
   const [confirmId, setConfirmId] = useState(clauses.confirm_label?.id ?? "");
   const [agreeEn, setAgreeEn] = useState(clauses.agree_label?.en ?? "");
   const [agreeId, setAgreeId] = useState(clauses.agree_label?.id ?? "");
   const [saving, setSaving] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // How many users accepted the live version (compliance readout).
   const { data: agreedCount } = useQuery({
@@ -78,19 +92,62 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
     confirm_label: { en: confirmEn.trim(), id: confirmId.trim() },
     agree_label: { en: agreeEn.trim(), id: agreeId.trim() },
   });
+  const hasChanges =
+    JSON.stringify(buildPatch()) !==
+    JSON.stringify({
+      title: {
+        en: clauses.title?.en?.trim() ?? "",
+        id: clauses.title?.id?.trim() ?? "",
+      },
+      description: {
+        en: clauses.description?.en?.trim() ?? "",
+        id: clauses.description?.id?.trim() ?? "",
+      },
+      points: {
+        en: toList((clauses.points?.en ?? []).join("\n")),
+        id: toList((clauses.points?.id ?? []).join("\n")),
+      },
+      confirm_label: {
+        en: clauses.confirm_label?.en?.trim() ?? "",
+        id: clauses.confirm_label?.id?.trim() ?? "",
+      },
+      agree_label: {
+        en: clauses.agree_label?.en?.trim() ?? "",
+        id: clauses.agree_label?.id?.trim() ?? "",
+      },
+    });
 
-  const save = async (bump: boolean) => {
+  const save = async (bump: boolean): Promise<boolean> => {
     setSaving(true);
-    const ok = await update(buildPatch(), bump);
-    setSaving(false);
-    if (ok) {
-      toast.success(
-        bump
-          ? t("admin.disclaimer.published", "Versi baru diterbitkan, semua user akan diminta setuju ulang")
-          : t("admin.disclaimer.saved", "Disclaimer tersimpan"),
-      );
-    } else {
-      toast.error(t("admin.disclaimer.save_error", "Gagal menyimpan disclaimer"));
+    try {
+      const ok = await update(buildPatch(), bump);
+      if (ok) {
+        toast.success(
+          t(
+            bump
+              ? "toasts.disclaimer.publish_success"
+              : "toasts.disclaimer.save_success",
+          ),
+        );
+        return true;
+      }
+      toast.error(t("toasts.disclaimer.save_error"));
+      return false;
+    } catch {
+      toast.error(t("toasts.disclaimer.save_error"));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handlePublishAction = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (isPublishing) return;
+    setIsPublishing(true);
+    try {
+      if (await save(true)) setPublishOpen(false);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -109,13 +166,33 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {textarea ? (
           <>
-            <Textarea value={en} onChange={(e) => setEn(e.target.value)} placeholder="EN" className="text-sm min-h-28" />
-            <Textarea value={id} onChange={(e) => setId(e.target.value)} placeholder="ID" className="text-sm min-h-28" />
+            <Textarea
+              value={en}
+              onChange={(e) => setEn(e.target.value)}
+              placeholder="EN"
+              className="text-sm min-h-28"
+            />
+            <Textarea
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              placeholder="ID"
+              className="text-sm min-h-28"
+            />
           </>
         ) : (
           <>
-            <Input value={en} onChange={(e) => setEn(e.target.value)} placeholder="EN" className="text-sm" />
-            <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="ID" className="text-sm" />
+            <Input
+              value={en}
+              onChange={(e) => setEn(e.target.value)}
+              placeholder="EN"
+              className="text-sm"
+            />
+            <Input
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              placeholder="ID"
+              className="text-sm"
+            />
           </>
         )}
       </div>
@@ -139,11 +216,43 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
         </Badge>
       </div>
 
-      {bilingual(t("admin.disclaimer.title_label", "Judul"), titleEn, setTitleEn, titleId, setTitleId)}
-      {bilingual(t("admin.disclaimer.desc_label", "Deskripsi"), descEn, setDescEn, descId, setDescId, true)}
-      {bilingual(t("admin.disclaimer.points_label", "Poin (satu per baris)"), pointsEn, setPointsEn, pointsId, setPointsId, true)}
-      {bilingual(t("admin.disclaimer.confirm_label", "Teks Centang"), confirmEn, setConfirmEn, confirmId, setConfirmId)}
-      {bilingual(t("admin.disclaimer.agree_label", "Teks Tombol Setuju"), agreeEn, setAgreeEn, agreeId, setAgreeId)}
+      {bilingual(
+        t("admin.disclaimer.title_label", "Judul"),
+        titleEn,
+        setTitleEn,
+        titleId,
+        setTitleId,
+      )}
+      {bilingual(
+        t("admin.disclaimer.desc_label", "Deskripsi"),
+        descEn,
+        setDescEn,
+        descId,
+        setDescId,
+        true,
+      )}
+      {bilingual(
+        t("admin.disclaimer.points_label", "Poin (satu per baris)"),
+        pointsEn,
+        setPointsEn,
+        pointsId,
+        setPointsId,
+        true,
+      )}
+      {bilingual(
+        t("admin.disclaimer.confirm_label", "Teks Centang"),
+        confirmEn,
+        setConfirmEn,
+        confirmId,
+        setConfirmId,
+      )}
+      {bilingual(
+        t("admin.disclaimer.agree_label", "Teks Tombol Setuju"),
+        agreeEn,
+        setAgreeEn,
+        agreeId,
+        setAgreeId,
+      )}
 
       <div className="flex items-center gap-2 border-t border-border/40 pt-4">
         <Button
@@ -151,26 +260,33 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
           size="lg"
           variant="secondary"
           onClick={() => save(false)}
-          disabled={saving}
+          disabled={saving || !hasChanges}
           className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
         >
-          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
           {t("admin.disclaimer.save_btn", "Simpan")}
         </Button>
 
-        <AlertDialog>
-          <AlertDialogTrigger
-            render={
-              <Button
-                type="button"
-                size="lg"
-                disabled={saving}
-                className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
-              />
-            }
-          >
-            <Users className="h-3.5 w-3.5" />
-            {t("admin.disclaimer.publish_btn", "Terbitkan Versi Baru")}
+        <AlertDialog
+          open={publishOpen}
+          onOpenChange={(nextOpen) => {
+            if (!isPublishing) setPublishOpen(nextOpen);
+          }}
+        >
+          <AlertDialogTrigger asChild>
+            <Button
+              type="button"
+              size="lg"
+              disabled={saving || isPublishing || !hasChanges}
+              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+            >
+              <Users className="h-3.5 w-3.5" />
+              {t("admin.disclaimer.publish_btn", "Terbitkan Versi Baru")}
+            </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -178,16 +294,31 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
                 <Users />
               </AlertDialogMedia>
               <AlertDialogTitle>
-                {t("admin.disclaimer.publish_confirm_title", "Terbitkan versi baru?")}
+                {t(
+                  "admin.disclaimer.publish_confirm_title",
+                  "Terbitkan versi baru?",
+                )}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {t("admin.disclaimer.publish_confirm_desc", "Semua pengguna (login & anonim) akan diminta menyetujui ulang pada kunjungan berikutnya.")}
+                {t(
+                  "admin.disclaimer.publish_confirm_desc",
+                  "Semua pengguna (login & anonim) akan diminta menyetujui ulang pada kunjungan berikutnya.",
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{t("common.cancel", "Batal")}</AlertDialogCancel>
-              <AlertDialogAction onClick={() => save(true)}>
-                {t("admin.disclaimer.publish_btn", "Terbitkan Versi Baru")}
+              <AlertDialogCancel disabled={isPublishing}>
+                {t("common.cancel", "Batal")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isPublishing || !hasChanges}
+                aria-busy={isPublishing}
+                onClick={handlePublishAction}
+              >
+                <ActionButtonContent
+                  label={t("common.actions.publish")}
+                  pending={isPublishing}
+                />
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

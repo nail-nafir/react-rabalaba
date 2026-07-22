@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check } from "lucide-react";
-import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/field";
 import { useDisclaimer } from "@/hooks/use-disclaimer";
 import { pickLocale } from "@/lib/localized";
+import { toast } from "sonner";
 
 /**
  * First-touch risk gate. Clauses are server-truth (DB, bilingual + versioned);
@@ -52,9 +52,9 @@ export function DisclaimerDialog() {
     setSaving(true);
     try {
       await agree();
-      toast.success(t("disclaimer.toast_success"));
+      toast.success(t("toasts.disclaimer.accept_success"));
     } catch {
-      toast.error(t("common.error_generic", "Something went wrong, try again."));
+      toast.error(t("toasts.disclaimer.accept_error"));
     } finally {
       setSaving(false);
     }
@@ -64,60 +64,54 @@ export function DisclaimerDialog() {
 
   if (hasLoadError) {
     return (
-      <Dialog open onOpenChange={() => {}}>
-        <DialogContent
-          className="sm:max-w-md border border-border text-foreground"
-          showCloseButton={false}
-        >
-          <DialogHeader>
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div className="flex size-16 items-center justify-center rounded-md bg-amber-500/10">
-                <AlertTriangle className="size-8 text-amber-500" />
-              </div>
-              <DialogTitle className="text-lg font-bold text-foreground">
-                {t("disclaimer.load_error_title")}
-              </DialogTitle>
-              <DialogDescription className="text-xs leading-relaxed text-muted-foreground">
-                {t("disclaimer.load_error_description")}
-              </DialogDescription>
+      <Card className="mx-auto w-full sm:max-w-md border border-border text-foreground">
+        <CardHeader>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex size-16 items-center justify-center rounded-md bg-amber-500/10">
+              <AlertTriangle className="size-8 text-amber-500" />
             </div>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              size="lg"
-              disabled={retrying}
-              onClick={() => void handleRetry()}
-              className="min-h-11 w-full text-xs font-bold"
-            >
-              {t("common.retry")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <CardTitle className="text-lg font-bold text-foreground">
+              {t("disclaimer.load_error_title")}
+            </CardTitle>
+            <CardDescription className="text-xs leading-relaxed text-muted-foreground">
+              {t("disclaimer.load_error_description")}
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardFooter>
+          <Button
+            type="button"
+            size="lg"
+            disabled={retrying}
+            onClick={() => void handleRetry()}
+            className="min-h-11 w-full text-xs font-bold"
+          >
+            {t("common.retry")}
+          </Button>
+        </CardFooter>
+      </Card>
     );
   }
 
-  return (
-    <Dialog open={needsAgreement} onOpenChange={() => { /* gate: dismiss only via Agree */ }}>
-      <DialogContent
-        className="sm:max-w-md border border-border text-foreground"
-        showCloseButton={false}
-      >
-        <DialogHeader>
-          <div className="flex flex-col items-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md bg-amber-500/10 mb-2 transition-all duration-500">
-              <AlertTriangle className="h-8 w-8 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
-            </div>
-            <DialogTitle className="text-lg font-bold text-foreground text-center">
-              {pickLocale(clauses?.title, lang, "") as string}
-            </DialogTitle>
-          </div>
-        </DialogHeader>
+  if (!needsAgreement) return null;
 
-        <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+  return (
+    <Card className="mx-auto w-full sm:max-w-md border border-border text-foreground">
+      <CardHeader>
+        <div className="flex flex-col items-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md bg-amber-500/10 mb-2 transition-all duration-500">
+            <AlertTriangle className="h-8 w-8 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+          </div>
+          <CardTitle className="text-lg font-bold text-foreground text-center">
+            {pickLocale(clauses?.title, lang, "") as string}
+          </CardTitle>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-5">
+        <CardDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
           {pickLocale(clauses?.description, lang, "") as string}
-        </DialogDescription>
+        </CardDescription>
 
         <ul className="space-y-3 px-1">
           {points.map((point, i) => (
@@ -150,21 +144,21 @@ export function DisclaimerDialog() {
             </Field>
           </FieldLabel>
         </FieldGroup>
+      </CardContent>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            size="lg"
-            disabled={!hasConfirmed || saving}
-            onClick={handleAgree}
-            className="text-xs font-bold cursor-pointer shrink-0 w-full"
-          >
-            <Check data-icon="inline-start" className="h-3.5 w-3.5" />
-            {(pickLocale(clauses?.agree_label, lang) as string) ??
-              t("disclaimer.agree")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <CardFooter>
+        <Button
+          type="button"
+          size="lg"
+          disabled={!hasConfirmed || saving}
+          onClick={handleAgree}
+          className="text-xs font-bold cursor-pointer shrink-0 w-full"
+        >
+          <Check data-icon="inline-start" className="h-3.5 w-3.5" />
+          {(pickLocale(clauses?.agree_label, lang) as string) ??
+            t("disclaimer.agree")}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }

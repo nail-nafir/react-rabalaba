@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
@@ -22,8 +21,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, Radar, Zap, FileText, Save } from "lucide-react";
+import { Loader2, Radar, Zap, FileText } from "lucide-react";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { toast } from "sonner";
 import {
   useJournalSettings,
   type JournalSettingsPatch,
@@ -100,7 +102,6 @@ function SettingSelect({
 
   return (
     <Select
-      items={items}
       value={String(value)}
       onValueChange={(nextValue) => {
         if (nextValue !== null) onChange(Number(nextValue));
@@ -109,11 +110,7 @@ function SettingSelect({
       <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px] cursor-pointer">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent
-        align="start"
-        alignItemWithTrigger={false}
-        className="p-1"
-      >
+      <SelectContent align="start" className="p-1">
         <SelectGroup>
           {items.map((item) => (
             <SelectItem
@@ -205,6 +202,8 @@ interface JournalSettingsFormProps {
   settings: JournalSettingsRow;
   onClose: () => void;
   update: (patch: JournalSettingsPatch) => Promise<void>;
+  isSaving: boolean;
+  setIsSaving: (pending: boolean) => void;
 }
 
 /** Pure settings form component that initializes drafts directly from settings
@@ -216,6 +215,8 @@ function JournalSettingsForm({
   settings,
   onClose,
   update,
+  isSaving,
+  setIsSaving,
 }: JournalSettingsFormProps) {
   const { t } = useTranslation();
 
@@ -245,7 +246,6 @@ function JournalSettingsForm({
   const [draftSelectionCap, setDraftSelectionCap] = useState(selectionCap);
   const [draftSelectionPruneDays, setDraftSelectionPruneDays] =
     useState(selectionPruneDays);
-  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("summary");
   // Drafts live ABOVE the tab switch, so hopping between tabs never loses
   // unsaved edits and the single Save commits everything at once.
@@ -282,10 +282,10 @@ function JournalSettingsForm({
         discovery_max_per_market: draftSelectionCap,
         discovery_prune_days: draftSelectionPruneDays,
       });
-      toast.success(t("admin.settings_toast_success"));
+      toast.success(t("toasts.journal_settings.save_success"));
       onClose();
     } catch {
-      toast.error(t("admin.settings_toast_error"));
+      toast.error(t("toasts.journal_settings.save_error"));
     } finally {
       setIsSaving(false);
     }
@@ -558,22 +558,18 @@ function JournalSettingsForm({
         </div>
       </div>
 
-      <DialogFooter className="flex items-center justify-end gap-2 border-t border-border/40 pt-4 mt-6">
+      <DialogFooter>
         <Button
           type="button"
           onClick={handleSave}
           size="lg"
           disabled={isSaving || !hasChanges}
-          className="text-xs font-bold cursor-pointer shrink-0"
+          aria-busy={isSaving}
         >
-          {isSaving ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <>
-              <Save data-icon="inline-start" className="size-3.5" />
-              {t("admin.settings_save_btn")}
-            </>
-          )}
+          <ActionButtonContent
+            label={t("common.actions.save")}
+            pending={isSaving}
+          />
         </Button>
       </DialogFooter>
     </>
@@ -581,21 +577,28 @@ function JournalSettingsForm({
 }
 
 interface JournalSettingsDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  trigger: ReactElement;
 }
 
 /** Settings Dialog container styled same as AddSignalAssetDialog/AddJournalAssetDialog */
-export function JournalSettingsDialog({
-  open,
-  onOpenChange,
-}: JournalSettingsDialogProps) {
+export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
   const { t } = useTranslation();
   const { settings, isLoading, update } = useJournalSettings();
+  const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto border border-border text-foreground">
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isSaving) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent
+        className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto border border-border text-foreground"
+        showCloseButton={!isSaving}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {t("admin.settings_dialog_title")}
@@ -613,8 +616,10 @@ export function JournalSettingsDialog({
           settings && (
             <JournalSettingsForm
               settings={settings}
-              onClose={() => onOpenChange(false)}
+              onClose={() => setOpen(false)}
               update={update}
+              isSaving={isSaving}
+              setIsSaving={setIsSaving}
             />
           )
         )}

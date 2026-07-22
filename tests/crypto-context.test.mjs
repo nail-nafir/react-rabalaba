@@ -48,7 +48,7 @@ function makeOutlook(overrides = {}) {
       volumeReliable: true,
     },
     indicators: {},
-    analysis: { trend: "", volume: "", momentum: "", sentiment: "" },
+    analysis: { trend: "", volume: "", momentum: "" },
     ...overrides,
   };
 }
@@ -59,22 +59,18 @@ function makeCtx(overrides = {}) {
     btcRegime: "trending",
     btcDirectionScore: -0.6,
     riskState: "risk_off",
-    fearGreed: 30,
     lastUpdated: 0,
     ...overrides,
   };
 }
 
-test("deriveCryptoRiskState: BTC score drives risk on/off, sentiment breaks ties", async () => {
+test("deriveCryptoRiskState: BTC score drives risk on/off", async () => {
   const { deriveCryptoRiskState } = await loadModule(
     "/src/features/engine/crypto-context.ts",
   );
   assert.equal(deriveCryptoRiskState(-0.5), "risk_off");
   assert.equal(deriveCryptoRiskState(0.5), "risk_on");
   assert.equal(deriveCryptoRiskState(0.05), "neutral");
-  // BTC indecisive → sentiment extremes break the tie
-  assert.equal(deriveCryptoRiskState(0.1, 15), "risk_off");
-  assert.equal(deriveCryptoRiskState(0.1, 90), "risk_on");
 });
 
 test("applyCryptoContext de-rates a crypto LONG that fights risk-off (immutably)", async () => {

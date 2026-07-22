@@ -120,8 +120,8 @@ the client-side `applyPriceSync` loop, and the `follow-store` localStorage layer
   proxies: auto-journal/daily-summary default through `/api/yahoo`;
   asset-discovery defaults through `/api/yahoo`, `/api/coingecko`, and
   `/api/binance`. The **browser** goes through the proxy only for Yahoo
-  (`/api/yahoo`, needs crumb/cookie gating) and Fear & Greed (`/api/fng`);
-  CoinGecko `/global` (dominance) and Binance derivatives are called **direct**
+  (`/api/yahoo`, needs crumb/cookie gating);
+  CoinGecko `/global` + `/coins/markets` (dominance) and Binance derivatives are called **direct**
   from the browser so each visitor uses their own IP instead of the shared
   Cloudflare egress IP (avoids 429s on CoinGecko free tier / Binance limits).
   The proxies provide fresh/stale/error cache behavior and can be bypassed by
@@ -433,9 +433,9 @@ premium screener universe, ~114 symbols).
 
 - **Cadence:** 30-minute ticks can miss sub-bar wicks between runs (mitigated by
   the candle replay since `opened_at`, but not tick-perfect).
-- **CoinGecko dominance** (free tier) is rate-limited and optional — the market
-  summary degrades gracefully (per-section "unavailable" states; no error toast,
-  via `meta.silent`).
+- **CoinGecko dominance** (free tier) is rate-limited and optional. If the
+  Bitcoin market payload fails, current BTC.D remains visible without a delta;
+  if the global snapshot fails, only the crypto footer becomes unavailable.
 - **Email confirmation** is a Supabase dashboard toggle, not enforced in code.
 - **Possible next steps:** richer per-grade analytics, SSR/OG share pages (a
   Worker, not Next.js), and finer-grained server entitlement checks if any

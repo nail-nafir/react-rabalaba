@@ -64,8 +64,8 @@ export function usePaymentMethods() {
   );
 
   const toggleActive = useCallback(
-    async (id: string, active: boolean) => {
-      if (!userId) return;
+    async (id: string, active: boolean): Promise<boolean> => {
+      if (!userId) return false;
       queryClient.setQueryData<PaymentMethodRow[]>(QUERY_KEY, (prev) =>
         (prev ?? []).map((m) => (m.id === id ? { ...m, active } : m)),
       );
@@ -73,14 +73,18 @@ export function usePaymentMethods() {
         .from("payment_methods")
         .update({ active } as never)
         .eq("id", id);
-      if (error) await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      if (error) {
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        return false;
+      }
+      return true;
     },
     [userId, queryClient],
   );
 
   const removeMethod = useCallback(
-    async (id: string) => {
-      if (!userId) return;
+    async (id: string): Promise<boolean> => {
+      if (!userId) return false;
       queryClient.setQueryData<PaymentMethodRow[]>(QUERY_KEY, (prev) =>
         (prev ?? []).filter((m) => m.id !== id),
       );
@@ -88,7 +92,11 @@ export function usePaymentMethods() {
         .from("payment_methods")
         .delete()
         .eq("id", id);
-      if (error) await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      if (error) {
+        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        return false;
+      }
+      return true;
     },
     [userId, queryClient],
   );

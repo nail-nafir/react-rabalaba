@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 /** Google's multi-color "G" mark. lucide-react has no brand icons, so it lives
  *  here as a tiny inline SVG. Keeps its own colors regardless of theme. */
@@ -47,7 +47,7 @@ export function GoogleAuthButton({ redirect }: GoogleAuthButtonProps) {
     setIsLoading(true);
     const { error } = await signInWithGoogle(redirect);
     if (error) {
-      toast.error(t("auth.google_failed"));
+      toast.error(t("toasts.auth.google_error"));
       setIsLoading(false);
     }
   };

@@ -20,8 +20,6 @@ type ImpactFilter = EventImpact | "all";
 export default function CalendarPage() {
   const { t, i18n } = useTranslation();
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>("all");
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const timelineRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -52,16 +50,6 @@ export default function CalendarPage() {
     });
     return groups;
   }, [filteredEvents]);
-
-  const selectedEvent = useMemo(
-    () => allEvents.find((e) => e.id === selectedEventId),
-    [allEvents, selectedEventId],
-  );
-
-  const handleEventClick = (event: CalendarEvent) => {
-    setSelectedEventId(event.id);
-    setIsDetailOpen(true);
-  };
 
   const scrollToDate = (dateStr: string) => {
     const element = timelineRefs.current[dateStr];
@@ -169,50 +157,46 @@ export default function CalendarPage() {
 
                   <div className="grid gap-3">
                     {events.map((event) => (
-                      <Card
+                      <CalendarDetailDialog
                         key={event.id}
-                        className="border border-border hover:bg-muted/50 hover:border-primary cursor-pointer"
-                        onClick={() => handleEventClick(event)}
-                      >
-                        <CardContent className="flex items-center gap-3 sm:gap-4">
-                          <div className="flex flex-col items-start min-w-12 sm:min-w-15 shrink-0">
-                            <span className="text-xs font-bold text-foreground">
-                              {event.time.split(" ")[0]}
-                            </span>
-                          </div>
+                        event={event}
+                        trigger={
+                          <Card className="border border-border hover:bg-muted/50 hover:border-primary cursor-pointer">
+                            <CardContent className="flex items-center gap-3 sm:gap-4">
+                              <div className="flex flex-col items-start min-w-12 sm:min-w-15 shrink-0">
+                                <span className="text-xs font-bold text-foreground">
+                                  {event.time.split(" ")[0]}
+                                </span>
+                              </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 min-w-0">
-                              <span className="text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">
-                                {selectedEvent?.id === event.id ? (
-                                  <span className="text-primary">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 min-w-0">
+                                  <span className="text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">
                                     {event.title}
                                   </span>
-                                ) : (
-                                  event.title
-                                )}
-                              </span>
-                              {event.impact === "high" && (
-                                <AlertTriangle className="h-3.5 w-3.5 text-primary animate-pulse shrink-0" />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-muted-foreground truncate">
-                                {getEmojiFlag(event.country)} {event.country}
-                              </span>
-                            </div>
-                          </div>
+                                  {event.impact === "high" && (
+                                    <AlertTriangle className="h-3.5 w-3.5 text-primary animate-pulse shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-muted-foreground truncate">
+                                    {getEmojiFlag(event.country)} {event.country}
+                                  </span>
+                                </div>
+                              </div>
 
-                          <Badge
-                            className={cn(
-                              "text-[10px] uppercase font-bold rounded-md",
-                              IMPACT_LEVELS[event.impact].badge,
-                            )}
-                          >
-                            {t(IMPACT_LEVELS[event.impact].labelKey)}
-                          </Badge>
-                        </CardContent>
-                      </Card>
+                              <Badge
+                                className={cn(
+                                  "text-[10px] uppercase font-bold rounded-md",
+                                  IMPACT_LEVELS[event.impact].badge,
+                                )}
+                              >
+                                {t(IMPACT_LEVELS[event.impact].labelKey)}
+                              </Badge>
+                            </CardContent>
+                          </Card>
+                        }
+                      />
                     ))}
                   </div>
                 </div>
@@ -220,13 +204,6 @@ export default function CalendarPage() {
             )}
           </div>
         </div>
-
-        {/* Detail Dialog */}
-        <CalendarDetailDialog
-          event={selectedEvent}
-          open={isDetailOpen}
-          onOpenChange={setIsDetailOpen}
-        />
       </div>
     </div>
   );

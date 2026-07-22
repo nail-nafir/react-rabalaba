@@ -3,10 +3,8 @@
  * sub-label is bilingual; name/account are plain. Same keyed-form pattern as
  * plan-dialog.
  */
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
-import { Loader2, Save, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +29,8 @@ import {
 import { usePaymentMethods } from "@/hooks/use-payment-methods";
 import type { PaymentMethodRow } from "@/services/supabase/database.types";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { toast } from "sonner";
 
 const CATEGORIES = ["bank", "ewallet", "qris", "crypto"] as const;
 const ICON_OPTIONS = ["Landmark", "Wallet", "Coins", "QrCode"];
@@ -37,9 +38,11 @@ const ICON_OPTIONS = ["Landmark", "Wallet", "Coins", "QrCode"];
 interface MethodFormProps {
   method: PaymentMethodRow | null;
   onClose: () => void;
+  saving: boolean;
+  setSaving: (pending: boolean) => void;
 }
 
-function MethodForm({ method, onClose }: MethodFormProps) {
+function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
   const { t } = useTranslation();
   const { addMethod, updateMethod } = usePaymentMethods();
   const isEdit = !!method;
@@ -53,18 +56,41 @@ function MethodForm({ method, onClose }: MethodFormProps) {
   const [icon, setIcon] = useState(method?.icon ?? "Landmark");
   const [sortOrder, setSortOrder] = useState(String(method?.sort_order ?? 0));
   const [active, setActive] = useState(method?.active ?? true);
-  const [saving, setSaving] = useState(false);
   const categoryItems = CATEGORIES.map((value) => ({
     value,
     label: t(`admin.billing.cat_${value}`, value),
   }));
   const iconItems = ICON_OPTIONS.map((value) => ({ value, label: value }));
 
-  const canSave = name.trim() && accountNo.trim();
+  const draftSnapshot = JSON.stringify({
+    category,
+    name: name.trim(),
+    accountNo: accountNo.trim(),
+    accountName: accountName.trim(),
+    noteEn: noteEn.trim(),
+    noteId: noteId.trim(),
+    icon,
+    sortOrder: Number(sortOrder) || 0,
+    active,
+  });
+  const initialSnapshot = method
+    ? JSON.stringify({
+        category: method.category,
+        name: method.name.trim(),
+        accountNo: method.account_no?.trim() ?? "",
+        accountName: method.account_name?.trim() ?? "",
+        noteEn: method.note?.en?.trim() ?? "",
+        noteId: method.note?.id?.trim() ?? "",
+        icon: method.icon ?? "Landmark",
+        sortOrder: method.sort_order ?? 0,
+        active: method.active,
+      })
+    : null;
+  const isValid = Boolean(name.trim() && accountNo.trim());
+  const canSave = isValid && (!isEdit || draftSnapshot !== initialSnapshot);
 
   const handleSave = async () => {
     if (!canSave) return;
-    setSaving(true);
     const payload = {
       category: category as PaymentMethodRow["category"],
       name: name.trim(),
@@ -78,17 +104,21 @@ function MethodForm({ method, onClose }: MethodFormProps) {
       sort_order: Number(sortOrder) || 0,
       active,
     };
-    const ok = isEdit
-      ? await updateMethod(method!.id, payload)
-      : await addMethod(payload);
-    setSaving(false);
-    if (ok) {
-      toast.success(t("admin.billing.method_saved", "Metode tersimpan"));
-      onClose();
-    } else {
-      toast.error(
-        t("admin.billing.method_save_error", "Gagal menyimpan metode"),
-      );
+    setSaving(true);
+    try {
+      const ok = isEdit
+        ? await updateMethod(method!.id, payload)
+        : await addMethod(payload);
+      if (ok) {
+        toast.success(t("toasts.payment_method.save_success"));
+        onClose();
+      } else {
+        toast.error(t("toasts.payment_method.save_error"));
+      }
+    } catch {
+      toast.error(t("toasts.payment_method.save_error"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -101,7 +131,6 @@ function MethodForm({ method, onClose }: MethodFormProps) {
               {t("admin.billing.method_category", "Kategori")}
             </Label>
             <Select
-              items={categoryItems}
               value={category}
               onValueChange={(nextValue) => {
                 if (nextValue !== null) setCategory(nextValue);
@@ -110,11 +139,7 @@ function MethodForm({ method, onClose }: MethodFormProps) {
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent
-                align="start"
-                alignItemWithTrigger={false}
-                className="p-1"
-              >
+              <SelectContent align="start" className="p-1">
                 <SelectGroup>
                   {categoryItems.map((item) => (
                     <SelectItem
@@ -203,7 +228,6 @@ function MethodForm({ method, onClose }: MethodFormProps) {
             {t("admin.billing.method_icon", "Ikon")}
           </Label>
           <Select
-            items={iconItems}
             value={icon}
             onValueChange={(nextValue) => {
               if (nextValue !== null) setIcon(nextValue);
@@ -212,11 +236,7 @@ function MethodForm({ method, onClose }: MethodFormProps) {
             <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent
-              align="start"
-              alignItemWithTrigger={false}
-              className="p-1"
-            >
+            <SelectContent align="start" className="p-1">
               <SelectGroup>
                 {iconItems.map((item) => (
                   <SelectItem
@@ -262,21 +282,12 @@ function MethodForm({ method, onClose }: MethodFormProps) {
           onClick={handleSave}
           size="lg"
           disabled={saving || !canSave}
-          className="text-xs font-bold cursor-pointer shrink-0"
+          aria-busy={saving}
         >
-          {saving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : isEdit ? (
-            <>
-              <Save data-icon="inline-start" className="h-3.5 w-3.5" />
-              {t("admin.billing.save_btn", "Simpan")}
-            </>
-          ) : (
-            <>
-              <Plus data-icon="inline-start" className="h-3.5 w-3.5" />
-              {t("admin.billing.add_action_btn", "Tambah")}
-            </>
-          )}
+          <ActionButtonContent
+            label={t(isEdit ? "common.actions.save" : "common.actions.add")}
+            pending={saving}
+          />
         </Button>
       </DialogFooter>
     </>
@@ -284,20 +295,30 @@ function MethodForm({ method, onClose }: MethodFormProps) {
 }
 
 interface PaymentMethodDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  trigger: ReactElement;
   method?: PaymentMethodRow | null;
 }
 
 export function PaymentMethodDialog({
-  open,
-  onOpenChange,
+  trigger,
   method,
 }: PaymentMethodDialogProps) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border border-border text-foreground">
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!saving) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent
+        className="sm:max-w-md border border-border text-foreground"
+        showCloseButton={!saving}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {method
@@ -311,13 +332,13 @@ export function PaymentMethodDialog({
             )}
           </DialogDescription>
         </DialogHeader>
-        {open && (
-          <MethodForm
-            key={method?.id ?? "new"}
-            method={method ?? null}
-            onClose={() => onOpenChange(false)}
-          />
-        )}
+        <MethodForm
+          key={method?.id ?? "new"}
+          method={method ?? null}
+          onClose={() => setOpen(false)}
+          saving={saving}
+          setSaving={setSaving}
+        />
       </DialogContent>
     </Dialog>
   );

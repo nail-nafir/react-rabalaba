@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useMarketData,
@@ -22,49 +22,33 @@ import {
 } from "@/lib/formatters";
 import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useShareSetup } from "@/features/trading-plan/hooks/use-share-setup";
 
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertTriangle,
-  Loader2,
-  RefreshCw,
-  Share2,
-  Target,
-} from "lucide-react";
+import { Loader2, Share2, Target } from "lucide-react";
 import { SIGNAL_COLORS, PALETTE, SIGNAL_LABEL_KEYS } from "@/constants";
 
 import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
 import type { TradingPlan, SignalDirection } from "@/types/asset";
 import type { ChartMarker } from "@/features/trading-plan/lib/trade-setup-model";
 
-export type TradeDetailDialogState =
-  | "loading"
-  | "ready"
-  | "error"
-  | "unavailable";
-
 const EMPTY_SIBLINGS: FollowedTrade[] = [];
 
 export interface TradeDetailDialogProps {
-  trade: FollowedTrade | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  state?: TradeDetailDialogState;
-  onRetry?: () => void;
+  trade: FollowedTrade;
+  trigger: ReactElement;
   /**
    * Same-batch trade list used to derive a stable, human-readable per-symbol
    * sequence number for the dialog header (e.g. "#3" = 3rd SOL-USD trade by
@@ -94,135 +78,23 @@ function buildPlanFromTrade(trade: FollowedTrade): TradingPlan {
   };
 }
 
-function TradeDetailStatusDialog({
-  open,
-  onOpenChange,
-  state,
-  onRetry,
-}: Omit<TradeDetailDialogProps, "trade"> & {
-  state: Exclude<TradeDetailDialogState, "ready">;
-}) {
-  const { t } = useTranslation();
-  const isLoading = state === "loading";
-  const isError = state === "error";
-  const title = isLoading
-    ? t("journal.trade_detail")
-    : isError
-      ? t("journal.detail_load_error_title", {
-          defaultValue: "Detail jurnal belum dapat dimuat",
-        })
-      : t("journal.detail_unavailable_title", {
-          defaultValue: "Detail jurnal tidak tersedia",
-        });
-  const description = isLoading
-    ? t("dialog.loading")
-    : isError
-      ? t("journal.detail_load_error_description", {
-          defaultValue:
-            "Terjadi gangguan saat mengambil data jurnal. Coba muat ulang.",
-        })
-      : t("journal.detail_unavailable_description", {
-          defaultValue:
-            "Transaksi ini tidak ditemukan atau tidak tersedia untuk akun Anda.",
-        });
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
-      >
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-            {title}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {description}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div
-          className="flex flex-col space-y-6"
-          role={isError ? "alert" : undefined}
-        >
-          {isLoading ? (
-            <div className="flex flex-col gap-4" aria-busy="true">
-              <Skeleton className="h-8 w-40" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <Skeleton className="h-44 w-full rounded-lg" />
-            </div>
-          ) : (
-            <EmptyState
-              variant="dialog"
-              icon={<AlertTriangle className="size-6" aria-hidden="true" />}
-              description={isError ? undefined : t("journal.detail_unavailable_help")}
-              action={
-                isError ? (
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
-                    <Button
-                      type="button"
-                      onClick={onRetry}
-                      disabled={!onRetry}
-                      className="min-h-11"
-                    >
-                      <RefreshCw className="size-4" aria-hidden="true" />
-                      {t("common.retry")}
-                    </Button>
-                    <DialogClose
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-11"
-                        />
-                      }
-                    >
-                      {t("journal.close_short")}
-                    </DialogClose>
-                  </div>
-                ) : undefined
-              }
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export function TradeDetailDialog({
   trade,
-  open,
-  onOpenChange,
-  state = trade ? "ready" : "unavailable",
-  onRetry,
+  trigger,
   siblings = EMPTY_SIBLINGS,
 }: TradeDetailDialogProps) {
-  if (state !== "ready" || !trade) {
-    return (
-      <TradeDetailStatusDialog
-        open={open}
-        onOpenChange={onOpenChange}
-        state={state === "ready" ? "unavailable" : state}
-        onRetry={onRetry}
-      />
-    );
-  }
-
   return (
-    <TradeDetailReadyDialog
-      trade={trade}
-      siblings={siblings}
-      open={open}
-      onOpenChange={onOpenChange}
-    />
+    <Dialog>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <TradeDetailReadyDialog trade={trade} siblings={siblings} />
+    </Dialog>
   );
 }
 
 function TradeDetailReadyDialog({
   trade,
   siblings = EMPTY_SIBLINGS,
-  open,
-  onOpenChange,
-}: Omit<TradeDetailDialogProps, "state" | "onRetry"> & {
+}: Pick<TradeDetailDialogProps, "siblings"> & {
   trade: FollowedTrade;
 }) {
   const { t, i18n } = useTranslation();
@@ -380,8 +252,7 @@ function TradeDetailReadyDialog({
     ? t("journal.trade_detail")
     : t("journal.open_position");
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <DialogContent
         className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
       >
         <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
@@ -555,7 +426,6 @@ function TradeDetailReadyDialog({
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </DialogContent>
   );
 }

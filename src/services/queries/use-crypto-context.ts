@@ -8,7 +8,6 @@ import {
   normalizeYahooCandles,
   resampleCandlesToDaily,
 } from "@/services/adapters/yahoo-candles";
-import { useFearGreedIndex } from "./use-fear-greed";
 import { useCryptoDominance } from "./use-crypto-dominance";
 import type { CryptoContext } from "@/types/market";
 
@@ -16,19 +15,14 @@ import type { CryptoContext } from "@/types/market";
 const BTC_SYMBOL = "BTC-USD";
 
 /**
- * Compute the shared top-down CryptoContext once (BTC regime/trend/score +
- * crypto Fear & Greed). Reuses the full per-asset pipeline (adaptYahooChart →
- * computeSignal) on BTC, so the context's regime classification stays identical
- * to what the engine produces everywhere else. Consumed by the screener
- * (de-rate + rank), the market summary row, and the detail dialog.
- *
- * fearGreedValue is in the queryKey so the context recomputes once sentiment
- * loads (same rationale as useMarketData).
+ * Compute the shared top-down CryptoContext once (BTC regime/trend/score).
+ * Reuses the full per-asset pipeline (adaptYahooChart → computeSignal) on BTC,
+ * so the context's regime classification stays identical to what the engine
+ * produces everywhere else. Consumed by the screener (de-rate + rank), the
+ * market summary row, and the detail dialog.
  */
 export function useCryptoContext() {
   const { range, interval } = DEFAULT_TIMEFRAME;
-  const { data: fearGreed } = useFearGreedIndex();
-  const fearGreedValue = fearGreed?.value;
 
   // Dominance is optional context — fetched separately and cached longer. If it
   // fails (rate limit / unavailable) the context simply omits it (graceful).
@@ -39,13 +33,14 @@ export function useCryptoContext() {
       "crypto-context",
       range,
       interval,
-      fearGreedValue,
       dominance?.btc,
       dominance?.eth,
+      dominance?.btcDominanceChangePercent24h,
+      dominance?.updatedAt,
     ],
     queryFn: async (): Promise<CryptoContext | null> => {
       const result = await fetchYahooChart(BTC_SYMBOL, range, interval);
-      const btc = adaptYahooChart(result, fearGreedValue);
+      const btc = adaptYahooChart(result);
       if (!btc?.outlook) return null;
       const btcReturns = computeWindowReturns(
         resampleCandlesToDaily(
@@ -54,7 +49,6 @@ export function useCryptoContext() {
       );
       return deriveCryptoContext(
         btc.outlook,
-        fearGreedValue,
         dominance ?? undefined,
         btcReturns,
       );

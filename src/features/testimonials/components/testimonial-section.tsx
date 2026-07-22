@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MessageSquareQuote, RefreshCw, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,8 +17,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
   TESTIMONIAL_LOGIN_PATH,
-  TESTIMONIAL_QUERY_PARAM,
-  TESTIMONIAL_QUERY_VALUE,
   TESTIMONIAL_SECTION_ID,
 } from "@/features/testimonials/constants";
 import { TestimonialDialog } from "@/features/testimonials/components/testimonial-dialog";
@@ -40,47 +37,18 @@ function initials(name: string) {
 export function TestimonialSection() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { testimonials, isLoading, isError, refetch } =
     useFeaturedTestimonials();
-  const isDialogRequested =
-    searchParams.get(TESTIMONIAL_QUERY_PARAM) === TESTIMONIAL_QUERY_VALUE;
-
-  useEffect(() => {
-    if (!isDialogRequested) return;
-    const section = document.getElementById(TESTIMONIAL_SECTION_ID);
-    if (!section) return;
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    section.scrollIntoView({
-      block: "start",
-      behavior: reduceMotion ? "auto" : "smooth",
-    });
-  }, [isDialogRequested]);
-
-  const setDialogOpen = (open: boolean) => {
-    const next = new URLSearchParams(searchParams);
-    if (open) next.set(TESTIMONIAL_QUERY_PARAM, TESTIMONIAL_QUERY_VALUE);
-    else next.delete(TESTIMONIAL_QUERY_PARAM);
-
-    const query = next.toString();
-    navigate(
-      {
-        pathname: "/",
-        search: query ? `?${query}` : "",
-        hash: `#${TESTIMONIAL_SECTION_ID}`,
-      },
-      { replace: !open },
-    );
-  };
 
   const contributionButton = isAuthenticated ? (
-    <Button onClick={() => setDialogOpen(true)}>
-      <MessageSquareQuote data-icon="inline-start" />
-      {t("testimonials.cta", "Bagikan pengalaman")}
-    </Button>
+    <TestimonialDialog
+      trigger={
+        <Button>
+          <MessageSquareQuote data-icon="inline-start" />
+          {t("testimonials.cta", "Bagikan pengalaman")}
+        </Button>
+      }
+    />
   ) : (
     <Link to={TESTIMONIAL_LOGIN_PATH} className={buttonVariants()}>
       <MessageSquareQuote data-icon="inline-start" />
@@ -243,11 +211,6 @@ export function TestimonialSection() {
           </>
         )}
       </div>
-
-      <TestimonialDialog
-        open={isDialogRequested && isAuthenticated}
-        onOpenChange={setDialogOpen}
-      />
     </section>
   );
 }

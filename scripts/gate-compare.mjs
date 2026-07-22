@@ -9,7 +9,7 @@
  * then prints aggregate win% / profit-factor / expectancy / trade-count so you
  * can see whether index-gating helps BEFORE deploying.
  *
- * Benchmark risk state is score-only here (tiebreaks F&G/USDIDR/VIX/DXY omitted
+ * Benchmark risk state is score-only here (tiebreaks USDIDR/VIX/DXY omitted
  * — they only matter when the index is indecisive), so this is a close, slightly
  * conservative model of the live gate. Daily candles from Yahoo (no key).
  *

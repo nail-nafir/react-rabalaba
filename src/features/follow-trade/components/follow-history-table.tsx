@@ -76,6 +76,7 @@ import {
 } from "@/constants";
 import type { AssetFilterType } from "@/types/asset";
 import { cn } from "@/lib/utils";
+import { TradeDetailDialog } from "./trade-detail-dialog";
 
 const BADGE_CLASS = "font-bold tracking-wider uppercase text-[10px] rounded-md";
 
@@ -124,7 +125,6 @@ interface FollowHistoryTableProps {
   isLoading: boolean;
   isFetching: boolean;
   onRefresh: () => void;
-  onTradeSelect: (tradeId: string) => void;
 }
 
 export function FollowHistoryTable({
@@ -133,10 +133,13 @@ export function FollowHistoryTable({
   isLoading,
   isFetching,
   onRefresh,
-  onTradeSelect,
 }: FollowHistoryTableProps) {
   "use no memo";
   const { t, i18n } = useTranslation();
+  const allTrades = useMemo(
+    () => [...openTrades, ...history],
+    [history, openTrades],
+  );
   // Live prices for open ("running") trades so their P/L updates each refetch.
   // Kept in a ref so the (memoized) column defs read fresh prices WITHOUT being
   // recreated every render — that churn is what made recharts hang earlier.
@@ -758,30 +761,34 @@ export function FollowHistoryTable({
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow
+                <TradeDetailDialog
                   key={row.id}
-                  onClick={() => onTradeSelect(row.original.id)}
-                  className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  tabIndex={0}
-                  role="button"
-                  aria-haspopup="dialog"
-                  aria-label={`${t("journal.view_detail")} ${row.original.symbol}`}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onTradeSelect(row.original.id);
-                    }
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                  trade={row.original}
+                  siblings={allTrades}
+                  trigger={
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${t("journal.view_detail")} ${row.original.symbol}`}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.currentTarget.click();
+                        }
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  }
+                />
               ))
             )}
           </TableBody>

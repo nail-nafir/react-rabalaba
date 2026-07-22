@@ -19,10 +19,10 @@
  */
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { supabase } from "@/services/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import i18n from "@/app/config/i18n";
+import { toast } from "sonner";
 
 const THROTTLE_MS = 5 * 60_000; // ≤ one server stamp / 5 min
 const IDLE_LIMIT_MS = 7 * 24 * 60 * 60_000; // logout after 1 week idle
@@ -50,7 +50,7 @@ export function useSessionActivity() {
       if (last && Date.now() - last > IDLE_LIMIT_MS) {
         localStorage.removeItem(LAST_ACTIVE_KEY);
         // Global i18n.t (not the hook) — this fires from a timer/callback.
-        toast.info(i18n.t("auth.session_idle_logout"));
+        toast.info(i18n.t("toasts.auth.session_idle"));
         supabase.auth.signOut().catch(() => {});
         return true;
       }

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
 import { Eye, EyeOff, Lock, Mail, MailCheck, UserPlus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,7 @@ import { AuthShell } from "@/features/auth/components/auth-shell";
 import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { cn } from "@/lib/utils";
 import { sanitizeInternalRedirect } from "@/lib/auth-redirect";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const { t } = useTranslation();
@@ -50,7 +50,7 @@ export default function RegisterPage() {
       setEmailSent(true);
       return;
     }
-    toast.success(t("auth.signup_success"));
+    toast.success(t("toasts.auth.signup_success"));
     navigate(redirect, { replace: true });
   };
 

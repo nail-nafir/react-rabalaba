@@ -39,11 +39,9 @@ function dailyCloses(asset: UnifiedAsset): number[] {
 }
 
 /** Build all three contexts from already-fetched, already-adapted benchmark
- *  assets keyed by symbol. fearGreed is optional (the cron may not fetch it;
- *  the crypto risk state degrades gracefully without it). */
+ *  assets keyed by symbol. */
 export function buildEngineContexts(
   assetBySymbol: Map<string, UnifiedAsset>,
-  opts: { fearGreed?: number } = {},
 ): EngineContexts {
   const contexts: EngineContexts = {};
 
@@ -52,7 +50,6 @@ export function buildEngineContexts(
     const btcReturns = computeWindowReturns(dailyCloses(btc));
     contexts.cryptoContext = deriveCryptoContext(
       btc.outlook,
-      opts.fearGreed,
       undefined,
       btcReturns,
     );

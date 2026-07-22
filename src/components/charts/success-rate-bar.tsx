@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PALETTE } from "@/constants";
 
@@ -31,10 +32,15 @@ export const SuccessRateBar = memo(function SuccessRateBar({
   const successPercent = total > 0 ? (wins / total) * 100 : 0;
   const failurePercent = total > 0 ? 100 - successPercent : 0;
 
-  const data = useMemo(() => [{
-    success: successPercent,
-    failure: failurePercent,
-  }], [successPercent, failurePercent]);
+  const data = useMemo(
+    () => [
+      {
+        success: successPercent,
+        failure: failurePercent,
+      },
+    ],
+    [successPercent, failurePercent],
+  );
 
   // Color logic matching our grade/tier colors
   let textColor = PALETTE.negative.textStrong;
@@ -46,6 +52,16 @@ export const SuccessRateBar = memo(function SuccessRateBar({
 
   return (
     <div
+      role="img"
+      aria-label={
+        total > 0
+          ? t("table.successrate_summary", {
+              percent: successPercent.toFixed(0),
+              wins,
+              total,
+            })
+          : t("table.successrate_new_data_description")
+      }
       className={cn(
         "pointer-events-none flex select-none items-center gap-2",
         className,
@@ -54,8 +70,9 @@ export const SuccessRateBar = memo(function SuccessRateBar({
       {total > 0 ? (
         <ChartContainer
           config={EMPTY_CONFIG}
+          aria-hidden="true"
           className={cn(
-            "aspect-auto bg-zinc-400/20 rounded-lg overflow-hidden",
+            "aspect-auto overflow-hidden rounded-full bg-muted-foreground/20",
             barHeight,
             barWidth,
           )}
@@ -88,7 +105,7 @@ export const SuccessRateBar = memo(function SuccessRateBar({
       ) : (
         <div
           className={cn(
-            "bg-zinc-400/20 rounded-lg",
+            "rounded-full bg-muted-foreground/20",
             barHeight,
             barWidth,
           )}
@@ -96,32 +113,35 @@ export const SuccessRateBar = memo(function SuccessRateBar({
       )}
       {showValue &&
         (total > 0 ? (
-          <div className="flex flex-col items-start gap-1 leading-none shrink-0">
+          <div className="flex shrink-0 flex-col items-start gap-1 leading-none">
             <span
-              className={cn("text-sm font-bold tracking-tight leading-none", textColor)}
+              className={cn(
+                "text-sm font-bold leading-none tracking-tight",
+                textColor,
+              )}
             >
               {`${successPercent.toFixed(0)}%`}
             </span>
             {/* Second row matches the journal P&L column's TP-progress line
                 exactly (size + weight + mono + color) so the two read as one. */}
             <span className="text-xs text-muted-foreground">
-              {`${wins}/${total}`}
+              {t("table.successrate_sample", { wins, total })}
             </span>
           </div>
         ) : (
-          /* No CLOSED trade yet → no track record to rate. Show a muted "Baru"
-             badge instead of a bare "—" so an empty history reads as a status
-             (no data), never as a genuine 0% win rate. */
-          <span
+          /* A genuine zero-sample state, never an entitlement placeholder. */
+          <Badge
+            variant="outline"
             className={cn(
-              "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+              "shrink-0 rounded-md text-[10px] font-bold uppercase tracking-wider",
               PALETTE.neutral.bg,
-              PALETTE.neutral.border,
               PALETTE.neutral.text,
+              PALETTE.neutral.border,
             )}
+            title={t("table.successrate_new_data_description")}
           >
-            {t("common.new")}
-          </span>
+            {t("table.successrate_new_data")}
+          </Badge>
         ))}
     </div>
   );

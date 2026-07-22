@@ -50,6 +50,14 @@ export type JournalTradeInsert = Omit<
 
 export type JournalTradeUpdate = Partial<JournalTradeRow>;
 
+/** Aggregate-only track record returned by get_public_journal_success_rates().
+ *  Bigint counts are safely represented as numbers at the product's scale. */
+export interface PublicJournalSuccessRateRow {
+  symbol: string;
+  wins: number;
+  total: number;
+}
+
 /** Per-user entitlement (mirrors 20260614000001_auth_entitlements.sql). */
 export interface ProfileRow {
   user_id: string;
@@ -430,6 +438,11 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      /** Public aggregate per-symbol track record; never exposes raw trades. */
+      get_public_journal_success_rates: {
+        Args: Record<string, never>;
+        Returns: PublicJournalSuccessRateRow[];
+      };
       /** Server-side access-code check — returns 'full' | 'trial' | null. */
       verify_access_code: {
         Args: { p_code: string };

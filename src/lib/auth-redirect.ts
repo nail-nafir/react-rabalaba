@@ -1,6 +1,6 @@
 /**
  * Pure helpers for the login-gate flow. The premium gate (see [[hooks]]'
- * `openLicenseDialog`) sends logged-out users to `/login` and stashes where
+ * trigger-first license dialog) sends logged-out users to `/login` and stashes where
  * they came from in a `redirect` query param, which `LoginPage` reads to send
  * them back after a successful sign-in.
  */

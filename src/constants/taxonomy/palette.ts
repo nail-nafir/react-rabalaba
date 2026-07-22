@@ -102,23 +102,3 @@ export const BADGE = {
  *  that want one string rather than spreading bg/text/border). */
 export const badgeClass = (c: BadgeColor): string =>
   `${c.bg} ${c.text} ${c.border}`;
-
-/**
- * BTC/ETH dominance heat scale — NOT a categorical enum but a continuous bucket
- * scale, so it lives here as a named source instead of being inlined in the
- * summary row. Buckets are upper-inclusive (pct <= `maxLte`).
- */
-export const DOMINANCE_BUCKETS = [
-  { maxLte: 20, className: "bg-rose-500" },
-  { maxLte: 40, className: "bg-orange-400" },
-  { maxLte: 60, className: "bg-amber-400" },
-  { maxLte: 80, className: "bg-lime-400" },
-  { maxLte: Infinity, className: "bg-emerald-400" },
-] as const;
-
-/** Tailwind bg-class for a dominance percentage (0-100). */
-export const dominanceColor = (pct: number): string =>
-  (
-    DOMINANCE_BUCKETS.find((b) => pct <= b.maxLte) ??
-    DOMINANCE_BUCKETS[DOMINANCE_BUCKETS.length - 1]
-  ).className;

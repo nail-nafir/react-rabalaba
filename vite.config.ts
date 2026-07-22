@@ -148,16 +148,6 @@ export default defineConfig({
           });
         },
       },
-      "/api/fng": {
-        target: "https://api.alternative.me",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/fng/, ""),
-        configure: (proxy) => {
-          proxy.on("proxyReq", (proxyReq) => {
-            applyCleanProxyHeaders(proxyReq);
-          });
-        },
-      },
     },
   },
 });

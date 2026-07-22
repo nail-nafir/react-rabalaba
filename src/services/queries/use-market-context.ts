@@ -8,6 +8,7 @@ import {
   buildMarketContextByAssetClass,
 } from "@/services/adapters/market-context";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
 import type { MarketContextByAssetClass } from "@/types/market";
 
 const IHSG_VOLATILITY_RANGE = "3mo";
@@ -19,8 +20,9 @@ const MARKET_CONTEXT_CACHE_MS = 1_800_000;
  *
  * Quote sources stay in useMarketData's canonical per-symbol cache. The DXY
  * symbol occurs once in that source list and the adapter shares its resulting
- * object across Forex and Commodity. IHSG uses a separate daily-history query
- * because realized volatility cannot be calculated from the default 1h feed.
+ * object across Forex and Commodity. BTC.D subscribes to the same ["dominance"]
+ * cache as useCryptoContext. IHSG uses a separate daily-history query because
+ * realized volatility cannot be calculated from the default 1h feed.
  */
 export function useMarketContexts(): {
   data: MarketContextByAssetClass;
@@ -29,6 +31,7 @@ export function useMarketContexts(): {
   refetch: () => void;
 } {
   const quoteQuery = useMarketData([...MARKET_CONTEXT_QUOTE_SYMBOLS]);
+  const dominanceQuery = useCryptoDominance();
   const ihsgQuery = useQuery({
     queryKey: [
       "market-context",
@@ -54,17 +57,26 @@ export function useMarketContexts(): {
   );
   const contexts = useMemo(
     () =>
-      buildMarketContextByAssetClass(quoteQuery.data, ihsgVolatility),
-    [quoteQuery.data, ihsgVolatility],
+      buildMarketContextByAssetClass(
+        quoteQuery.data,
+        ihsgVolatility,
+        dominanceQuery.data,
+      ),
+    [quoteQuery.data, ihsgVolatility, dominanceQuery.data],
   );
 
   return {
     data: contexts,
-    isLoading: quoteQuery.isLoading || ihsgQuery.isLoading,
-    isFetching: quoteQuery.isFetching || ihsgQuery.isFetching,
+    isLoading:
+      quoteQuery.isLoading || ihsgQuery.isLoading || dominanceQuery.isLoading,
+    isFetching:
+      quoteQuery.isFetching ||
+      ihsgQuery.isFetching ||
+      dominanceQuery.isFetching,
     refetch: () => {
       quoteQuery.refetch();
       void ihsgQuery.refetch();
+      void dominanceQuery.refetch();
     },
   };
 }
