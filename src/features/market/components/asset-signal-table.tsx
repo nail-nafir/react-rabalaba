@@ -379,13 +379,20 @@ export function AssetSignalTable() {
       {
         accessorKey: "changePercent",
         header: ({ column }) => (
-          <Button
-            variant="link"
-            onClick={() => column.toggleSorting()}
-            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
-          >
-            {t("table.change")} <SortIcon column={column} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="link"
+                onClick={() => column.toggleSorting()}
+                className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+              >
+                {t("table.change")} <SortIcon column={column} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {t("table.change_methodology")}
+            </TooltipContent>
+          </Tooltip>
         ),
         cell: ({ row }) => {
           return <PercentageChange value={row.original.changePercent} />;

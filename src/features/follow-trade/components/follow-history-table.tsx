@@ -21,6 +21,11 @@ import {
   LogOut,
   Hourglass,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useMarketData } from "@/services/queries/use-yahoo-data";
 import {
   buildTradeWinrateSnapshots,
@@ -104,11 +109,13 @@ function SortIcon({ column }: { column: Column<FollowedTrade, unknown> }) {
 function SortButton({
   label,
   column,
+  tooltip,
 }: {
   label: string;
   column: Column<FollowedTrade, unknown>;
+  tooltip?: string;
 }) {
-  return (
+  const btn = (
     <Button
       variant="link"
       onClick={() => column.toggleSorting()}
@@ -117,6 +124,12 @@ function SortButton({
       {label} <SortIcon column={column} />
     </Button>
   );
+  return tooltip ? (
+    <Tooltip>
+      <TooltipTrigger asChild>{btn}</TooltipTrigger>
+      <TooltipContent side="top">{tooltip}</TooltipContent>
+    </Tooltip>
+  ) : btn;
 }
 
 interface FollowHistoryTableProps {
@@ -311,7 +324,7 @@ export function FollowHistoryTable({
         // Sort by closedAt descending — open trades float to top, closed trades sort newest to oldest.
         accessorFn: (tr) => tr.closedAt ?? Infinity,
         header: ({ column }) => (
-          <SortButton label={t("journal.col_date")} column={column} />
+            <SortButton label={t("journal.col_date")} column={column} tooltip={t("journal.col_date_methodology")} />
         ),
         cell: ({ row }) => {
           const tr = row.original;
@@ -395,7 +408,7 @@ export function FollowHistoryTable({
             ? (livePriceRef.current[tr.symbol] ?? 0)
             : (tr.closePrice ?? 0),
         header: ({ column }) => (
-          <SortButton label={t("table.price")} column={column} />
+            <SortButton label={t("table.price")} column={column} tooltip={t("table.price_methodology")} />
         ),
         cell: ({ row }) => {
           const tr = row.original;
@@ -496,7 +509,7 @@ export function FollowHistoryTable({
           return s && s.total > 0 ? s.wins / s.total : -1;
         },
         header: ({ column }) => (
-          <SortButton label={t("journal.col_successrate")} column={column} />
+            <SortButton label={t("journal.col_successrate")} column={column} tooltip={t("journal.col_successrate_methodology")} />
         ),
         cell: ({ row }) => {
           const s = winrateRef.current[row.original.id];
@@ -541,7 +554,7 @@ export function FollowHistoryTable({
           return price == null ? 0 : computePnl(tr, price).pct;
         },
         header: ({ column }) => (
-          <SortButton label={t("journal.col_pnl")} column={column} />
+            <SortButton label={t("journal.col_pnl")} column={column} tooltip={t("journal.col_pnl_methodology")} />
         ),
         cell: ({ row }) => {
           const tr = row.original;
