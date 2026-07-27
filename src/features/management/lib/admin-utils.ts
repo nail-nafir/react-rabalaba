@@ -28,3 +28,14 @@ export function formatAgo(iso: string | null, now: number): string | null {
   if (hr < 24) return `${hr}h`;
   return `${Math.floor(hr / 24)}d`;
 }
+
+/**
+ * Returns uniform badge styling for timestamp footers:
+ * - Active state (when a run has occurred): primary accent tint
+ * - Neutral state (when no run has occurred / "belum pernah"): muted neutral tint
+ */
+export function getTimeBadgeClassName(hasRun: boolean): string {
+  return hasRun
+    ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+    : "bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground";
+}

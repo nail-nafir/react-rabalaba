@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 /** Shared "manual trigger" card: title/desc + action button, last-run badge in
@@ -19,6 +20,7 @@ export function ManualActionCard({
   lastRunTitle,
   lastRunValue,
   badgeClassName,
+  requiresConfirmation = false,
 }: {
   title: string;
   desc: string;
@@ -32,7 +34,23 @@ export function ManualActionCard({
   lastRunTitle: string;
   lastRunValue: string;
   badgeClassName: string;
+  requiresConfirmation?: boolean;
 }) {
+  const actionButton = (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onClick={onRun}
+      disabled={disabled || running}
+      title={disabled ? disabledHint : undefined}
+      className="text-[10px] font-bold h-8 cursor-pointer shrink-0 gap-1.5"
+    >
+      {running ? <Loader2 className="size-3.5 animate-spin" /> : icon}
+      <span>{running ? loadingLabel : buttonLabel}</span>
+    </Button>
+  );
+
   return (
     <Card className="w-full border border-border shadow-xs bg-muted/50">
       <CardContent className="space-y-3">
@@ -45,18 +63,11 @@ export function ManualActionCard({
               {desc}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onRun}
-            disabled={disabled || running}
-            title={disabled ? disabledHint : undefined}
-            className="text-[10px] font-bold h-8 cursor-pointer shrink-0 gap-1.5"
-          >
-            {running ? <Loader2 className="size-3.5 animate-spin" /> : icon}
-            <span>{running ? loadingLabel : buttonLabel}</span>
-          </Button>
+          {requiresConfirmation ? (
+            <AlertDialogTrigger asChild>{actionButton}</AlertDialogTrigger>
+          ) : (
+            actionButton
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/50 px-4 py-2.5">

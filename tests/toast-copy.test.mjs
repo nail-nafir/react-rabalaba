@@ -132,7 +132,7 @@ test("application uses Sonner directly with one localized title", () => {
 });
 
 test("toast locale keys are flat, complete, and referenced", () => {
-  assert.equal(localeKeys.length, 90);
+  assert.equal(localeKeys.length, 92);
   assert.deepEqual(Object.keys(flatLocales.en).sort(), localeKeys);
   assert.deepEqual(referencedToastKeys(), localeKeys);
 

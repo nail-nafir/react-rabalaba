@@ -79,7 +79,7 @@ export default function AdminSystemPage() {
     openTrades,
     history,
     isLoading: isLoadingTrades,
-  } = useJournalTrades();
+  } = useJournalTrades({ scope: "history" });
 
   const totalSignals = useMemo(() => {
     if (isLoadingTrades || !openTrades || !history) return 0;

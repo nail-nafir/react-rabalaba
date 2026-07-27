@@ -63,7 +63,7 @@ export function AuthLayout() {
                 <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="end" className="p-1">
+              <SelectContent position="popper" align="end" className="p-0.5">
                 <SelectGroup>
                   {LANGUAGE_ITEMS.map((item) => (
                     <SelectItem
@@ -100,7 +100,7 @@ export function AuthLayout() {
                 )}
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="end" className="p-1">
+              <SelectContent position="popper" align="end" className="p-0.5">
                 <SelectGroup>
                   {themeItems.map((item) => (
                     <SelectItem

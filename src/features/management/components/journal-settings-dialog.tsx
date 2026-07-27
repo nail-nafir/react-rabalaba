@@ -15,17 +15,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Radar, Zap, FileText } from "lucide-react";
+import { CalendarRange, Radar, Zap, FileText } from "lucide-react";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
-import { formatAgo } from "../lib/admin-utils";
+import { formatAgo, getTimeBadgeClassName } from "../lib/admin-utils";
 import {
   useJournalSettings,
   type JournalSettingsPatch,
 } from "@/hooks/use-journal-settings";
 import { useMarketScan } from "@/hooks/use-market-scan";
 import { useAssetDiscovery } from "@/hooks/use-asset-discovery";
-import type { JournalSettingsRow } from "@/services/supabase/database.types";
+import type {
+  JournalPeriodMonths,
+  JournalSettingsRow,
+} from "@/services/supabase/database.types";
 import { cn } from "@/lib/utils";
 
 // Finest = 30 min (the cron base tick is */30). Longer options run CLOCK-ALIGNED
@@ -41,30 +44,32 @@ const SUMMARY_HOUR_OPTIONS = [22, 23, 0];
 // and 3-90; these are the sane presets).
 const SELECTION_CAP_OPTIONS = [3, 5, 10];
 const SELECTION_PRUNE_OPTIONS = [7, 14, 30];
-type SettingsTab = "journal" | "summary" | "selection";
+type SettingsTab = "summary" | "period" | "journal" | "selection";
 
 import { SettingRow } from "./setting-row";
 import { SettingSelect } from "./setting-select";
 import { ManualActionCard } from "./manual-action-card";
-
+import { JournalPeriodSettings } from "./journal-period-settings";
 
 interface JournalSettingsFormProps {
   settings: JournalSettingsRow;
   onClose: () => void;
   update: (patch: JournalSettingsPatch) => Promise<void>;
+  startNewPeriod: () => Promise<string | null>;
   isSaving: boolean;
   setIsSaving: (pending: boolean) => void;
 }
 
 /** Pure settings form component that initializes drafts directly from settings
- *  props (no useEffect setState). Settings are grouped into three tabs — auto
- *  journal / daily recap / asset discovery — so each concern reads as one short
- *  screen instead of one endless scroll; drafts live here (above the tabs), so
- *  switching tabs never loses unsaved edits and the single Save commits all. */
+ *  props (no useEffect setState). Settings are grouped into four short tabs so
+ *  each concern reads as one screen instead of one endless scroll; drafts live
+ *  here (above the tabs), so switching tabs never loses unsaved edits and the
+ *  single Save commits all. */
 function JournalSettingsForm({
   settings,
   onClose,
   update,
+  startNewPeriod,
   isSaving,
   setIsSaving,
 }: JournalSettingsFormProps) {
@@ -77,6 +82,7 @@ function JournalSettingsForm({
   const summaryHour = settings.daily_summary_hour ?? 23;
   const weeklyEnabled = settings.weekly_summary_enabled ?? false;
   const monthlyEnabled = settings.monthly_summary_enabled ?? false;
+  const periodMonths = settings.journal_period_months ?? 1;
   const selectionEnabled = settings.discovery_enabled ?? false;
   const selectionCap = settings.discovery_max_per_market ?? 5;
   const selectionPruneDays = settings.discovery_prune_days ?? 14;
@@ -91,6 +97,8 @@ function JournalSettingsForm({
   const [draftWeeklyEnabled, setDraftWeeklyEnabled] = useState(weeklyEnabled);
   const [draftMonthlyEnabled, setDraftMonthlyEnabled] =
     useState(monthlyEnabled);
+  const [draftPeriodMonths, setDraftPeriodMonths] =
+    useState<JournalPeriodMonths>(periodMonths);
   const [draftSelectionEnabled, setDraftSelectionEnabled] =
     useState(selectionEnabled);
   const [draftSelectionCap, setDraftSelectionCap] = useState(selectionCap);
@@ -113,6 +121,7 @@ function JournalSettingsForm({
     draftSummaryHour !== summaryHour ||
     draftWeeklyEnabled !== weeklyEnabled ||
     draftMonthlyEnabled !== monthlyEnabled ||
+    draftPeriodMonths !== periodMonths ||
     draftSelectionEnabled !== selectionEnabled ||
     draftSelectionCap !== selectionCap ||
     draftSelectionPruneDays !== selectionPruneDays;
@@ -128,6 +137,7 @@ function JournalSettingsForm({
         daily_summary_hour: draftSummaryHour,
         weekly_summary_enabled: draftWeeklyEnabled,
         monthly_summary_enabled: draftMonthlyEnabled,
+        journal_period_months: draftPeriodMonths,
         discovery_enabled: draftSelectionEnabled,
         discovery_max_per_market: draftSelectionCap,
         discovery_prune_days: draftSelectionPruneDays,
@@ -145,6 +155,7 @@ function JournalSettingsForm({
 
   const tabOptions = [
     { value: "summary" as const, label: t("admin.settings_tab_summary") },
+    { value: "period" as const, label: t("admin.settings_tab_period") },
     { value: "journal" as const, label: t("admin.settings_tab_journal") },
     { value: "selection" as const, label: t("admin.settings_tab_selection") },
   ] as const;
@@ -157,6 +168,7 @@ function JournalSettingsForm({
           {tabOptions.map((tab) => {
             const isActive = activeTab === tab.value;
             let Icon = Zap;
+            if (tab.value === "period") Icon = CalendarRange;
             if (tab.value === "summary") Icon = FileText;
             if (tab.value === "selection") Icon = Radar;
             return (
@@ -187,6 +199,17 @@ function JournalSettingsForm({
 
         {/* Form Content Pane */}
         <div className="flex-1 min-h-75 flex flex-col justify-between">
+          {activeTab === "period" && (
+            <JournalPeriodSettings
+              settings={settings}
+              months={draftPeriodMonths}
+              onMonthsChange={setDraftPeriodMonths}
+              hasChanges={hasChanges}
+              isSaving={isSaving}
+              startNewPeriod={startNewPeriod}
+            />
+          )}
+
           {activeTab === "journal" && (
             <div className="space-y-4 animate-in fade-in-50 duration-200">
               <div className="space-y-1 divide-y divide-border/60">
@@ -255,7 +278,7 @@ function JournalSettingsForm({
                       })
                     : t("admin.scan_never")
                 }
-                badgeClassName="bg-amber-500/15 border-amber-500/30 text-amber-400"
+                badgeClassName={getTimeBadgeClassName(Boolean(settings.last_run_at))}
               />
             </div>
           )}
@@ -319,7 +342,12 @@ function JournalSettingsForm({
                   </div>
                   <Badge
                     variant="outline"
-                    className="text-[10px] font-bold rounded-md bg-emerald-500/15 border-emerald-500/30 text-emerald-400 py-0.5 px-2"
+                    className={cn(
+                      "text-[10px] font-bold rounded-md py-0.5 px-2",
+                      getTimeBadgeClassName(
+                        Boolean(settings.daily_summary_last_sent_at),
+                      ),
+                    )}
                   >
                     {settings.daily_summary_last_sent_at
                       ? t("admin.scan_last_run", {
@@ -401,7 +429,9 @@ function JournalSettingsForm({
                       })
                     : t("admin.scan_never")
                 }
-                badgeClassName="bg-sky-500/15 border-sky-500/30 text-sky-400"
+                badgeClassName={getTimeBadgeClassName(
+                  Boolean(settings.discovery_last_run_at),
+                )}
               />
             </div>
           )}
@@ -433,7 +463,7 @@ interface JournalSettingsDialogProps {
 /** Settings Dialog container styled same as AddSignalAssetDialog/AddJournalAssetDialog */
 export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
   const { t } = useTranslation();
-  const { settings, isLoading, update } = useJournalSettings();
+  const { settings, isLoading, update, startNewPeriod } = useJournalSettings();
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -468,6 +498,7 @@ export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
               settings={settings}
               onClose={() => setOpen(false)}
               update={update}
+              startNewPeriod={startNewPeriod}
               isSaving={isSaving}
               setIsSaving={setIsSaving}
             />

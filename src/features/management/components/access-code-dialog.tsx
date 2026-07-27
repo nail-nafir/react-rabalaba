@@ -232,7 +232,7 @@ function AccessCodeDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent align="start" className="p-1">
+                    <SelectContent position="popper" align="start" className="p-0.5">
                       <SelectGroup>
                         {kindItems.map((item) => (
                           <SelectItem

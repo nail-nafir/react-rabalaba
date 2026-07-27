@@ -213,7 +213,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent align="start" className="p-1">
+                    <SelectContent position="popper" align="start" className="p-0.5">
                       <SelectGroup>
                         {kindItems.map((item) => (
                           <SelectItem

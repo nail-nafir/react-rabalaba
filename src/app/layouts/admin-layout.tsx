@@ -438,7 +438,7 @@ export function AdminLayout() {
                       <SelectValue />
                     </span>
                   </SelectTrigger>
-                  <SelectContent align="end" className="p-1">
+                  <SelectContent position="popper" align="end" className="p-0.5">
                     <SelectGroup>
                       {LANGUAGES.map((lang) => (
                         <SelectItem
@@ -474,7 +474,7 @@ export function AdminLayout() {
                       <SelectValue />
                     </span>
                   </SelectTrigger>
-                  <SelectContent align="end" className="p-1">
+                  <SelectContent position="popper" align="end" className="p-0.5">
                     <SelectGroup>
                       {themeItems.map((item) => (
                         <SelectItem

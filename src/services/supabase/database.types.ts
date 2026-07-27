@@ -58,6 +58,17 @@ export interface PublicJournalSuccessRateRow {
   total: number;
 }
 
+/** WIB calendar block length for the non-destructive journal window. */
+export type JournalPeriodMonths = 1 | 3 | 6 | 12;
+
+/** Safe projection returned by get_journal_period_config(). */
+export interface JournalPeriodConfigRow {
+  journal_period_months: JournalPeriodMonths;
+  journal_period_reset_at: string | null;
+  /** Database clock at the moment the projection was read. */
+  server_now: string;
+}
+
 /** Per-user entitlement (mirrors 20260614000001_auth_entitlements.sql). */
 export interface ProfileRow {
   user_id: string;
@@ -127,6 +138,10 @@ export interface JournalSettingsRow {
   monthly_summary_enabled: boolean;
   weekly_summary_last_sent_at: string | null;
   monthly_summary_last_sent_at: string | null;
+  /** Non-destructive terminal reporting window in WIB calendar months. */
+  journal_period_months: JournalPeriodMonths;
+  journal_period_reset_at: string | null;
+  journal_period_reset_by: string | null;
   /** Asset auto-discovery (see 20260702000001_asset_discovery.sql). */
   discovery_enabled: boolean;
   /** Max NEW symbols each market (crypto/US/ID) may add per run (1..20). */
@@ -222,7 +237,10 @@ export interface PaymentMethodRow {
 }
 
 /** Insert shape: DB defaults id/updated_at. */
-export type PaymentMethodInsert = Omit<PaymentMethodRow, "id" | "updated_at"> & {
+export type PaymentMethodInsert = Omit<
+  PaymentMethodRow,
+  "id" | "updated_at"
+> & {
   id?: string;
   updated_at?: string;
 };
@@ -438,6 +456,16 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      /** Authenticated-safe projection of the active journal period settings. */
+      get_journal_period_config: {
+        Args: Record<string, never>;
+        Returns: JournalPeriodConfigRow[];
+      };
+      /** Admin-only: move the journal display cutoff to database now(). */
+      admin_start_new_journal_period: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
       /** Public aggregate per-symbol track record; never exposes raw trades. */
       get_public_journal_success_rates: {
         Args: Record<string, never>;

@@ -139,7 +139,7 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
               <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="start" className="p-1">
+            <SelectContent position="popper" align="start" className="p-0.5">
                 <SelectGroup>
                   {categoryItems.map((item) => (
                     <SelectItem
@@ -236,7 +236,7 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
             <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent align="start" className="p-1">
+            <SelectContent position="popper" align="start" className="p-0.5">
               <SelectGroup>
                 {iconItems.map((item) => (
                   <SelectItem

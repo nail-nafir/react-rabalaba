@@ -25,6 +25,7 @@ export function TopPerformers({
   const { t } = useTranslation();
   type TopPerformerPeriod = "1D" | "1W" | "1M" | "ALL";
 
+  // Default to 1D (1 hari).
   const [period, setPeriod] = useState<TopPerformerPeriod>("1D");
 
   const periodOptions = [

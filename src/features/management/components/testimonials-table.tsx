@@ -378,7 +378,7 @@ function FeatureTestimonialDialog({
               <SelectTrigger id={featureSlotId} className="h-11 w-full sm:h-8">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" className="p-0.5">
                 <SelectGroup>
                   {slotItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
@@ -969,7 +969,7 @@ export function TestimonialsTable() {
               >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="end">
+              <SelectContent position="popper" align="end" className="p-0.5">
                 <SelectGroup>
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>

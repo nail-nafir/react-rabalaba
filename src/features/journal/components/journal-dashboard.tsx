@@ -127,6 +127,7 @@ export function JournalDashboard({
 }: JournalDashboardProps) {
   const { t } = useTranslation();
   const openCount = openTrades.length;
+  // Default to 1D (1 hari).
   const [timeframe, setTimeframe] = useState<TimeframeOption>("1D");
   const [activeBenchmarks] = useState<string[]>(["BTC-USD", "IHSG", "S&P 500"]);
 

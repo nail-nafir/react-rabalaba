@@ -344,7 +344,7 @@ function AdminUserDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent align="start" className="p-1">
+                    <SelectContent position="popper" align="start" className="p-0.5">
                       <SelectGroup>
                         {tierItems.map((item) => (
                           <SelectItem
@@ -384,7 +384,7 @@ function AdminUserDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent align="start" className="p-1">
+                    <SelectContent position="popper" align="start" className="p-0.5">
                       <SelectGroup>
                         {roleItems.map((item) => (
                           <SelectItem
@@ -456,7 +456,7 @@ function AdminUserDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent align="start" className="p-1">
+                    <SelectContent position="popper" align="start" className="p-0.5">
                       <SelectGroup>
                         {statusItems.map((item) => (
                           <SelectItem

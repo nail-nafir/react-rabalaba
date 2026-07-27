@@ -34,7 +34,7 @@ export function SettingSelect({
       <SelectTrigger className="w-28 h-8 uppercase tracking-wider text-[10px] cursor-pointer">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="start" className="p-1">
+      <SelectContent position="popper" align="start" className="p-0.5">
         <SelectGroup>
           {items.map((item) => (
             <SelectItem

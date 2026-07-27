@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldError } from "@/components/ui/field";
@@ -34,7 +34,10 @@ interface LicenseAccessDialogProps {
   onSuccess?: () => void;
 }
 
-export function LicenseAccessDialog({ trigger, onSuccess }: LicenseAccessDialogProps) {
+export function LicenseAccessDialog({
+  trigger,
+  onSuccess,
+}: LicenseAccessDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -120,13 +123,22 @@ function LicenseAccessDialogContent({
   };
 
   const badge = TIER_BADGE[tier];
+  const TierIcon = badge.icon;
+  const showCodeForm = tier !== "premium";
+
+  const statusText =
+    tier === "premium"
+      ? t("license.status_premium")
+      : tier === "trial"
+        ? t("license.status_trial", { defaultValue: "Versi uji coba aktif." })
+        : t("license.dialog_desc");
 
   if (!user) {
     return (
       <DialogContent className="sm:max-w-md border border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-            <Lock className="size-4 text-primary" aria-hidden="true" />
+          <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+            <Lock className="size-4 text-primary shrink-0" aria-hidden="true" />
             <span>{t("license.login_required_title")}</span>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
@@ -134,16 +146,17 @@ function LicenseAccessDialogContent({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto font-medium text-xs cursor-pointer"
-            >
-              {t("common.cancel")}
-            </Button>
-          </DialogClose>
+        {/* Lock Graphic Container */}
+        <div className="relative flex flex-col items-center justify-center rounded-xl border border-border/80 bg-muted/40 p-6 text-center my-2">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary mb-3">
+            <Lock className="h-5 w-5" />
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
+            {t("license.login_required_desc")}
+          </p>
+        </div>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
           <Button
             asChild
             className="w-full sm:w-auto font-bold transition-all text-xs cursor-pointer"
@@ -160,80 +173,121 @@ function LicenseAccessDialogContent({
   return (
     <DialogContent className="sm:max-w-md border border-border text-foreground">
       <DialogHeader>
-        <DialogTitle className="text-lg font-bold text-foreground flex items-center justify-between gap-2">
-          <span>{t("license.dialog_title")}</span>
-          <span
-            className={cn(
-              "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border",
-              badge.className,
-            )}
-          >
-            {t(`license.tier_${tier}`)}
-          </span>
+        <DialogTitle className="text-base font-bold text-foreground">
+          {t("license.dialog_title")}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
           {t("license.dialog_desc")}
         </DialogDescription>
       </DialogHeader>
 
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4 my-2"
-      >
-        <FieldGroup>
-          <Field>
-            <div className="relative">
-              <Controller
-                name="code"
-                control={form.control}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type={showCode ? "text" : "password"}
-                    placeholder={t("license.input_placeholder")}
-                    className="h-10 text-sm font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal pr-10"
-                    disabled={isSubmitting}
-                  />
-                )}
-              />
-              <button
-                type="button"
-                onClick={() => setShowCode(!showCode)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title={
-                  showCode
-                    ? t("common.actions.hide")
-                    : t("common.actions.show")
-                }
-              >
-                {showCode ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </button>
-            </div>
-            {form.formState.errors.code?.message && (
-              <FieldError className="text-xs">
-                {form.formState.errors.code.message}
-              </FieldError>
-            )}
-          </Field>
-        </FieldGroup>
+      {/* Plan hero card — current tier + status */}
+      <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-card/60 p-4 my-1">
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border",
+            badge.className,
+          )}
+        >
+          <TierIcon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 space-y-0.5">
+          <span className="block text-sm font-bold uppercase tracking-wider text-foreground">
+            {t(`license.tier_${tier}`)}
+          </span>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {statusText}
+          </p>
+        </div>
+      </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto font-medium text-xs cursor-pointer"
-              disabled={isSubmitting}
-            >
-              {t("common.cancel")}
-            </Button>
-          </DialogClose>
+      {/* Activation form (hidden once premium) */}
+      {showCodeForm ? (
+        <form
+          id="license-activation-form"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-3.5 my-1"
+        >
+          <FieldGroup>
+            <Controller
+              name="code"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    {t("license.section_activate", { defaultValue: "Kode Akses / Aktivasi" })}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      {...field}
+                      type={showCode ? "text" : "password"}
+                      placeholder={t("license.input_placeholder")}
+                      aria-invalid={fieldState.invalid}
+                      className="h-10 text-sm font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal pr-10 rounded-lg"
+                      disabled={isSubmitting}
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCode(!showCode)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5 rounded"
+                      tabIndex={-1}
+                      title={
+                        showCode ? t("common.actions.hide") : t("common.actions.show")
+                      }
+                    >
+                      {showCode ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </button>
+                  </div>
+                  {fieldState.invalid && (
+                    <FieldError
+                      errors={[fieldState.error]}
+                      className="text-xs mt-1 font-medium"
+                    />
+                  )}
+                </Field>
+              )}
+            />
+          </FieldGroup>
+
+          <div className="text-xs text-muted-foreground flex items-center justify-between gap-2 pt-1">
+            <span>{t("terminal.access_dialog_no_access", { defaultValue: "Belum punya kode lisensi?" })}</span>
+            <DialogClose asChild>
+              <Link
+                to="/subscription"
+                className={cn(
+                  buttonVariants({ variant: "link", size: "sm" }),
+                  "h-auto p-0 text-primary font-semibold underline whitespace-nowrap text-xs",
+                )}
+              >
+                {t("terminal.access_dialog_no_access_link", { defaultValue: "Beli Lisensi" })}
+              </Link>
+            </DialogClose>
+          </div>
+        </form>
+      ) : null}
+
+      <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+        <DialogClose asChild>
+          <Link
+            to="/subscription"
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "w-full sm:w-auto font-bold transition-all text-xs cursor-pointer inline-flex items-center justify-center",
+            )}
+          >
+            <ActionButtonContent label={t("common.actions.upgrade", { defaultValue: "Tingkatkan" })} />
+          </Link>
+        </DialogClose>
+
+        {showCodeForm ? (
           <Button
             type="submit"
+            form="license-activation-form"
             disabled={!form.formState.isValid || isSubmitting}
             className="w-full sm:w-auto font-bold transition-all text-xs cursor-pointer"
           >
@@ -242,8 +296,8 @@ function LicenseAccessDialogContent({
               label={t("license.activate_btn")}
             />
           </Button>
-        </DialogFooter>
-      </form>
+        ) : null}
+      </DialogFooter>
     </DialogContent>
   );
 }
