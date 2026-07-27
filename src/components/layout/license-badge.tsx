@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePremiumAccess, type LicenseTier } from "@/hooks/use-premium-access";
 import { cn } from "@/lib/utils";
-import { LicenseDialog } from "@/components/shared/license-dialog";
+import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 
 const TIER_ICONS: Record<LicenseTier, React.ElementType> = {
   free: Lock,
@@ -44,7 +44,7 @@ export function LicenseBadge() {
       : `${t("license.badge_label")}: ${tierLabel}`;
 
   return (
-    <LicenseDialog
+    <LicenseAccessDialog
       trigger={
         <Button
           variant="ghost"

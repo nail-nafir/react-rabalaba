@@ -77,9 +77,9 @@ import { usePremiumAccess } from "@/hooks/use-premium-access";
 import { useScreenerUniverse } from "@/hooks/use-screener-universe";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
-import { AddSignalAssetDialog } from "./add-signal-asset-dialog";
+import { SignalAssetDialog } from "./signal-asset-dialog";
 import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
-import { LicenseDialog } from "@/components/shared/license-dialog";
+import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 
 import { FilterGroup } from "@/components/shared/filter-group";
 
@@ -721,7 +721,7 @@ export function AssetSignalTable() {
                 </Badge>
               </Button>
             ) : (
-              <LicenseDialog
+              <LicenseAccessDialog
                 onSuccess={() => setShowFavorites(true)}
                 trigger={
                   <Button
@@ -742,7 +742,7 @@ export function AssetSignalTable() {
             )}
 
             {hasAccess ? (
-              <AddSignalAssetDialog
+              <SignalAssetDialog
                 trigger={
                   <Button
                     size="lg"
@@ -756,7 +756,7 @@ export function AssetSignalTable() {
                 }
               />
             ) : (
-              <LicenseDialog
+              <LicenseAccessDialog
                 trigger={
                   <Button
                     size="lg"

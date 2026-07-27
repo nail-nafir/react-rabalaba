@@ -62,7 +62,7 @@ import {
   type IndicatorStatus,
 } from "@/constants";
 import { cn } from "@/lib/utils";
-import { LicenseDialog } from "@/components/shared/license-dialog";
+import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 import {
   Target,
   TrendingUp,
@@ -374,7 +374,7 @@ function AssetDetailDialogContent({
                 />
               </Button>
             ) : (
-              <LicenseDialog
+              <LicenseAccessDialog
                 trigger={
                   <Button
                     variant="outline"

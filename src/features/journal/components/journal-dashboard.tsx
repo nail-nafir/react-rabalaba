@@ -730,7 +730,7 @@ export function JournalDashboard({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
           {t("journal.portfolio_stats")}
         </h2>
@@ -738,7 +738,6 @@ export function JournalDashboard({
           value={timeframe}
           options={timeframeOptions}
           onChange={setTimeframe}
-          className="self-start sm:self-auto"
         />
       </div>
 

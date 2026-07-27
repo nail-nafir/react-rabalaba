@@ -1,0 +1,561 @@
+import { useMemo, useState, useEffect, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  userSchema,
+  type UserFormValues,
+} from "../schemas/user-schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAdminUsers } from "@/hooks/use-admin-users";
+import { Field, FieldError } from "@/components/ui/field";
+import type { AdminUserRow } from "@/services/supabase/database.types";
+import { formatDateNumeric, formatClock } from "@/lib/formatters";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { toast } from "sonner";
+
+interface AdminUserDialogProps {
+  trigger: ReactElement;
+  user?: AdminUserRow | null;
+}
+
+export function AdminUserDialog({ trigger, user }: AdminUserDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isSaving) setOpen(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <AdminUserDialogContent
+        user={user}
+        onClose={() => setOpen(false)}
+        isSaving={isSaving}
+        setIsSaving={setIsSaving}
+      />
+    </Dialog>
+  );
+}
+
+function AdminUserDialogContent({
+  user,
+  onClose,
+  isSaving,
+  setIsSaving,
+}: Pick<AdminUserDialogProps, "user"> & {
+  onClose: () => void;
+  isSaving: boolean;
+  setIsSaving: (pending: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const { users, addUser, updateUser } = useAdminUsers();
+  const tierItems = [
+    { value: "free", label: t("admin.users_tier_free") },
+    { value: "trial", label: t("admin.users_tier_premium_trial") },
+    { value: "premium", label: t("admin.users_tier_premium_full") },
+  ] as const;
+  const roleItems = [
+    { value: "user", label: t("admin.users_role_member") },
+    { value: "admin", label: t("admin.users_role_admin") },
+    { value: "owner", label: t("admin.users_role_owner") },
+  ] as const;
+  const statusItems = [
+    {
+      value: "active",
+      label: t("admin.users_form_status_active", "Aktif"),
+    },
+    {
+      value: "blocked",
+      label: t("admin.users_form_status_blocked", "Diblokir"),
+    },
+  ] as const;
+
+  const isEditMode = !!user;
+  const trackedSet = useMemo(
+    () => new Set(users.map((adminUser) => adminUser.email.toLowerCase())),
+    [users],
+  );
+
+  const schema = useMemo(
+    () =>
+      userSchema.refine(
+        (data) =>
+          isEditMode || !trackedSet.has(data.email.trim().toLowerCase()),
+        {
+          message: t(
+            "admin.users_add_already_exists",
+            "Pengguna sudah terdaftar di sistem",
+          ),
+          path: ["email"],
+        },
+      ),
+    [isEditMode, t, trackedSet],
+  );
+
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(schema),
+    mode: "onChange",
+    defaultValues: {
+      email: "",
+      tier: "free",
+      role: "user",
+      trialExpiresAt: "",
+      isBlocked: false,
+    },
+  });
+
+  const emailValue = form.watch("email");
+  const tierValue = form.watch("tier");
+
+  const normalizedEmail = emailValue?.trim().toLowerCase() ?? "";
+  const canSubmit =
+    form.formState.isValid &&
+    (isEditMode ? form.formState.isDirty : normalizedEmail.length >= 3);
+
+  // Helper to format timestamps for display
+  const formatTs = (iso: string | null): string => {
+    if (!iso) return "—";
+    const ts = Date.parse(iso) / 1000;
+    if (!Number.isFinite(ts)) return "—";
+    return `${formatDateNumeric(ts)} ${formatClock(ts)}`;
+  };
+
+  // Sync user data on edit mode
+  useEffect(() => {
+    if (user) {
+      const getRole = (u: AdminUserRow): "user" | "admin" | "owner" => {
+        if (u.is_owner) return "owner";
+        if (u.is_admin) return "admin";
+        return "user";
+      };
+
+      const formatDateForInput = (
+        isoString: string | null | undefined,
+      ): string => {
+        if (!isoString) return "";
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return "";
+        return date.toISOString().split("T")[0];
+      };
+
+      form.reset({
+        email: user.email,
+        tier: user.tier,
+        role: getRole(user),
+        trialExpiresAt: formatDateForInput(user.trial_expires_at),
+        isBlocked: user.is_blocked,
+      });
+    } else {
+      form.reset({
+        email: "",
+        tier: "free",
+        role: "user",
+        trialExpiresAt: "",
+        isBlocked: false,
+      });
+    }
+  }, [user, form]);
+
+  const onSubmit = async (data: UserFormValues) => {
+    const trialExpiresAt = data.trialExpiresAt
+      ? new Date(data.trialExpiresAt).toISOString()
+      : null;
+
+    if (isEditMode) {
+      if (!user) return;
+
+      setIsSaving(true);
+      try {
+        const success = await updateUser(
+          user.user_id,
+          data.tier,
+          data.role,
+          trialExpiresAt,
+          data.isBlocked,
+        );
+
+        if (success) {
+          toast.success(t("toasts.user.edit_success"));
+          onClose();
+        } else {
+          toast.error(t("toasts.user.edit_error"));
+        }
+      } catch {
+        toast.error(t("toasts.user.edit_error"));
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      const email = data.email.toLowerCase();
+
+      if (trackedSet.has(email)) {
+        form.setError("email", {
+          type: "manual",
+          message: t(
+            "admin.users_add_already_exists",
+            "Pengguna sudah terdaftar di sistem",
+          ),
+        });
+        toast.error(t("toasts.user.add_error"));
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        const result = await addUser(
+          email,
+          data.tier,
+          data.role,
+          trialExpiresAt,
+          data.isBlocked,
+        );
+
+        if (result === "added") {
+          toast.success(t("toasts.user.add_success"));
+          onClose();
+        } else if (result === "duplicate") {
+          form.setError("email", {
+            type: "manual",
+            message: t(
+              "admin.users_add_already_exists",
+              "Pengguna sudah terdaftar di sistem",
+            ),
+          });
+          toast.error(t("toasts.user.add_error"));
+        } else {
+          toast.error(t("toasts.user.add_error"));
+        }
+      } catch {
+        toast.error(t("toasts.user.add_error"));
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
+  return (
+    <DialogContent
+      className="sm:max-w-md border border-border text-foreground"
+      showCloseButton={!isSaving}
+    >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-foreground">
+            {isEditMode
+              ? t("admin.users_edit_dialog_title", "Edit Pengguna")
+              : t("admin.users_add_dialog_title", "Tambah Pengguna Baru")}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+            {isEditMode
+              ? t(
+                  "admin.users_edit_dialog_desc",
+                  "Ubah kasta atau peranan pengguna dalam sistem.",
+                )
+              : t(
+                  "admin.users_add_dialog_desc",
+                  "Tambahkan pengguna langsung ke sistem. Password default untuk pengguna baru adalah 'ChangeMe2026!'.",
+                )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <Controller
+            name="email"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[invalid=true]/field:text-destructive">
+                  {t("table.email")}
+                </label>
+                <div className="relative">
+                  <Input
+                    {...field}
+                    type="email"
+                    placeholder={t(
+                      "admin.users_add_email_placeholder",
+                      "Alamat email pengguna",
+                    )}
+                    disabled={isEditMode}
+                    autoFocus={!isEditMode}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-invalid={!isEditMode && fieldState.invalid}
+                    className={
+                      isEditMode
+                        ? "pr-10 placeholder:text-sm text-sm opacity-60 cursor-not-allowed disabled:pointer-events-auto"
+                        : "pr-10 placeholder:text-sm text-sm"
+                    }
+                  />
+                </div>
+                {!isEditMode && fieldState.invalid && (
+                  <FieldError
+                    errors={[fieldState.error]}
+                    className="text-[10px] sm:text-[11px] font-medium mt-1"
+                  />
+                )}
+              </Field>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Controller
+              name="tier"
+              control={form.control}
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("table.tier")}
+                  </label>
+                  <Select
+                    value={field.value}
+                    onValueChange={(nextValue) => {
+                      if (nextValue !== null) field.onChange(nextValue);
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
+                      <SelectValue
+                        placeholder={t(
+                          "admin.users_form_tier_placeholder",
+                          "Pilih Kasta",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent align="start" className="p-1">
+                      <SelectGroup>
+                        {tierItems.map((item) => (
+                          <SelectItem
+                            key={item.value}
+                            value={item.value}
+                            className="uppercase tracking-wider text-[10px] cursor-pointer"
+                          >
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            />
+
+            <Controller
+              name="role"
+              control={form.control}
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("table.role")}
+                  </label>
+                  <Select
+                    value={field.value}
+                    onValueChange={(nextValue) => {
+                      if (nextValue !== null) field.onChange(nextValue);
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
+                      <SelectValue
+                        placeholder={t(
+                          "admin.users_form_role_placeholder",
+                          "Pilih Peran",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent align="start" className="p-1">
+                      <SelectGroup>
+                        {roleItems.map((item) => (
+                          <SelectItem
+                            key={item.value}
+                            value={item.value}
+                            className="uppercase tracking-wider text-[10px] cursor-pointer"
+                          >
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            />
+          </div>
+
+          {tierValue === "trial" && (
+            <Controller
+              name="trialExpiresAt"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t(
+                      "admin.users_form_trial_label",
+                      "Masa Berlaku Trial (Opsional)",
+                    )}
+                  </label>
+                  <Input
+                    {...field}
+                    type="date"
+                    className="h-8 placeholder:text-sm text-sm"
+                  />
+                  {fieldState.invalid && (
+                    <FieldError
+                      errors={[fieldState.error]}
+                      className="text-[9px] font-medium mt-0.5"
+                    />
+                  )}
+                </div>
+              )}
+            />
+          )}
+
+          {isEditMode && (
+            <Controller
+              name="isBlocked"
+              control={form.control}
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("admin.users_form_status_label", "Status Akun")}
+                  </label>
+                  <Select
+                    value={field.value ? "blocked" : "active"}
+                    onValueChange={(nextValue) => {
+                      if (nextValue !== null) {
+                        field.onChange(nextValue === "blocked");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
+                      <SelectValue
+                        placeholder={t(
+                          "admin.users_form_status_placeholder",
+                          "Pilih Status",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent align="start" className="p-1">
+                      <SelectGroup>
+                        {statusItems.map((item) => (
+                          <SelectItem
+                            key={item.value}
+                            value={item.value}
+                            className="uppercase tracking-wider text-[10px] cursor-pointer"
+                          >
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            />
+          )}
+
+          {isEditMode && user && (
+            <Card className="mt-4 bg-muted/50">
+              <CardContent className="space-y-2.5 text-xs text-muted-foreground">
+                <h4 className="font-bold text-foreground text-[10px] uppercase tracking-wider mb-1">
+                  {t("admin.users_form_metadata_title", "Metadata Pengguna")}
+                </h4>
+                <Separator className="my-2" />
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  <div>
+                    <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {t("table.access_code")}
+                    </span>
+                    <span className="text-foreground">
+                      {user.access_code ? user.access_code : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {t("table.code_type")}
+                    </span>
+                    <span className="text-foreground uppercase font-bold text-[10px]">
+                      {user.access_code_kind ? user.access_code_kind : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {t("table.redeemed")}
+                    </span>
+                    <span className="text-foreground">
+                      {formatTs(user.redeemed_at)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {t("table.joined")}
+                    </span>
+                    <span className="text-foreground">
+                      {formatTs(user.created_at)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {t("table.last_access")}
+                    </span>
+                    <span className="text-foreground">
+                      {formatTs(user.last_active_at)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                      {t(
+                        "admin.users_form_metadata_email_confirmed",
+                        "Konfirmasi Email",
+                      )}
+                    </span>
+                    <span className="text-foreground">
+                      {formatTs(user.email_confirmed_at)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isSaving || !canSubmit}
+            aria-busy={isSaving}
+          >
+            <ActionButtonContent
+              label={t(
+                isEditMode ? "common.actions.save" : "common.actions.add",
+              )}
+              pending={isSaving}
+            />
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}

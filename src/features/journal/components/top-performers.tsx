@@ -265,7 +265,7 @@ export function TopPerformers({
   return (
     <div className="space-y-4">
       {/* Header and selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
           {t("journal.top_performers")}
         </h2>
@@ -273,7 +273,6 @@ export function TopPerformers({
           value={period}
           options={periodOptions}
           onChange={setPeriod}
-          className="self-start sm:self-auto"
         />
       </div>
 

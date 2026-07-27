@@ -19,7 +19,7 @@ import {
   TESTIMONIAL_LOGIN_PATH,
   TESTIMONIAL_SECTION_ID,
 } from "@/features/testimonials/constants";
-import { TestimonialDialog } from "@/features/testimonials/components/testimonial-dialog";
+import { UserTestimonialDialog } from "@/features/testimonials/components/user-testimonial-dialog";
 import { useFeaturedTestimonials } from "@/features/testimonials/hooks/use-testimonials";
 
 function initials(name: string) {
@@ -41,7 +41,7 @@ export function TestimonialSection() {
     useFeaturedTestimonials();
 
   const contributionButton = isAuthenticated ? (
-    <TestimonialDialog
+    <UserTestimonialDialog
       trigger={
         <Button>
           <MessageSquareQuote data-icon="inline-start" />

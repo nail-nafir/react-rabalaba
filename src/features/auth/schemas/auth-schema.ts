@@ -3,7 +3,7 @@ import i18next from "i18next";
 
 /** Email + password for login. */
 export const authSchema = z.object({
-  email: z.string().email(i18next.t("auth.email_invalid")),
+  email: z.email(i18next.t("auth.email_invalid")),
   password: z.string().min(6, i18next.t("auth.password_min")),
 });
 
