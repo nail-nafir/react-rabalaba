@@ -92,18 +92,26 @@ function LicenseAccessDialogContent({
     try {
       const result = await grantAccess(data.code);
       if (result === "granted" || result === "trial") {
-        toast.success(t("toasts.license.activated"));
+        toast.success(
+          t(
+            result === "trial"
+              ? "toasts.license.trial_success"
+              : "toasts.license.premium_success",
+          ),
+        );
         onSuccess?.();
         onClose();
       } else {
         const errorKey =
           result === "invalid"
-            ? "code_invalid"
+            ? "invalid_error"
             : result === "exhausted"
-              ? "code_exhausted"
+              ? "exhausted_error"
               : result === "already"
-                ? "code_expired"
-                : "code_failed";
+                ? "redeemed_error"
+                : result === "blocked"
+                  ? "blocked_error"
+                  : "unknown_error";
         toast.error(t(`toasts.license.${errorKey}`));
       }
     } finally {
@@ -133,7 +141,7 @@ function LicenseAccessDialogContent({
               variant="outline"
               className="w-full sm:w-auto font-medium text-xs cursor-pointer"
             >
-              {t("common.actions.cancel")}
+              {t("common.cancel")}
             </Button>
           </DialogClose>
           <Button
@@ -141,7 +149,7 @@ function LicenseAccessDialogContent({
             className="w-full sm:w-auto font-bold transition-all text-xs cursor-pointer"
           >
             <Link to={loginRedirectPath}>
-              <ActionButtonContent label={t("common.actions.sign_in")} />
+              <ActionButtonContent label={t("common.actions.login")} />
             </Link>
           </Button>
         </DialogFooter>
@@ -221,7 +229,7 @@ function LicenseAccessDialogContent({
               className="w-full sm:w-auto font-medium text-xs cursor-pointer"
               disabled={isSubmitting}
             >
-              {t("common.actions.cancel")}
+              {t("common.cancel")}
             </Button>
           </DialogClose>
           <Button
