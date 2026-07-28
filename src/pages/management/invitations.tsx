@@ -19,7 +19,7 @@ export default function AdminInvitationsPage() {
           {t("admin.invitations.page_title", "Undangan")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t("admin.invitations.page_desc", "Buat dan kelola link undangan premium/trial untuk calon member.")}
+          {t("admin.invitations.page_desc", "Buat dan atur tautan undangan keanggotaan khusus buat calon anggota baru.")}
         </p>
       </div>
 

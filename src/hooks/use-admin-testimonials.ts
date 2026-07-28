@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { usePremiumAccess } from "@/hooks/use-premium-access";
@@ -55,15 +56,15 @@ export function useAdminTestimonials() {
     },
   });
 
-  const invalidateTestimonials = async () => {
+  const invalidateTestimonials = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ADMIN_TESTIMONIALS_KEY }),
       queryClient.invalidateQueries({ queryKey: FEATURED_TESTIMONIALS_KEY }),
       queryClient.invalidateQueries({ queryKey: ["my-testimonial"] }),
     ]);
-  };
+  }, [queryClient]);
 
-  const reviewMutation = useMutation({
+  const { mutateAsync: reviewTestimonial } = useMutation({
     mutationFn: async ({
       submissionId,
       status,
@@ -83,7 +84,7 @@ export function useAdminTestimonials() {
     onSuccess: invalidateTestimonials,
   });
 
-  const featureMutation = useMutation({
+  const { mutateAsync: setFeaturedTestimonial } = useMutation({
     mutationFn: async ({ submissionId, slot }: FeatureInput) => {
       const { error } = await supabase.rpc(
         "admin_set_featured_testimonial" as never,
@@ -98,7 +99,7 @@ export function useAdminTestimonials() {
     onSuccess: invalidateTestimonials,
   });
 
-  const unfeatureMutation = useMutation({
+  const { mutateAsync: removeFeaturedTestimonial } = useMutation({
     mutationFn: async (submissionId: string) => {
       const { error } = await supabase.rpc(
         "admin_unfeature_testimonial" as never,
@@ -113,7 +114,7 @@ export function useAdminTestimonials() {
     onSuccess: invalidateTestimonials,
   });
 
-  const deleteMutation = useMutation({
+  const { mutateAsync: removeTestimonial } = useMutation({
     mutationFn: async (submissionId: string) => {
       const { error } = await supabase
         .from("testimonial_submissions")
@@ -125,27 +126,71 @@ export function useAdminTestimonials() {
     onSuccess: invalidateTestimonials,
   });
 
+  const approve = useCallback(
+    (submissionId: string) =>
+      reviewTestimonial({ submissionId, status: "approved" }),
+    [reviewTestimonial],
+  );
+
+  const reject = useCallback(
+    (submissionId: string, rejectionReason?: string) =>
+      reviewTestimonial({
+        submissionId,
+        status: "rejected",
+        rejectionReason,
+      }),
+    [reviewTestimonial],
+  );
+
+  const feature = useCallback(
+    (submissionId: string, slot: number) =>
+      setFeaturedTestimonial({ submissionId, slot }),
+    [setFeaturedTestimonial],
+  );
+
+  const unfeature = useCallback(
+    (submissionId: string) => removeFeaturedTestimonial(submissionId),
+    [removeFeaturedTestimonial],
+  );
+
+  const deleteSubmission = useCallback(
+    (submissionId: string) => removeTestimonial(submissionId),
+    [removeTestimonial],
+  );
+
+  const [maxSlots, setMaxSlotsState] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("admin_testimonial_max_slots");
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (parsed >= 1 && parsed <= 12) return parsed;
+      }
+    }
+    return 6;
+  });
+
+  const updateMaxSlots = useCallback(async (count: number) => {
+    const clamped = Math.max(1, Math.min(12, count));
+    setMaxSlotsState(clamped);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("admin_testimonial_max_slots", String(clamped));
+    }
+  }, []);
+
   return {
     submissions: query.data?.submissions ?? EMPTY_SUBMISSIONS,
     featured: query.data?.featured ?? EMPTY_FEATURED,
+    maxSlots,
+    updateMaxSlots,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
-    approve: (submissionId: string) =>
-      reviewMutation.mutateAsync({ submissionId, status: "approved" }),
-    reject: (submissionId: string, rejectionReason?: string) =>
-      reviewMutation.mutateAsync({
-        submissionId,
-        status: "rejected",
-        rejectionReason,
-      }),
-    feature: (submissionId: string, slot: number) =>
-      featureMutation.mutateAsync({ submissionId, slot }),
-    unfeature: (submissionId: string) =>
-      unfeatureMutation.mutateAsync(submissionId),
-    deleteSubmission: (submissionId: string) =>
-      deleteMutation.mutateAsync(submissionId),
+    approve,
+    reject,
+    feature,
+    unfeature,
+    deleteSubmission,
   };
 }

@@ -53,6 +53,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuth } from "@/hooks/use-auth";
 import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { getInitials } from "@/lib/formatters";
 import type {
   TestimonialStatus,
   TestimonialSubmissionRow,
@@ -89,18 +90,6 @@ function valuesFromSubmission(
     body: submission.body,
     rating: submission.rating,
   };
-}
-
-function initials(name: string) {
-  const letters = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-
-  return letters || "RL";
 }
 
 export function UserTestimonialDialog({ trigger }: UserTestimonialDialogProps) {
@@ -341,7 +330,7 @@ function UserTestimonialDialogContent({
           <div className="rounded-lg border border-border bg-muted/30 p-4">
             <div className="flex items-center gap-3">
               <Avatar size="lg">
-                <AvatarFallback>{initials(fallbackName)}</AvatarFallback>
+                <AvatarFallback>{getInitials(fallbackName)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <h4 className="font-semibold text-foreground text-sm flex flex-wrap items-center gap-1.5">

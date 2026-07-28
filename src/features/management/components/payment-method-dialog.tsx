@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -28,12 +27,10 @@ import {
 } from "@/components/ui/select";
 import { usePaymentMethods } from "@/hooks/use-payment-methods";
 import type { PaymentMethodRow } from "@/services/supabase/database.types";
-import { Card, CardContent } from "@/components/ui/card";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
 
 const CATEGORIES = ["bank", "ewallet", "qris", "crypto"] as const;
-const ICON_OPTIONS = ["Landmark", "Wallet", "Coins", "QrCode"];
 
 interface MethodFormProps {
   method: PaymentMethodRow | null;
@@ -53,14 +50,13 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
   const [accountName, setAccountName] = useState(method?.account_name ?? "");
   const [noteEn, setNoteEn] = useState(method?.note?.en ?? "");
   const [noteId, setNoteId] = useState(method?.note?.id ?? "");
-  const [icon, setIcon] = useState(method?.icon ?? "Landmark");
+  const icon = method?.icon ?? "Landmark";
   const [sortOrder, setSortOrder] = useState(String(method?.sort_order ?? 0));
-  const [active, setActive] = useState(method?.active ?? true);
+  const active = method?.active ?? true;
   const categoryItems = CATEGORIES.map((value) => ({
     value,
     label: t(`admin.billing.cat_${value}`, value),
   }));
-  const iconItems = ICON_OPTIONS.map((value) => ({ value, label: value }));
 
   const draftSnapshot = JSON.stringify({
     category,
@@ -222,58 +218,6 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
             />
           </div>
         </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.method_icon", "Ikon")}
-          </Label>
-          <Select
-            value={icon}
-            onValueChange={(nextValue) => {
-              if (nextValue !== null) setIcon(nextValue);
-            }}
-          >
-            <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper" align="start" className="p-0.5">
-              <SelectGroup>
-                {iconItems.map((item) => (
-                  <SelectItem
-                    key={item.value}
-                    value={item.value}
-                    className="uppercase tracking-wider text-[10px] cursor-pointer"
-                  >
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Card className="w-full border border-border shadow-xs bg-muted/50">
-          <CardContent className="space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  {t("admin.billing.method_active_label", "Aktifkan")}
-                </div>
-                <p className="text-[10px] text-muted-foreground leading-relaxed max-w-72">
-                  {t(
-                    "admin.billing.method_active_desc",
-                    "Metode pembayaran akan aktif dan dapat dipilih oleh pengguna saat transaksi.",
-                  )}
-                </p>
-              </div>
-              <Switch
-                checked={active}
-                onCheckedChange={setActive}
-                className="cursor-pointer data-checked:bg-emerald-500"
-              />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <DialogFooter>

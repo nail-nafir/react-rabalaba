@@ -311,7 +311,7 @@ export function JournalAssetsTable() {
   "use no memo";
   const { t } = useTranslation();
   const { assets, isLoading, toggleActive, removeAsset } = useJournalAssets();
-  const { users } = useAdminUsers();
+  const { users, isLoadingUsers } = useAdminUsers();
 
   const userMap = useMemo(() => {
     const map = new Map<
@@ -330,10 +330,11 @@ export function JournalAssetsTable() {
     return map;
   }, [users]);
 
-  // Load live asset metadata (specifically names) from Yahoo query cache / live data.
-  // This populates names for seeded rows (which default to NULL in the migration script).
+  // Load live prices, changes, and the latest Yahoo display names.
   const symbols = useMemo(() => assets.map((a) => a.symbol), [assets]);
-  const { data: marketData } = useMarketData(symbols);
+  const { data: marketData, isLoading: isMarketDataLoading } =
+    useMarketData(symbols);
+  const isTableLoading = isLoading || isLoadingUsers || isMarketDataLoading;
 
   const marketDataMap = useMemo(() => {
     const map = new Map<string, UnifiedAsset>();
@@ -674,7 +675,10 @@ export function JournalAssetsTable() {
         </div>
 
         {/* Table */}
-        <div className="rounded-md border overflow-hidden shadow-sm">
+        <div
+          className="rounded-md border overflow-hidden shadow-sm"
+          aria-busy={isTableLoading}
+        >
           <Table>
             <TableHeader className="bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -693,7 +697,7 @@ export function JournalAssetsTable() {
               ))}
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isTableLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
                     <SkeletonJournalAssetRow />
@@ -736,10 +740,12 @@ export function JournalAssetsTable() {
         </div>
 
         {/* Pagination */}
-        <DataTablePagination
-          table={table}
-          className="pt-3 border-t border-border/60"
-        />
+        {!isTableLoading && (
+          <DataTablePagination
+            table={table}
+            className="pt-3 border-t border-border/60"
+          />
+        )}
       </div>
     </div>
   );

@@ -161,12 +161,12 @@ export function AdminLayout() {
     },
     {
       to: "/admin/invitations",
-      label: t("admin.menu_invitations", "Undangan"),
+      label: t("admin.menu_invitations", "Link Undangan"),
       icon: Mail,
     },
     {
       to: "/admin/testimonials",
-      label: t("admin.menu_testimonials", "Ulasan"),
+      label: t("admin.menu_testimonials", "Ulasan Pengguna"),
       icon: MessageSquareQuote,
     },
     {

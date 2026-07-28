@@ -199,9 +199,8 @@ export function SkeletonFollowHistoryRow() {
 }
 
 /** Loading row for the admin auto-journal table (journal-asset-manager).
- *  Mirrors its 7 columns: added (date+time), symbol (symbol+name), type, price,
- *  change, status, and the right-aligned action buttons. Matches the terminal's
- *  skeleton-row loading style. */
+ *  Mirrors its 8 columns: added, added by, symbol, type, price, change, status,
+ *  and the right-aligned action buttons. */
 export function SkeletonJournalAssetRow() {
   return (
     <>
@@ -209,6 +208,12 @@ export function SkeletonJournalAssetRow() {
         <div className="space-y-1.5 py-1">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-3 w-14" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1.5 py-1">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-3 w-28" />
         </div>
       </TableCell>
       <TableCell>

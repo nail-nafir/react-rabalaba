@@ -50,6 +50,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
   const { t } = useTranslation();
   const { addPlan, updatePlan } = useSubscriptionPlans();
   const isEdit = !!plan;
+  const active = plan?.active ?? true;
 
   const [slug, setSlug] = useState(plan?.slug ?? "");
   const [sortOrder, setSortOrder] = useState(String(plan?.sort_order ?? 0));
@@ -67,7 +68,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
   const [highlighted, setHighlighted] = useState(plan?.highlighted ?? false);
   const [ctaKind, setCtaKind] = useState<string>(plan?.cta_kind ?? "link");
   const [ctaLink, setCtaLink] = useState(plan?.cta_link ?? "");
-  const [active, setActive] = useState(plan?.active ?? true);
+  
   const iconItems = ICON_OPTIONS.map((value) => ({ value, label: value }));
   const ctaKindItems = CTA_KINDS.map((value) => ({
     value,
@@ -302,43 +303,22 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
         </div>
 
         <Card className="w-full border border-border shadow-xs bg-muted/50">
-          <CardContent className="space-y-3">
+          <CardContent>
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  {t("admin.billing.plan_highlighted", "Tandai best seller")}
+                  {t("admin.billing.plan_highlighted", "Tandai paling laris")}
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed max-w-72">
                   {t(
                     "admin.billing.plan_highlighted_desc",
-                    "Tampilkan badge Best Seller dan highlight paket.",
+                    "Tampilkan lencana Paling Laris dan sorot paket.",
                   )}
                 </p>
               </div>
               <Switch
                 checked={highlighted}
                 onCheckedChange={setHighlighted}
-                className="cursor-pointer data-checked:bg-amber-500"
-              />
-            </div>
-
-            <div className="border-t border-border/40 my-0.5" />
-
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <div className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  {t("admin.billing.plan_active", "Tampilkan di halaman")}
-                </div>
-                <p className="text-[10px] text-muted-foreground leading-relaxed max-w-72">
-                  {t(
-                    "admin.billing.plan_active_desc",
-                    "Paket akan ditampilkan publik di halaman langganan.",
-                  )}
-                </p>
-              </div>
-              <Switch
-                checked={active}
-                onCheckedChange={setActive}
                 className="cursor-pointer data-checked:bg-emerald-500"
               />
             </div>

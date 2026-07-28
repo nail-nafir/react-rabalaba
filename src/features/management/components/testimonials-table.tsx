@@ -1,10 +1,4 @@
-import {
-  useId,
-  useMemo,
-  useState,
-  type MouseEvent,
-  type ReactElement,
-} from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   flexRender,
@@ -19,7 +13,6 @@ import {
   Check,
   Loader2,
   MessageSquareQuote,
-  MoreHorizontal,
   Pin,
   PinOff,
   RefreshCw,
@@ -32,6 +25,7 @@ import { toast } from "sonner";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,50 +36,9 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -96,15 +49,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { useAdminTestimonials } from "@/hooks/use-admin-testimonials";
+import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import type {
   FeaturedTestimonialRow,
   TestimonialStatus,
   TestimonialSubmissionRow,
 } from "@/services/supabase/database.types";
+import { RejectTestimonialDialog } from "./reject-testimonial-dialog";
+import { FeatureTestimonialDialog } from "./feature-testimonial-dialog";
 
-type StatusFilter = "all" | TestimonialStatus;
+
+
 type WorkingAction =
   | "approve"
   | "reject"
@@ -113,25 +69,54 @@ type WorkingAction =
   | "delete"
   | null;
 
-const FEATURE_SLOTS = [1, 2, 3, 4, 5, 6] as const;
-
 function StatusBadge({ status }: { status: TestimonialStatus }) {
   const { t } = useTranslation();
 
-  const labels: Record<TestimonialStatus, string> = {
-    pending: t("admin.testimonials.status_pending", "Menunggu"),
-    approved: t("admin.testimonials.status_approved", "Disetujui"),
-    rejected: t("admin.testimonials.status_rejected", "Ditolak"),
-  };
+  const config = {
+    approved: {
+      label: t("admin.testimonials.status_approved", "Disetujui"),
+      cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    },
+    pending: {
+      label: t("admin.testimonials.status_pending", "Menunggu"),
+      cls: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    },
+    rejected: {
+      label: t("admin.testimonials.status_rejected", "Ditolak"),
+      cls: "border-destructive/40 bg-destructive/10 text-destructive dark:text-red-400",
+    },
+  }[status];
 
-  const variant =
-    status === "approved"
-      ? "default"
-      : status === "rejected"
-        ? "destructive"
-        : "secondary";
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+        config.cls,
+      )}
+    >
+      {config.label}
+    </Badge>
+  );
+}
 
-  return <Badge variant={variant}>{labels[status]}</Badge>;
+function TierBadge({ verified }: { verified: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+        verified
+          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          : "border-border bg-muted/30 text-muted-foreground",
+      )}
+    >
+      {verified
+        ? t("admin.users_tier_premium", "Premium")
+        : t("admin.users_tier_free", "Gratis")}
+    </Badge>
+  );
 }
 
 function Rating({ value }: { value: number }) {
@@ -145,333 +130,28 @@ function Rating({ value }: { value: number }) {
         defaultValue: "{{value}} dari 5 bintang",
       })}
     >
-      <Star className="size-4 fill-current text-primary" aria-hidden="true" />
+      <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden="true" />
       <span>{value}/5</span>
     </span>
   );
 }
 
-function formatSubmissionDate(value: string, locale: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
 
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function RejectTestimonialDialog({
-  trigger,
-  working,
-  onConfirm,
-}: {
-  trigger: ReactElement;
-  working: WorkingAction;
-  onConfirm: (reason: string) => Promise<boolean>;
-}) {
-  const { t } = useTranslation();
-  const rejectionReasonId = useId();
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const isWorking = working !== null;
-
-  const confirm = async () => {
-    if (await onConfirm(reason)) {
-      setReason("");
-      setOpen(false);
-    }
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!isWorking) setOpen(nextOpen);
-      }}
-    >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md" showCloseButton={!isWorking}>
-        <DialogHeader>
-          <DialogTitle>
-            {t("admin.testimonials.reject_title", "Tolak ulasan")}
-          </DialogTitle>
-          <DialogDescription>
-            {t(
-              "admin.testimonials.reject_desc",
-              "Alasan bersifat opsional dan hanya dapat dilihat oleh pengguna serta admin.",
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor={rejectionReasonId}>
-              {t(
-                "admin.testimonials.rejection_reason_label",
-                "Alasan penolakan (opsional)",
-              )}
-            </FieldLabel>
-            <Textarea
-              id={rejectionReasonId}
-              value={reason}
-              maxLength={500}
-              disabled={isWorking}
-              placeholder={t(
-                "admin.testimonials.rejection_reason_placeholder",
-                "Contoh: mohon hindari informasi pribadi.",
-              )}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </Field>
-        </FieldGroup>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="destructive"
-            size="lg"
-            disabled={isWorking}
-            aria-busy={isWorking}
-            onClick={() => void confirm()}
-          >
-            <ActionButtonContent
-              label={t("common.actions.reject")}
-              pending={working === "reject"}
-            />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function FeatureTestimonialDialog({
-  trigger,
-  submission,
-  featured,
-  working,
-  onConfirm,
-}: {
-  trigger: ReactElement;
-  submission: TestimonialSubmissionRow;
-  featured: FeaturedTestimonialRow[];
-  working: WorkingAction;
-  onConfirm: (slot: number) => Promise<boolean>;
-}) {
-  const { t } = useTranslation();
-  const featureSlotId = useId();
-  const [open, setOpen] = useState(false);
-  const [replacementOpen, setReplacementOpen] = useState(false);
-  const [isConfirmingReplacement, setIsConfirmingReplacement] = useState(false);
-  const currentFeatured = featured.find(
-    (item) => item.submission_id === submission.id,
-  );
-  const firstAvailable =
-    currentFeatured?.slot ??
-    FEATURE_SLOTS.find(
-      (slot) => !featured.some((item) => item.slot === slot),
-    ) ??
-    1;
-  const [selectedSlot, setSelectedSlot] = useState(String(firstAvailable));
-  const selectedSlotNumber = Number(selectedSlot);
-  const occupiedSlot = featured.find(
-    (item) => item.slot === selectedSlotNumber,
-  );
-  const replacementRequired = Boolean(
-    occupiedSlot && occupiedSlot.submission_id !== submission.id,
-  );
-  const isWorking = working !== null;
-  const hasSlotChanged =
-    !currentFeatured || currentFeatured.slot !== selectedSlotNumber;
-  const slotItems = FEATURE_SLOTS.map((slot) => {
-    const occupant = featured.find((item) => item.slot === slot);
-    return {
-      value: String(slot),
-      label: occupant
-        ? t("admin.testimonials.slot_occupied", {
-            slot,
-            name: occupant.display_name,
-            defaultValue: "Slot {{slot}} — {{name}}",
-          })
-        : t("admin.testimonials.slot_available", {
-            slot,
-            defaultValue: "Slot {{slot}} — kosong",
-          }),
-    };
-  });
-
-  const confirm = () => onConfirm(selectedSlotNumber);
-  const isReplacementWorking = isWorking || isConfirmingReplacement;
-  const handleReplacementAction = async (
-    event: MouseEvent<HTMLButtonElement>,
-  ) => {
-    event.preventDefault();
-    if (isReplacementWorking) return;
-
-    setIsConfirmingReplacement(true);
-    try {
-      if (await confirm()) {
-        setReplacementOpen(false);
-        setOpen(false);
-      }
-    } finally {
-      setIsConfirmingReplacement(false);
-    }
-  };
-  const confirmAndClose = async () => {
-    if (await confirm()) {
-      setOpen(false);
-    }
-  };
-
-  const actionButton = (
-    <Button
-      type="button"
-      size="lg"
-      disabled={isWorking || !hasSlotChanged}
-      aria-busy={isWorking}
-      onClick={replacementRequired ? undefined : () => void confirmAndClose()}
-    >
-      <ActionButtonContent
-        label={t(
-          currentFeatured ? "common.actions.move" : "common.actions.feature",
-        )}
-        pending={working === "feature"}
-      />
-    </Button>
-  );
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!isReplacementWorking) setOpen(nextOpen);
-      }}
-    >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent
-        className="sm:max-w-sm"
-        showCloseButton={!isReplacementWorking}
-      >
-        <DialogHeader>
-          <DialogTitle>
-            {t("admin.testimonials.feature_title", "Pilih slot landing")}
-          </DialogTitle>
-          <DialogDescription>
-            {t(
-              "admin.testimonials.feature_desc",
-              "Ulasan yang disetujui dapat menempati salah satu dari enam slot publik.",
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor={featureSlotId}>
-              {t("admin.testimonials.slot_label", "Slot")}
-            </FieldLabel>
-            <Select
-              value={selectedSlot}
-              disabled={isWorking}
-              onValueChange={(nextValue) => {
-                if (nextValue !== null) setSelectedSlot(nextValue);
-              }}
-            >
-              <SelectTrigger id={featureSlotId} className="h-11 w-full sm:h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" className="p-0.5">
-                <SelectGroup>
-                  {slotItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            {replacementRequired && occupiedSlot && (
-              <FieldDescription>
-                {t("admin.testimonials.slot_replace_hint", {
-                  name: occupiedSlot.display_name,
-                  defaultValue:
-                    "Slot ini sedang ditempati {{name}}. Penggantian memerlukan konfirmasi.",
-                })}
-              </FieldDescription>
-            )}
-          </Field>
-        </FieldGroup>
-        <DialogFooter>
-          {replacementRequired ? (
-            <AlertDialog
-              open={replacementOpen}
-              onOpenChange={(nextOpen) => {
-                if (!isReplacementWorking) setReplacementOpen(nextOpen);
-              }}
-            >
-              <AlertDialogTrigger asChild>{actionButton}</AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogMedia>
-                    <Pin />
-                  </AlertDialogMedia>
-                  <AlertDialogTitle>
-                    {t(
-                      "admin.testimonials.replace_title",
-                      "Ganti ulasan di slot?",
-                    )}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t("admin.testimonials.replace_desc", {
-                      slot: selectedSlotNumber,
-                      name:
-                        occupiedSlot?.display_name ??
-                        t(
-                          "admin.testimonials.another_testimonial",
-                          "ulasan lain",
-                        ),
-                      defaultValue:
-                        "Slot {{slot}} sedang ditempati {{name}}. Ulasan tersebut akan langsung digantikan.",
-                    })}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isReplacementWorking}>
-                    {t("common.cancel", "Batal")}
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    disabled={isReplacementWorking}
-                    aria-busy={isReplacementWorking}
-                    onClick={handleReplacementAction}
-                  >
-                    <ActionButtonContent
-                      label={t("common.actions.replace")}
-                      pending={isReplacementWorking}
-                    />
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            actionButton
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function DeleteTestimonialDialog({
-  trigger,
+  open,
+  onOpenChange,
   submission,
   working,
   onConfirm,
 }: {
-  trigger: ReactElement;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   submission: TestimonialSubmissionRow;
   working: WorkingAction;
   onConfirm: () => Promise<boolean>;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const isWorking = working !== null || isPending;
 
@@ -481,7 +161,7 @@ function DeleteTestimonialDialog({
 
     setIsPending(true);
     try {
-      if (await onConfirm()) setOpen(false);
+      if (await onConfirm()) onOpenChange(false);
     } finally {
       setIsPending(false);
     }
@@ -491,10 +171,9 @@ function DeleteTestimonialDialog({
     <AlertDialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!isWorking) setOpen(nextOpen);
+        if (!isWorking) onOpenChange(nextOpen);
       }}
     >
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogMedia>
@@ -536,9 +215,6 @@ type TestimonialActionsProps = {
   submission: TestimonialSubmissionRow;
   featured: FeaturedTestimonialRow[];
   onApprove: (submissionId: string) => Promise<unknown>;
-  onReject: (submissionId: string, reason?: string) => Promise<unknown>;
-  onFeature: (submissionId: string, slot: number) => Promise<unknown>;
-  onUnfeature: (submissionId: string) => Promise<unknown>;
   onDelete: (submissionId: string) => Promise<unknown>;
 };
 
@@ -546,13 +222,12 @@ function TestimonialActions({
   submission,
   featured,
   onApprove,
-  onReject,
-  onFeature,
-  onUnfeature,
   onDelete,
 }: TestimonialActionsProps) {
   const { t } = useTranslation();
+  const { feature, maxSlots } = useAdminTestimonials();
   const [working, setWorking] = useState<WorkingAction>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const currentFeatured = featured.find(
     (item) => item.submission_id === submission.id,
@@ -566,47 +241,21 @@ function TestimonialActions({
     setWorking("approve");
     try {
       await onApprove(submission.id);
-      toast.success(t("toasts.testimonial_admin.approve_success"));
-    } catch {
-      showError();
-    } finally {
-      setWorking(null);
-    }
-  };
-
-  const handleReject = async (rejectionReason: string) => {
-    setWorking("reject");
-    try {
-      await onReject(submission.id, rejectionReason);
-      toast.success(t("toasts.testimonial_admin.reject_success"));
-      return true;
-    } catch {
-      showError();
-      return false;
-    } finally {
-      setWorking(null);
-    }
-  };
-
-  const handleFeature = async (selectedSlot: number) => {
-    setWorking("feature");
-    try {
-      await onFeature(submission.id, selectedSlot);
-      toast.success(t("toasts.testimonial_admin.feature_success"));
-      return true;
-    } catch {
-      showError();
-      return false;
-    } finally {
-      setWorking(null);
-    }
-  };
-
-  const handleUnfeature = async () => {
-    setWorking("unfeature");
-    try {
-      await onUnfeature(submission.id);
-      toast.success(t("toasts.testimonial_admin.unfeature_success"));
+      const availableSlots = Array.from({ length: maxSlots }, (_, i) => i + 1);
+      const firstAvailable = availableSlots.find(
+        (slot) => !featured.some((item) => item.slot === slot),
+      );
+      if (!currentFeatured && firstAvailable) {
+        await feature(submission.id, firstAvailable);
+        toast.success(
+          t("toasts.testimonial_admin.approve_feature_success", {
+            slot: firstAvailable,
+            defaultValue: "Mantep, ulasan lolos ke Slot {{slot}}",
+          }),
+        );
+      } else {
+        toast.success(t("toasts.testimonial_admin.approve_success"));
+      }
     } catch {
       showError();
     } finally {
@@ -632,101 +281,89 @@ function TestimonialActions({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <div className="flex items-center justify-end gap-1">
+        {submission.status !== "approved" && (
           <Button
-            variant="ghost"
+            variant="link"
             size="icon"
-            className="size-11 sm:size-8"
-            aria-label={t("admin.testimonials.open_actions", {
-              name: submission.display_name,
-              defaultValue: "Buka tindakan untuk ulasan {{name}}",
-            })}
+            disabled={isWorking}
+            onClick={() => void handleApprove()}
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-emerald-500 hover:bg-muted cursor-pointer"
+            title={t("admin.testimonials.action_approve", "Setujui")}
           >
-            {isWorking ? (
-              <Loader2 className="animate-spin" />
+            {working === "approve" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <MoreHorizontal />
+              <Check className="h-4 w-4" />
             )}
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuGroup>
-            {submission.status !== "approved" && (
-              <DropdownMenuItem
+        )}
+        {submission.status !== "rejected" && (
+          <RejectTestimonialDialog
+            submission={submission}
+            trigger={
+              <Button
+                variant="link"
+                size="icon"
                 disabled={isWorking}
-                className="min-h-11 sm:min-h-8"
-                onClick={() => void handleApprove()}
+                className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
+                title={t("admin.testimonials.action_reject", "Tolak")}
               >
-                <Check />
-                {t("admin.testimonials.action_approve", "Setujui")}
-              </DropdownMenuItem>
-            )}
-            {submission.status !== "rejected" && (
-              <RejectTestimonialDialog
-                working={working}
-                onConfirm={handleReject}
-                trigger={
-                  <DropdownMenuItem
-                    disabled={isWorking}
-                    className="min-h-11 sm:min-h-8"
-                  >
-                    <X />
-                    {t("admin.testimonials.action_reject", "Tolak")}
-                  </DropdownMenuItem>
-                }
-              />
-            )}
-            {submission.status === "approved" && (
-              <FeatureTestimonialDialog
-                submission={submission}
-                featured={featured}
-                working={working}
-                onConfirm={handleFeature}
-                trigger={
-                  <DropdownMenuItem
-                    disabled={isWorking}
-                    className="min-h-11 sm:min-h-8"
-                  >
-                    <Pin />
-                    {currentFeatured
-                      ? t("admin.testimonials.action_move", "Ubah slot")
-                      : t("admin.testimonials.action_feature", "Tampilkan")}
-                  </DropdownMenuItem>
-                }
-              />
-            )}
-            {currentFeatured && (
-              <DropdownMenuItem
+                <X className="h-4 w-4" />
+              </Button>
+            }
+          />
+        )}
+        {submission.status === "approved" && (
+          <FeatureTestimonialDialog
+            submission={submission}
+            trigger={
+              <Button
+                variant="link"
+                size="icon"
                 disabled={isWorking}
-                className="min-h-11 sm:min-h-8"
-                onClick={() => void handleUnfeature()}
+                className={cn(
+                  "h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:bg-muted cursor-pointer",
+                  currentFeatured ? "hover:text-amber-500" : "hover:text-primary",
+                )}
+                title={
+                  currentFeatured
+                    ? t("admin.testimonials.action_move", "Kelola slot landing")
+                    : t("admin.testimonials.action_feature", "Pilih slot landing")
+                }
               >
-                <PinOff />
-                {t("admin.testimonials.action_unfeature", "Hapus dari landing")}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DeleteTestimonialDialog
-              submission={submission}
-              working={working}
-              onConfirm={handleDelete}
-              trigger={
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={isWorking}
-                  className="min-h-11 sm:min-h-8"
-                >
-                  <Trash2 />
-                  {t("admin.testimonials.action_delete", "Hapus permanen")}
-                </DropdownMenuItem>
-              }
-            />
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+                {currentFeatured ? (
+                  <PinOff className="h-4 w-4" />
+                ) : (
+                  <Pin className="h-4 w-4" />
+                )}
+              </Button>
+            }
+          />
+        )}
+        <Button
+          variant="link"
+          size="icon"
+          disabled={isWorking}
+          onClick={() => setDeleteOpen(true)}
+          className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
+          title={t("admin.testimonials.action_delete", "Hapus permanen")}
+        >
+          {working === "delete" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      <DeleteTestimonialDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        submission={submission}
+        working={working}
+        onConfirm={handleDelete}
+      />
     </>
   );
 }
@@ -761,74 +398,75 @@ function SkeletonRows() {
 
 export function TestimonialsTable() {
   "use no memo";
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const {
     submissions,
     featured,
     isLoading,
-    isFetching,
     isError,
     refetch,
     approve,
-    reject,
-    feature,
-    unfeature,
     deleteSubmission,
   } = useAdminTestimonials();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  const filteredSubmissions = useMemo(
-    () =>
-      statusFilter === "all"
-        ? submissions
-        : submissions.filter((item) => item.status === statusFilter),
-    [statusFilter, submissions],
-  );
-
   const columns = useMemo<ColumnDef<TestimonialSubmissionRow>[]>(
     () => [
       {
         accessorKey: "created_at",
-        header: t("admin.testimonials.col_date", "Tanggal"),
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_date", "Ditambahkan")}
+          </span>
+        ),
+        cell: ({ row }) => {
+          const ts = Date.parse(row.original.created_at) / 1000;
+          return (
+            <div className="py-0.5">
+              <div className="font-semibold text-xs tracking-tight text-foreground">
+                {formatDateNumeric(ts)}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {formatClock(ts)}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "display_name",
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_user", "Pengguna")}
+          </span>
+        ),
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
-            {formatSubmissionDate(row.original.created_at, i18n.language)}
+          <span className="font-medium text-foreground whitespace-nowrap">
+            {row.original.display_name}
           </span>
         ),
       },
       {
-        accessorKey: "display_name",
-        header: t("admin.testimonials.col_user", "Pengguna"),
+        accessorKey: "verified_purchase",
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_tier", "Kasta")}
+          </span>
+        ),
         cell: ({ row }) => (
-          <div className="flex max-w-48 flex-col gap-1 whitespace-normal items-start">
-            <span className="font-medium text-foreground">
-              {row.original.display_name}
-            </span>
-            {row.original.verified_purchase ? (
-              <Badge
-                variant="outline"
-                className="bg-emerald-500/10 text-[9px] font-bold text-emerald-500 border-emerald-500/20 px-1.5 py-0 uppercase"
-              >
-                {t("testimonials.membership.member_premium", "anggota premium")}
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="bg-muted text-[9px] font-bold text-muted-foreground border-transparent px-1.5 py-0 uppercase"
-              >
-                {t("testimonials.membership.member_free", "anggota gratis")}
-              </Badge>
-            )}
-          </div>
+          <TierBadge verified={row.original.verified_purchase} />
         ),
       },
       {
         accessorKey: "body",
-        header: t("admin.testimonials.col_testimonial", "Ulasan"),
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_testimonial", "Ulasan")}
+          </span>
+        ),
         cell: ({ row }) => (
           <div className="flex max-w-80 flex-col gap-2 whitespace-normal">
             <p className="line-clamp-3 leading-relaxed text-foreground">
@@ -849,23 +487,38 @@ export function TestimonialsTable() {
       },
       {
         accessorKey: "rating",
-        header: t("admin.testimonials.col_rating", "Rating"),
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_rating", "Penilaian")}
+          </span>
+        ),
         cell: ({ row }) => <Rating value={row.original.rating} />,
       },
       {
         accessorKey: "status",
-        header: t("admin.testimonials.col_status", "Status"),
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_status", "Status")}
+          </span>
+        ),
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
         id: "slot",
-        header: t("admin.testimonials.col_slot", "Slot"),
+        header: () => (
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("admin.testimonials.col_slot", "Slot")}
+          </span>
+        ),
         cell: ({ row }) => {
           const item = featured.find(
             (candidate) => candidate.submission_id === row.original.id,
           );
           return item ? (
-            <Badge variant="outline">
+            <Badge
+              variant="outline"
+              className="w-fit rounded-md text-[10px] font-bold uppercase tracking-wider border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            >
               {t("admin.testimonials.slot_value", {
                 slot: item.slot,
                 defaultValue: "Slot {{slot}}",
@@ -889,29 +542,17 @@ export function TestimonialsTable() {
               submission={row.original}
               featured={featured}
               onApprove={approve}
-              onReject={reject}
-              onFeature={feature}
-              onUnfeature={unfeature}
               onDelete={deleteSubmission}
             />
           </div>
         ),
       },
     ],
-    [
-      approve,
-      deleteSubmission,
-      feature,
-      featured,
-      i18n.language,
-      reject,
-      t,
-      unfeature,
-    ],
+    [approve, deleteSubmission, featured, t],
   );
 
   const table = useReactTable({
-    data: filteredSubmissions,
+    data: submissions,
     columns,
     state: { pagination },
     onPaginationChange: setPagination,
@@ -919,82 +560,10 @@ export function TestimonialsTable() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const handleStatusChange = (value: string | null) => {
-    if (value === null) return;
-    setStatusFilter(value as StatusFilter);
-    setPagination((current) => ({ ...current, pageIndex: 0 }));
-  };
-
-  const statusOptions: Array<{ value: StatusFilter; label: string }> = [
-    {
-      value: "all",
-      label: t("admin.testimonials.filter_all", "Semua status"),
-    },
-    {
-      value: "pending",
-      label: t("admin.testimonials.status_pending", "Menunggu"),
-    },
-    {
-      value: "approved",
-      label: t("admin.testimonials.status_approved", "Disetujui"),
-    },
-    {
-      value: "rejected",
-      label: t("admin.testimonials.status_rejected", "Ditolak"),
-    },
-  ];
-
   return (
-    <Card>
-      <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-        <CardTitle>
-          {t("admin.testimonials.list_title", "Antrean moderasi")}
-        </CardTitle>
-        <CardDescription>
-          {t("admin.testimonials.list_desc", {
-            filtered: filteredSubmissions.length,
-            total: submissions.length,
-            defaultValue: "{{filtered}} dari {{total}} ulasan ditampilkan.",
-          })}
-        </CardDescription>
-        <CardAction className="col-start-1 row-start-3 mt-2 w-full justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:justify-self-end">
-          <div className="flex w-full items-center gap-2">
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
-              <SelectTrigger
-                className="h-11 min-w-0 flex-1 sm:h-8 sm:w-40"
-                aria-label={t(
-                  "admin.testimonials.filter_label",
-                  "Filter status ulasan",
-                )}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" align="end" className="p-0.5">
-                <SelectGroup>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11 sm:size-8"
-              disabled={isFetching}
-              aria-label={t("admin.testimonials.refresh", "Muat ulang ulasan")}
-              onClick={() => void refetch()}
-            >
-              <RefreshCw className={isFetching ? "animate-spin" : undefined} />
-            </Button>
-          </div>
-        </CardAction>
-      </CardHeader>
-
-      <CardContent className="px-0">
+    <div className="space-y-4">
+      {/* Table Container */}
+      <div className="rounded-md border overflow-hidden shadow-sm">
         {isError ? (
           <EmptyState
             icon={<AlertCircle className="size-12 text-destructive" />}
@@ -1011,21 +580,18 @@ export function TestimonialsTable() {
             }
           />
         ) : (
-          <Table className="min-w-5xl">
+          <Table>
             <TableCaption className="sr-only">
               {t(
                 "admin.testimonials.table_caption",
                 "Daftar ulasan pengguna untuk dimoderasi.",
               )}
             </TableCaption>
-            <TableHeader>
+            <TableHeader className="bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="hover:bg-transparent">
                   {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-                    >
+                    <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -1042,7 +608,10 @@ export function TestimonialsTable() {
                 <SkeletonRows />
               ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={columns.length}>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-32 text-center"
+                  >
                     <EmptyState
                       icon={
                         <MessageSquareQuote className="size-12 text-muted-foreground" />
@@ -1051,17 +620,10 @@ export function TestimonialsTable() {
                         "admin.testimonials.empty_title",
                         "Belum ada ulasan",
                       )}
-                      description={
-                        statusFilter === "all"
-                          ? t(
-                              "admin.testimonials.empty_desc",
-                              "Ulasan pengguna akan muncul di antrean ini.",
-                            )
-                          : t(
-                              "admin.testimonials.empty_filter_desc",
-                              "Tidak ada ulasan dengan status yang dipilih.",
-                            )
-                      }
+                      description={t(
+                        "admin.testimonials.empty_desc",
+                        "Ulasan pengguna akan muncul di antrean ini.",
+                      )}
                     />
                   </TableCell>
                 </TableRow>
@@ -1082,13 +644,14 @@ export function TestimonialsTable() {
             </TableBody>
           </Table>
         )}
-      </CardContent>
+      </div>
 
-      {!isLoading && !isError && filteredSubmissions.length > 10 && (
-        <CardFooter>
-          <DataTablePagination table={table} />
-        </CardFooter>
-      )}
-    </Card>
+      {/* Pagination */}
+      <DataTablePagination
+        table={table}
+        hideWhenSinglePage
+        className="pt-3 border-t border-border/60"
+      />
+    </div>
   );
 }

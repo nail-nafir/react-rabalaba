@@ -81,3 +81,19 @@ export function formatClock(timestamp: number): string {
   const mm = date.getMinutes().toString().padStart(2, "0");
   return `${hh}:${mm}`;
 }
+
+/**
+ * Extracts up to 2 uppercase initial letters from a display name (e.g. "Nailul Firdaus" -> "NF").
+ * Defaults to fallback ("RL") if the name is empty.
+ */
+export function getInitials(name: string, fallback = "RL"): string {
+  const letters = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  return letters || fallback;
+}
