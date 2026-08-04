@@ -428,10 +428,10 @@
     "forex": "Forex",
     "index_fallback": "Index",
     "context_explainer": {
-      "crypto": "Bitcoin and altcoin setup. High Bitcoin up, low altcoins up.",
+      "crypto": "Bitcoin and altcoin setup. High bitcoin up, low altcoins up.",
       "id-equity": "ID equity market setup. High wild moves, low chill moves.",
       "us-equity": "US equity market setup. High wild moves, low chill moves.",
-      "commodities": "Industry and gold market setup. High industry up, low gold up.",
+      "commodities": "Gold and commodity setup. High gold up, low other commodities up.",
       "forex": "Dollar and forex setup. High dollar up, low other forex up."
     },
     "score_explainer": {
@@ -569,6 +569,15 @@
     "suppressed_reason_countertrend": "big trend is disagreeing",
     "analysis": "Analysis",
     "indicators": "Technical Indicators",
+    "chart_settings": "Chart Settings",
+    "moving_averages": "Moving Averages",
+    "overlays_grid": "Overlays & Grid",
+    "target_risk_zones": "Target & Risk Zones",
+    "grid_lines": "Grid Lines",
+    "bollinger_bands": "Bollinger Bands",
+    "sub_panels": "Sub-Panels",
+    "volume_bars": "Volume Bars",
+    "rsi_oscillator": "RSI (14)",
     "decision_support": "Supporting Score",
     "regime_trending": "Trending",
     "regime_ranging": "Ranging",

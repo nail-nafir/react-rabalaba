@@ -428,10 +428,10 @@
     "forex": "Valas",
     "index_fallback": "Indeks",
     "context_explainer": {
-      "crypto": "Arah Bitcoin dan altcoin. Tinggi Bitcoin naik, rendah altcoin naik.",
+      "crypto": "Arah Bitcoin dan altcoin. Tinggi bitcoin naik, rendah altcoin naik.",
       "id-equity": "Arah gejolak saham ID. Tinggi gerakan liar, rendah tenang.",
       "us-equity": "Arah gejolak saham AS. Tinggi gerakan liar, rendah tenang.",
-      "commodities": "Arah industri dan emas. Tinggi industri naik, rendah emas naik.",
+      "commodities": "Arah emas dan komoditas. Tinggi emas naik, rendah komoditas lain naik.",
       "forex": "Arah dolar dan valas. Tinggi dolar naik, rendah valas lain naik."
     },
     "score_explainer": {
@@ -569,6 +569,15 @@
     "suppressed_reason_countertrend": "tren besar lagi berlawanan",
     "analysis": "Analisis",
     "indicators": "Indikator Teknikal",
+    "chart_settings": "Pengaturan Grafik",
+    "moving_averages": "Moving Average",
+    "overlays_grid": "Overlay & Grid",
+    "target_risk_zones": "Area Target & Risiko",
+    "grid_lines": "Garis Grid",
+    "bollinger_bands": "Bollinger Bands",
+    "sub_panels": "Indikator Tambahan",
+    "volume_bars": "Volume Bar",
+    "rsi_oscillator": "RSI (14)",
     "decision_support": "Skor Pendukung",
     "regime_trending": "Tren",
     "regime_ranging": "Konsolidasi",

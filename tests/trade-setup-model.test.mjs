@@ -61,6 +61,20 @@ test("priceToRatio maps endpoints and clamps", async () => {
   assert.equal(priceToRatio(5, 5, 5), 0.5); // degenerate domain
 });
 
+test("chart wheel intent preserves pan and lets the dialog own vertical scroll", async () => {
+  const { isChartPriceAxisPoint, resolveChartWheelIntent } = await loadModule(SRC);
+
+  assert.equal(resolveChartWheelIntent(40, 4, false), "pan");
+  assert.equal(resolveChartWheelIntent(-40, 4, true), "pan");
+  assert.equal(resolveChartWheelIntent(4, 40, false), "scroll");
+  assert.equal(resolveChartWheelIntent(4, 40, true), "zoom");
+  assert.equal(resolveChartWheelIntent(0, 0, true), "scroll");
+
+  assert.equal(isChartPriceAxisPoint(700, 100, 650, 752, 12, 360), true);
+  assert.equal(isChartPriceAxisPoint(649, 100, 650, 752, 12, 360), false);
+  assert.equal(isChartPriceAxisPoint(700, 361, 650, 752, 12, 360), false);
+});
+
 test("long setup: domain covers all levels + candles, TP>entry>SL", async () => {
   const { buildTradeSetupModel } = await loadModule(SRC);
   const m = buildTradeSetupModel(makeCandles([85, 100, 120, 135]), longPlan, "long", 100);

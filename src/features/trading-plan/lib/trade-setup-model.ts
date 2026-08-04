@@ -68,6 +68,29 @@ export interface MappedMarker extends ChartMarker {
   edge?: "start" | "end";
 }
 
+/** Decide which surface owns a wheel gesture without touching browser state. */
+export function resolveChartWheelIntent(
+  deltaX: number,
+  deltaY: number,
+  overPriceAxis: boolean,
+): "pan" | "zoom" | "scroll" {
+  if (deltaX === 0 && deltaY === 0) return "scroll";
+  if (Math.abs(deltaX) > Math.abs(deltaY)) return "pan";
+  return overPriceAxis ? "zoom" : "scroll";
+}
+
+/** True only inside the rendered right-hand price gutter. */
+export function isChartPriceAxisPoint(
+  x: number,
+  y: number,
+  left: number,
+  right: number,
+  top: number,
+  bottom: number,
+): boolean {
+  return x >= left && x <= right && y >= top && y <= bottom;
+}
+
 /**
  * Resolve each marker to a candle in the rendered `view`. Markers inside the
  * visible window snap to the nearest candle (min absolute timestamp distance);

@@ -184,6 +184,37 @@ export function calculateBollingerBands(
 }
 
 /**
+ * Calculates a full Bollinger Bands series (upper, middle, lower for each price index).
+ */
+export function calculateBollingerBandsSeries(
+  prices: number[],
+  period = 20,
+  stdDevMultiplier = 2,
+): { upper: (number | null)[]; middle: (number | null)[]; lower: (number | null)[] } {
+  const upper: (number | null)[] = new Array(prices.length).fill(null);
+  const middle: (number | null)[] = new Array(prices.length).fill(null);
+  const lower: (number | null)[] = new Array(prices.length).fill(null);
+
+  if (prices.length < period) {
+    return { upper, middle, lower };
+  }
+
+  for (let i = period - 1; i < prices.length; i++) {
+    const slice = prices.slice(i - period + 1, i + 1);
+    const mid = slice.reduce((s, v) => s + v, 0) / period;
+    const variance =
+      slice.reduce((s, v) => s + (v - mid) ** 2, 0) / Math.max(1, period - 1);
+    const stdDev = Math.sqrt(variance);
+
+    middle[i] = mid;
+    upper[i] = mid + stdDevMultiplier * stdDev;
+    lower[i] = mid - stdDevMultiplier * stdDev;
+  }
+
+  return { upper, middle, lower };
+}
+
+/**
  * Stochastic RSI — applies the Stochastic oscillator formula to RSI values.
  *
  * More sensitive than RSI for catching momentum reversals.

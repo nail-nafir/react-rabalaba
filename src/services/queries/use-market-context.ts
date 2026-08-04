@@ -18,11 +18,11 @@ const MARKET_CONTEXT_CACHE_MS = 1_800_000;
 /**
  * Market-level context for every asset card.
  *
- * Quote sources stay in useMarketData's canonical per-symbol cache. The DXY
- * symbol occurs once in that source list and the adapter shares its resulting
- * object across Forex and Commodity. BTC.D subscribes to the same ["dominance"]
- * cache as useCryptoContext. IHSG uses a separate daily-history query because
- * realized volatility cannot be calculated from the default 1h feed.
+ * Quote sources stay in useMarketData's canonical per-symbol cache. DXY feeds
+ * Forex and the commodity basket feeds Gold Strength Index. BTC.D subscribes to the same
+ * ["dominance"] cache as useCryptoContext. IHSG uses a separate daily-history
+ * query because realized volatility cannot be calculated from the default 1h
+ * feed.
  */
 export function useMarketContexts(): {
   data: MarketContextByAssetClass;

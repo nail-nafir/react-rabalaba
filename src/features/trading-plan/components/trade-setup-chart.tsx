@@ -12,7 +12,21 @@ import { PALETTE, SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Grid, Layers, RotateCcw, SlidersHorizontal, Activity, BarChart2 } from "lucide-react";
+import {
+  calculateEMASeries,
+  calculateBollingerBandsSeries,
+  calculateRSISeries,
+} from "@/features/engine/indicators";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
 import {
@@ -21,6 +35,8 @@ import {
   priceTicks,
   dateTickIndices,
   mapMarkerToCandle,
+  isChartPriceAxisPoint,
+  resolveChartWheelIntent,
   MAX_CANDLES,
   type LevelKey,
   type LevelKind,
@@ -37,6 +53,23 @@ const CHART_TOP = PAD_T;
 const CHART_H = VB_H - PAD_T - PAD_B - AXIS_B;
 const CHART_BOTTOM = CHART_TOP + CHART_H;
 const CHART_LEFT = PAD_X;
+const EMA_FAST_PERIOD = 20;
+const EMA_SLOW_PERIOD = 50;
+const EMA_MACRO_PERIOD = 200;
+
+const svgPoint = (
+  svg: SVGSVGElement | null,
+  clientX: number,
+  clientY: number,
+) => {
+  if (!svg) return null;
+  const rect = svg.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return null;
+  return {
+    x: ((clientX - rect.left) / rect.width) * VB_W,
+    y: ((clientY - rect.top) / rect.height) * VB_H,
+  };
+};
 
 // Per-cell width estimates. Emphasis cells render bold uppercase with
 // letter-spacing, so wide glyphs (M/W) and the tracking push the text wider
@@ -69,7 +102,9 @@ const nearestIdx = (candles: { timestamp: number }[], ts: number) => {
 
 /** Width of a combined level pill ([KEY | price]) for the given strings. */
 const pillWidth = (key: string, price: string) =>
-  key.length * EMPHASIS_CHAR_W + CELL_PAD + (price.length * NORMAL_CHAR_W + CELL_PAD);
+  key.length * EMPHASIS_CHAR_W +
+  CELL_PAD +
+  (price.length * NORMAL_CHAR_W + CELL_PAD);
 
 /** color language: entry = neutral, risk(SL) = rose, profit(TP) = emerald */
 const LEVEL_COLOR: Record<LevelKind, string> = {
@@ -173,8 +208,219 @@ interface TradeSetupChartProps {
   signal: SignalDirection;
   assetType: AssetType;
   currentPrice: number;
+  showEma?: boolean;
+  showEma20?: boolean;
+  showEma50?: boolean;
+  showEma200?: boolean;
+  showBollingerBands?: boolean;
+  showVolume?: boolean;
+  showRsi?: boolean;
+  showZones?: boolean;
+  showGrid?: boolean;
   /** Optional entry/close annotations plotted on the candles (journal view). */
   markers?: ChartMarker[];
+}
+
+export interface TradeSetupChartSettingsProps {
+  showEma20?: boolean;
+  onShowEma20Change?: (show: boolean) => void;
+  showEma50?: boolean;
+  onShowEma50Change?: (show: boolean) => void;
+  showEma200?: boolean;
+  onShowEma200Change?: (show: boolean) => void;
+  showBollingerBands?: boolean;
+  onShowBollingerBandsChange?: (show: boolean) => void;
+  showVolume?: boolean;
+  onShowVolumeChange?: (show: boolean) => void;
+  showRsi?: boolean;
+  onShowRsiChange?: (show: boolean) => void;
+  showZones?: boolean;
+  onShowZonesChange?: (show: boolean) => void;
+  showGrid?: boolean;
+  onShowGridChange?: (show: boolean) => void;
+  /** Legacy support for single showEma toggle */
+  showEma?: boolean;
+  onShowEmaChange?: (show: boolean) => void;
+  disabled?: boolean;
+}
+
+export function TradeSetupChartSettings({
+  showEma20,
+  onShowEma20Change,
+  showEma50,
+  onShowEma50Change,
+  showEma200,
+  onShowEma200Change,
+  showBollingerBands,
+  onShowBollingerBandsChange,
+  showVolume,
+  onShowVolumeChange,
+  showRsi,
+  onShowRsiChange,
+  showZones,
+  onShowZonesChange,
+  showGrid,
+  onShowGridChange,
+  showEma,
+  onShowEmaChange,
+  disabled = false,
+}: TradeSetupChartSettingsProps) {
+  const { t } = useTranslation();
+
+  const ema20Checked = showEma20 ?? showEma ?? true;
+  const ema50Checked = showEma50 ?? showEma ?? true;
+  const ema200Checked = showEma200 ?? false;
+  const bbChecked = showBollingerBands ?? false;
+  const volumeChecked = showVolume ?? false;
+  const rsiChecked = showRsi ?? false;
+  const zonesChecked = showZones ?? true;
+  const gridChecked = showGrid ?? true;
+
+  const handleEma20Change = (checked: boolean) => {
+    if (onShowEma20Change) onShowEma20Change(checked);
+    else if (onShowEmaChange) onShowEmaChange(checked || ema50Checked);
+  };
+
+  const handleEma50Change = (checked: boolean) => {
+    if (onShowEma50Change) onShowEma50Change(checked);
+    else if (onShowEmaChange) onShowEmaChange(checked || ema20Checked);
+  };
+
+  const label = t("dialog.chart_settings");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={disabled}
+          title={label}
+          aria-label={label}
+          className="size-11 cursor-pointer sm:size-7 hover:bg-muted/80 transition-all duration-200"
+        >
+          <SlidersHorizontal data-icon="inline-start" className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-56 p-1.5 rounded-xl shadow-lg border border-border/80 bg-popover/95 backdrop-blur-md"
+      >
+        <DropdownMenuLabel className="px-2.5 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+          <span>{label}</span>
+          <SlidersHorizontal className="size-3.5 opacity-60" />
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            {t("dialog.moving_averages")}
+          </DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={ema20Checked}
+            onCheckedChange={handleEma20Change}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-0.5 w-3.5 rounded-full bg-chart-2 shrink-0" />
+              <span className="font-medium">EMA 20</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">Fast</span>
+          </DropdownMenuCheckboxItem>
+
+          <DropdownMenuCheckboxItem
+            checked={ema50Checked}
+            onCheckedChange={handleEma50Change}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-0.5 w-3.5 rounded-full bg-amber-400 shrink-0" />
+              <span className="font-medium">EMA 50</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">Slow</span>
+          </DropdownMenuCheckboxItem>
+
+          <DropdownMenuCheckboxItem
+            checked={ema200Checked}
+            onCheckedChange={onShowEma200Change}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-0.5 w-3.5 rounded-full bg-white shrink-0" />
+              <span className="font-medium">EMA 200</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">Macro</span>
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            {t("dialog.indicators")}
+          </DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={bbChecked}
+            onCheckedChange={onShowBollingerBandsChange}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-0.5 w-3.5 rounded-full bg-sky-400 shrink-0" />
+              <span className="font-medium">{t("dialog.bollinger_bands")}</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">20, 2</span>
+          </DropdownMenuCheckboxItem>
+
+          <DropdownMenuCheckboxItem
+            checked={rsiChecked}
+            onCheckedChange={onShowRsiChange}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <Activity className="size-3.5 text-purple-400 shrink-0" />
+              <span className="font-medium">{t("dialog.rsi_oscillator")}</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">14</span>
+          </DropdownMenuCheckboxItem>
+
+          <DropdownMenuCheckboxItem
+            checked={volumeChecked}
+            onCheckedChange={onShowVolumeChange}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center gap-2"
+          >
+            <BarChart2 className="size-3.5 text-muted-foreground shrink-0" />
+            <span className="font-medium">{t("dialog.volume_bars")}</span>
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            {t("dialog.overlays_grid")}
+          </DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={zonesChecked}
+            onCheckedChange={onShowZonesChange}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center gap-2"
+          >
+            <Layers className="size-3.5 text-muted-foreground shrink-0" />
+            <span className="font-medium">{t("dialog.target_risk_zones")}</span>
+          </DropdownMenuCheckboxItem>
+
+          <DropdownMenuCheckboxItem
+            checked={gridChecked}
+            onCheckedChange={onShowGridChange}
+            className="cursor-pointer text-xs rounded-lg py-1.5 pl-2.5 pr-8 flex items-center gap-2"
+          >
+            <Grid className="size-3.5 text-muted-foreground shrink-0" />
+            <span className="font-medium">{t("dialog.grid_lines")}</span>
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function TradeSetupChart({
@@ -183,11 +429,21 @@ export function TradeSetupChart({
   signal,
   assetType,
   currentPrice,
+  showEma = true,
+  showEma20 = showEma,
+  showEma50 = showEma,
+  showEma200 = false,
+  showBollingerBands = false,
+  showVolume = false,
+  showRsi = false,
+  showZones = true,
+  showGrid = true,
   markers,
 }: TradeSetupChartProps) {
   const { t, i18n } = useTranslation();
   const [hoveredCandle, setHoveredCandle] = useState<number | null>(null);
   const [hoveredLevel, setHoveredLevel] = useState<LevelKey | null>(null);
+  const [overPriceAxis, setOverPriceAxis] = useState(false);
   // Free cursor Y (viewBox space) for the horizontal crosshair + price pill.
   // null on touch (no hover) and when the cursor is off the plot.
   const [hoverY, setHoverY] = useState<number | null>(null);
@@ -270,11 +526,103 @@ export function TradeSetupChart({
     [candles, vp.start, vp.span],
   );
 
+  // Seed against the complete series so panning/zooming never changes the
+  // indicator value at a candle; the viewport only chooses which values draw.
+  const ema = useMemo(() => {
+    const closes = candles.map((candle) => candle.close);
+    return {
+      fast: calculateEMASeries(closes, EMA_FAST_PERIOD),
+      slow: calculateEMASeries(closes, EMA_SLOW_PERIOD),
+      macro: calculateEMASeries(closes, EMA_MACRO_PERIOD),
+    };
+  }, [candles]);
+
+  const bb = useMemo(() => {
+    const closes = candles.map((candle) => candle.close);
+    return calculateBollingerBandsSeries(closes, 20, 2);
+  }, [candles]);
+
+  const rsiSeries = useMemo(() => {
+    const closes = candles.map((candle) => candle.close);
+    return calculateRSISeries(closes, 14);
+  }, [candles]);
+
+  const visibleEma = useMemo(
+    () => ({
+      fast: ema.fast
+        .slice(vp.start, vp.start + vp.span)
+        .map((value, index) =>
+          vp.start + index >= Math.min(EMA_FAST_PERIOD - 1, candles.length - 1)
+            ? value
+            : null,
+        ),
+      slow: ema.slow
+        .slice(vp.start, vp.start + vp.span)
+        .map((value, index) =>
+          vp.start + index >= Math.min(EMA_SLOW_PERIOD - 1, candles.length - 1)
+            ? value
+            : null,
+        ),
+      macro: ema.macro
+        .slice(vp.start, vp.start + vp.span)
+        .map((value, index) =>
+          vp.start + index >= Math.min(EMA_MACRO_PERIOD - 1, Math.max(0, Math.floor(candles.length * 0.05)))
+            ? value
+            : null,
+        ),
+    }),
+    [ema, vp.start, vp.span, candles.length],
+  );
+
+  const visibleBb = useMemo(
+    () => ({
+      upper: bb.upper.slice(vp.start, vp.start + vp.span),
+      middle: bb.middle.slice(vp.start, vp.start + vp.span),
+      lower: bb.lower.slice(vp.start, vp.start + vp.span),
+    }),
+    [bb, vp.start, vp.span],
+  );
+
+  const visibleRsi = useMemo(
+    () => rsiSeries.slice(vp.start, vp.start + vp.span),
+    [rsiSeries, vp.start, vp.span],
+  );
+
+  const maxVolume = useMemo(() => {
+    let max = 0;
+    for (let i = 0; i < view.length; i++) {
+      const v = view[i].volume ?? 0;
+      if (v > max) max = v;
+    }
+    return max;
+  }, [view]);
+
   // The price domain refits to whatever is visible (plus every plan level).
   const model = useMemo(
     () => buildTradeSetupModel(view, plan, signal, currentPrice),
     [view, plan, signal, currentPrice],
   );
+
+  const priceDomain = useMemo(() => {
+    const fastEmas = showEma20 ? visibleEma.fast : [];
+    const slowEmas = showEma50 ? visibleEma.slow : [];
+    const macroEmas = showEma200 ? visibleEma.macro : [];
+    const bbUpper = showBollingerBands ? visibleBb.upper : [];
+    const bbLower = showBollingerBands ? visibleBb.lower : [];
+    const emaPrices = [...fastEmas, ...slowEmas, ...macroEmas, ...bbUpper, ...bbLower].filter(
+      (value): value is number => value !== null && Number.isFinite(value),
+    );
+    if (emaPrices.length === 0) {
+      return { min: model.priceMin, max: model.priceMax };
+    }
+    const min = Math.min(model.priceMin, ...emaPrices);
+    const max = Math.max(model.priceMax, ...emaPrices);
+    if (min === model.priceMin && max === model.priceMax) {
+      return { min, max };
+    }
+    const pad = (max - min) * 0.02 || 1;
+    return { min: Math.max(0, min - pad), max: max + pad };
+  }, [model.priceMax, model.priceMin, showEma20, showEma50, showEma200, showBollingerBands, visibleEma, visibleBb]);
 
   // Interaction plumbing: handlers read live values through refs so the
   // native wheel listener (registered once, non-passive so preventDefault
@@ -313,17 +661,36 @@ export function TradeSetupChart({
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       if (lenRef.current === 0) return;
+      const point = svgPoint(svgRef.current, e.clientX, e.clientY);
+      const isOverPriceAxis =
+        point !== null &&
+        isChartPriceAxisPoint(
+          point.x,
+          point.y,
+          projXRef.current,
+          VB_W - PAD_X,
+          CHART_TOP,
+          CHART_BOTTOM,
+        );
+      const intent = resolveChartWheelIntent(
+        e.deltaX,
+        e.deltaY,
+        isOverPriceAxis,
+      );
+
+      // Vertical wheel gestures over the plot belong to the dialog scroller.
+      if (intent === "scroll") return;
+
       e.preventDefault();
       const cur = vpRef.current;
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      if (intent === "pan") {
         // Horizontal trackpad swipe → pan.
         let shift = Math.round((e.deltaX / 300) * cur.span);
         if (shift === 0) shift = e.deltaX > 0 ? 1 : -1;
         applyViewport(cur.start + shift, cur.span);
       } else {
-        // Vertical wheel → zoom, keeping the candle under the cursor put.
-        const rect = el.getBoundingClientRect();
-        const vbX = ((e.clientX - rect.left) / rect.width) * VB_W;
+        // Price-axis wheel → zoom, anchored at the latest visible candle.
+        const vbX = point?.x ?? projXRef.current;
         const frac = Math.min(
           Math.max((vbX - CHART_LEFT) / (projXRef.current - CHART_LEFT), 0),
           1,
@@ -351,16 +718,26 @@ export function TradeSetupChart({
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     const el = chartRef.current;
+    const point = svgPoint(svgRef.current, e.clientX, e.clientY);
 
     // Free-cursor Y for the horizontal crosshair (desktop hover only). Uses
     // the SVG's own rect — the wrapper also spans the legend strip above it.
     if ((!drag || !drag.moved) && e.pointerType !== "touch") {
-      const svg = svgRef.current;
-      if (svg) {
-        const r = svg.getBoundingClientRect();
-        const vbY = Math.round(((e.clientY - r.top) / r.height) * VB_H);
-        setHoverY(vbY >= CHART_TOP && vbY <= CHART_BOTTOM ? vbY : null);
-      }
+      const vbY = point ? Math.round(point.y) : null;
+      setHoverY(
+        vbY !== null && vbY >= CHART_TOP && vbY <= CHART_BOTTOM ? vbY : null,
+      );
+      setOverPriceAxis(
+        point !== null &&
+          isChartPriceAxisPoint(
+            point.x,
+            point.y,
+            projXRef.current,
+            VB_W - PAD_X,
+            CHART_TOP,
+            CHART_BOTTOM,
+          ),
+      );
     }
 
     if (!drag || drag.pointerId !== e.pointerId || !el) return;
@@ -387,6 +764,7 @@ export function TradeSetupChart({
   const onPointerLeave = () => {
     setHoverY(null);
     setHoveredCandle(null);
+    setOverPriceAxis(false);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
@@ -419,16 +797,62 @@ export function TradeSetupChart({
 
   const y = (price: number) =>
     CHART_TOP +
-    (1 - priceToRatio(price, model.priceMin, model.priceMax)) * CHART_H;
+    (1 - priceToRatio(price, priceDomain.min, priceDomain.max)) * CHART_H;
 
   // Inverse of y(): the price at a chart Y — for the crosshair price pill.
   const priceFromY = (yc: number) => {
     const ratio = 1 - (yc - CHART_TOP) / CHART_H;
-    return model.priceMin + ratio * (model.priceMax - model.priceMin);
+    return priceDomain.min + ratio * (priceDomain.max - priceDomain.min);
   };
 
   // Precompute candle geometry.
   const slot = view.length > 0 ? (PROJ_X - CHART_LEFT) / view.length : 0;
+  const emaPath = (values: (number | null)[]) => {
+    let path = "";
+    for (let i = 0; i < values.length; i++) {
+      const value = values[i];
+      if (value === null || !Number.isFinite(value)) continue;
+      const x = CHART_LEFT + (i + 0.5) * slot;
+      path += `${path ? " L" : "M"}${x} ${y(value)}`;
+    }
+    return path;
+  };
+  const emaFastPath = showEma20 ? emaPath(visibleEma.fast) : "";
+  const emaSlowPath = showEma50 ? emaPath(visibleEma.slow) : "";
+  const emaMacroPath = showEma200 ? emaPath(visibleEma.macro) : "";
+  const bbUpperPath = showBollingerBands ? emaPath(visibleBb.upper) : "";
+  const bbLowerPath = showBollingerBands ? emaPath(visibleBb.lower) : "";
+
+  const bbChannelPath = useMemo(() => {
+    if (!showBollingerBands) return "";
+    let topPath = "";
+    let bottomPath = "";
+    for (let i = 0; i < visibleBb.upper.length; i++) {
+      const u = visibleBb.upper[i];
+      const l = visibleBb.lower[i];
+      if (u === null || l === null || !Number.isFinite(u) || !Number.isFinite(l)) continue;
+      const x = CHART_LEFT + (i + 0.5) * slot;
+      topPath += `${topPath ? " L" : "M"}${x} ${y(u)}`;
+      bottomPath = ` L${x} ${y(l)}` + bottomPath;
+    }
+    return topPath ? topPath + bottomPath + " Z" : "";
+  }, [showBollingerBands, visibleBb.upper, visibleBb.lower, slot, y]);
+
+  const rsiPath = useMemo(() => {
+    if (!showRsi) return "";
+    const panelTop = CHART_BOTTOM - CHART_H * 0.25;
+    const panelH = CHART_H * 0.22;
+    let path = "";
+    for (let i = 0; i < visibleRsi.length; i++) {
+      const rsi = visibleRsi[i];
+      if (rsi === null || !Number.isFinite(rsi)) continue;
+      const x = CHART_LEFT + (i + 0.5) * slot;
+      const rsiY = panelTop + (1 - rsi / 100) * panelH;
+      path += `${path ? " L" : "M"}${x} ${rsiY}`;
+    }
+    return path;
+  }, [showRsi, visibleRsi, slot]);
+
   const candleGeo = view.map((c, i) => {
     const cx = CHART_LEFT + (i + 0.5) * slot;
     const up = c.close >= c.open;
@@ -512,12 +936,14 @@ export function TradeSetupChart({
     return (idx: number) =>
       markerGeo.length > 1 && order.indexOf(idx) < markerGeo.length / 2;
   })();
-
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div
         ref={chartRef}
-        className="relative w-full cursor-grab active:cursor-grabbing select-none"
+        className={cn(
+          "relative w-full select-none active:cursor-grabbing",
+          overPriceAxis ? "cursor-ns-resize" : "cursor-crosshair",
+        )}
         style={{ touchAction: "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -538,7 +964,7 @@ export function TradeSetupChart({
             aria-label={t("dialog.chart_restore")}
             className="absolute right-2 top-2 z-10 cursor-pointer bg-background/80 backdrop-blur-sm gap-1"
           >
-            <RotateCcw className="h-3 w-3" />
+            <RotateCcw data-icon="inline-start" />
             <span>{t("dialog.chart_restore")}</span>
           </Button>
         )}
@@ -546,7 +972,6 @@ export function TradeSetupChart({
           {/* @container so the HTML legend can size its font in cqw to match
               the SVG text, which scales with the same width (viewBox 760). */}
           <CardContent className="@container">
-
             {legendCandle &&
               (() => {
                 const up = legendCandle.close >= legendCandle.open;
@@ -638,19 +1063,21 @@ export function TradeSetupChart({
               </text>
 
               {/* price axis: horizontal gridlines + right-gutter labels */}
-              {priceTicks(model.priceMin, model.priceMax).map((p, i) => {
+              {priceTicks(priceDomain.min, priceDomain.max).map((p, i) => {
                 const py = y(p);
                 return (
                   <g key={`price-tick-${i}`}>
-                    <line
-                      x1={CHART_LEFT}
-                      y1={py}
-                      x2={PROJ_X}
-                      y2={py}
-                      className="stroke-border"
-                      strokeWidth={1}
-                      opacity={0.5}
-                    />
+                    {showGrid && (
+                      <line
+                        x1={CHART_LEFT}
+                        y1={py}
+                        x2={PROJ_X}
+                        y2={py}
+                        className="stroke-border"
+                        strokeWidth={1}
+                        opacity={0.5}
+                      />
+                    )}
                     <text
                       x={PROJ_X + 4}
                       y={py}
@@ -672,15 +1099,17 @@ export function TradeSetupChart({
                   i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle";
                 return (
                   <g key={`date-tick-${idx}`}>
-                    <line
-                      x1={cx}
-                      y1={CHART_TOP}
-                      x2={cx}
-                      y2={CHART_BOTTOM}
-                      className="stroke-border"
-                      strokeWidth={1}
-                      opacity={0.5}
-                    />
+                    {showGrid && (
+                      <line
+                        x1={cx}
+                        y1={CHART_TOP}
+                        x2={cx}
+                        y2={CHART_BOTTOM}
+                        className="stroke-border"
+                        strokeWidth={1}
+                        opacity={0.5}
+                      />
+                    )}
                     <text
                       x={cx}
                       y={CHART_BOTTOM + 12}
@@ -695,20 +1124,24 @@ export function TradeSetupChart({
               })}
 
               {/* profit / risk zone shading */}
-              <rect
-                x={CHART_LEFT}
-                y={profit.top}
-                width={PROJ_X - CHART_LEFT}
-                height={profit.height}
-                className="fill-emerald-400/10"
-              />
-              <rect
-                x={CHART_LEFT}
-                y={risk.top}
-                width={PROJ_X - CHART_LEFT}
-                height={risk.height}
-                className="fill-rose-400/10"
-              />
+              {showZones && (
+                <>
+                  <rect
+                    x={CHART_LEFT}
+                    y={profit.top}
+                    width={PROJ_X - CHART_LEFT}
+                    height={profit.height}
+                    className="fill-emerald-400/10"
+                  />
+                  <rect
+                    x={CHART_LEFT}
+                    y={risk.top}
+                    width={PROJ_X - CHART_LEFT}
+                    height={risk.height}
+                    className="fill-rose-400/10"
+                  />
+                </>
+              )}
 
               {/* crosshair guide lines (behind the candles; the value pills
                   draw last so they sit on top of everything). Both lines share
@@ -742,7 +1175,9 @@ export function TradeSetupChart({
               {candleGeo.map((g, i) => (
                 <g
                   key={i}
-                  className={g.up ? PALETTE.positive.text : PALETTE.negative.text}
+                  className={
+                    g.up ? PALETTE.positive.text : PALETTE.negative.text
+                  }
                 >
                   <line
                     x1={g.cx}
@@ -757,10 +1192,134 @@ export function TradeSetupChart({
                     y={g.bodyTop}
                     width={g.bodyW}
                     height={g.bodyH}
-              className="fill-current"
+                    className="fill-current"
                   />
                 </g>
               ))}
+
+              {/* Volume bars at the base of the chart */}
+              {showVolume &&
+                maxVolume > 0 &&
+                candleGeo.map((g, i) => {
+                  const vol = g.candle.volume ?? 0;
+                  if (vol <= 0) return null;
+                  const barH = (vol / maxVolume) * (CHART_H * 0.22);
+                  const barY = CHART_BOTTOM - barH;
+                  return (
+                    <rect
+                      key={`vol-${i}`}
+                      x={g.cx - g.bodyW / 2}
+                      y={barY}
+                      width={g.bodyW}
+                      height={barH}
+                      className={cn(
+                        "pointer-events-none opacity-25",
+                        g.up ? "fill-emerald-400" : "fill-rose-400",
+                      )}
+                    />
+                  );
+                })}
+
+              {/* Bollinger Bands Overlay */}
+              {bbChannelPath && (
+                <path
+                  d={bbChannelPath}
+                  className="pointer-events-none fill-sky-500/10"
+                />
+              )}
+              {bbUpperPath && (
+                <path
+                  d={bbUpperPath}
+                  className="pointer-events-none fill-none stroke-sky-400/60"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                />
+              )}
+              {bbLowerPath && (
+                <path
+                  d={bbLowerPath}
+                  className="pointer-events-none fill-none stroke-sky-400/60"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                />
+              )}
+
+              {/* Trend overlays: fast = chart accent, slow = warning amber, macro = white. */}
+              {emaFastPath && (
+                <path
+                  d={emaFastPath}
+                  className="pointer-events-none fill-none stroke-chart-2"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+              {emaSlowPath && (
+                <path
+                  d={emaSlowPath}
+                  className="pointer-events-none fill-none"
+                  stroke={PALETTE.warning.fill}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+              {emaMacroPath && (
+                <path
+                  d={emaMacroPath}
+                  className="pointer-events-none fill-none stroke-white"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* RSI Sub-Panel */}
+              {showRsi && (
+                <g className="pointer-events-none">
+                  <rect
+                    x={CHART_LEFT}
+                    y={CHART_BOTTOM - CHART_H * 0.25}
+                    width={PROJ_X - CHART_LEFT}
+                    height={CHART_H * 0.22}
+                    className="fill-background/85 stroke-border/50"
+                    strokeWidth={1}
+                    rx={4}
+                  />
+                  <line
+                    x1={CHART_LEFT}
+                    y1={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.7) * (CHART_H * 0.22)}
+                    x2={PROJ_X}
+                    y2={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.7) * (CHART_H * 0.22)}
+                    className="stroke-rose-400/60"
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
+                  />
+                  <line
+                    x1={CHART_LEFT}
+                    y1={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.3) * (CHART_H * 0.22)}
+                    x2={PROJ_X}
+                    y2={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.3) * (CHART_H * 0.22)}
+                    className="stroke-emerald-400/60"
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
+                  />
+                  {rsiPath && (
+                    <path
+                      d={rsiPath}
+                      className="fill-none stroke-purple-400"
+                      strokeWidth={1.5}
+                    />
+                  )}
+                  <text
+                    x={CHART_LEFT + 6}
+                    y={CHART_BOTTOM - CHART_H * 0.25 + 12}
+                    className="fill-muted-foreground text-[9px] font-mono"
+                  >
+                    RSI (14)
+                  </text>
+                </g>
+              )}
 
               {/* level lines + labels */}
               {model.levels.map((lvl) => {
@@ -769,7 +1328,7 @@ export function TradeSetupChart({
                 return (
                   <g
                     key={lvl.key}
-                    className={cn(LEVEL_COLOR[lvl.kind], "cursor-default")}
+                    className={LEVEL_COLOR[lvl.kind]}
                     onMouseEnter={() => setHoveredLevel(lvl.key)}
                     onMouseLeave={() => setHoveredLevel(null)}
                   >
@@ -1047,9 +1606,9 @@ export function TradeSetupChart({
               {lvl.kind !== "entry" && (
                 <span
                   className={cn(
-                     "text-[10px] font-medium",
-                     LEVEL_COLOR[lvl.kind],
-                   )}
+                    "text-[10px] font-medium",
+                    LEVEL_COLOR[lvl.kind],
+                  )}
                 >
                   {lvl.pctFromCurrent >= 0 ? "+" : ""}
                   {lvl.pctFromCurrent.toFixed(2)}%

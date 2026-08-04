@@ -93,14 +93,41 @@ function makeCandles(count, values = {}) {
   }));
 }
 
-test("BTC.D and quote contexts expose direction and required formatting", async () => {
-  const { buildMarketContextByAssetClass } = await loadAdapter();
+function makeDailyAsset(symbol, closes) {
+  return {
+    ...makeAsset({ symbol, price: closes.at(-1) }),
+    timestamps: closes.map((_, index) => T0_SECONDS + index * DAY_SECONDS),
+    quoteIndicators: {
+      open: closes,
+      high: closes,
+      low: closes,
+      close: closes,
+      volume: closes.map(() => 1_000),
+    },
+  };
+}
+
+test("BTC.D and index contexts expose direction and required formatting", async () => {
+  const { buildMarketContextByAssetClass, MARKET_CONTEXT_QUOTE_SYMBOLS } =
+    await loadAdapter();
+  assert.deepEqual([...MARKET_CONTEXT_QUOTE_SYMBOLS], [
+    "^VIX",
+    "DX-Y.NYB",
+    "GC=F",
+    "SI=F",
+    "CL=F",
+    "NG=F",
+    "HG=F",
+  ]);
   const contexts = buildMarketContextByAssetClass(
     [
       makeAsset({ symbol: "^VIX", price: 15.2, changePercent: -2.4 }),
       makeAsset({ symbol: "DX-Y.NYB", price: 104.28, changePercent: 0 }),
-      makeAsset({ symbol: "GC=F", price: 2350, changePercent: 1.2 }),
-      makeAsset({ symbol: "HG=F", price: 4.2, changePercent: 0.5 }),
+      makeDailyAsset("GC=F", [100, 101, 102, 103, 104, 105]),
+      makeDailyAsset("SI=F", [100, 100, 100, 100, 100, 100]),
+      makeDailyAsset("CL=F", [100, 101, 102, 103, 104, 106]),
+      makeDailyAsset("NG=F", [100, 100, 101, 101, 102, 102]),
+      makeDailyAsset("HG=F", [100, 100, 101, 101, 103, 104]),
     ],
     null,
     {
@@ -125,15 +152,26 @@ test("BTC.D and quote contexts expose direction and required formatting", async 
   assert.equal(contexts["us-stock"].precision, 1);
   assert.equal(contexts.forex.direction, "flat");
   assert.equal(contexts.forex.precision, 2);
-  assert.equal(contexts.commodity.name, "Copper Gold Ratio");
-  assert.equal(contexts.commodity.direction, "down");
-  assert.equal(contexts.commodity.precision, 5);
+  assert.equal(contexts.commodity.symbol, "GC=F/COMMODITY_BASKET");
+  assert.equal(contexts.commodity.name, "Gold Strength Index");
+  assert.equal(contexts.commodity.value, 70);
+  assert.equal(contexts.commodity.changePercent, 2);
+  assert.equal(contexts.commodity.direction, "up");
+  assert.equal(contexts.commodity.precision, 1);
   assert.equal(contexts.commodity.kind, "quote");
   assert.notStrictEqual(
     contexts.forex,
     contexts.commodity,
-    "Commodity now uses the Copper/Gold ratio, not DXY",
+    "Commodity uses Gold Strength Index, not DXY",
   );
+
+  const incompleteCommodityBasket = buildMarketContextByAssetClass(
+    [makeDailyAsset("GC=F", [100, 101, 102, 103, 104, 105])],
+    null,
+    null,
+    NOW_MS,
+  );
+  assert.equal(incompleteCommodityBasket.commodity, null);
 });
 
 test("BTC.D keeps its value without a delta and fails closed without global data", async () => {

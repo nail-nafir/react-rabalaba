@@ -1,10 +1,10 @@
+import { DEFAULT_COMMODITY_TICKERS } from "@/constants/assets";
 import { IDX_BENCHMARK_SYMBOL } from "@/constants/idx";
 import {
-  COPPER_SYMBOL,
   DXY_SYMBOL,
-  GOLD_SYMBOL,
   VIX_SYMBOL,
 } from "@/constants/us";
+import { computeWindowReturns } from "@/features/engine/relative-strength";
 import type { UnifiedAsset } from "@/types/asset";
 import type {
   Dominance,
@@ -16,6 +16,7 @@ import type {
 import type { YahooChartResult } from "@/services/api/yahoo-finance";
 import {
   normalizeYahooCandles,
+  resampleCandlesToDaily,
   type NormalizedYahooCandle,
 } from "@/services/adapters/yahoo-candles";
 
@@ -24,12 +25,16 @@ import {
 export const IHSG_VOLATILITY_LOOKBACK_DAYS = 30;
 export const IHSG_VOLATILITY_CHANGE_OFFSET_DAYS = 5;
 
-/** Module-level and unique so Forex and Commodity never trigger two DXY queries. */
+const GOLD_SYMBOL = DEFAULT_COMMODITY_TICKERS[0];
+const COMMODITY_PEER_SYMBOLS = DEFAULT_COMMODITY_TICKERS.slice(1);
+const MIN_COMMODITY_PEERS = 3;
+const RELATIVE_STRENGTH_SCORE_SCALE = 10;
+
+/** One canonical quote per market context; shared through React Query. */
 export const MARKET_CONTEXT_QUOTE_SYMBOLS = [
   VIX_SYMBOL,
   DXY_SYMBOL,
-  GOLD_SYMBOL,
-  COPPER_SYMBOL,
+  ...DEFAULT_COMMODITY_TICKERS,
 ] as const;
 
 const DAY_MS = 86_400_000;
@@ -58,6 +63,14 @@ function hasUsableCandle(asset: UnifiedAsset): boolean {
       candle.low > 0 &&
       candle.close > 0,
   );
+}
+
+function oneWeekReturn(asset: UnifiedAsset | null | undefined): number | undefined {
+  if (!asset) return undefined;
+  const dailyCandles = resampleCandlesToDaily(
+    normalizeYahooCandles(asset.quoteIndicators, asset.timestamps),
+  );
+  return computeWindowReturns(dailyCandles.map((candle) => candle.close)).r1w;
 }
 
 export function marketContextDirection(
@@ -296,59 +309,8 @@ export function adaptIhsgVolatilityMarketContext(
 }
 
 /**
- * Build a Copper/Gold ratio context from two validated quotes. Reuses
- * adaptQuoteMarketContext's staleness/candle validation on each leg, then
- * derives the ratio and its relative change. A rising ratio = risk-on
- * (industrial demand outpacing the safe haven); falling = risk-off.
- */
-function adaptCopperGoldRatioContext(
-  copperAsset: UnifiedAsset | null | undefined,
-  goldAsset: UnifiedAsset | null | undefined,
-  nowMs: number,
-): QuoteMarketContext | null {
-  const copper = adaptQuoteMarketContext(copperAsset, {
-    precision: 2,
-    nowMs,
-    name: "Copper",
-  });
-  const gold = adaptQuoteMarketContext(goldAsset, {
-    precision: 2,
-    nowMs,
-    name: "Gold",
-  });
-  if (!copper || !gold || gold.value === 0) return null;
-
-  const ratio = copper.value / gold.value;
-  if (!Number.isFinite(ratio) || ratio <= 0) return null;
-
-  if (
-    copper.changePercent === undefined ||
-    gold.changePercent === undefined
-  ) {
-    return null;
-  }
-
-  const denominatorMove = 1 + gold.changePercent / 100;
-  const changePercent =
-    denominatorMove !== 0
-      ? ((1 + copper.changePercent / 100) / denominatorMove - 1) * 100
-      : 0;
-
-  return {
-    kind: "quote",
-    symbol: `${COPPER_SYMBOL}/${GOLD_SYMBOL}`,
-    name: "Copper Gold Ratio",
-    value: ratio,
-    changePercent,
-    direction: marketContextDirection(changePercent),
-    precision: 5,
-    timestamp: Math.max(copper.timestamp, gold.timestamp),
-  };
-}
-
-/**
- * Assemble all five contexts. DXY feeds Forex; the Copper/Gold ratio feeds
- * Commodity. Both reuse the shared per-symbol cache via MARKET_CONTEXT_QUOTE_SYMBOLS.
+ * Assemble all five contexts. DXY feeds Forex and the commodity basket feeds
+ * Gold Strength Index; all quotes reuse the shared per-symbol cache.
  */
 export function buildMarketContextByAssetClass(
   assets: UnifiedAsset[],
@@ -369,17 +331,60 @@ export function buildMarketContextByAssetClass(
     nowMs,
     name: "US Dollar Index",
   });
-  const copperGoldRatio = adaptCopperGoldRatioContext(
-    bySymbol.get(COPPER_SYMBOL),
-    bySymbol.get(GOLD_SYMBOL),
+  const goldQuote = adaptQuoteMarketContext(bySymbol.get(GOLD_SYMBOL), {
+    precision: 1,
     nowMs,
+    name: "Gold",
+  });
+  const goldReturn = oneWeekReturn(bySymbol.get(GOLD_SYMBOL));
+  const peerReturns = COMMODITY_PEER_SYMBOLS.map((symbol) => {
+    const quote = adaptQuoteMarketContext(bySymbol.get(symbol), {
+      precision: 1,
+      nowMs,
+      name: symbol,
+    });
+    const oneWeek = oneWeekReturn(bySymbol.get(symbol));
+    return quote && oneWeek !== undefined
+      ? { oneWeek, timestamp: quote.timestamp }
+      : null;
+  }).filter(
+    (peer): peer is { oneWeek: number; timestamp: number } => peer !== null,
   );
+
+  let commodityRelativeStrength: QuoteMarketContext | null = null;
+  if (
+    goldQuote &&
+    goldReturn !== undefined &&
+    peerReturns.length >= MIN_COMMODITY_PEERS
+  ) {
+    const peerAverage =
+      peerReturns.reduce((sum, peer) => sum + peer.oneWeek, 0) /
+      peerReturns.length;
+    const excessReturn = goldReturn - peerAverage;
+    const value = Math.min(
+      100,
+      Math.max(0, 50 + excessReturn * RELATIVE_STRENGTH_SCORE_SCALE),
+    );
+    commodityRelativeStrength = {
+      kind: "quote",
+      symbol: "GC=F/COMMODITY_BASKET",
+      name: "Gold Strength Index",
+      value,
+      changePercent: excessReturn,
+      direction: marketContextDirection(excessReturn),
+      precision: 1,
+      timestamp: Math.max(
+        goldQuote.timestamp,
+        ...peerReturns.map((peer) => peer.timestamp),
+      ),
+    };
+  }
 
   return {
     crypto: cryptoDominance,
     "us-stock": vix,
     "id-stock": ihsgVolatility,
     forex: dxy,
-    commodity: copperGoldRatio,
+    commodity: commodityRelativeStrength,
   };
 }

@@ -569,7 +569,7 @@ function getLabel(cardId: string, t: (key: string) => string) {
     case "commodities":
       return "Gold USD";
     case "forex":
-      return "USD / IDR";
+      return "USD IDR";
     default:
       return t("market.index_fallback");
   }

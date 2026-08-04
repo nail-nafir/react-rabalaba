@@ -21,10 +21,19 @@ export function useCryptoDominance() {
     gcTime: 3_600_000, // 1 h — keep stale data in memory even after unmount
     refetchInterval: 1_800_000,
     retry: (failureCount, error) => {
-      if (error instanceof ApiError && error.status < 500) return false;
+      if (
+        error instanceof ApiError &&
+        error.status < 500 &&
+        error.status !== 429
+      ) {
+        return false;
+      }
       return failureCount < 3;
     },
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000), // 1 s → 2 s → 4 s
+    retryDelay: (attempt, error) =>
+      error instanceof ApiError && error.status === 429
+        ? 30_000 * (attempt + 1)
+        : Math.min(1000 * 2 ** attempt, 8000),
     placeholderData: (prev) => prev, // keep the previous context visible on refetch
     meta: { silent: true }, // optional context; handled gracefully if it fails
   });

@@ -1,4 +1,4 @@
-import { useMemo, type ReactElement } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useMarketData,
@@ -20,7 +20,10 @@ import {
   formatDayMonth,
   formatClock,
 } from "@/lib/formatters";
-import { TradeSetupChart } from "@/features/trading-plan/components/trade-setup-chart";
+import {
+  TradeSetupChart,
+  TradeSetupChartSettings,
+} from "@/features/trading-plan/components/trade-setup-chart";
 import { PercentageChange } from "@/components/shared/percentage-change";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -98,6 +101,14 @@ function TradeDetailReadyDialog({
   trade: FollowedTrade;
 }) {
   const { t, i18n } = useTranslation();
+  const [showEma20, setShowEma20] = useState(true);
+  const [showEma50, setShowEma50] = useState(true);
+  const [showEma200, setShowEma200] = useState(false);
+  const [showBollingerBands, setShowBollingerBands] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
+  const [showRsi, setShowRsi] = useState(false);
+  const [showZones, setShowZones] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
 
   const isClosed = trade.status !== "open";
 
@@ -378,7 +389,7 @@ function TradeDetailReadyDialog({
 
         <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
           {/* Trading Plan Chart — uses the saved setup, not the live signal.
-              The header (title + window toggle + share) stays mounted through
+              The header (title + settings + share) stays mounted through
               loading/empty states so the toggle can't strand the user in a
               mode with no way back. */}
           <div className="space-y-4">
@@ -388,18 +399,39 @@ function TradeDetailReadyDialog({
                 <h3 className="text-sm font-semibold">{chartTitle}</h3>
               </div>
               <div className="flex items-center gap-2">
+                <TradeSetupChartSettings
+                  showEma20={showEma20}
+                  onShowEma20Change={setShowEma20}
+                  showEma50={showEma50}
+                  onShowEma50Change={setShowEma50}
+                  showEma200={showEma200}
+                  onShowEma200Change={setShowEma200}
+                  showBollingerBands={showBollingerBands}
+                  onShowBollingerBandsChange={setShowBollingerBands}
+                  showVolume={showVolume}
+                  onShowVolumeChange={setShowVolume}
+                  showRsi={showRsi}
+                  onShowRsiChange={setShowRsi}
+                  showZones={showZones}
+                  onShowZonesChange={setShowZones}
+                  showGrid={showGrid}
+                  onShowGridChange={setShowGrid}
+                  disabled={chartLoading || candles.length === 0}
+                />
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon-sm"
                   onClick={handleShare}
                   disabled={isSharing || chartLoading || candles.length === 0}
                   title={t("dialog.share")}
                   aria-label={t("dialog.share")}
+                  className="size-11 cursor-pointer sm:size-7"
                 >
                   {isSharing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 data-icon="inline-start" className="animate-spin" />
                   ) : (
-                    <Share2 className="h-4 w-4" />
+                    <Share2 data-icon="inline-start" />
                   )}
                 </Button>
               </div>
@@ -418,6 +450,14 @@ function TradeDetailReadyDialog({
                 assetType={trade.assetType}
                 currentPrice={displayPrice}
                 markers={markers}
+                showEma20={showEma20}
+                showEma50={showEma50}
+                showEma200={showEma200}
+                showBollingerBands={showBollingerBands}
+                showVolume={showVolume}
+                showRsi={showRsi}
+                showZones={showZones}
+                showGrid={showGrid}
               />
             ) : (
               <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">

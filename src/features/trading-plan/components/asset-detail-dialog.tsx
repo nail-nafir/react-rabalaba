@@ -16,7 +16,7 @@ import {
 import { enrichAsset } from "@/features/engine/enrichment";
 import { resolveAnalysisText } from "@/features/engine/analysis-text";
 import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
-import { TradeSetupChart } from "./trade-setup-chart";
+import { TradeSetupChart, TradeSetupChartSettings } from "./trade-setup-chart";
 import { useShareSetup } from "../hooks/use-share-setup";
 
 import {
@@ -265,6 +265,14 @@ function AssetDetailDialogContent({
   const changePercent = asset?.changePercent ?? 0;
 
   const { isSharing, shareSetup } = useShareSetup();
+  const [showEma20, setShowEma20] = useState(true);
+  const [showEma50, setShowEma50] = useState(true);
+  const [showEma200, setShowEma200] = useState(false);
+  const [showBollingerBands, setShowBollingerBands] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
+  const [showRsi, setShowRsi] = useState(false);
+  const [showZones, setShowZones] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
 
   const handleShare = () => {
     if (!outlook || !tradingPlan || !asset || !querySymbol) return;
@@ -453,18 +461,41 @@ function AssetDetailDialogContent({
                 </div>
                 {tradingPlan && outlook.signal !== "neutral" && (
                   <div className="flex items-center gap-1">
+                    <TradeSetupChartSettings
+                      showEma20={showEma20}
+                      onShowEma20Change={setShowEma20}
+                      showEma50={showEma50}
+                      onShowEma50Change={setShowEma50}
+                      showEma200={showEma200}
+                      onShowEma200Change={setShowEma200}
+                      showBollingerBands={showBollingerBands}
+                      onShowBollingerBandsChange={setShowBollingerBands}
+                      showVolume={showVolume}
+                      onShowVolumeChange={setShowVolume}
+                      showRsi={showRsi}
+                      onShowRsiChange={setShowRsi}
+                      showZones={showZones}
+                      onShowZonesChange={setShowZones}
+                      showGrid={showGrid}
+                      onShowGridChange={setShowGrid}
+                    />
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon-sm"
                       onClick={handleShare}
                       disabled={isSharing}
                       title={t("dialog.share")}
                       aria-label={t("dialog.share")}
+                      className="size-11 cursor-pointer sm:size-7"
                     >
                       {isSharing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2
+                          data-icon="inline-start"
+                          className="animate-spin"
+                        />
                       ) : (
-                        <Share2 className="h-4 w-4" />
+                        <Share2 data-icon="inline-start" />
                       )}
                     </Button>
                   </div>
@@ -504,6 +535,14 @@ function AssetDetailDialogContent({
                   signal={outlook.signal}
                   assetType={asset.assetType}
                   currentPrice={currentPrice}
+                  showEma20={showEma20}
+                  showEma50={showEma50}
+                  showEma200={showEma200}
+                  showBollingerBands={showBollingerBands}
+                  showVolume={showVolume}
+                  showRsi={showRsi}
+                  showZones={showZones}
+                  showGrid={showGrid}
                 />
               )}
             </div>
