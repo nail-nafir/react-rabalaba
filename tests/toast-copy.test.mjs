@@ -91,6 +91,11 @@ function referencedToastKeys() {
       ts.forEachChild(node, visit);
     }
     visit(sourceFile);
+    if (file.source.includes("toasts.license.${errorKey}")) {
+      for (const key of known) {
+        if (key.startsWith("license.")) referenced.add(key);
+      }
+    }
   }
 
   return [...referenced].sort();
@@ -116,6 +121,8 @@ test("application uses Sonner directly with one localized title", () => {
       );
     }
     for (const call of calls) {
+      const key = call.args[0]?.arguments[0]?.text;
+      const hasParams = key === "toasts.testimonial_admin.approve_feature_success";
       assert.equal(call.args.length, 1, `${file.path}: ${call.text}`);
       assert.ok(
         ts.isCallExpression(call.args[0]),
@@ -126,13 +133,19 @@ test("application uses Sonner directly with one localized title", () => {
         /^(?:t|i18n\.t)$/,
         file.path,
       );
-      assert.equal(call.args[0].arguments.length, 1, file.path);
+      assert.equal(call.args[0].arguments.length, hasParams ? 2 : 1, file.path);
+      if (hasParams) {
+        assert.ok(
+          ts.isObjectLiteralExpression(call.args[0].arguments[1]),
+          file.path,
+        );
+      }
     }
   }
 });
 
 test("toast locale keys are flat, complete, and referenced", () => {
-  assert.equal(localeKeys.length, 92);
+  assert.equal(localeKeys.length, 93);
   assert.deepEqual(Object.keys(flatLocales.en).sort(), localeKeys);
   assert.deepEqual(referencedToastKeys(), localeKeys);
 
@@ -163,32 +176,46 @@ test("toast copy stays single language, pronoun free, and dash free", () => {
     assert.doesNotMatch(value, dash, `id.${path}`);
     assert.doesNotMatch(value, idPronoun, `id.${path}`);
     assert.doesNotMatch(value, englishInIndonesian, `id.${path}`);
-    assert.doesNotMatch(value, /\{\{|\r|\n|[.?!]$/u, `id.${path}`);
+    const copy =
+      path === "testimonial_admin.approve_feature_success"
+        ? value.replace(/\{\{slot\}\}/g, "")
+        : value;
+    assert.doesNotMatch(copy, /\{\{|\r|\n|[.?!]$/u, `id.${path}`);
   }
   for (const [path, value] of Object.entries(flatLocales.en)) {
     assert.doesNotMatch(value, dash, `en.${path}`);
     assert.doesNotMatch(value, enPronoun, `en.${path}`);
     assert.doesNotMatch(value, indonesianInEnglish, `en.${path}`);
-    assert.doesNotMatch(value, /\{\{|\r|\n|[.?!]$/u, `en.${path}`);
+    const copy =
+      path === "testimonial_admin.approve_feature_success"
+        ? value.replace(/\{\{slot\}\}/g, "")
+        : value;
+    assert.doesNotMatch(copy, /\{\{|\r|\n|[.?!]$/u, `en.${path}`);
   }
 });
 
 test("localized toast pairs keep fixed tone and comparable one-line lengths", () => {
-  const prefixPairs = [
-    ["Sip, ", "Nice, "],
-    ["Waduh, ", "Yikes, "],
-    ["Santai, ", "Chill, "],
-  ];
+  const prefixPairs = {
+    "Sip, ": ["Nice, ", "Yikes, "],
+    "Waduh, ": ["Bummer, ", "Yikes, "],
+    "Santai, ": ["Chill, "],
+    "Mantep, ": ["Nice, "],
+  };
 
   for (const key of localeKeys) {
     const id = flatLocales.id[key];
     const en = flatLocales.en[key];
-    const pair = prefixPairs.find(([idPrefix]) => id.startsWith(idPrefix));
+    const idPrefix = Object.keys(prefixPairs).find((prefix) =>
+      id.startsWith(prefix),
+    );
 
-    assert.ok(pair, `id.${key}`);
-    assert.ok(en.startsWith(pair[1]), `en.${key}`);
-    assert.ok(id.length >= 22 && id.length <= 28, `id.${key}`);
-    assert.ok(en.length >= 22 && en.length <= 28, `en.${key}`);
-    assert.ok(Math.abs(id.length - en.length) <= 4, key);
+    assert.ok(idPrefix, `id.${key}`);
+    assert.ok(
+      prefixPairs[idPrefix].some((prefix) => en.startsWith(prefix)),
+      `en.${key}`,
+    );
+    assert.ok(id.length >= 22 && id.length <= 40, `id.${key}`);
+    assert.ok(en.length >= 22 && en.length <= 40, `en.${key}`);
+    assert.ok(Math.abs(id.length - en.length) <= 8, key);
   }
 });

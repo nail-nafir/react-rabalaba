@@ -52,12 +52,7 @@ export function TestimonialSettingsDialog({
     setIsSaving(true);
     try {
       await updateMaxSlots(slotCount);
-      toast.success(
-        t(
-          "admin.testimonials.settings_success",
-          "Pengaturan slot ulasan berhasil disimpan.",
-        ),
-      );
+      toast.success(t("toasts.testimonial_admin.feature_success"));
       setOpen(false);
     } catch {
       toast.error(t("toasts.testimonial_admin.action_error"));

@@ -21,11 +21,9 @@ test.after(async () => {
 });
 
 const SRC = "/src/features/testimonials/schemas/testimonial-schema.ts";
-const translate = (_key, fallback) => fallback;
-
 test("testimonial schema accepts valid content and trims the body", async () => {
-  const { createTestimonialSchema } = await loadModule(SRC);
-  const schema = createTestimonialSchema(translate);
+  const { testimonialSchema } = await loadModule(SRC);
+  const schema = testimonialSchema;
 
   assert.deepEqual(
     schema.parse({
@@ -40,8 +38,8 @@ test("testimonial schema accepts valid content and trims the body", async () => 
 });
 
 test("testimonial schema rejects missing, oversized, and fractional ratings", async () => {
-  const { createTestimonialSchema, TESTIMONIAL_LIMITS } = await loadModule(SRC);
-  const schema = createTestimonialSchema(translate);
+  const { testimonialSchema, TESTIMONIAL_LIMITS } = await loadModule(SRC);
+  const schema = testimonialSchema;
   const valid = {
     body: "RabaLaba membantu saya merapikan proses riset harian.",
     rating: 5,

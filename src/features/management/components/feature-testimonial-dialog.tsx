@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent, type ReactElement } from "react";
+import { useMemo, useState, type MouseEvent, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, Check, Pin } from "lucide-react";
 import { toast } from "sonner";
@@ -71,12 +71,6 @@ export function FeatureTestimonialDialog({
     1;
   const [selectedSlot, setSelectedSlot] = useState(String(firstAvailable));
 
-  useEffect(() => {
-    if (open) {
-      setSelectedSlot(String(firstAvailable));
-    }
-  }, [open, firstAvailable]);
-
   const selectedSlotNumber = Number(selectedSlot);
   const occupiedSlot = featured.find(
     (item) => item.slot === selectedSlotNumber,
@@ -99,11 +93,7 @@ export function FeatureTestimonialDialog({
       setIsSaving(true);
       try {
         await unfeature(submission.id);
-        toast.success(
-          t("toasts.testimonial_admin.unfeatured", {
-            name: submission.display_name,
-          }),
-        );
+        toast.success(t("toasts.testimonial_admin.unfeature_success"));
         setOpen(false);
       } catch {
         toast.error(t("toasts.testimonial_admin.action_error"));
@@ -121,12 +111,7 @@ export function FeatureTestimonialDialog({
     setIsSaving(true);
     try {
       await feature(submission.id, selectedSlotNumber);
-      toast.success(
-        t("toasts.testimonial_admin.featured", {
-          name: submission.display_name,
-          slot: selectedSlotNumber,
-        }),
-      );
+      toast.success(t("toasts.testimonial_admin.feature_success"));
       setOpen(false);
     } catch {
       toast.error(t("toasts.testimonial_admin.action_error"));
@@ -135,19 +120,14 @@ export function FeatureTestimonialDialog({
     }
   };
 
-  const handleConfirmReplacement = async (
+  const handleConfirmReplacementAction = async (
     event: MouseEvent<HTMLButtonElement>,
   ) => {
     event.preventDefault();
     setIsConfirmingReplacement(true);
     try {
       await feature(submission.id, selectedSlotNumber);
-      toast.success(
-        t("toasts.testimonial_admin.featured", {
-          name: submission.display_name,
-          slot: selectedSlotNumber,
-        }),
-      );
+      toast.success(t("toasts.testimonial_admin.feature_success"));
       setReplacementOpen(false);
       setOpen(false);
     } catch {
@@ -184,7 +164,10 @@ export function FeatureTestimonialDialog({
   );
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!isReplacementWorking) setOpen(nextOpen);
+    if (!isReplacementWorking) {
+      if (nextOpen) setSelectedSlot(String(firstAvailable));
+      setOpen(nextOpen);
+    }
   };
 
   const occupiedCount = featured.length;
@@ -388,7 +371,7 @@ export function FeatureTestimonialDialog({
                   <AlertDialogAction
                     disabled={isReplacementWorking}
                     aria-busy={isReplacementWorking}
-                    onClick={handleConfirmReplacement}
+                    onClick={handleConfirmReplacementAction}
                   >
                     <ActionButtonContent
                       label={t("common.actions.replace")}

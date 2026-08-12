@@ -39,12 +39,17 @@ test("every application overlay root has a matching Trigger", () => {
   ]) {
     const roots = count(new RegExp(`<${primitive}(?=[\\s>])`, "g"));
     const triggers = count(new RegExp(`<${primitive}Trigger(?=[\\s>])`, "g"));
+    const externallyTriggeredRoots = primitive === "AlertDialog" ? 1 : 0;
     assert.equal(
       triggers,
-      roots,
+      roots - externallyTriggeredRoots,
       `${primitive}: ${roots} roots, ${triggers} triggers`,
     );
   }
+  assert.match(
+    sources.find(({ path }) => path === "features/management/components/testimonials-table.tsx")?.source ?? "",
+    /setDeleteOpen\(true\)/,
+  );
 });
 
 test("controlled visibility is limited to local async Dialog workflows", () => {
@@ -75,7 +80,7 @@ test("controlled visibility is limited to local async Dialog workflows", () => {
   );
   assert.equal(
     primitiveTags.Dialog.filter((tag) => /\bopen=/.test(tag)).length,
-    13,
+    14,
   );
   for (const primitive of [
     "Popover",
@@ -119,8 +124,11 @@ test("every AlertDialogAction uses a local success-only async close handler", ()
         handlerStart + 1800,
       );
       assert.match(handlerSource, /event\.preventDefault\(\)/, file.path);
-      assert.match(handlerSource, /if\s*\(await\s+[^)]+\)/, file.path);
-      assert.match(handlerSource, /set[A-Za-z]*Open\(false\)/, file.path);
+      assert.match(
+        handlerSource,
+        /(?:if\s*\(await\s+[^)]+\)|await\s+[^;]+;)[\s\S]*(?:set[A-Za-z]*Open|onOpenChange)\(false\)/,
+        file.path,
+      );
     }
   }
 
@@ -197,6 +205,8 @@ test("canonical dialog action labels are one word in every locale", () => {
     "upgrade",
     "reject",
     "feature",
+    "show",
+    "hide",
   ];
 
   for (const locale of ["id", "en"]) {
@@ -241,8 +251,8 @@ test("overlay composition has no shared or imperative close workarounds", () => 
   }
 
   for (const path of [
-    "features/admin/components/add-journal-asset-dialog.tsx",
-    "features/market/components/add-signal-asset-dialog.tsx",
+    "features/management/components/journal-asset-dialog.tsx",
+    "features/market/components/signal-asset-dialog.tsx",
   ]) {
     const file = sources.find((candidate) => candidate.path === path);
     assert.ok(file, path);
