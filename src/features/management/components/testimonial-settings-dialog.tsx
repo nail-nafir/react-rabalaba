@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useAdminTestimonials } from "@/hooks/use-admin-testimonials";
+import { useAdminTestimonials } from "@/features/management/hooks/use-admin-testimonials";
 import { SettingRow } from "./setting-row";
 
 interface TestimonialSettingsDialogProps {

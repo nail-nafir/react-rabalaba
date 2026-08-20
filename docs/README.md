@@ -45,13 +45,14 @@
 | [`tsd/05-edge-functions.md`](tsd/05-edge-functions.md) | 3 Edge Function cron, scheduling/gating, Discord |
 | [`tsd/06-engine-internals.md`](tsd/06-engine-internals.md) | Mendalam: tiap export signals/indicators/contexts/enrichment/backtest + formula |
 | [`tsd/07-deployment.md`](tsd/07-deployment.md) | Build edge, deploy, schedule cron, env vars |
+| [`tsd/08-core-signal-flow-diagrams.md`](tsd/08-core-signal-flow-diagrams.md) | Mermaid flowchart, activity, dan sequence diagram alur sinyal end-to-end |
 
 ### Testing
 
 | File | Topik / Topic |
 |---|---|
 | [`testing/00-overview.md`](testing/00-overview.md) | Framework `node --test`, Vite SSR load real `.ts`, cara run |
-| [`testing/01-coverage-inventory.md`](testing/01-coverage-inventory.md) | 31 file / 306 case map per modul |
+| [`testing/01-coverage-inventory.md`](testing/01-coverage-inventory.md) | 35 file / 325 case map per modul |
 | [`testing/02-gaps-and-conventions.md`](testing/02-gaps-and-conventions.md) | Gap coverage + rekomendasi test baru + convention |
 
 ### Ops

@@ -137,9 +137,9 @@ function makeIdxCtx(overrides = {}) {
 }
 
 test("enrichAsset id-stock: IDX de-rate applies BEFORE the accumulation nudge (combined math)", async () => {
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const { deriveAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   const { ACCUMULATION, IDX_CONTEXT } = await loadModule(
     "/src/constants/signals.ts",
@@ -176,7 +176,7 @@ test("enrichAsset id-stock: IDX de-rate applies BEFORE the accumulation nudge (c
 });
 
 test("enrichAsset id-stock: accumulation attaches even when the signal is neutral", async () => {
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const flowCandles = makeFlowCandles({ days: 21 });
   const asset = makeAsset({
     outlook: makeOutlook({ signal: "neutral", strength: 10 }),
@@ -193,7 +193,7 @@ test("enrichAsset id-stock: accumulation attaches even when the signal is neutra
 });
 
 test("enrichAsset us-stock: accumulation applies (general flow read, not id-only)", async () => {
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const flowCandles = makeFlowCandles({ days: 21 }); // reads as accumulation
   const asset = makeAsset({
     symbol: "AAPL",
@@ -220,12 +220,12 @@ test("enrichAsset us-stock: accumulation applies (general flow read, not id-only
 });
 
 test("enrichAsset crypto: result is identical to the legacy applyCryptoContext → applySmartMoney chain", async () => {
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const { applyCryptoContext } = await loadModule(
-    "/src/features/engine/crypto-context.ts",
+    "/src/core/engine/crypto-context.ts",
   );
   const { applySmartMoney } = await loadModule(
-    "/src/features/engine/smart-money.ts",
+    "/src/core/engine/smart-money.ts",
   );
 
   const asset = makeAsset({
@@ -252,7 +252,7 @@ test("enrichAsset crypto: result is identical to the legacy applyCryptoContext �
 });
 
 test("enrichAsset: idxContext never touches crypto, cryptoContext never touches id-stock", async () => {
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
 
   // Crypto with ONLY idxContext supplied → nothing applies, same reference.
   const crypto = makeAsset({
@@ -268,7 +268,7 @@ test("enrichAsset: idxContext never touches crypto, cryptoContext never touches 
 });
 
 test("enrichAsset: same-reference passthrough when nothing applies", async () => {
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
 
   // US stock with NO candle history: accumulation can't be derived and only
   // crypto/idx contexts are supplied (neither targets us-stock; usContext is
@@ -303,7 +303,7 @@ test("enrichAsset commodity & forex: passthrough — no accumulation, no smartMo
   // asset classes are intentionally excluded from the flow-nudge step, and
   // neither has a top-down context layer, so the asset must come back
   // completely untouched (same reference, no accumulation attached).
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const candles = makeFlowCandles({ days: 21 }); // enough for a valid read
 
   for (const assetType of ["forex", "commodity"]) {
@@ -333,7 +333,7 @@ test("enrichAsset us-stock SHORT + distribution flow: conviction dampened, signa
   // This is the mirror of the LONG+supportive test. Testing via enrichAsset
   // confirms supportsAccumulation() routes us-stock into the flow nudge for
   // SHORT signals too, and that the math doesn't accidentally flip the signal.
-  const { enrichAsset } = await loadModule("/src/features/engine/enrichment.ts");
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
 
   // Heavy down-volume = distribution reads — opposes a LONG but SUPPORTS a
   // SHORT. We want to test the opposing scenario for SHORT, so use the

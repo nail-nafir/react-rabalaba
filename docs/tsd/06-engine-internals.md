@@ -1,7 +1,7 @@
 # TSD 06 — Engine Internals (Mendalam / Deep)
 
-> 🇮🇩 Referensi mendalam engine sinyal: tiap export + formula/threshold. Pure, single-source di `src/features/engine/` + `src/core/`.
-> 🇺🇸 Deep engine reference: every export + formula/threshold. Pure, single-sourced in `src/features/engine/` + `src/core/`.
+> 🇮🇩 Referensi mendalam engine sinyal: tiap export + formula/threshold. Pure, single-source di `src/core/engine/` + `src/core/automation/`.
+> 🇺🇸 Deep engine reference: every export + formula/threshold. Pure, single-sourced in `src/core/engine/` + `src/core/automation/`.
 
 ---
 
@@ -9,32 +9,33 @@
 
 | File | Baris | Export kunci / Key exports |
 |---|---|---|
-| `signals.ts` | 1110 | `computeSignal`, `createUnavailableSignal`, `Outlook`, `SignalInput`, `SignalReasons`, `SignalDataQuality` |
-| `indicators.ts` | 704 | 19 fungsi indikator (lihat bawah) |
+| `signals.ts` | 998 | `computeSignal`, `createUnavailableSignal` |
+| `../types/engine.ts` | 95 | `Outlook`, `SignalInput`, `SignalReasons`, `SignalDataQuality`, `AnalysisText` |
+| `indicators.ts` | 735 | 19 fungsi indikator (lihat bawah) |
 | `regime.ts` | 56 | `classifyRegime` |
-| `backtest.ts` | 364 | `runBacktest`, `BacktestMetrics` |
+| `backtest.ts` | 365 | `runBacktest`, `BacktestMetrics` |
 | `calibration.ts` | 52 | `calibrateConfidence` |
 | `trading-plan.ts` | 141 | `computeTradingPlan` |
-| `crypto-context.ts` | 92 | `deriveCryptoContext`, `applyCryptoContext`, `deriveCryptoRiskState` |
+| `crypto-context.ts` | 83 | `deriveCryptoContext`, `applyCryptoContext`, `deriveCryptoRiskState` |
 | `idx-context.ts` | 96 | `deriveIdxContext`, `applyIdxContext`, `deriveIdxRiskState` |
 | `us-context.ts` | 128 | `deriveUsContext`, `applyUsContext`, `deriveUsRiskState` |
 | `benchmark-derate.ts` | 64 | `tierFor`, `alignmentFor`, `fightsBenchmark`, `applyBenchmarkDerate` |
 | `enrichment.ts` | 171 | `enrichAsset`, `EnrichmentInputs` |
-| `smart-money.ts` | 172 | `derivePositioning`, `applySmartMoney`, `isNeutralPositioning` |
+| `smart-money.ts` | 161 | `derivePositioning`, `applySmartMoney`, `isNeutralPositioning` |
 | `accumulation.ts` | 199 | `deriveAccumulation`, `applyAccumulation`, `supportsAccumulation` |
 | `relative-strength.ts` | 152 | `computeWindowReturns`, `deriveRelativeStrength`, `applyRelativeStrength` |
 | `fundamentals.ts` | 108 | `applyFundamentals` |
-| `analysis-text.ts` | 41 | `AnalysisText`, `resolveAnalysisText` |
-| `../core/auto-journal-core.ts` | 235 | `runAutoJournal`, `AutoJournalPlan`, `JournalClosure` |
-| `../core/asset-discovery-core.ts` | 631 | feed parsers, rankers, `planDiscovery`, `binancePerpBase`, `pickYahooCryptoSymbol`, `dedupeCandidates`, `formatDiscoveryForDiscord` |
-| `../core/context-pipeline.ts` | 128 | `buildEngineContexts`, `passesEmissionGate` |
-| `../core/alerts.ts` | 354 | `buildAutoJournalAlerts`, `formatAlertsForDiscord`, `formatDailySummaryForDiscord` |
-| `../core/period-summary.ts` | 66 | `recapWindow` |
+| `../lib/analysis-text.ts` | 16 | `resolveAnalysisText` UI localization helper |
+| `../core/automation/auto-journal-core.ts` | 235 | `runAutoJournal`, `AutoJournalPlan`, `JournalClosure` |
+| `../core/automation/asset-discovery-core.ts` | 631 | feed parsers, rankers, `planDiscovery`, `binancePerpBase`, `pickYahooCryptoSymbol`, `dedupeCandidates`, `formatDiscoveryForDiscord` |
+| `../core/engine/context-pipeline.ts` | 125 | `buildEngineContexts`, `passesEmissionGate` |
+| `../core/automation/alerts.ts` | 354 | `buildAutoJournalAlerts`, `formatAlertsForDiscord`, `formatDailySummaryForDiscord` |
+| `../core/automation/period-summary.ts` | 66 | `recapWindow` |
 | `../core/edge-engine.ts` | 103 | facade re-export (cron entry) |
 
 ---
 
-## 🧠 signals.ts — `computeSignal(input) → Outlook` (`:175`)
+## 🧠 signals.ts — `computeSignal(input) → Outlook` (`:78`)
 
 ### Pipeline
 1. **Volume gate** — kalau `zeroVolumeRatio > ZERO_VOLUME_MAX_RATIO (0.3)` dalam window 50 → `unreliableVolume=true`; bobot volume didistribusi ulang ke kategori lain.
@@ -213,7 +214,7 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ---
 
-## 🤖 core/auto-journal-core.ts — `runAutoJournal` (`:100`)
+## 🤖 core/automation/auto-journal-core.ts — `runAutoJournal` (`:100`)
 
 `runAutoJournal(assets, openRows, {contexts, recentClosed, now?}) → AutoJournalPlan {inserts, closures}`.
 
@@ -223,13 +224,13 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ---
 
-## 🧭 core/context-pipeline.ts — `buildEngineContexts` (`:128`) + `passesEmissionGate`
+## 🧭 core/engine/context-pipeline.ts — `buildEngineContexts` (`:128`) + `passesEmissionGate`
 
 `buildEngineContexts(assetBySymbol) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. `passesEmissionGate(trade, contexts)` — aligned + benchmark-less always pass; counter-trend gated post-context strength ≥60.
 
 ---
 
-## 🧮 core/asset-discovery-core.ts (631 baris)
+## 🧮 core/automation/asset-discovery-core.ts (631 baris)
 
 - Feed parsers (defensive → null): `parseCgTrending`, `parseBinance24h`, `parseYahooScreener`, `parseYahooSearch`.
 - `binancePerpBase(perp)` — strip USDT, 1000x/1M prefix, keep 1INCH.
@@ -241,7 +242,7 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ---
 
-## 📢 core/alerts.ts (354 baris)
+## 📢 core/automation/alerts.ts (354 baris)
 
 - `buildAutoJournalAlerts(plan)` — inserts→`new_long`/`new_short`, closures→`tp_hit`/`sl_hit`/`reversed` (mirror donut bucket, secured-TP reversal reports AS its TP).
 - `formatAlertsForDiscord` — 🚨 SINYAL → 📢 HASIL, direction-aware % dari entry, label durasi Indonesia.
@@ -250,7 +251,7 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ---
 
-## 🗓️ core/period-summary.ts — `recapWindow(period, refMs) → RecapWindow` (`:66`)
+## 🗓️ core/automation/period-summary.ts — `recapWindow(period, refMs) → RecapWindow` (`:66`)
 
 WIB (UTC+7) calendar-window math. `period ∈ daily|weekly|monthly`. Weekly start Monday (send day Sunday); monthly = WIB calendar month (send day last WIB day). Pure (no Date; `refMs` injected).
 

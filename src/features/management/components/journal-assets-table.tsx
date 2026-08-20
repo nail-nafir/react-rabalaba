@@ -54,9 +54,9 @@ import {
   FilterGroup,
   type FilterOption,
 } from "@/components/shared/filter-group";
-import { useJournalAssets } from "@/hooks/use-journal-assets";
-import { useAdminUsers } from "@/hooks/use-admin-users";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useJournalAssets } from "@/features/management/hooks/use-journal-assets";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
+import { useMarketData } from "@/services/queries/use-market-data";
 import type { JournalAssetRow } from "@/services/supabase/database.types";
 import { ASSET_TYPE_OPTIONS } from "@/constants";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";

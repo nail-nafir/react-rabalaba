@@ -15,7 +15,7 @@ import {
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 import { PALETTE, SCORE_CATEGORIES, CATEGORY_LABEL_KEYS } from "@/constants";
-import type { Outlook } from "@/features/engine/signals";
+import type { Outlook } from "@/types/engine";
 
 const POS = PALETTE.positive.fill;
 const NEG = PALETTE.negative.fill;

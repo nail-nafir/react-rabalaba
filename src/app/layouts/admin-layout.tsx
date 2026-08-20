@@ -1,8 +1,8 @@
 import { useState, type CSSProperties, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Outlet, useLocation, Link } from "react-router-dom";
-import { useAuth } from "@/hooks/use-auth";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { PageLoader } from "@/components/shared/page-loader";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { useTheme } from "@/components/theme-provider";
@@ -64,7 +64,6 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 
 import { Separator } from "@/components/ui/separator";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   Radio,
@@ -204,7 +203,7 @@ export function AdminLayout() {
         ?.label ?? t("admin.console_label", "Dashboard"));
 
   return (
-    <TooltipProvider>
+    <>
       {/* Top progress bar on route change — same primary loader as the public
           layout, which the admin shell was missing. */}
       <PageLoader />
@@ -532,6 +531,6 @@ export function AdminLayout() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </TooltipProvider>
+    </>
   );
 }

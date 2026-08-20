@@ -39,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonSubscriptionPlanRow } from "@/components/shared/skeleton-card";
-import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
+import { useSubscriptionPlans } from "@/features/management/hooks/use-subscription-plans";
 import { pickLocale } from "@/lib/localized";
 import type { SubscriptionPlanRow } from "@/services/supabase/database.types";
 import { cn } from "@/lib/utils";

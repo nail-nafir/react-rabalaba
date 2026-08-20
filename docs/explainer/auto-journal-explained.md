@@ -23,8 +23,8 @@
 | File | 🤖 Peran (ID) | 🤖 Role (EN) |
 |------|--------------|-------------|
 | `supabase/functions/auto-journal/index.ts` | 🦾 **Badan** — fetch Yahoo, baca/tulis DB, jalan terjadwal | 🦾 **Body** — fetches Yahoo, reads/writes DB, runs on schedule |
-| `src/core/auto-journal-core.ts` | 🧠 **Otak** — keputusan: buka/tutup trade (murni, tanpa I/O) | 🧠 **Brain** — decisions: open/close trades (pure, no I/O) |
-| `src/features/follow-trade/lib/follow-trade-model.ts` | 🧠 **Logika dasar** — hitung TP/SL, bikin trade | 🧠 **Core logic** — TP/SL math, build a trade |
+| `src/core/automation/auto-journal-core.ts` | 🧠 **Otak** — keputusan: buka/tutup trade (murni, tanpa I/O) | 🧠 **Brain** — decisions: open/close trades (pure, no I/O) |
+| `src/core/trade/follow-trade-model.ts` | 🧠 **Logika dasar** — hitung TP/SL, bikin trade | 🧠 **Core logic** — TP/SL math, build a trade |
 | `src/core/edge-engine.ts` | 📦 **Pintu/etalase** — re-export otak buat dibundle | 📦 **Façade** — re-exports the brain for bundling |
 | `supabase/functions/auto-journal/_engine.mjs` | 📦 **Otak terbungkus** — hasil build (jangan diedit tangan) | 📦 **Bundled brain** — build output (never hand-edit) |
 | Tabel DB: `journal_trades`, `journal_assets`, `journal_settings` | 📒 **Buku catatan + daftar tugas + jadwal** | 📒 **Notebook + task list + schedule** |

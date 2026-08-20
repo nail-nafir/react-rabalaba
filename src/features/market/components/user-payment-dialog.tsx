@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { usePaymentMethods } from "@/hooks/use-payment-methods";
+import { usePaymentMethods } from "@/features/management/hooks/use-payment-methods";
 import { pickLocale } from "@/lib/localized";
 import { toast } from "sonner";
 import type { ReactElement } from "react";

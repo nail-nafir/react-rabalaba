@@ -34,26 +34,28 @@
 ```
 edge-engine.ts (facade)
     ↓ re-export
-{auto-journal-core, asset-discovery-core, context-pipeline, alerts, period-summary}
+core/automation/{auto-journal-core, asset-discovery-core, alerts, period-summary}
     ↓
-features/engine/* (signals, indicators, regime, 3 contexts, enrichment, backtest, calibration, smart-money, accumulation, relative-strength, fundamentals, trading-plan, analysis-text)
+core/engine/* (signals, indicators, regime, 3 contexts, enrichment, backtest, calibration, smart-money, accumulation, relative-strength, fundamentals, trading-plan)
     ↓
-features/follow-trade/lib (follow-trade-model, trade-chart-window)
+core/trade/{follow-trade-model, journal-mapper} + types/*
     ↓
-services/adapters (yahoo-adapter, yahoo-candles, yahoo-fundamentals) + services/supabase (database.types, journal-mapper)
+core/market/candles + services/adapters (yahoo-adapter, yahoo-fundamentals)
+    ↓
+services/supabase (database.types, journal-mapper façade) + features/*/model
 ```
 
 ---
 
 ## 🔁 Single-source engine — dua rumah / two homes
 
-🇮🇩 "Otak" (engine sinyal/TP-SL di `src/features/engine/` + `src/core/`) **bukan** browser-only & **bukan** server-only — jalan di **dua-duanya**:
+🇮🇩 "Otak" (engine sinyal/TP-SL di `src/core/engine/` + automation core) **bukan** browser-only & **bukan** server-only — jalan di **dua-duanya**:
 - **Browser** → sinyal live di screener (real-time pas buka web).
 - **Cron (Deno)** → nulis jurnal otomatis (di-bundle jadi `_engine.mjs` lewat `npm run build:edge` — esbuild `--bundle --format=esm --platform=neutral --alias:@=./src`).
 
 Satu sumber kode, dua tempat eksekusi. `edge-engine.ts` (`src/core/edge-engine.ts:12`) facade re-export simbol yang cron import.
 
-🇺🇸 The "brain" (signal/TP-SL engine in `src/features/engine/` + `src/core/`) is **neither** browser-only **nor** server-only — it runs in **both**:
+🇺🇸 The "brain" (signal/TP-SL engine in `src/core/engine/` + automation core) is **neither** browser-only **nor** server-only — it runs in **both**:
 - **Browser** → live signals in the screener.
 - **Cron (Deno)** → auto-journal writes (bundled as `_engine.mjs` via `npm run build:edge`).
 

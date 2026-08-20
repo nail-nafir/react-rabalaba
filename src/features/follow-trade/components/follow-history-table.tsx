@@ -26,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketData } from "@/services/queries/use-market-data";
 import {
   buildTradeWinrateSnapshots,
   computePnl,
@@ -38,8 +38,8 @@ import {
   type TradeWinrateSnapshot,
   LIFECYCLE_STATUSES,
   FOLLOW_SIGNALS,
-} from "@/features/follow-trade/lib/follow-trade-model";
-import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
+} from "@/core/trade/follow-trade-model";
+import { normalizeYahooCandles } from "@/core/market/candles";
 import { LifecycleBadge, TpProgress } from "./follow-status";
 import {
   formatPrice,

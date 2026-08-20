@@ -27,11 +27,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/services/supabase/client";
-import { useDisclaimer } from "@/hooks/use-disclaimer";
+import { useDisclaimer } from "@/features/auth/hooks/use-disclaimer";
 import type { DisclaimerRow } from "@/services/supabase/database.types";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
-import { toList } from "../lib/admin-utils";
+import { toList } from "../model/admin-utils";
 
 type ClausePatch = Partial<
   Pick<

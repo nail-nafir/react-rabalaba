@@ -24,7 +24,7 @@ test.after(async () => {
   }
 });
 
-const RS = "/src/features/engine/relative-strength.ts";
+const RS = "/src/core/engine/relative-strength.ts";
 
 function makeOutlook(overrides = {}) {
   return {

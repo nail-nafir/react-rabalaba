@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketData } from "@/services/queries/use-market-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
 import { useUsContext } from "@/services/queries/use-us-context";
@@ -43,7 +43,7 @@ import {
   mapUsEquityCard,
   mapCommoditiesCard,
   mapForexCard,
-} from "../lib/market-pulse-mapper";
+} from "../model/market-pulse-mapper";
 import type { MarketContext, MarketContextDirection } from "@/types/market";
 
 const MARKET_PULSE_SYMBOLS = [

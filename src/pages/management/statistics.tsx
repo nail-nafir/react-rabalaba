@@ -15,9 +15,9 @@ import {
   Minimize2,
   Radio,
 } from "lucide-react";
-import { useAdminUsers } from "@/hooks/use-admin-users";
-import { useJournalAssets } from "@/hooks/use-journal-assets";
-import { useJournalSettings } from "@/hooks/use-journal-settings";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
+import { useJournalAssets } from "@/features/management/hooks/use-journal-assets";
+import { useJournalSettings } from "@/features/management/hooks/use-journal-settings";
 import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import { Button } from "@/components/ui/button";
 import {

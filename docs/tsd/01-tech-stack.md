@@ -36,7 +36,6 @@
 | eslint + typescript-eslint | ^10.7.0 / ^8.64.0 | Lint |
 | eslint-plugin-react-hooks / react-refresh | ^7.1.1 / ^0.5.3 | React lint rules |
 | @vitejs/plugin-react | ^6.0.3 | React Vite plugin |
-| puppeteer-core | ^25.3.0 | (dev dep) |
 | esbuild | 0.28.1 | Direct Edge Function bundler |
 | supabase | 2.109.1 | Direct Supabase CLI |
 | @types/node/react/react-dom | ^26.1.1 / ^19.2.17 / ^19.2.3 | Type defs |
@@ -51,7 +50,7 @@
 | `npm run wrangler` | Pages dev port 8788 + Vite |
 | `npm run build` | `tsc -b && vite build` → `dist/` |
 | `npm run lint` | `eslint .` |
-| `npm test` | `node --test tests/*.test.mjs` (31 file/306 test) |
+| `npm test` | `node --test tests/*.test.mjs` (35 file/325 test) |
 | `npm run gate:compare` | `node scripts/gate-compare.mjs` — bandingin win% raw vs emission-gated |
 | `npm run build:edge` | esbuild bundle `src/core/edge-engine.ts` → 3 `_engine.mjs` (auto-journal/daily-summary/asset-discovery) |
 | `npm run deploy:edge` | build:edge + `supabase functions deploy auto-journal` |

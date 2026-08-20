@@ -2,23 +2,22 @@ import { useTranslation } from "react-i18next";
 import { useMemo, useState, type ReactElement } from "react";
 import { formatPrice } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { useFavorites } from "@/hooks/use-favorites";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useFavorites } from "@/features/market/hooks/use-favorites";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { toast } from "sonner";
-import { runBacktest } from "@/features/engine/backtest";
-import { calibrateConfidence } from "@/features/engine/calibration";
-import { fightsBenchmark } from "@/features/engine/benchmark-derate";
-import { isNeutralPositioning } from "@/features/engine/smart-money";
+import { runBacktest } from "@/core/engine/backtest";
+import { calibrateConfidence } from "@/core/engine/calibration";
+import { fightsBenchmark } from "@/core/engine/benchmark-derate";
+import { isNeutralPositioning } from "@/core/engine/smart-money";
 import {
   isNeutralFlow,
   supportsAccumulation,
-} from "@/features/engine/accumulation";
-import { enrichAsset } from "@/features/engine/enrichment";
-import { resolveAnalysisText } from "@/features/engine/analysis-text";
-import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
+} from "@/core/engine/accumulation";
+import { enrichAsset } from "@/core/engine/enrichment";
+import { resolveAnalysisText } from "@/lib/analysis-text";
+import { normalizeYahooCandles } from "@/core/market/candles";
 import { TradeSetupChart, TradeSetupChartSettings } from "./trade-setup-chart";
 import { useShareSetup } from "../hooks/use-share-setup";
-
 import {
   Dialog,
   DialogClose,
@@ -34,7 +33,7 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketData } from "@/services/queries/use-market-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
 import { useUsContext } from "@/services/queries/use-us-context";

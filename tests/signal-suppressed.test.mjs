@@ -87,9 +87,9 @@ const SQUEEZE_SUPPRESSED_CLOSES = [
 ];
 
 async function computeFromCandles(candles, options = {}) {
-  const { computeSignal } = await loadModule("/src/features/engine/signals.ts");
+  const { computeSignal } = await loadModule("/src/core/engine/signals.ts");
   const { buildSignalSeriesFromCandles } = await loadModule(
-    "/src/services/adapters/yahoo-candles.ts",
+    "/src/core/market/candles.ts",
   );
   return computeSignal({
     ...buildSignalSeriesFromCandles(candles),
@@ -118,7 +118,7 @@ test("plain ranging neutral (no directional lean) is not suppressed", async () =
 });
 
 test("createUnavailableSignal is not suppressed", async () => {
-  const { createUnavailableSignal } = await loadModule("/src/features/engine/signals.ts");
+  const { createUnavailableSignal } = await loadModule("/src/core/engine/signals.ts");
   assert.equal(createUnavailableSignal(50).suppressed, false);
 });
 

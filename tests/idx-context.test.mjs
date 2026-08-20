@@ -68,7 +68,7 @@ function makeIdxCtx(overrides = {}) {
 
 test("deriveIdxRiskState: IHSG score drives risk on/off, rupiah breaks ties both ways", async () => {
   const { deriveIdxRiskState } = await loadModule(
-    "/src/features/engine/idx-context.ts",
+    "/src/core/engine/idx-context.ts",
   );
   assert.equal(deriveIdxRiskState(-0.5), "risk_off");
   assert.equal(deriveIdxRiskState(0.5), "risk_on");
@@ -84,7 +84,7 @@ test("deriveIdxRiskState: IHSG score drives risk on/off, rupiah breaks ties both
 
 test("deriveIdxContext packages IHSG outlook + rupiah posture + returns", async () => {
   const { deriveIdxContext } = await loadModule(
-    "/src/features/engine/idx-context.ts",
+    "/src/core/engine/idx-context.ts",
   );
   const ihsg = makeOutlook({
     trend: "bearish",
@@ -106,7 +106,7 @@ test("deriveIdxContext packages IHSG outlook + rupiah posture + returns", async 
 
 test("applyIdxContext de-rates an id-stock LONG that fights risk-off (immutably)", async () => {
   const { applyIdxContext } = await loadModule(
-    "/src/features/engine/idx-context.ts",
+    "/src/core/engine/idx-context.ts",
   );
   const outlook = makeOutlook({
     signal: "long",
@@ -130,7 +130,7 @@ test("applyIdxContext de-rates an id-stock LONG that fights risk-off (immutably)
 
 test("applyIdxContext leaves aligned, neutral, and non-id-stock unchanged", async () => {
   const { applyIdxContext } = await loadModule(
-    "/src/features/engine/idx-context.ts",
+    "/src/core/engine/idx-context.ts",
   );
   const longOutlook = makeOutlook({ signal: "long" });
 

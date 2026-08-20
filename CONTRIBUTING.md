@@ -13,7 +13,7 @@ npm install
 cp .env.example .env
 # Isi: VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY (dari Supabase dashboard → Settings → API)
 npm run dev          # SPA → http://localhost:5173
-npm test             # pastikan 268 case pass
+npm test             # pastikan 325 case pass
 npm run lint
 ```
 
@@ -85,7 +85,7 @@ supabase functions serve auto-journal --env-file supabase/functions/.env
 - `tests/` — `node --test` + Vite SSR load real `.ts`.
 
 ### Engine (load-bearing rules)
-- **Single-source**: engine di `src/features/engine/` + `src/core/` di-bundle ke cron via `edge-engine.ts`. Jangan duplikasi logika di `supabase/functions/*/index.ts` — import dari `_engine.mjs`.
+- **Single-source**: pure engine di `src/core/engine/`, candle normalization di `src/core/market/`, dan automation core di `src/core/automation/` di-bundle ke cron via `edge-engine.ts`. Jangan duplikasi logika di `supabase/functions/*/index.ts` — import dari `_engine.mjs`.
 - **Enrichment order** (`enrichment.ts`): context de-rate → flow nudge → relative-strength → fundamentals. Urutan ini load-bearing, jangan acak.
 - **Strength = alignment teknikal, BUKAN probabilitas menang**. Jangan label/ubah key i18n jadi "win probability".
 - **Gak pernah flip sinyal** di enrichment (nudge bounded, gak pernah `LONG→SHORT`).
@@ -145,7 +145,7 @@ npm run build && npm run lint && npm test
 ```
 - [ ] Build pass (`tsc -b + vite build`)
 - [ ] Lint pass (eslint)
-- [ ] Test pass (268 case)
+- [ ] Test pass (325 case)
 - [ ] Gak ada secret di diff
 - [ ] Doc drift dibenerin kalau ada
 - [ ] Migration baru (kalau ubah schema) append-only + idempotent

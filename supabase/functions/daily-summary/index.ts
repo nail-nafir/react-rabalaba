@@ -14,7 +14,7 @@
  * flags (daily/weekly/monthly_summary_enabled), one shared send hour
  * (daily_summary_hour) and per-kind atomic send-once stamps. Changing any of
  * it is pure data — no cron edit, no redeploy. Window math is the PURE
- * recapWindow (src/core/period-summary, unit-tested); formatting
+ * recapWindow (src/core/automation/period-summary, unit-tested); formatting
  * (formatDailySummaryForDiscord) + P&L (computePnl) + the Yahoo adapter are
  * the SAME code the app uses, bundled to ./_engine.mjs by `npm run build:edge`.
  */

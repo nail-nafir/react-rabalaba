@@ -1,4 +1,4 @@
-import type { Outlook } from "@/features/engine/signals";
+import type { Outlook } from "@/types/engine";
 import type { AssetType } from "@/constants/taxonomy/asset";
 import type { RelativeStrengthLabel } from "@/constants/taxonomy/indicator";
 

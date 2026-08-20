@@ -15,7 +15,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import {
@@ -29,7 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
+import { useSubscriptionPlans } from "@/features/management/hooks/use-subscription-plans";
 import { pickLocale } from "@/lib/localized";
 import { UserPaymentDialog } from "@/features/market/components/user-payment-dialog";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";

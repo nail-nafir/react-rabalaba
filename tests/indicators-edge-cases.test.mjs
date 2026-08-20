@@ -26,7 +26,7 @@ test.after(async () => {
   if (server) await server.close();
 });
 
-const IND = "/src/features/engine/indicators.ts";
+const IND = "/src/core/engine/indicators.ts";
 
 const ramp = (n, start = 1, step = 1) =>
   Array.from({ length: n }, (_, i) => start + step * i);

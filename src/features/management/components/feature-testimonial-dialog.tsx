@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useAdminTestimonials } from "@/hooks/use-admin-testimonials";
+import { useAdminTestimonials } from "@/features/management/hooks/use-admin-testimonials";
 import { cn } from "@/lib/utils";
 import type { TestimonialSubmissionRow } from "@/services/supabase/database.types";
 

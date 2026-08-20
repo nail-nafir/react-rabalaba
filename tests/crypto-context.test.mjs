@@ -66,7 +66,7 @@ function makeCtx(overrides = {}) {
 
 test("deriveCryptoRiskState: BTC score drives risk on/off", async () => {
   const { deriveCryptoRiskState } = await loadModule(
-    "/src/features/engine/crypto-context.ts",
+    "/src/core/engine/crypto-context.ts",
   );
   assert.equal(deriveCryptoRiskState(-0.5), "risk_off");
   assert.equal(deriveCryptoRiskState(0.5), "risk_on");
@@ -75,7 +75,7 @@ test("deriveCryptoRiskState: BTC score drives risk on/off", async () => {
 
 test("applyCryptoContext de-rates a crypto LONG that fights risk-off (immutably)", async () => {
   const { applyCryptoContext } = await loadModule(
-    "/src/features/engine/crypto-context.ts",
+    "/src/core/engine/crypto-context.ts",
   );
   const outlook = makeOutlook({ signal: "long", directionScore: 0.8, strength: 80, tier: "A" });
   const ctx = makeCtx({ riskState: "risk_off", btcDirectionScore: -0.6 });
@@ -92,7 +92,7 @@ test("applyCryptoContext de-rates a crypto LONG that fights risk-off (immutably)
 
 test("applyCryptoContext leaves aligned, BTC-self, and non-crypto unchanged", async () => {
   const { applyCryptoContext } = await loadModule(
-    "/src/features/engine/crypto-context.ts",
+    "/src/core/engine/crypto-context.ts",
   );
   const longOutlook = makeOutlook({ signal: "long" });
 

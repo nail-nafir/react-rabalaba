@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonAccessCodeRow } from "@/components/shared/skeleton-card";
-import { useAdminUsers } from "@/hooks/use-admin-users";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import type { AccessCodeRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import { cn } from "@/lib/utils";

@@ -69,7 +69,7 @@ function makeUsCtx(overrides = {}) {
 
 test("deriveUsRiskState: S&P score drives risk on/off, VIX+DXY break ties", async () => {
   const { deriveUsRiskState } = await loadModule(
-    "/src/features/engine/us-context.ts",
+    "/src/core/engine/us-context.ts",
   );
   assert.equal(deriveUsRiskState(-0.5), "risk_off");
   assert.equal(deriveUsRiskState(0.5), "risk_on");
@@ -94,7 +94,7 @@ test("deriveUsRiskState: S&P score drives risk on/off, VIX+DXY break ties", asyn
 
 test("deriveUsContext packages S&P outlook + VIX/DXY posture + returns", async () => {
   const { deriveUsContext } = await loadModule(
-    "/src/features/engine/us-context.ts",
+    "/src/core/engine/us-context.ts",
   );
   const spx = makeOutlook({
     trend: "bearish",
@@ -116,7 +116,7 @@ test("deriveUsContext packages S&P outlook + VIX/DXY posture + returns", async (
 
 test("applyUsContext de-rates a us-stock LONG that fights risk-off (immutably)", async () => {
   const { applyUsContext } = await loadModule(
-    "/src/features/engine/us-context.ts",
+    "/src/core/engine/us-context.ts",
   );
   const outlook = makeOutlook({
     signal: "long",
@@ -140,7 +140,7 @@ test("applyUsContext de-rates a us-stock LONG that fights risk-off (immutably)",
 
 test("applyUsContext leaves aligned, neutral, and non-us-stock unchanged", async () => {
   const { applyUsContext } = await loadModule(
-    "/src/features/engine/us-context.ts",
+    "/src/core/engine/us-context.ts",
   );
   const longOutlook = makeOutlook({ signal: "long" });
 

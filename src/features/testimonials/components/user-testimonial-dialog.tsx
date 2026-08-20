@@ -51,8 +51,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useAuth } from "@/hooks/use-auth";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { getInitials } from "@/lib/formatters";
 import type {
   TestimonialStatus,

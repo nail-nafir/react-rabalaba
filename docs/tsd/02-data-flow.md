@@ -34,7 +34,7 @@ Supabase profiles    ─────────▶ usePremiumAccess ───�
 | File                       | Fungsi / Function                                                                                                         | Output                                                     |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `yahoo-adapter.ts:44`      | `adaptYahooChart`                                                                                                         | `UnifiedAsset` (computeSignal + tradingPlan + dailyChange) |
-| `yahoo-candles.ts:40`      | `normalizeYahooCandles`, `buildSignalSeriesFromCandles`, `resampleCandles`, `resampleCandlesToDaily`, `deriveCandleTrend` | `NormalizedYahooCandle[]`                                  |
+| `core/market/candles.ts:40`      | `normalizeYahooCandles`, `buildSignalSeriesFromCandles`, `resampleCandles`, `resampleCandlesToDaily`, `deriveCandleTrend` | `NormalizedYahooCandle[]`                                  |
 | `yahoo-fundamentals.ts:37` | `adaptYahooFundamentals`                                                                                                  | `Fundamentals \| null`                                     |
 | `market-context.ts`        | `adaptCryptoDominanceMarketContext`, Yahoo quote contexts, IHSG realized volatility                                      | `MarketContextByAssetClass`                                 |
 
@@ -94,7 +94,7 @@ Store: `src/store/index.ts:6` — `configureStore({ reducer: { ui, filter, auth 
 
 ## 🪝 Custom hooks non-query (`src/hooks/`)
 
-Auth/entitlement: `use-auth`, `use-premium-access`, `use-favorites`, `use-screener-universe`, `use-journal-assets`, `use-journal-settings`, `use-asset-discovery`, `use-market-scan`, `use-subscription-plans`, `use-payment-methods`, `use-disclaimer`, `use-session-activity`, `use-admin-users`, `use-admin-invitations`, `use-invitation`. Utility: `use-debounce`, `use-media-query`, `use-mobile`, `use-keyboard-shortcut`.
+Feature hooks: auth/access/invitation/disclaimer in `src/features/auth/hooks/`; favorites/universe in `src/features/market/hooks/`; admin/assets/settings/subscription/payment in `src/features/management/hooks/`; session activity in `src/app/hooks/`. Generic utility: `use-debounce`, `use-media-query` in `src/hooks/`.
 
 ---
 

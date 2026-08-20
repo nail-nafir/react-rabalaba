@@ -7,17 +7,17 @@
 
 ## TL;DR
 
-🇮🇩 Engine sinyal adalah fungsi **pure** (no DOM/fetch/`Date.now`) di `src/features/engine/`. Per aset: **Volume gate → Layer 1 Regime → Chop filter → Layer 2 Bias → Layer 3 Momentum → Layer 4 Risk → Layer 5 Score**. Output `Outlook` (direction LONG/SHORT/NEUTRAL + strength 0-100 + tier A/B/C + risk + analysis text). Engine ini **single-source**: di-bundle juga ke cron Deno via `edge-engine.ts`.
+🇮🇩 Engine sinyal adalah fungsi **pure** (no DOM/fetch/`Date.now`) di `src/core/engine/`. Per aset: **Volume gate → Layer 1 Regime → Chop filter → Layer 2 Bias → Layer 3 Momentum → Layer 4 Risk → Layer 5 Score**. Output `Outlook` (direction LONG/SHORT/NEUTRAL + strength 0-100 + tier A/B/C + risk + analysis text). Engine ini **single-source**: di-bundle juga ke cron Deno via `edge-engine.ts`.
 
-🇺🇸 The signal engine is a set of **pure** functions (no DOM/fetch/`Date.now`) in `src/features/engine/`. Per asset: **Volume gate → Layer 1 Regime → Chop filter → Layer 2 Bias → Layer 3 Momentum → Layer 4 Risk → Layer 5 Score**. Output `Outlook` (direction + strength 0-100 + tier A/B/C + risk + analysis text). The engine is **single-sourced**: also bundled to the Deno cron via `edge-engine.ts`.
+🇺🇸 The signal engine is a set of **pure** functions (no DOM/fetch/`Date.now`) in `src/core/engine/`. Per asset: **Volume gate → Layer 1 Regime → Chop filter → Layer 2 Bias → Layer 3 Momentum → Layer 4 Risk → Layer 5 Score**. Output `Outlook` (direction + strength 0-100 + tier A/B/C + risk + analysis text). The engine is **single-sourced**: also bundled to the Deno cron via `edge-engine.ts`.
 
-> Entry point: `src/features/engine/signals.ts:175` (`computeSignal`).
+> Entry point: `src/core/engine/signals.ts:78` (`computeSignal`).
 
 ---
 
 ## 🧠 Pipeline 5-Layer
 
-`computeSignal(input: SignalInput) → Outlook` (`signals.ts:175`).
+`computeSignal(input: SignalInput) → Outlook` (`signals.ts:78`).
 
 | Layer | Langkah / Step | Output |
 |---|---|---|
@@ -36,7 +36,7 @@
 
 ## 🌊 Regime — Layer 1
 
-File: `src/features/engine/regime.ts:56` (`classifyRegime`).
+File: `src/core/engine/regime.ts:56` (`classifyRegime`).
 
 | Regime | Trigger | Bobet / Weight effect |
 |---|---|---|
@@ -64,7 +64,7 @@ Tiap context deriving `RiskState` (`risk_on`/`risk_off`/`neutral`) dari benchmar
 
 ## 🔗 Enrichment Chain
 
-File: `src/features/engine/enrichment.ts:81` (`enrichAsset`).
+File: `src/core/engine/enrichment.ts:81` (`enrichAsset`).
 
 🇮🇩 Rantai pasca-sinyal **shared** oleh screener table & asset detail dialog (jaga conviction/tier gak drift). **Urutan load-bearing:**
 
@@ -111,7 +111,7 @@ File: `src/features/engine/enrichment.ts:81` (`enrichAsset`).
 
 ## 📐 Trading Plan
 
-File: `src/features/engine/trading-plan.ts:141` (`computeTradingPlan`).
+File: `src/core/engine/trading-plan.ts:141` (`computeTradingPlan`).
 
 `computeTradingPlan(outlook, currentPrice, assetType) → TradingPlan | null`. Stop ATR-based (1.5×) + structural fallback (recent swing/pivot), R:R adaptif dari opposing structural level clamped `[1..4]`, 3 TP level, risk clamped per tipe aset (crypto 12%, stocks 8%). ATR fallback ke %-of-price kalau ATR=0.
 

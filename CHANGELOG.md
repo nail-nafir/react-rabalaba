@@ -9,7 +9,7 @@
 
 ### Added
 
-- **Dokumentasi lengkap** bilingual (ID/EN): `docs/{fsd,tsd,testing,ops,explainer}/` (24 file) + index `docs/README.md`. FSD (8), TSD (8, termasuk engine-internals mendalam dengan formula), testing (3, coverage inventory 26 file/268 case + gap analysis), ops (runbook produksi + security & RLS rationale), explainer (3 legacy).
+- **Dokumentasi lengkap** bilingual (ID/EN): `docs/{fsd,tsd,testing,ops,explainer}/` + index `docs/README.md`, termasuk coverage inventory 35 file/325 case dan engine-internals mendalam.
 - `README.md` project-specific (replace stock Vite template).
 - `CONTRIBUTING.md` — onboarding, convention, branching, PR flow, secret rules.
 - `CHANGELOG.md` — ini.

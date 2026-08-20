@@ -263,7 +263,7 @@ premium screener universe, ~114 symbols).
 
 ### 6.2 Decision core — `runAutoJournal()` (pure, unit-testable)
 
-`src/core/auto-journal-core.ts`. No fetch, no DB — just data in, plan out.
+`src/core/automation/auto-journal-core.ts`. No fetch, no DB — just data in, plan out.
 
 - **EMIT:** for each asset with a long/short signal **and a trading plan** and
   **no open trade for that symbol** → `buildFollowedTrade()` →
@@ -339,16 +339,16 @@ premium screener universe, ~114 symbols).
 |---|---|
 | Edge entrypoint (Deno) | `supabase/functions/auto-journal/index.ts` |
 | Engine façade (bundled) | `src/core/edge-engine.ts` → `_engine.mjs` |
-| Pure decision core | `src/core/auto-journal-core.ts` |
-| Trade model (emit/close/stats) | `src/features/follow-trade/lib/follow-trade-model.ts` |
-| Row ↔ trade mapper | `src/services/supabase/journal-mapper.ts` |
+| Pure decision core | `src/core/automation/auto-journal-core.ts` |
+| Trade model (emit/close/stats) | `src/core/trade/follow-trade-model.ts` |
+| Row ↔ trade mapper | `src/core/trade/journal-mapper.ts` (Supabase façade: `src/services/supabase/journal-mapper.ts`) |
 | DB types (hand-written) | `src/services/supabase/database.types.ts` |
 | Browser Supabase client | `src/services/supabase/client.ts` (publishable key) |
 | Journal read hook | `src/features/journal/hooks/use-journal-trades.ts` |
 | Dashboard | `src/features/journal/components/journal-dashboard.tsx` |
 | Transactions table | `src/features/follow-trade/components/follow-history-table.tsx` |
-| Auth session | `src/hooks/use-auth.ts` |
-| Entitlement | `src/hooks/use-premium-access.ts` |
+| Auth session | `src/features/auth/hooks/use-auth.ts` |
+| Entitlement | `src/features/auth/hooks/use-premium-access.ts` |
 | Subscription dialog | `src/components/shared/license-dialog.tsx` |
 | Login / Register pages | `src/pages/login`, `src/pages/register` |
 | Cron schedule (run once) | `supabase/schedule-auto-journal.sql` |

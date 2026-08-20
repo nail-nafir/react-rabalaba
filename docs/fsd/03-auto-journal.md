@@ -34,7 +34,7 @@
 
 ## 🧠 Decision core — `runAutoJournal`
 
-File: `src/core/auto-journal-core.ts:100` (`runAutoJournal`). Pure, unit-tested.
+File: `src/core/automation/auto-journal-core.ts:100` (`runAutoJournal`). Pure, unit-tested.
 
 ### Emit (trade baru)
 - Skip quote stale > 90 menit (`QUOTE_MAX_AGE_MS`).
@@ -69,7 +69,7 @@ Replay candle sejak entry per trade:
 
 ## 📢 Discord Alert
 
-File: `src/core/alerts.ts:354` (`buildAutoJournalAlerts`, `formatAlertsForDiscord`).
+File: `src/core/automation/alerts.ts:354` (`buildAutoJournalAlerts`, `formatAlertsForDiscord`).
 
 - Emit insert → `new_long` / `new_short`.
 - Closure → `tp_hit` / `sl_hit` / `reversed` (mirror donut bucket UI, termasuk secured-TP reversal).
@@ -81,7 +81,7 @@ File: `src/core/alerts.ts:354` (`buildAutoJournalAlerts`, `formatAlertsForDiscor
 
 ## 🧭 Asset Discovery (cron terpisah)
 
-File: `src/core/asset-discovery-core.ts` + `supabase/functions/asset-discovery/index.ts:210`. Cron `30 22 * * *` (05:30 WIB harian).
+File: `src/core/automation/asset-discovery-core.ts` + `supabase/functions/asset-discovery/index.ts:210`. Cron `30 22 * * *` (05:30 WIB harian).
 
 🇮🇩 Bukan bagian auto-journal, tapi **ngisi universe** yang auto-journal baca. Fetch feed trending (CoinGecko / Binance 24h / Yahoo gainers+most-actives + IDX most-actives), rank/dedup via pure core, validasi tiap kandidat round-trip chart ≥120 bar, lalu INSERT/refresh/reactivate/prune `journal_assets` (baris `source='admin'` **gak pernah** disentuh). Lihat `tsd/05` untuk detail.
 

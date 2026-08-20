@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePaymentMethods } from "@/hooks/use-payment-methods";
+import { usePaymentMethods } from "@/features/management/hooks/use-payment-methods";
 import type { PaymentMethodRow } from "@/services/supabase/database.types";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";

@@ -71,7 +71,7 @@ File: `src/features/follow-trade/components/trade-detail-dialog.tsx:375` (`Trade
 
 ## 🧮 Statistik (pure, shared dengan cron)
 
-File: `src/features/follow-trade/lib/follow-trade-model.ts:396` (`buildTrackerStats`).
+File: `src/core/trade/follow-trade-model.ts:396` (`buildTrackerStats`).
 
 | Fungsi / Function | Output |
 |---|---|

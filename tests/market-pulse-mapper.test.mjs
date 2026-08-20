@@ -55,7 +55,7 @@ test("risk-appetite helpers normalize, clamp, and blend predictably", async () =
     directionScoreToPercent,
     inverseChangeScore,
     vixLevelToAppetite
-  } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   assert.deepEqual(
     [-1, 0, 1].map(directionScoreToPercent),
@@ -80,7 +80,7 @@ test("risk-appetite helpers normalize, clamp, and blend predictably", async () =
 });
 
 test("mapCryptoCard score stays 100% BTC technical regardless of dominance", async () => {
-  const { mapCryptoCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCryptoCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const cryptoContext = {
     btcTrend: "bullish",
@@ -125,7 +125,7 @@ test("mapCryptoCard score stays 100% BTC technical regardless of dominance", asy
 });
 
 test("mapCryptoCard degrades status on missing dominance", async () => {
-  const { mapCryptoCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCryptoCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const cryptoContext = {
     btcTrend: "bullish",
@@ -146,7 +146,7 @@ test("mapCryptoCard degrades status on missing dominance", async () => {
 });
 
 test("mapIdEquityCard maps IHSG score, Rupiah pressure, and return correctly", async () => {
-  const { mapIdEquityCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapIdEquityCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const idxContext = {
     ihsgTrend: "bullish",
@@ -171,7 +171,7 @@ test("mapIdEquityCard maps IHSG score, Rupiah pressure, and return correctly", a
 });
 
 test("mapIdEquityCard falls back to technical score without weekly rupiah context", async () => {
-  const { mapIdEquityCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapIdEquityCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const ihsgAsset = makeMockAsset("^JKSE", 7200, 0.5, { directionScore: 0.4 });
   const usdIdrAsset = makeMockAsset("USDIDR=X", 15450, 0.7);
   const result = mapIdEquityCard({
@@ -188,7 +188,7 @@ test("mapIdEquityCard falls back to technical score without weekly rupiah contex
 });
 
 test("mapUsEquityCard maps S&P 500, VIX, and DXY correctly", async () => {
-  const { mapUsEquityCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapUsEquityCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const usContext = {
     spxTrend: "bearish",
@@ -214,7 +214,7 @@ test("mapUsEquityCard maps S&P 500, VIX, and DXY correctly", async () => {
 });
 
 test("mapUsEquityCard falls back to technical score without VIX/DXY context", async () => {
-  const { mapUsEquityCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapUsEquityCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const spxAsset = makeMockAsset("^GSPC", 5100, -1.2, { directionScore: -0.5 });
   const result = mapUsEquityCard({
     spxTrend: "bearish",
@@ -229,7 +229,7 @@ test("mapUsEquityCard falls back to technical score without VIX/DXY context", as
 });
 
 test("mapCommoditiesCard maps Gold technical (inverted) and global macro context", async () => {
-  const { mapCommoditiesCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCommoditiesCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const gold = makeMockAsset("GC=F", 2350, 1.2, { directionScore: 0.8, trend: "bullish" });
   const vix = makeMockAsset("^VIX", 17.5, -1);
@@ -258,7 +258,7 @@ test("mapCommoditiesCard maps Gold technical (inverted) and global macro context
 });
 
 test("mapCommoditiesCard falls back to Gold technical without macro", async () => {
-  const { mapCommoditiesCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCommoditiesCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const gold = makeMockAsset("GC=F", 2350, 1.2, { directionScore: 0.8 });
 
   const result = mapCommoditiesCard(gold, null, null, null);
@@ -270,7 +270,7 @@ test("mapCommoditiesCard falls back to Gold technical without macro", async () =
 });
 
 test("mapCommoditiesCard sparkline returns raw Gold closes", async () => {
-  const { mapCommoditiesCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCommoditiesCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const gold = makeMockAsset("GC=F", 2350, 1.2, { directionScore: 0.8 });
   gold.quoteIndicators.close = [100, 200, 300];
 
@@ -280,7 +280,7 @@ test("mapCommoditiesCard sparkline returns raw Gold closes", async () => {
 });
 
 test("mapCommoditiesCard uses macro-only when technical data is not ready", async () => {
-  const { mapCommoditiesCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCommoditiesCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const gold = makeMockAsset("GC=F", 2350, 1.2, { directionScore: 0.8 });
   gold.outlook.dataQuality = { ready: false };
   const vix = makeMockAsset("^VIX", 17.5, -1);
@@ -303,7 +303,7 @@ test("mapCommoditiesCard uses macro-only when technical data is not ready", asyn
 });
 
 test("mapCommoditiesCard errors when Gold is unavailable", async () => {
-  const { mapCommoditiesCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapCommoditiesCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const result = mapCommoditiesCard(null, null, null, null);
 
@@ -312,7 +312,7 @@ test("mapCommoditiesCard errors when Gold is unavailable", async () => {
 });
 
 test("mapForexCard errors when USD/IDR is unavailable", async () => {
-  const { mapForexCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapForexCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const result = mapForexCard(null, null, null, null);
 
@@ -321,7 +321,7 @@ test("mapForexCard errors when USD/IDR is unavailable", async () => {
 });
 
 test("mapForexCard maps USD/IDR technical (inverted) and global macro context", async () => {
-  const { mapForexCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapForexCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
 
   const usdIdr = makeMockAsset("USDIDR=X", 16450, 0.5, { directionScore: 0.4, trend: "bullish" });
   const vix = makeMockAsset("^VIX", 17.5, -1);
@@ -350,7 +350,7 @@ test("mapForexCard maps USD/IDR technical (inverted) and global macro context", 
 });
 
 test("mapForexCard uses macro-only when direct technical data is not ready", async () => {
-  const { mapForexCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapForexCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const usdIdr = makeMockAsset("USDIDR=X", 16450, 0.5, { directionScore: 0.4 });
   usdIdr.outlook.dataQuality = { ready: false };
   const vix = makeMockAsset("^VIX", 17.5, -1);
@@ -373,7 +373,7 @@ test("mapForexCard uses macro-only when direct technical data is not ready", asy
 });
 
 test("mapForexCard falls back to USD/IDR technical without macro", async () => {
-  const { mapForexCard } = await loadModule("/src/features/market/lib/market-pulse-mapper.ts");
+  const { mapForexCard } = await loadModule("/src/features/market/model/market-pulse-mapper.ts");
   const usdIdr = makeMockAsset("USDIDR=X", 16450, 0.5, { directionScore: 0.4 });
 
   const result = mapForexCard(usdIdr, null, null, null);

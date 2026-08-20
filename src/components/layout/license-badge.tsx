@@ -2,7 +2,8 @@ import { Crown, Hourglass, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePremiumAccess, type LicenseTier } from "@/hooks/use-premium-access";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
+import type { LicenseTier } from "@/types/license";
 import { cn } from "@/lib/utils";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 

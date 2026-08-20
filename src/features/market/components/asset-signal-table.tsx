@@ -56,25 +56,25 @@ import {
   ASSET_TYPE_OPTIONS,
 } from "@/constants";
 import { usePublicJournalSuccessRates } from "@/features/market/hooks/use-public-journal-success-rates";
-import { PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY } from "@/features/market/lib/public-journal-success-rates";
+import { PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY } from "@/features/market/model/public-journal-success-rates";
 import { useAppSelector, useFilterActions } from "@/store/hooks";
 import { type SignalFilterType } from "@/store/slices/filter-slice";
-import { useFavorites } from "@/hooks/use-favorites";
+import { useFavorites } from "@/features/market/hooks/use-favorites";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketData } from "@/services/queries/use-market-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
 import { useUsContext } from "@/services/queries/use-us-context";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
-import { enrichAsset } from "@/features/engine/enrichment";
+import { enrichAsset } from "@/core/engine/enrichment";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import {
   DEFAULT_COMMODITY_TICKERS,
   DEFAULT_FOREX_TICKERS,
 } from "@/constants/assets";
 import { Button } from "@/components/ui/button";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
-import { useScreenerUniverse } from "@/hooks/use-screener-universe";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
+import { useScreenerUniverse } from "@/features/market/hooks/use-screener-universe";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
 import { SignalAssetDialog } from "./signal-asset-dialog";

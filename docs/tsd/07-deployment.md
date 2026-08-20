@@ -110,7 +110,7 @@ Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempo
 | Ubah apa / Change what | Langkah / Steps |
 |---|---|
 | UI/component | `npm run build` → deploy Pages |
-| Engine (`src/features/engine/`, `src/core/`) | `npm run build:edge` → `npm run deploy:edge` (+ summary/discovery kalau perlu) |
+| Engine (`src/core/engine/`, `src/core/automation/`, `src/core/trade/`) | `npm run build:edge` → `npm run deploy:edge` (+ summary/discovery kalau perlu) |
 | Cron schedule | SQL Editor `cron.alter_job` (gak perlu redeploy function) |
 | Cron config (interval/pause/discovery) | Admin UI `/admin/assets` (`journal_settings`) — gak perlu redeploy |
 | DB schema | Tambah migrasi `supabase/migrations/` → replay SQL Editor |

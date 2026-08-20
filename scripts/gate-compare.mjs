@@ -82,22 +82,22 @@ async function main() {
   });
   const load = (p) => server.ssrLoadModule(p);
 
-  const { runBacktest } = await load("/src/features/engine/backtest.ts");
+  const { runBacktest } = await load("/src/core/engine/backtest.ts");
   const { fightsBenchmark } = await load(
-    "/src/features/engine/benchmark-derate.ts",
+    "/src/core/engine/benchmark-derate.ts",
   );
   const { deriveCryptoRiskState } = await load(
-    "/src/features/engine/crypto-context.ts",
+    "/src/core/engine/crypto-context.ts",
   );
   const { deriveIdxRiskState } = await load(
-    "/src/features/engine/idx-context.ts",
+    "/src/core/engine/idx-context.ts",
   );
   const { deriveUsRiskState } = await load(
-    "/src/features/engine/us-context.ts",
+    "/src/core/engine/us-context.ts",
   );
-  const { computeSignal } = await load("/src/features/engine/signals.ts");
+  const { computeSignal } = await load("/src/core/engine/signals.ts");
   const { normalizeYahooCandles, buildSignalSeriesFromCandles } = await load(
-    "/src/services/adapters/yahoo-candles.ts",
+    "/src/core/market/candles.ts",
   );
   const { CRYPTO_CONTEXT, IDX_CONTEXT, US_CONTEXT, JOURNAL_EMISSION } =
     await load("/src/constants/signals.ts");

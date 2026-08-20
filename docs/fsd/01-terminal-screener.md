@@ -56,7 +56,7 @@ Komponen: `src/features/market/components/asset-signal-table.tsx:90` (`AssetSign
 `useSmartMoney(cryptoForSmartMoney)` — cuman untuk crypto dengan sinyal **non-neutral actionable** (jaga Binance call tetap bounded). Positioning (funding/OI/long-short) → `derivePositioning`.
 
 ### Enrichment (`:238-253`)
-`enrichAsset(asset, { cryptoContext, idxContext, usContext, smartMoney })` dari `src/features/engine/enrichment.ts:81`. Rantai: **context de-rate** (BTC/IHSG/S&P) → **flow nudge** (smart-money crypto / accumulation equity). `computeSignal` tetap pure per-aset. Lihat `fsd/02` & `tsd/06` untuk detail engine.
+`enrichAsset(asset, { cryptoContext, idxContext, usContext, smartMoney })` dari `src/core/engine/enrichment.ts:81`. Rantai: **context de-rate** (BTC/IHSG/S&P) → **flow nudge** (smart-money crypto / accumulation equity). `computeSignal` tetap pure per-aset. Lihat `fsd/02` & `tsd/06` untuk detail engine.
 
 ### Kolom tabel (`:316-553`)
 TanStack Table, `pageSize 10` (`:553`):
@@ -126,7 +126,7 @@ Komponen: `src/features/trading-plan/components/trade-setup-chart.tsx` (`TradeSe
 
 ## 🖼️ Share Card
 
-File: `src/features/trading-plan/lib/share-card.ts:666` (`buildShareCardSvg`), hook `src/features/trading-plan/hooks/use-share-setup.ts:118` (`useShareSetup`).
+File: `src/features/trading-plan/model/share-card.ts:666` (`buildShareCardSvg`), hook `src/features/trading-plan/hooks/use-share-setup.ts:118` (`useShareSetup`).
 
 🇮🇩 Generator SVG/PNG brandable 1200×1040: logo+halo, symbol+name, pill status/grade/direction, legend OHLC, chart candlestick watermark + zona + level + marker, statistik R:R/RISK/REWARD, footer disclaimer. Theme-aware (resolve CSS var → hex, dark/light). `svgToPngBlob` (rasterize 2×), `shareOrDownloadPng` (Web Share API → download fallback). Hook `useShareSetup` orchestrate build-model → build-SVG → PNG → share/download + toast.
 

@@ -4,7 +4,7 @@
  * Triggered by pg_cron (~every 30 min), independent of any browser session:
  *   1. fetch the swing window (1mo of 1h candles) for the full universe — the
  *      SAME timeframe the app shows by default, so the journal mirrors it
- *   2. runAutoJournal() — PURE, unit-tested core (src/core/auto-journal-core):
+ *   2. runAutoJournal() — PURE, unit-tested core (src/core/automation/auto-journal-core):
  *      emit new long/short-with-plan signals + close open trades that hit TP/SL
  *   3. apply the resulting INSERTs / UPDATEs to journal_trades
  *

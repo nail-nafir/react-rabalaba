@@ -5,7 +5,7 @@ import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAdminUsers } from "@/hooks/use-admin-users";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 
 export default function AdminUsersPage() {
   const { t } = useTranslation();

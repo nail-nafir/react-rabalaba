@@ -22,7 +22,7 @@ test.after(async () => {
   }
 });
 
-const SRC = "/src/features/market/lib/screener-universe.ts";
+const SRC = "/src/features/market/model/screener-universe.ts";
 const ASSETS = "/src/constants/assets.ts";
 
 test("groupUniverse: null / undefined / empty → DEFAULT_* fallback", async () => {

@@ -42,7 +42,7 @@
 | Tables | `journal_settings` (read enable flags + send hour + per-kind stamps; **atomic send-once claim** conditional UPDATE per kind `:262-267`; release on webhook failure); `journal_trades` (open + closed-in-window + emitted-in-window per kind); `profiles` (admin check) |
 | External | Yahoo chart (CF proxy) buat live price open position (cuman kalau `openT.length > 0`). Discord webhook |
 | Gating | `daily_summary_hour` (WIB default 23) — tick auto cuma jam itu (`:250-252`); tiap kind cuma di hari send-day WIB via `recapWindow(kind, ref).isSendDay`; per-kind atomic claim anti double-send; per-kind stamp kolom (`KIND_COLUMNS` `:48-61`); WIB=UTC+7 no DST; 10-min back-off `reportRefMs` absorbs cron lag |
-| Entry | `Deno.serve` `:160`; pure `recapWindow` (dari `src/core/period-summary.ts`) + `formatDailySummaryForDiscord` + `computePnl` + `adaptYahooChart` |
+| Entry | `Deno.serve` `:160`; pure `recapWindow` (dari `src/core/automation/period-summary.ts`) + `formatDailySummaryForDiscord` + `computePnl` + `adaptYahooChart` |
 | Schedule file | `supabase/schedule-daily-summary.sql:24` |
 
 ---

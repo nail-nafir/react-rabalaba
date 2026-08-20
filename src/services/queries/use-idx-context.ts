@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { useMarketData } from "./use-yahoo-data";
-import { deriveIdxContext } from "@/features/engine/idx-context";
-import { computeWindowReturns } from "@/features/engine/relative-strength";
+import { useMarketData } from "./use-market-data";
+import { deriveIdxContext } from "@/core/engine/idx-context";
+import { computeWindowReturns } from "@/core/engine/relative-strength";
 import {
   normalizeYahooCandles,
   resampleCandlesToDaily,
-} from "@/services/adapters/yahoo-candles";
+} from "@/core/market/candles";
 import { IDX_BENCHMARK_SYMBOL, USDIDR_SYMBOL } from "@/constants/idx";
 import type { IdxContext } from "@/types/market";
 

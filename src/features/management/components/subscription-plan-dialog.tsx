@@ -28,11 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSubscriptionPlans } from "@/hooks/use-subscription-plans";
+import { useSubscriptionPlans } from "@/features/management/hooks/use-subscription-plans";
 import type { SubscriptionPlanRow } from "@/services/supabase/database.types";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
-import { toList } from "../lib/admin-utils";
+import { toList } from "../model/admin-utils";
 
 const ICON_OPTIONS = ["Terminal", "Zap", "Shield"];
 const CTA_KINDS = ["link", "payment", "license", "contact"] as const;

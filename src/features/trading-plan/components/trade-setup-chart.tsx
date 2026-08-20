@@ -26,9 +26,9 @@ import {
   calculateEMASeries,
   calculateBollingerBandsSeries,
   calculateRSISeries,
-} from "@/features/engine/indicators";
+} from "@/core/engine/indicators";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
-import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
+import type { NormalizedYahooCandle } from "@/core/market/candles";
 import {
   buildTradeSetupModel,
   priceToRatio,
@@ -41,7 +41,7 @@ import {
   type LevelKey,
   type LevelKind,
   type ChartMarker,
-} from "../lib/trade-setup-model";
+} from "../model/trade-setup-model";
 
 const VB_W = 760;
 const VB_H = 380;

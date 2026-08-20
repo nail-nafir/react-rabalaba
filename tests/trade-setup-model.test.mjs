@@ -20,7 +20,7 @@ test.after(async () => {
   if (server) await server.close();
 });
 
-const SRC = "/src/features/trading-plan/lib/trade-setup-model.ts";
+const SRC = "/src/features/trading-plan/model/trade-setup-model.ts";
 
 function makeCandles(prices) {
   return prices.map((close, i) => ({

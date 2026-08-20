@@ -18,7 +18,7 @@ test.after(async () => {
   if (server) await server.close();
 });
 
-const ALERTS = "/src/core/alerts.ts";
+const ALERTS = "/src/core/automation/alerts.ts";
 
 const INPUT = {
   dateLabel: "29-06-2026",
@@ -117,7 +117,7 @@ test("open-only day still sends a recap (counts only, no closed stats)", async (
 
 // ── recapWindow: WIB calendar windows for daily / weekly / monthly recaps ──
 
-const PERIOD = "/src/core/period-summary.ts";
+const PERIOD = "/src/core/automation/period-summary.ts";
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 /** A WIB wall-clock moment expressed as a UTC instant (ms). Month is 1-based. */
 const wibMs = (y, m, d, h = 0, min = 0) =>

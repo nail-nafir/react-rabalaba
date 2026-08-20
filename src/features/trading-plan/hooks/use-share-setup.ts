@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { buildTradeSetupModel } from "@/features/trading-plan/lib/trade-setup-model";
+import { buildTradeSetupModel } from "@/features/trading-plan/model/trade-setup-model";
 import {
   buildShareCardSvg,
   svgToPngBlob,
   shareOrDownloadPng,
   SHARE_CARD_SIZE,
-} from "@/features/trading-plan/lib/share-card";
-import type { ChartMarker } from "@/features/trading-plan/lib/trade-setup-model";
+} from "@/features/trading-plan/model/share-card";
+import type { ChartMarker } from "@/features/trading-plan/model/trade-setup-model";
 import type { TradingPlan, AssetType, SignalDirection } from "@/types/asset";
-import type { NormalizedYahooCandle } from "@/services/adapters/yahoo-candles";
+import type { NormalizedYahooCandle } from "@/core/market/candles";
 
 interface ShareSetupOptions {
   symbol: string;

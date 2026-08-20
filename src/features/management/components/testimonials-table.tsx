@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAdminTestimonials } from "@/hooks/use-admin-testimonials";
+import { useAdminTestimonials } from "@/features/management/hooks/use-admin-testimonials";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import type {
   FeaturedTestimonialRow,

@@ -21,7 +21,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { AdminUserDialog } from "./admin-user-dialog";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +54,7 @@ import {
   FilterGroup,
   type FilterOption,
 } from "@/components/shared/filter-group";
-import { useAdminUsers } from "@/hooks/use-admin-users";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import type { AdminUserRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import { cn } from "@/lib/utils";

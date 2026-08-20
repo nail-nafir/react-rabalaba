@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { useMarketData } from "./use-yahoo-data";
-import { deriveUsContext } from "@/features/engine/us-context";
-import { computeWindowReturns } from "@/features/engine/relative-strength";
+import { useMarketData } from "./use-market-data";
+import { deriveUsContext } from "@/core/engine/us-context";
+import { computeWindowReturns } from "@/core/engine/relative-strength";
 import {
   normalizeYahooCandles,
   resampleCandlesToDaily,
-} from "@/services/adapters/yahoo-candles";
+} from "@/core/market/candles";
 import { US_BENCHMARK_SYMBOL, VIX_SYMBOL, DXY_SYMBOL } from "@/constants/us";
 import type { UsContext } from "@/types/market";
 

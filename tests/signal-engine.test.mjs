@@ -60,10 +60,10 @@ function makeRangingCandles(count) {
 
 async function computeFromCandles(candles, options = {}) {
   const { computeSignal } = await loadModule(
-    "/src/features/engine/signals.ts",
+    "/src/core/engine/signals.ts",
   );
   const { buildSignalSeriesFromCandles } = await loadModule(
-    "/src/services/adapters/yahoo-candles.ts",
+    "/src/core/market/candles.ts",
   );
 
   return computeSignal({
@@ -76,7 +76,7 @@ async function computeFromCandles(candles, options = {}) {
 
 test("normalizes Yahoo candles without breaking OHLCV alignment", async () => {
   const { normalizeYahooCandles, buildSignalSeriesFromCandles } =
-    await loadModule("/src/services/adapters/yahoo-candles.ts");
+    await loadModule("/src/core/market/candles.ts");
 
   const candles = normalizeYahooCandles(
     {
@@ -105,7 +105,7 @@ test("normalizes Yahoo candles without breaking OHLCV alignment", async () => {
 
 test("RSI stays neutral in a flat market and DMI exposes ADX direction", async () => {
   const { calculateRSI, calculateDMI } = await loadModule(
-    "/src/features/engine/indicators.ts",
+    "/src/core/engine/indicators.ts",
   );
 
   assert.equal(calculateRSI(Array(40).fill(100)), 50);
@@ -208,7 +208,7 @@ test("healthy volume keeps reliability flag on", async () => {
 
 test("classifyRegime distinguishes the four regimes", async () => {
   const { classifyRegime } = await loadModule(
-    "/src/features/engine/indicators.ts",
+    "/src/core/engine/indicators.ts",
   );
 
   const base = {
@@ -297,7 +297,7 @@ test("aligned higher timeframe boosts conviction", async () => {
 
 test("detectSwingLevels finds fractal pivots", async () => {
   const { detectSwingLevels } = await loadModule(
-    "/src/features/engine/indicators.ts",
+    "/src/core/engine/indicators.ts",
   );
 
   const highs = [1, 2, 3, 2, 1];
@@ -310,7 +310,7 @@ test("detectSwingLevels finds fractal pivots", async () => {
 
 test("trading plan derives RR from structure distance and clamps it", async () => {
   const { computeTradingPlan } = await loadModule(
-    "/src/features/engine/trading-plan.ts",
+    "/src/core/engine/trading-plan.ts",
   );
   const longOutlook = (recentSwingHigh) => ({
     signal: "long",
@@ -336,7 +336,7 @@ test("trading plan derives RR from structure distance and clamps it", async () =
 
 test("trading plan falls back cleanly with thin data", async () => {
   const { computeTradingPlan } = await loadModule(
-    "/src/features/engine/trading-plan.ts",
+    "/src/core/engine/trading-plan.ts",
   );
   const plan = computeTradingPlan(
     {
@@ -361,7 +361,7 @@ test("trading plan falls back cleanly with thin data", async () => {
 
 async function runBacktestOn(candles, options = {}) {
   const { runBacktest } = await loadModule(
-    "/src/features/engine/backtest.ts",
+    "/src/core/engine/backtest.ts",
   );
   return runBacktest(candles, { assetType: "us-stock", timeframe: "swing", ...options });
 }

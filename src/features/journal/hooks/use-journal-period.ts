@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { supabase } from "@/services/supabase/client";
 import type { JournalPeriodConfigRow } from "@/services/supabase/database.types";
-import { resolveJournalPeriod } from "@/features/journal/lib/journal-period";
+import { resolveJournalPeriod } from "@/features/journal/model/journal-period";
 
 export const JOURNAL_PERIOD_QUERY_KEY = "journal-period-config";
 const MAX_TIMER_CHUNK_MS = 24 * 60 * 60 * 1_000;

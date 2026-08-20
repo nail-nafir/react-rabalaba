@@ -18,7 +18,7 @@ test.after(async () => {
   if (server) await server.close();
 });
 
-const ALERTS = "/src/core/alerts.ts";
+const ALERTS = "/src/core/automation/alerts.ts";
 
 const PLAN = {
   inserts: [

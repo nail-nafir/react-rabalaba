@@ -1,5 +1,5 @@
 import { Crown, Hourglass, Lock } from "lucide-react";
-import type { LicenseTier } from "@/hooks/use-premium-access";
+import type { LicenseTier } from "@/types/license";
 
 /** Per-tier badge icon + color classes (uniform bg/text/border per tier). */
 export const TIER_BADGE: Record<

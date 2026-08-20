@@ -39,8 +39,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hooks/use-auth";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { useTheme } from "@/components/theme-provider";
 import { TESTIMONIAL_PATH } from "@/features/testimonials/constants";
 import { ActionButtonContent } from "@/components/shared/action-button-content";

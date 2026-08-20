@@ -1,18 +1,16 @@
 import { useMemo, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  useMarketData,
-  usePeriodCandles,
-} from "@/services/queries/use-yahoo-data";
-import { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
+import { useMarketData } from "@/services/queries/use-market-data";
+import { usePeriodCandles } from "@/services/queries/use-period-candles";
+import { normalizeYahooCandles } from "@/core/market/candles";
 import {
   computePnl,
   deriveFollowProgress,
-} from "@/features/follow-trade/lib/follow-trade-model";
+} from "@/core/trade/follow-trade-model";
 import {
   computeTradeChartWindow,
   fitTradeWindowCandles,
-} from "@/features/follow-trade/lib/trade-chart-window";
+} from "@/features/follow-trade/model/trade-chart-window";
 import { LifecycleBadge, ReversedBadge, TpProgress } from "./follow-status";
 import {
   formatPrice,
@@ -43,9 +41,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Share2, Target } from "lucide-react";
 import { SIGNAL_COLORS, PALETTE, SIGNAL_LABEL_KEYS } from "@/constants";
 
-import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
+import type { FollowedTrade } from "@/core/trade/follow-trade-model";
 import type { TradingPlan, SignalDirection } from "@/types/asset";
-import type { ChartMarker } from "@/features/trading-plan/lib/trade-setup-model";
+import type { ChartMarker } from "@/features/trading-plan/model/trade-setup-model";
 
 const EMPTY_SIBLINGS: FollowedTrade[] = [];
 
@@ -254,7 +252,7 @@ function TradeDetailReadyDialog({
     : null;
   // Split lifecycle (running/closed) from outcome (TP/SL). For a running trade
   // the milestone is recomputed LIVE off the fetched candles — the stored value
-  // is stale 0 until the cron closes it (see core/auto-journal-core.ts).
+  // is stale 0 until the cron closes it (see core/automation/auto-journal-core.ts).
   const progress = deriveFollowProgress(trade, livePrice, candles);
   const priceLabel = isClosed
     ? t("journal.close_price")

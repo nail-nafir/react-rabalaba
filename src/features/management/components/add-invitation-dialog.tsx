@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { Calendar } from "@/components/ui/calendar";
-import { useAdminInvitations } from "@/hooks/use-admin-invitations";
+import { useAdminInvitations } from "@/features/management/hooks/use-admin-invitations";
 import { cn } from "@/lib/utils";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 

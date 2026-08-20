@@ -24,7 +24,7 @@ test.after(async () => {
   }
 });
 
-const CORE = "/src/core/auto-journal-core.ts";
+const CORE = "/src/core/automation/auto-journal-core.ts";
 
 /** A signal-bearing asset the cron would emit (long/short + plan). */
 function makeAsset({ symbol, signal, price = 100, sl = 90, tps = [110, 120], quoteTime = Date.now(), assetType = "crypto" }) {

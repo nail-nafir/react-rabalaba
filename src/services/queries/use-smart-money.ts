@@ -4,7 +4,7 @@ import {
   yahooToBinancePerp,
 } from "@/services/api/binance";
 import type { BinanceDerivatives } from "@/services/api/binance";
-import { derivePositioning } from "@/features/engine/smart-money";
+import { derivePositioning } from "@/core/engine/smart-money";
 import type { SmartMoney, UnifiedAsset } from "@/types/asset";
 
 export type SmartMoneyMap = Record<string, SmartMoney>;

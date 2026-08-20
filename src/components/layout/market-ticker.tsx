@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketData } from "@/services/queries/use-market-data";
 import { MARKET_INDICES } from "@/constants/assets";
 import { formatPrice } from "@/lib/formatters";
 import { useTranslation } from "react-i18next";

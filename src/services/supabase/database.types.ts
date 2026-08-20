@@ -4,49 +4,15 @@
  * no browser/Vite deps (the taxonomy imports below are type-only, erased) — so
  * BOTH the Vite app and the Cron Worker can import it.
  */
-import type { FollowStatus, FollowSignal } from "@/constants/taxonomy/status";
-import type { SignalTier } from "@/constants/taxonomy/tier";
+import type {
+  JournalTradeInsert,
+  JournalTradeRow,
+} from "@/types/journal";
 // Type-only (erased) — keeps this module runtime-pure for the Cron Worker.
 import type { Localized } from "@/lib/localized";
 
-/** FollowStatus mirrored in the DB. 'open' = live (UI: "RUNNING TRADE"). */
-export type JournalStatus = FollowStatus;
-
-export interface JournalTradeRow {
-  id: string;
-  symbol: string;
-  name: string;
-  asset_type: string;
-  signal: FollowSignal;
-  timeframe: string;
-  entry_price: number;
-  stop_loss: number;
-  take_profits: number[];
-  risk_reward_ratio: number | null;
-  strength_at_entry: number | null;
-  grade: SignalTier | null;
-  status: JournalStatus;
-  highest_tp_reached: number;
-  /** Closed by a SIGNAL REVERSAL (vs a price TP/SL hit). DB default false. */
-  reversed: boolean;
-  /** timestamptz, ISO string. */
-  opened_at: string;
-  closed_at: string | null;
-  close_price: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-/** Insert shape: DB defaults id/timestamps/reversed, so they're optional on write. */
-export type JournalTradeInsert = Omit<
-  JournalTradeRow,
-  "id" | "created_at" | "updated_at" | "reversed"
-> & {
-  id?: string;
-  created_at?: string;
-  updated_at?: string;
-  reversed?: boolean;
-};
+export type { JournalTradeInsert, JournalTradeRow } from "@/types/journal";
+export type JournalStatus = JournalTradeRow["status"];
 
 export type JournalTradeUpdate = Partial<JournalTradeRow>;
 

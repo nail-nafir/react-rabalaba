@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Activity, Shield, Sparkles } from "lucide-react";
-import { computePnl } from "@/features/follow-trade/lib/follow-trade-model";
+import { computePnl } from "@/core/trade/follow-trade-model";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDateNumeric } from "@/lib/formatters";
 import { SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
-import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
+import type { FollowedTrade } from "@/core/trade/follow-trade-model";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TradeDetailDialog } from "@/features/follow-trade/components/trade-detail-dialog";

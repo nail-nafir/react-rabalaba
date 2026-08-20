@@ -7,7 +7,7 @@ import {
   adaptIhsgVolatilityMarketContext,
   buildMarketContextByAssetClass,
 } from "@/services/adapters/market-context";
-import { useMarketData } from "@/services/queries/use-yahoo-data";
+import { useMarketData } from "@/services/queries/use-market-data";
 import { useCryptoDominance } from "@/services/queries/use-crypto-dominance";
 import type { MarketContextByAssetClass } from "@/types/market";
 

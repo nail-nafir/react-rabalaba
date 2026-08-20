@@ -24,7 +24,7 @@ test.after(async () => {
   }
 });
 
-const FUND = "/src/features/engine/fundamentals.ts";
+const FUND = "/src/core/engine/fundamentals.ts";
 const ADAPTER = "/src/services/adapters/yahoo-fundamentals.ts";
 
 function makeOutlook(overrides = {}) {

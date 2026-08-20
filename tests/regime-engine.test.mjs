@@ -25,7 +25,7 @@ test.after(async () => {
   if (server) await server.close();
 });
 
-const REGIME = "/src/features/engine/regime.ts";
+const REGIME = "/src/core/engine/regime.ts";
 
 const base = {
   strongAdx: 25,

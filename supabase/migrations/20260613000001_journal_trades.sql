@@ -1,7 +1,7 @@
 -- Global auto-journal track-record. One shared journal: the Cron Worker is the
 -- ONLY writer (via the Supabase service-role key, which bypasses RLS); everyone
 -- else gets read-only access. Columns mirror the FollowedTrade shape in
--- src/features/follow-trade/lib/follow-trade-model.ts so the worker can persist
+-- src/core/trade/follow-trade-model.ts so the worker can persist
 -- buildFollowedTrade()/applyPriceSync() output 1:1.
 
 create table if not exists public.journal_trades (

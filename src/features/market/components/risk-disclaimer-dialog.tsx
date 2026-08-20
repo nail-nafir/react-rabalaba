@@ -18,7 +18,7 @@ import {
   FieldContent,
   FieldTitle,
 } from "@/components/ui/field";
-import { useDisclaimer } from "@/hooks/use-disclaimer";
+import { useDisclaimer } from "@/features/auth/hooks/use-disclaimer";
 import { pickLocale } from "@/lib/localized";
 import { toast } from "sonner";
 

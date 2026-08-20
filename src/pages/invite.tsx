@@ -21,12 +21,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
   useInvitation,
   useInvitationPeek,
   type ClaimResult,
-} from "@/hooks/use-invitation";
+} from "@/features/auth/hooks/use-invitation";
 
 /** Centered card frame shared by every state of the invite page. */
 function Shell({ children }: { children: ReactNode }) {

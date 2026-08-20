@@ -71,7 +71,7 @@ Admin page: `/admin/testimonials`. Replacing an occupied slot requires confirmat
 | Area | File |
 |---|---|
 | Landing + form + hooks | `src/features/testimonials/` |
-| Admin moderation | `src/pages/admin/testimonials.tsx`, `src/features/admin/components/testimonials-table.tsx`, `src/hooks/use-admin-testimonials.ts` |
+| Admin moderation | `src/pages/management/testimonials.tsx`, `src/features/management/components/testimonials-table.tsx`, `src/features/management/hooks/use-admin-testimonials.ts` |
 | Schema + RLS + trigger + RPC | `supabase/migrations/20260713093413_user_testimonials.sql` |
 | Hand-written client types | `src/services/supabase/database.types.ts` |
 

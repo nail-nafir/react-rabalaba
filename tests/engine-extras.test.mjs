@@ -30,7 +30,7 @@ test.after(async () => {
 
 test("calculateRSISeries (O(n)) matches the reference RSI at the final candle", async () => {
   const { calculateRSISeries, calculateRSI } = await loadModule(
-    "/src/features/engine/indicators.ts",
+    "/src/core/engine/indicators.ts",
   );
   const prices = Array.from(
     { length: 60 },

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
-import { useAdminTestimonials } from "@/hooks/use-admin-testimonials";
+import { useAdminTestimonials } from "@/features/management/hooks/use-admin-testimonials";
 import type { TestimonialSubmissionRow } from "@/services/supabase/database.types";
 
 interface RejectTestimonialDialogProps {

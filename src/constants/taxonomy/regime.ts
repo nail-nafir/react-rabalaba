@@ -1,7 +1,7 @@
 /**
  * Market regime — the behavioral state the market is in. Value list is the
  * single source (previously duplicated as MarketRegime in types/market.ts and
- * MarketRegimeKind in features/engine/regime.ts). Badge colors live in ./colors
+ * MarketRegimeKind in core/engine/regime.ts). Badge colors live in ./colors
  * (REGIME_COLORS); the per-regime category WEIGHT MULTIPLIERS (numeric scoring
  * config) stay in constants/signals.ts.
  */

@@ -14,12 +14,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
-import { resolveJournalPeriod } from "@/features/journal/lib/journal-period";
+import { resolveJournalPeriod } from "@/features/journal/model/journal-period";
 import type {
   JournalPeriodMonths,
   JournalSettingsRow,
 } from "@/services/supabase/database.types";
-import { formatAgo, getTimeBadgeClassName } from "../lib/admin-utils";
+import { formatAgo, getTimeBadgeClassName } from "../model/admin-utils";
 import { ManualActionCard } from "./manual-action-card";
 import { SettingRow } from "./setting-row";
 import { SettingSelect } from "./setting-select";

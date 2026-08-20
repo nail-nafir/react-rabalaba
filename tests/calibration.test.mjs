@@ -48,7 +48,7 @@ function makeMetrics(tierA, trending) {
 
 test("calibrateConfidence returns null win-rate below the min sample", async () => {
   const { calibrateConfidence } = await loadModule(
-    "/src/features/engine/calibration.ts",
+    "/src/core/engine/calibration.ts",
   );
   const metrics = makeMetrics({ trades: 3, winRate: 0.66, expectancy: 0.3 });
   const c = calibrateConfidence(metrics, "A", "trending");
@@ -61,7 +61,7 @@ test("calibrateConfidence returns null win-rate below the min sample", async () 
 
 test("calibrateConfidence exposes win-rate when the sample is large enough", async () => {
   const { calibrateConfidence } = await loadModule(
-    "/src/features/engine/calibration.ts",
+    "/src/core/engine/calibration.ts",
   );
   const metrics = makeMetrics(
     { trades: 20, winRate: 0.55, expectancy: 0.25 },

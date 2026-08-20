@@ -5,7 +5,7 @@ import type { PublicJournalSuccessRateRow } from "@/services/supabase/database.t
 import {
   indexPublicJournalSuccessRates,
   PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY,
-} from "@/features/market/lib/public-journal-success-rates";
+} from "@/features/market/model/public-journal-success-rates";
 
 const EMPTY_ROWS: PublicJournalSuccessRateRow[] = [];
 const REFRESH_INTERVAL_MS = 300_000;

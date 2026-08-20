@@ -5,7 +5,7 @@ import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useJournalAssets } from "@/hooks/use-journal-assets";
+import { useJournalAssets } from "@/features/management/hooks/use-journal-assets";
 
 export default function AdminAssetsPage() {
   const { t } = useTranslation();

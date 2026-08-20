@@ -2,14 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/services/supabase/client";
 import { rowToFollowedTrade } from "@/services/supabase/journal-mapper";
 import type { JournalTradeRow } from "@/services/supabase/database.types";
-import type { FollowedTrade } from "@/features/follow-trade/lib/follow-trade-model";
+import type { FollowedTrade } from "@/core/trade/follow-trade-model";
 import type {
   JournalPeriodBounds,
   JournalScope,
-} from "@/features/journal/lib/journal-period";
-import { collectPaginatedRows } from "@/features/journal/lib/paginated-rows";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
-import { useAuth } from "@/hooks/use-auth";
+} from "@/features/journal/model/journal-period";
+import { collectPaginatedRows } from "@/features/journal/model/paginated-rows";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 
 const EMPTY_TRADES: FollowedTrade[] = [];
 

@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { RootLayout } from '@/app/layouts/root-layout';
 import { AuthLayout } from '@/app/layouts/auth-layout';
 import { AdminLayout } from '@/app/layouts/admin-layout';
@@ -27,79 +27,45 @@ import {
   TerminalPage,
 } from '@/app/router/lazy-pages';
 
+function lazyRoute(page: ReactNode) {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader trigger />}>{page}</Suspense>
+    </ErrorBoundary>
+  );
+}
+
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
       {
         index: true,
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <LandingPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<LandingPage />),
       },
       {
         path: '/terminal',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <TerminalPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<TerminalPage />),
       },
       {
         path: '/terminal/market',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <TerminalPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<TerminalPage />),
       },
       {
         path: '/terminal/journal',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <TerminalPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<TerminalPage />),
       },
       {
         path: '/calendar',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <CalendarPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<CalendarPage />),
       },
       {
         path: '/subscription',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <SubscriptionPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<SubscriptionPage />),
       },
       {
         path: '/invite/:code',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <InvitePage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<InvitePage />),
       },
     ],
   },
@@ -113,43 +79,19 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminPage />),
       },
       {
         path: 'assets',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminAssetsPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminAssetsPage />),
       },
       {
         path: 'users',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminUsersPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminUsersPage />),
       },
       {
         path: 'codes',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminCodesPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminCodesPage />),
       },
       {
         path: 'billing',
@@ -157,63 +99,27 @@ export const router = createBrowserRouter([
       },
       {
         path: 'plans',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminPlansPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminPlansPage />),
       },
       {
         path: 'payments',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminPaymentsPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminPaymentsPage />),
       },
       {
         path: 'disclaimer',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminDisclaimerPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminDisclaimerPage />),
       },
       {
         path: 'invitations',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminInvitationsPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminInvitationsPage />),
       },
       {
         path: 'testimonials',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminTestimonialsPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminTestimonialsPage />),
       },
       {
         path: 'statistics',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <AdminSystemPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<AdminSystemPage />),
       },
     ],
   },
@@ -222,45 +128,21 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '/login',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <LoginPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<LoginPage />),
       },
       {
         path: '/register',
-        element: (
-          <ErrorBoundary>
-            <Suspense fallback={<PageLoader trigger />}>
-              <RegisterPage />
-            </Suspense>
-          </ErrorBoundary>
-        ),
+        element: lazyRoute(<RegisterPage />),
       },
     ],
   },
   {
     // OAuth landing — standalone, no layout (it's just a full-screen loader).
     path: '/auth/callback',
-    element: (
-      <ErrorBoundary>
-        <Suspense fallback={<PageLoader trigger />}>
-          <AuthCallbackPage />
-        </Suspense>
-      </ErrorBoundary>
-    ),
+    element: lazyRoute(<AuthCallbackPage />),
   },
   {
     path: '*',
-    element: (
-      <ErrorBoundary>
-        <Suspense fallback={<PageLoader trigger />}>
-          <NotFoundPage />
-        </Suspense>
-      </ErrorBoundary>
-    ),
+    element: lazyRoute(<NotFoundPage />),
   },
 ]);

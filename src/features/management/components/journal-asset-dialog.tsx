@@ -15,10 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useJournalAssets } from "@/hooks/use-journal-assets";
+import { useJournalAssets } from "@/features/management/hooks/use-journal-assets";
 import { cn } from "@/lib/utils";
 import type { YahooSearchQuote } from "@/services/api/yahoo-finance";
-import { useYahooSearch } from "@/services/queries/use-yahoo-data";
+import { useYahooSearch } from "@/services/queries/use-market-data";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
 

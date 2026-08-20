@@ -15,7 +15,7 @@
 
 ## 🔑 Auth
 
-### Client hook — `src/hooks/use-auth.ts:32` (`useAuth`)
+### Client hook — `src/features/auth/hooks/use-auth.ts:32` (`useAuth`)
 - Supabase session di-mirror ke Redux `auth` slice.
 - `initAuth()` (`:19`) jalan sekali: `getSession()` + `onAuthStateChange`.
 - Return: `session/user/ready/isAuthenticated` + `signIn` (password), `signUp`, `signInWithGoogle` (OAuth → `/auth/callback?redirect=…`), `signOut`.
@@ -35,7 +35,7 @@
 
 ## 💎 Entitlement
 
-### Premium access hook — `src/hooks/use-premium-access.ts:33` (`usePremiumAccess`)
+### Premium access hook — `src/features/auth/hooks/use-premium-access.ts:33` (`usePremiumAccess`)
 - react-query `["profile", userId]` (`:39-54`) baca `profiles` row sendiri (RLS own-row).
 - Derive `tier/hasAccess/expiresAt` dari server truth (`:68-80`).
 - Wall-clock `now` tick tiap 60s (`:60-64`) → flip trial kedaluwarsa → free mid-session.
@@ -61,7 +61,7 @@ Reusable trigger-first dialog. Setiap CTA/badge memakai `LicenseDialog` + `Dialo
 - `access_codes` RLS no-policy (gak bisa dibaca client); `code_redemptions` own-row only.
 
 ### Invite (`/invite/:code`)
-- `useInvitationPeek(code)` (`src/hooks/use-invitation.ts:28`) — anon-safe `peek_invitation` preview `{valid,reason,kind,trial_days}`.
+- `useInvitationPeek(code)` (`src/features/auth/hooks/use-invitation.ts:28`) — anon-safe `peek_invitation` preview `{valid,reason,kind,trial_days}`.
 - Authenticated → `useInvitation.claim(code)` (`:44`) → `redeem_invitation` RPC → invalidate `["profile",userId]` + peek.
 - Halaman: anon → preview + CTA login/register bawa `?redirect=/invite/:code`; authed → claim sekali via ref guard, render hasil (premium/trial/already/invalid/dll).
 - RPC: `peek_invitation` (anon), `redeem_invitation` (authed, row-locked, short-circuit already-premium), `admin_create_invitation` (12-hex random), `admin_list_invitations`, `admin_revoke_invitation`, `admin_delete_invitation`.
@@ -81,7 +81,7 @@ Halaman `/subscription` (`pages/subscription/index.tsx`). Kartu plan dari `useSu
 
 ## ⚠️ Disclaimer Gate
 
-Hook: `src/hooks/use-disclaimer.ts:34` (`useDisclaimer`).
+Hook: `src/features/auth/hooks/use-disclaimer.ts:34` (`useDisclaimer`).
 
 🇮🇩 Disclaimer berbasis DB (singleton `disclaimer`, JSONB bilingual + version). **Hybrid acceptance**: logged-in → row `disclaimer_agreements`; anon → localStorage `rabalaba_disclaimer_v`. `needsAgreement` cuma true kalau klausa + status resolve (hindari flash). `agree()` + admin `update(patch, bumpVersion)` (bump version = re-prompt semua user). Komponen gate dirender **inline** di terminal sampai pengguna setuju; tidak memakai dialog yang dipaksa terbuka.
 
@@ -91,7 +91,7 @@ Hook: `src/hooks/use-disclaimer.ts:34` (`useDisclaimer`).
 
 ## 🧍 Session activity
 
-Hook: `src/hooks/use-session-activity.ts:37` (`useSessionActivity`). Headless: stamp `profiles.last_active_at` via `touch_last_active` RPC (throttle ≤1/5 min, piggyback react-query success). Idle logout 1 minggu (`IDLE_LIMIT_MS`), cek tiap 5 min, persist `localStorage("rabalaba-last-active")`.
+Hook: `src/app/hooks/use-session-activity.ts:37` (`useSessionActivity`). Headless: stamp `profiles.last_active_at` via `touch_last_active` RPC (throttle ≤1/5 min, piggyback react-query success). Idle logout 1 minggu (`IDLE_LIMIT_MS`), cek tiap 5 min, persist `localStorage("rabalaba-last-active")`.
 
 ---
 

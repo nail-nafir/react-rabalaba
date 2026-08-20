@@ -18,13 +18,13 @@ import {
 import { CalendarRange, Radar, Zap, FileText } from "lucide-react";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
-import { formatAgo, getTimeBadgeClassName } from "../lib/admin-utils";
+import { formatAgo, getTimeBadgeClassName } from "../model/admin-utils";
 import {
   useJournalSettings,
   type JournalSettingsPatch,
-} from "@/hooks/use-journal-settings";
-import { useMarketScan } from "@/hooks/use-market-scan";
-import { useAssetDiscovery } from "@/hooks/use-asset-discovery";
+} from "@/features/management/hooks/use-journal-settings";
+import { useMarketScan } from "@/features/management/hooks/use-market-scan";
+import { useAssetDiscovery } from "@/features/management/hooks/use-asset-discovery";
 import type {
   JournalPeriodMonths,
   JournalSettingsRow,

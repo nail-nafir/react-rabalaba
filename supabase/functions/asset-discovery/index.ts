@@ -7,7 +7,7 @@
  *      futures 24h volume, Yahoo day_gainers + most_actives, and the Yahoo
  *      custom screener for IDX most-actives
  *   2. rank/filter/dedup via the PURE, unit-tested core
- *      (src/core/asset-discovery-core) — crypto bases are resolved to REAL
+ *      (src/core/automation/asset-discovery-core) — crypto bases are resolved to REAL
  *      Yahoo tickers via search + name match (PEPE-USD is PEPEGOLD; the real
  *      Pepe is PEPE24478-USD), then every new candidate must round-trip a
  *      1mo/1h chart with ≥ MIN_CANDLES bars so the signal engine can actually

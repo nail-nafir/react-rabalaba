@@ -24,7 +24,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/formatters";
 import {
@@ -36,7 +36,7 @@ import {
   useFeaturedTestimonials,
   useMyTestimonial,
 } from "@/features/testimonials/hooks/use-testimonials";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 
 export function TestimonialSection() {
   const { t } = useTranslation();

@@ -37,9 +37,9 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/hooks/use-mobile.ts'],
+    files: ['src/hooks/use-media-query.ts'],
     rules: {
-      // Stock shadcn-generated hook; keep the registry file byte-for-byte default.
+      // Media-query hook updates browser state from a native media listener.
       'react-hooks/set-state-in-effect': 'off',
     },
   },

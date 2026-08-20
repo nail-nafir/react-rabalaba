@@ -22,7 +22,7 @@ test.after(async () => {
   }
 });
 
-const SRC = "/src/core/asset-discovery-core.ts";
+const SRC = "/src/core/automation/asset-discovery-core.ts";
 
 // ── binancePerpBase ────────────────────────────────────────────────────────
 

@@ -29,7 +29,7 @@ test.after(async () => {
 
 test("public success-rate rows are indexed and bigint-like values normalized", async () => {
   const { indexPublicJournalSuccessRates } = await loadModule(
-    "/src/features/market/lib/public-journal-success-rates.ts",
+    "/src/features/market/model/public-journal-success-rates.ts",
   );
 
   assert.deepEqual(

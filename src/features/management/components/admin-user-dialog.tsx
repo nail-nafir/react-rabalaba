@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAdminUsers } from "@/hooks/use-admin-users";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import { Field, FieldError } from "@/components/ui/field";
 import type { AdminUserRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";

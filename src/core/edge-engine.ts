@@ -14,24 +14,24 @@ export {
   buildFollowedTrade,
   applyPriceSync,
   computePnl,
-} from "@/features/follow-trade/lib/follow-trade-model";
+} from "@/core/trade/follow-trade-model";
 export type {
   FollowedTrade,
   FollowCandle,
-} from "@/features/follow-trade/lib/follow-trade-model";
+} from "@/core/trade/follow-trade-model";
 export {
   followedTradeToInsert,
   rowToFollowedTrade,
-} from "@/services/supabase/journal-mapper";
+} from "@/core/trade/journal-mapper";
 export { resolveTimeframePreset } from "@/constants/timeframes";
-export { normalizeYahooCandles } from "@/services/adapters/yahoo-candles";
-export { runAutoJournal } from "./auto-journal-core";
-export type { AutoJournalPlan, JournalClosure } from "./auto-journal-core";
+export { normalizeYahooCandles } from "@/core/market/candles";
+export { runAutoJournal } from "./automation/auto-journal-core";
+export type { AutoJournalPlan, JournalClosure } from "./automation/auto-journal-core";
 // Index-aware journaling: the cron derives the same top-down contexts the app
 // does, then runAutoJournal enriches + gates emissions with them.
-export { enrichAsset } from "@/features/engine/enrichment";
-export { buildEngineContexts } from "./context-pipeline";
-export type { EngineContexts } from "./context-pipeline";
+export { enrichAsset } from "@/core/engine/enrichment";
+export { buildEngineContexts } from "./engine/context-pipeline";
+export type { EngineContexts } from "./engine/context-pipeline";
 export {
   benchmarkSymbolsFor,
   ALL_BENCHMARK_SYMBOLS,
@@ -40,19 +40,19 @@ export {
   buildAutoJournalAlerts,
   formatAlertsForDiscord,
   formatDailySummaryForDiscord,
-} from "./alerts";
+} from "./automation/alerts";
 // WIB calendar-window math for the daily/weekly/monthly Discord recaps.
-export { recapWindow } from "./period-summary";
-export type { RecapPeriod, RecapWindow } from "./period-summary";
+export { recapWindow } from "./automation/period-summary";
+export type { RecapPeriod, RecapWindow } from "./automation/period-summary";
 export type {
   JournalAlert,
   DailySummaryInput,
   DailySummaryClosed,
   DailySummaryEmitted,
   DailySummaryOpen,
-} from "./alerts";
+} from "./automation/alerts";
 export type { UnifiedAsset } from "@/types/asset";
-export type { JournalTradeRow } from "@/services/supabase/database.types";
+export type { JournalTradeRow } from "@/types/journal";
 // Asset auto-discovery: the pure ranking/mapping/plan/format core the daily
 // asset-discovery cron wires fetch + DB around (same split as auto-journal).
 export {
@@ -68,7 +68,7 @@ export {
   dedupeCandidates,
   planDiscovery,
   formatDiscoveryForDiscord,
-} from "./asset-discovery-core";
+} from "./automation/asset-discovery-core";
 export type {
   DiscoveryMarket,
   DiscoveryReason,
@@ -76,7 +76,7 @@ export type {
   ExistingAssetLite,
   ValidatedCandidate,
   DiscoveryPlan,
-} from "./asset-discovery-core";
+} from "./automation/asset-discovery-core";
 
 import {
   DEFAULT_CRYPTO_TICKERS,

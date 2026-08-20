@@ -4,7 +4,7 @@ import {
   DXY_SYMBOL,
   VIX_SYMBOL,
 } from "@/constants/us";
-import { computeWindowReturns } from "@/features/engine/relative-strength";
+import { computeWindowReturns } from "@/core/engine/relative-strength";
 import type { UnifiedAsset } from "@/types/asset";
 import type {
   Dominance,
@@ -18,7 +18,7 @@ import {
   normalizeYahooCandles,
   resampleCandlesToDaily,
   type NormalizedYahooCandle,
-} from "@/services/adapters/yahoo-candles";
+} from "@/core/market/candles";
 
 /** 30-day window mirrors the CBOE VIX horizon so the IHSG proxy reads on the
  *  same time scale as the US volatility index. */

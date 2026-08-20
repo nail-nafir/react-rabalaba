@@ -39,7 +39,7 @@
 
 ### Prioritas rendah / Low
 
-8. **UI smoke test** (puppeteer-core udah dev dep) — render `/terminal` headless, assert no crash, key element visible.
+8. **UI smoke test** (opsional, tanpa dependency browser tambahan) — render `/terminal` lewat browser/in-app browser, assert no crash dan key element visible.
 9. **`calendar-impact.test.mjs`** — test `fetchEconomicCalendar` auto-classify impact (GDP/CPI/rate→high, sentiment/sales/PMI→low) dengan fixture.
 
 ---
@@ -70,7 +70,7 @@ const load = (path) => server.ssrLoadModule(path);
 | Konvensi / Convention | Detail |
 |---|---|
 | File naming | `tests/<topic>.test.mjs` (kebab-case) |
-| Import path | `await load("@/features/engine/signals.ts")` (pakai alias `@`) |
+| Import path | `await load("@/core/engine/signals.ts")` (pakai alias `@`) |
 | Fixture | hand-computed array literal inline; gak ada folder `fixtures/` |
 | Assertion | `assert.strictEqual`, `assert.deepEqual`, `assert.ok`, `assert.throws` |
 | Naming test | `test("nama kasus")` deskriptif, sering sebut nama fungsi + skenario |

@@ -3,17 +3,17 @@ import type { UnifiedAsset, AssetType, TradingPlan } from "@/types/asset";
 import {
   computeSignal,
   createUnavailableSignal,
-} from "@/features/engine/signals";
-import type { Outlook } from "@/features/engine/signals";
+} from "@/core/engine/signals";
+import type { Outlook } from "@/types/engine";
 import { resolveTimeframePreset } from "@/constants/timeframes";
 import type { TimeframePresetKey } from "@/constants/timeframes";
-import { computeTradingPlan } from "@/features/engine/trading-plan";
+import { computeTradingPlan } from "@/core/engine/trading-plan";
 import {
   buildSignalSeriesFromCandles,
   normalizeYahooCandles,
   resampleCandles,
   deriveCandleTrend,
-} from "./yahoo-candles";
+} from "@/core/market/candles";
 
 /** Higher-timeframe resample factor per active timeframe (no extra fetch):
  *  scalp 5m→1h (×12), swing 1h→4h (×4), position 1d→~1w (×5 trading days). */

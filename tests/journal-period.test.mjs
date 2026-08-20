@@ -31,7 +31,7 @@ const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 const wibMs = (year, month, day, hour = 0, minute = 0) =>
   Date.UTC(year, month - 1, day, hour, minute) - WIB_OFFSET_MS;
 
-const PERIOD_MODULE = "/src/features/journal/lib/journal-period.ts";
+const PERIOD_MODULE = "/src/features/journal/model/journal-period.ts";
 
 test("1-month period uses the current WIB calendar month", async () => {
   const { resolveJournalPeriod } = await loadModule(PERIOD_MODULE);
@@ -107,7 +107,7 @@ test("closed boundaries are start-inclusive and end-exclusive", async () => {
 
 test("batched row loader retrieves and deduplicates more than 1,000 rows", async () => {
   const { collectPaginatedRows } = await loadModule(
-    "/src/features/journal/lib/paginated-rows.ts",
+    "/src/features/journal/model/paginated-rows.ts",
   );
   const rows = Array.from({ length: 1_792 }, (_, index) => ({
     id: `trade-${index}`,
@@ -131,7 +131,7 @@ test("batched row loader retrieves and deduplicates more than 1,000 rows", async
 test("active-period metrics share one scoped dataset while history stays lifetime", async () => {
   const { isClosedTradeInPeriod } = await loadModule(PERIOD_MODULE);
   const { buildTrackerStats, buildTradeWinrateSnapshots } = await loadModule(
-    "/src/features/follow-trade/lib/follow-trade-model.ts",
+    "/src/core/trade/follow-trade-model.ts",
   );
   const start = wibMs(2026, 7, 27);
   const end = wibMs(2026, 8, 3);
@@ -297,7 +297,7 @@ test("period settings reuse the compact shared controls", () => {
 
 test("failed settings saves roll back and rethrow before the success toast path", () => {
   const hook = readFileSync(
-    new URL("../src/hooks/use-journal-settings.ts", import.meta.url),
+    new URL("../src/features/management/hooks/use-journal-settings.ts", import.meta.url),
     "utf8",
   );
   const dialog = readFileSync(

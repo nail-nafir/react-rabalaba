@@ -39,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonPaymentMethodRow } from "@/components/shared/skeleton-card";
-import { usePaymentMethods } from "@/hooks/use-payment-methods";
+import { usePaymentMethods } from "@/features/management/hooks/use-payment-methods";
 import type { PaymentMethodRow } from "@/services/supabase/database.types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

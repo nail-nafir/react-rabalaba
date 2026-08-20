@@ -40,7 +40,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonInvitationRow } from "@/components/shared/skeleton-card";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
-import { useAdminInvitations } from "@/hooks/use-admin-invitations";
+import { useAdminInvitations } from "@/features/management/hooks/use-admin-invitations";
 import type { InvitationRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import { cn } from "@/lib/utils";

@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAdminUsers } from "@/hooks/use-admin-users";
+import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import { Field, FieldError } from "@/components/ui/field";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";

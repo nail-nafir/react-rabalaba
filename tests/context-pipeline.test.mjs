@@ -24,8 +24,8 @@ test.after(async () => {
   }
 });
 
-const PIPELINE = "/src/core/context-pipeline.ts";
-const CORE = "/src/core/auto-journal-core.ts";
+const PIPELINE = "/src/core/engine/context-pipeline.ts";
+const CORE = "/src/core/automation/auto-journal-core.ts";
 
 function makeOutlook(overrides = {}) {
   return {

@@ -8,9 +8,9 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePremiumAccess } from "@/hooks/use-premium-access";
-import { useAuth } from "@/hooks/use-auth";
-import { useDisclaimer } from "@/hooks/use-disclaimer";
+import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useDisclaimer } from "@/features/auth/hooks/use-disclaimer";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 

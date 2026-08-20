@@ -20,7 +20,7 @@ test.after(async () => {
   if (server) await server.close();
 });
 
-const SRC = "/src/features/follow-trade/lib/follow-trade-model.ts";
+const SRC = "/src/core/trade/follow-trade-model.ts";
 
 // entry 100, tp1 120, tp2 130, tp3 150, sl 80 (matches the user's example)
 function longTrade(overrides = {}) {

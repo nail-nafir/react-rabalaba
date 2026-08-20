@@ -17,7 +17,7 @@ npm run dev            # http://localhost:5173
 
 Test & build:
 ```bash
-npm test               # 31 file / 306 case (node --test)
+npm test               # 35 file / 325 case (node --test)
 npm run build          # tsc -b + vite build → dist/
 npm run lint           # eslint
 ```

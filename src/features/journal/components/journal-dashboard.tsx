@@ -18,7 +18,7 @@ import {
   buildTrackerStats,
   computePnl,
   type FollowedTrade,
-} from "@/features/follow-trade/lib/follow-trade-model";
+} from "@/core/trade/follow-trade-model";
 import { PALETTE } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

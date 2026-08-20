@@ -59,7 +59,7 @@ test("yahooToBinancePerp maps USD crypto, handles 1000x, rejects non-crypto", as
 
 test("derivePositioning: OI↑price↑ = new longs (bullish positioning)", async () => {
   const { derivePositioning } = await loadModule(
-    "/src/features/engine/smart-money.ts",
+    "/src/core/engine/smart-money.ts",
   );
   const sm = derivePositioning({
     openInterest: 1000,
@@ -73,7 +73,7 @@ test("derivePositioning: OI↑price↑ = new longs (bullish positioning)", async
 
 test("derivePositioning: extreme positive funding is CONTRARIAN bearish", async () => {
   const { derivePositioning } = await loadModule(
-    "/src/features/engine/smart-money.ts",
+    "/src/core/engine/smart-money.ts",
   );
   const sm = derivePositioning({
     openInterest: 1000,
@@ -87,7 +87,7 @@ test("derivePositioning: extreme positive funding is CONTRARIAN bearish", async 
 
 test("applySmartMoney boosts agreement, dampens opposition, immutably", async () => {
   const { applySmartMoney } = await loadModule(
-    "/src/features/engine/smart-money.ts",
+    "/src/core/engine/smart-money.ts",
   );
   const outlook = makeOutlook({ signal: "long", directionScore: 0.5, strength: 50 });
   const supportive = { positioningScore: 0.8, label: "New longs", openInterest: 0, openInterestDelta: 0, fundingRate: 0 };
@@ -109,7 +109,7 @@ test("applySmartMoney boosts agreement, dampens opposition, immutably", async ()
 
 test("applySmartMoney leaves neutral signals untouched", async () => {
   const { applySmartMoney } = await loadModule(
-    "/src/features/engine/smart-money.ts",
+    "/src/core/engine/smart-money.ts",
   );
   const neutral = makeOutlook({ signal: "neutral", directionScore: 0.1, strength: 10 });
   const out = applySmartMoney(neutral, {

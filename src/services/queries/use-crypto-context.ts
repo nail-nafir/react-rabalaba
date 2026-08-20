@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchYahooChart } from "@/services/api/yahoo-finance";
 import { adaptYahooChart } from "@/services/adapters/yahoo-adapter";
 import { DEFAULT_TIMEFRAME } from "@/constants/timeframes";
-import { deriveCryptoContext } from "@/features/engine/crypto-context";
-import { computeWindowReturns } from "@/features/engine/relative-strength";
+import { deriveCryptoContext } from "@/core/engine/crypto-context";
+import { computeWindowReturns } from "@/core/engine/relative-strength";
 import {
   normalizeYahooCandles,
   resampleCandlesToDaily,
-} from "@/services/adapters/yahoo-candles";
+} from "@/core/market/candles";
 import { useCryptoDominance } from "./use-crypto-dominance";
 import type { CryptoContext } from "@/types/market";
 

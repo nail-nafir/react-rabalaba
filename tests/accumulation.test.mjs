@@ -91,7 +91,7 @@ function makeOutlook(overrides = {}) {
 
 test("deriveAccumulation: volume-heavy up days read as accumulation", async () => {
   const { deriveAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   const acc = deriveAccumulation(makeFlowCandles({ days: 21 }));
   assert.ok(acc, "derivable from 21 daily candles");
@@ -105,7 +105,7 @@ test("deriveAccumulation: volume-heavy up days read as accumulation", async () =
 
 test("deriveAccumulation: volume-heavy down days read as distribution", async () => {
   const { deriveAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   const acc = deriveAccumulation(
     makeFlowCandles({ days: 21, upVolumeMult: 0.5, downVolumeMult: 3 }),
@@ -117,7 +117,7 @@ test("deriveAccumulation: volume-heavy down days read as distribution", async ()
 
 test("deriveAccumulation: too little daily history → null", async () => {
   const { deriveAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   assert.equal(deriveAccumulation(makeFlowCandles({ days: 14 })), null);
   assert.equal(deriveAccumulation([]), null);
@@ -125,7 +125,7 @@ test("deriveAccumulation: too little daily history → null", async () => {
 
 test("deriveAccumulation: too many zero-volume days → null (honesty gate)", async () => {
   const { deriveAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   const candles = makeFlowCandles({ days: 21 });
   // 8 of 21 days (≈38%) with zero volume crosses the 30% gate.
@@ -135,7 +135,7 @@ test("deriveAccumulation: too many zero-volume days → null (honesty gate)", as
 
 test("applyAccumulation boosts agreement, dampens opposition, bounded ±15%, immutably", async () => {
   const { applyAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   const outlook = makeOutlook({
     signal: "long",
@@ -183,7 +183,7 @@ test("applyAccumulation boosts agreement, dampens opposition, bounded ±15%, imm
 
 test("applyAccumulation leaves neutral signals untouched", async () => {
   const { applyAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   const neutral = makeOutlook({ signal: "neutral", strength: 10 });
   const out = applyAccumulation(neutral, {
@@ -198,7 +198,7 @@ test("applyAccumulation leaves neutral signals untouched", async () => {
 
 test("isNeutralFlow recognizes only the neutral label", async () => {
   const { isNeutralFlow, NEUTRAL_FLOW_LABEL } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   assert.equal(isNeutralFlow(NEUTRAL_FLOW_LABEL), true);
   assert.equal(isNeutralFlow("Accumulation"), false);
@@ -206,7 +206,7 @@ test("isNeutralFlow recognizes only the neutral label", async () => {
 
 test("supportsAccumulation gates volume-reliable equities only", async () => {
   const { supportsAccumulation } = await loadModule(
-    "/src/features/engine/accumulation.ts",
+    "/src/core/engine/accumulation.ts",
   );
   // Equities with reliable daily volume — flow read applies.
   assert.equal(supportsAccumulation("id-stock"), true);
@@ -219,7 +219,7 @@ test("supportsAccumulation gates volume-reliable equities only", async () => {
 
 test("resampleCandlesToDaily merges same-UTC-day bars (OHLC first/max/min/last, volume sum)", async () => {
   const { resampleCandlesToDaily } = await loadModule(
-    "/src/services/adapters/yahoo-candles.ts",
+    "/src/core/market/candles.ts",
   );
   const day1 = Date.UTC(2024, 0, 2, 2) / 1000; // 2024-01-02 02:00 UTC
   const day2 = Date.UTC(2024, 0, 3, 2) / 1000;
@@ -278,7 +278,7 @@ test("resampleCandlesToDaily merges same-UTC-day bars (OHLC first/max/min/last, 
 
 test("resampleCandlesToDaily passes already-daily input through 1:1", async () => {
   const { resampleCandlesToDaily } = await loadModule(
-    "/src/services/adapters/yahoo-candles.ts",
+    "/src/core/market/candles.ts",
   );
   const dailyInput = makeFlowCandles({ days: 21 });
   const out = resampleCandlesToDaily(dailyInput);

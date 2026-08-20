@@ -29,7 +29,7 @@
 | `/admin/disclaimer` | `pages/admin/disclaimer.tsx` | Klausul risk disclaimer + agreement user | `DisclaimerEditor` | `useDisclaimer` (direct supabase) |
 | `/admin/billing` | router redirect | legacy → `/admin/codes` | — | — |
 
-> Komponen fitur: `src/features/admin/components/` (16 file). Hook admin: `src/hooks/`.
+> Komponen fitur: `src/features/management/components/`. Hook admin: `src/features/management/hooks/`.
 
 ---
 

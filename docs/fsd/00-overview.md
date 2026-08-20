@@ -86,7 +86,7 @@
 | **Emission gate** | Filter cron: sinyal counter-trend vs context di-blok kecuali strength pasca-de-rate ≥ 60. *Cron filter blocking counter-trend signals unless post-derate strength ≥ 60.* | |
 | **Calibration** | Win-rate historis per tier+regime dari backtest (sample ≥ 8). *Historical hit-rate per tier+regime.* | |
 | **Universe** | Daftar aset yang dianalisis: free = konstanta `DEFAULT_*`, premium = `journal_assets` DB (single-source dengan cron). *Analyzed asset list.* | |
-| **Edge engine** | Engine pure di `src/core/`+`src/features/engine/` yang di-bundle juga ke Deno cron (single-source). *Pure engine bundled to both browser & cron.* | |
+| **Edge engine** | Engine pure di `src/core/engine/`, `src/core/automation/`, dan `src/core/trade/` yang di-bundle juga ke Deno cron (single-source). *Pure engine bundled to both browser & cron.* | |
 
 ---
 
