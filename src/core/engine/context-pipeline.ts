@@ -34,7 +34,10 @@ export interface EngineContexts {
 
 function dailyCloses(asset: UnifiedAsset): number[] {
   return resampleCandlesToDaily(
-    normalizeYahooCandles(asset.quoteIndicators, asset.timestamps),
+    normalizeYahooCandles(asset.quoteIndicators, asset.timestamps, {
+      requireTimestamps: true,
+      requirePhysical: true,
+    }),
   ).map((c) => c.close);
 }
 
@@ -46,7 +49,7 @@ export function buildEngineContexts(
   const contexts: EngineContexts = {};
 
   const btc = assetBySymbol.get(BTC_SYMBOL);
-  if (btc?.outlook) {
+  if (btc?.outlook?.dataQuality?.ready) {
     const btcReturns = computeWindowReturns(dailyCloses(btc));
     contexts.cryptoContext = deriveCryptoContext(
       btc.outlook,
@@ -56,13 +59,13 @@ export function buildEngineContexts(
   }
 
   const ihsg = assetBySymbol.get(IDX_BENCHMARK_SYMBOL);
-  if (ihsg?.outlook) {
+  if (ihsg?.outlook?.dataQuality?.ready) {
     const ihsgReturns = computeWindowReturns(dailyCloses(ihsg));
     const usdIdr = assetBySymbol.get(USDIDR_SYMBOL);
     let usdIdrInput: Parameters<typeof deriveIdxContext>[1] = {
       trend: "sideways",
     };
-    if (usdIdr?.outlook) {
+    if (usdIdr?.outlook?.dataQuality?.ready) {
       usdIdrInput = {
         trend: usdIdr.outlook.trend,
         oneWeekChangePercent: computeWindowReturns(dailyCloses(usdIdr)).r1w,
@@ -76,22 +79,33 @@ export function buildEngineContexts(
   }
 
   const spx = assetBySymbol.get(US_BENCHMARK_SYMBOL);
-  if (spx?.outlook) {
+  if (spx?.outlook?.dataQuality?.ready) {
     const spxReturns = computeWindowReturns(dailyCloses(spx));
     const vix = assetBySymbol.get(VIX_SYMBOL);
     const dxy = assetBySymbol.get(DXY_SYMBOL);
     const tiebreak: Parameters<typeof deriveUsContext>[1] = {};
-    if (vix) {
+    if (vix?.outlook?.dataQuality?.ready) {
       tiebreak.vixLevel = vix.price;
       tiebreak.vix1wChangePercent = computeWindowReturns(dailyCloses(vix)).r1w;
     }
-    if (dxy) {
+    if (dxy?.outlook?.dataQuality?.ready) {
       tiebreak.dxy1wChangePercent = computeWindowReturns(dailyCloses(dxy)).r1w;
     }
     contexts.usContext = deriveUsContext(spx.outlook, tiebreak, spxReturns);
   }
 
   return contexts;
+}
+
+/** Benchmark availability required before server-side emission. */
+export function hasRequiredContext(
+  assetType: AssetType,
+  contexts: EngineContexts,
+): boolean {
+  if (assetType === "crypto") return contexts.cryptoContext != null;
+  if (assetType === "id-stock") return contexts.idxContext != null;
+  if (assetType === "us-stock") return contexts.usContext != null;
+  return true;
 }
 
 /** Risk state of the benchmark this asset answers to, or undefined when no
@@ -107,15 +121,15 @@ function riskStateFor(
 }
 
 /**
- * Auto-journal emission gate. A counter-trend call (one that fights its
- * benchmark risk state) is only journaled when its POST-context strength still
- * clears COUNTER_TREND_MIN_STRENGTH — i.e. only exceptional setups get called
- * against the index. Aligned calls, and classes with no benchmark
- * (commodity/forex), always pass. `strengthAtEntry` is the already-de-rated
- * strength from the enriched outlook (see buildFollowedTrade).
+ * Auto-journal emission gate. A counter-trend call must clear the post-context
+ * strength floor. Aligned calls and classes without a benchmark pass.
  */
 export function passesEmissionGate(
-  trade: { assetType: AssetType; signal: "long" | "short"; strengthAtEntry: number },
+  trade: {
+    assetType: AssetType;
+    signal: "long" | "short";
+    strengthAtEntry: number;
+  },
   contexts: EngineContexts,
 ): boolean {
   const riskState = riskStateFor(trade.assetType, contexts);

@@ -47,7 +47,8 @@ curl -sI "https://rabalaba.pages.dev/api/coingecko/api/v3/global" | grep -iE "x-
 ### 1. Cron auto-journal gak jalan / gak emit
 | Gejala / Symptom | Cek / Check | Aksi / Action |
 |---|---|---|
-| `cron.job` gak ada job `auto-journal-30m` | `select * from cron.job;` | Re-run `supabase/schedule-auto-journal.sql` (paste publishable key) |
+| `cron.job` gak ada job `auto-journal-30m` | `select * from cron.job;` | Re-run `supabase/schedule-auto-journal.sql`, then verify Vault `rabalaba_cron_secret` matches Edge secret `CRON_SECRET` |
+| `net._http_response.timed_out = true` sekitar 5 detik | `select status_code, timed_out, error_msg, created from net._http_response order by created desc limit 10;` | Re-run ketiga `supabase/schedule-*.sql`; file canonical menetapkan timeout 120s untuk scan/discovery dan 30s untuk recap |
 | Job ada tapi `status='failed'` | `cron.job_run_details.return_message` | Cek 429/timeout di return_message → lihat §2 |
 | Job sukses tapi `emitted=0` terus | `journal_settings.enabled` / `interval_minutes` / `last_run_at` | Pause? clock-align gak match? `last_run_at` dedup? Set `enabled=true`, atau admin "Scan Sekarang" force |
 | `emitError` di response body | Discord/log function | Stale quote (90m) atau universe kosong → cek `journal_assets` active rows |

@@ -13,7 +13,7 @@ External APIs                 Adapters                 react-query cache        
 CoinGecko /global + /coins/markets ─▶ adaptCoinGeckoDominance ─▶ ["dominance"] ─▶ crypto context + BTC.D footer ─▶ MarketSummaryRow
 Binance derivatives  ───────────────────────────────────▶ ["smart-money",sym]    ─▶ derivePositioning   ─▶ AssetSignalTable
 Yahoo chart          ─────────▶ adaptYahooChart ───────▶ ["asset-data",sym,…]   ─▶ computeSignal        ─▶ screener / dialog
-Yahoo quoteSummary   ─────────▶ adaptYahooFundamentals ─▶ ["fundamentals",sym]   ─▶ applyFundamentals    ─▶ detail dialog
+Yahoo quoteSummary   ─────────▶ adaptYahooFundamentals ─▶ ["fundamentals",sym]   ─▶ display-only context ─▶ detail dialog
 Yahoo calendar       ─────────▶ fetchEconomicCalendar ──▶ ["economic-calendar"]  ─                      ─▶ CalendarPage
 Supabase journal     ─────────▶ rowToFollowedTrade ─────▶ ["journal-trades"]     ─▶ buildTrackerStats   ─▶ JournalDashboard
 Supabase profiles    ─────────▶ usePremiumAccess ──────▶ ["profile",uid]         ─                      ─▶ gating

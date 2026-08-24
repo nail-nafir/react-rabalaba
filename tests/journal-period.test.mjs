@@ -194,10 +194,10 @@ test("active-period metrics share one scoped dataset while history stays lifetim
 
   assert.equal(activeStats.winRate, 100);
   assert.equal(activeStats.totalR, 2);
-  assert.deepEqual(activeStats.perAsset, [{ symbol: "ETH-USD", pct: 20 }]);
+  assert.deepEqual(activeStats.perAsset, [{ symbol: "ETH-USD", r: 2 }]);
   assert.equal(lifetimeStats.winRate, 50);
   assert.equal(lifetimeStats.totalR, 1);
-  assert.deepEqual(lifetimeStats.perAsset, [{ symbol: "ETH-USD", pct: 10 }]);
+  assert.deepEqual(lifetimeStats.perAsset, [{ symbol: "ETH-USD", r: 1 }]);
   assert.deepEqual(buildTradeWinrateSnapshots(active)["current-win"], {
     wins: 1,
     total: 1,

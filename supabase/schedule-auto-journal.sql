@@ -6,10 +6,8 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- 2. Stash the invoke URL + a bearer key in Vault (run once).
---    The bearer just needs to pass the Functions gateway → use the PUBLISHABLE key
---    (it is public anyway). The function itself writes with the auto-injected
---    service-role key, so the secret key never appears here.
+-- 2. Stash the invoke URL + a private cron secret in Vault (run once).
+--    Set the Edge Function secret CRON_SECRET to the same value.
 -- Idempotent: skip if the secret already exists (safe to re-run the whole file).
 select vault.create_secret(
   'https://nravncsodgcxwkdaeqcw.supabase.co/functions/v1/auto-journal',
@@ -18,10 +16,10 @@ select vault.create_secret(
 where not exists (select 1 from vault.secrets where name = 'auto_journal_url');
 
 select vault.create_secret(
-  '<PASTE VITE_SUPABASE_PUBLISHABLE_KEY HERE: sb_publishable_...>',
-  'auto_journal_bearer'
+  replace(gen_random_uuid()::text, '-', ''),
+  'rabalaba_cron_secret'
 )
-where not exists (select 1 from vault.secrets where name = 'auto_journal_bearer');
+where not exists (select 1 from vault.secrets where name = 'rabalaba_cron_secret');
 
 -- 3. Schedule every 30 minutes (frequent enough to catch intraday TP/SL wicks).
 select cron.schedule(
@@ -32,9 +30,11 @@ select cron.schedule(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'auto_journal_url'),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'auto_journal_bearer')
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'rabalaba_cron_secret')
     ),
-    body := jsonb_build_object('trigger', 'cron')
+    body := jsonb_build_object('trigger', 'cron'),
+    -- Universe fetch + engine scan normally exceeds pg_net's 5s default.
+    timeout_milliseconds := 120000
   );
   $$
 );

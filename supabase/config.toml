@@ -1,11 +1,12 @@
 project_id = "nravncsodgcxwkdaeqcw"
 
 [functions.auto-journal]
-# Cron invokes with a Bearer publishable key (see schedule-auto-journal.sql),
-# which passes the gateway. The function writes with the auto-injected
-# service-role key. Flip to false only if you switch to a shared-secret header.
-verify_jwt = true
+# The function authenticates cron with x-cron-secret and force=true with the
+# caller's Supabase session.
+verify_jwt = false
 
 [functions.asset-discovery]
-# Same gateway setup as auto-journal (see schedule-asset-discovery.sql).
-verify_jwt = true
+verify_jwt = false
+
+[functions.daily-summary]
+verify_jwt = false

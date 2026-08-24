@@ -1,27 +1,20 @@
 import type { YahooChartResult } from "../api/yahoo-finance";
 import type { UnifiedAsset, AssetType, TradingPlan } from "@/types/asset";
-import {
-  computeSignal,
-  createUnavailableSignal,
-} from "@/core/engine/signals";
+import { computeSignal, createUnavailableSignal } from "@/core/engine/signals";
 import type { Outlook } from "@/types/engine";
-import { resolveTimeframePreset } from "@/constants/timeframes";
-import type { TimeframePresetKey } from "@/constants/timeframes";
+import {
+  canonicalTimeframe,
+  HIGHER_TIMEFRAME_FACTOR,
+  resolveTimeframePreset,
+} from "@/constants/timeframes";
 import { computeTradingPlan } from "@/core/engine/trading-plan";
 import {
   buildSignalSeriesFromCandles,
+  closedCandlesForSignal,
   normalizeYahooCandles,
   resampleCandles,
-  deriveCandleTrend,
+  deriveCandleTrendState,
 } from "@/core/market/candles";
-
-/** Higher-timeframe resample factor per active timeframe (no extra fetch):
- *  scalp 5m→1h (×12), swing 1h→4h (×4), position 1d→~1w (×5 trading days). */
-const HTF_RESAMPLE_FACTOR: Record<TimeframePresetKey, number> = {
-  scalp: 12,
-  swing: 4,
-  position: 5,
-};
 
 function detectAssetType(symbol: string, instrumentType?: string): AssetType {
   const sym = symbol.toUpperCase();
@@ -49,13 +42,21 @@ export function adaptYahooChart(
   const { meta } = result;
   const quote = result.indicators?.quote?.[0];
 
-  const timeframe = meta.range ?? "1d";
+  const timeframeKey = canonicalTimeframe(
+    resolveTimeframePreset(meta.range, meta.dataGranularity),
+  );
   const currentPrice = meta.regularMarketPrice ?? 0;
   const volume = meta.regularMarketVolume ?? 0;
   const assetType = detectAssetType(meta.symbol, meta.instrumentType);
 
   // Normalize candles ONCE — reused for change%, signal computation and UI.
-  const candles = quote ? normalizeYahooCandles(quote, result.timestamp) : [];
+  const candles = quote
+    ? normalizeYahooCandles(quote, result.timestamp, { requirePhysical: true })
+    : [];
+  const signalCandles = closedCandlesForSignal(candles, {
+    interval: meta.dataGranularity,
+    regularSessionEnd: meta.currentTradingPeriod?.regular?.end,
+  });
 
   // Daily change baseline is CONVENTION-DEPENDENT per market:
   //  - equities/forex/commodities: vs the previous SESSION close (Yahoo's
@@ -103,18 +104,15 @@ export function adaptYahooChart(
   let outlook: Outlook | null = null;
   let tradingPlan: TradingPlan | null = null;
 
-  if (candles.length > 0) {
-    const signalSeries = buildSignalSeriesFromCandles(candles);
-    const timeframeKey = resolveTimeframePreset(
-      meta.range,
-      meta.dataGranularity,
-    );
-
+  if (signalCandles.length > 0) {
+    const signalSeries = buildSignalSeriesFromCandles(signalCandles);
     // Multi-timeframe confirmation: derive the higher-timeframe trend by
     // resampling the already-fetched candles (no extra network request).
-    const htfFactor = HTF_RESAMPLE_FACTOR[timeframeKey];
-    const higherTimeframeTrend = deriveCandleTrend(
-      resampleCandles(candles, htfFactor),
+    const htfFactor = HIGHER_TIMEFRAME_FACTOR[timeframeKey];
+    const higherTimeframe = deriveCandleTrendState(
+      resampleCandles(signalCandles, htfFactor, {
+        includeTrailingPartial: false,
+      }),
     );
 
     // Compute signal from complete, index-aligned candles. The engine itself
@@ -123,7 +121,8 @@ export function adaptYahooChart(
       ...signalSeries,
       assetType,
       timeframe: timeframeKey,
-      higherTimeframeTrend,
+      higherTimeframeTrend: higherTimeframe.trend,
+      higherTimeframeReady: higherTimeframe.ready,
     });
 
     if (outlook.signal !== "neutral") {
@@ -159,7 +158,7 @@ export function adaptYahooChart(
     assetType,
     quoteIndicators: quote,
     price: currentPrice,
-    timeframe: timeframe,
+    timeframe: timeframeKey,
     volume: volume,
     outlook,
     tradingPlan,
@@ -172,6 +171,10 @@ export function adaptYahooChart(
     quoteTime:
       typeof meta.regularMarketTime === "number"
         ? meta.regularMarketTime * 1000
+        : undefined,
+    decisionCandleTime:
+      signalCandles.length > 0
+        ? signalCandles[signalCandles.length - 1].timestamp * 1000
         : undefined,
   };
 }

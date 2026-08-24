@@ -12,9 +12,9 @@ import {
   calculateRSISeries,
   detectRSIDivergence,
   calculateFibLevels,
-  classifyRegime,
   detectSwingLevels,
 } from "./indicators";
+import { classifyRegime } from "./regime";
 
 import type {
   AnalysisParam,
@@ -85,8 +85,10 @@ export function computeSignal(input: SignalInput): Outlook {
     periodLow,
     assetType,
     timeframe = "swing",
-    higherTimeframeTrend = "sideways",
   } = input;
+  const higherTimeframeTrend = input.higherTimeframeTrend ?? "sideways";
+  const higherTimeframeReady =
+    input.higherTimeframeReady ?? input.higherTimeframeTrend != null;
 
   const close = prices[prices.length - 1];
   if (!Number.isFinite(close)) {
@@ -150,7 +152,8 @@ export function computeSignal(input: SignalInput): Outlook {
   const macd = calculateMACD(prices);
 
   // Volume analysis (skip when volume data is missing or unreliable)
-  const volumeMA = volumeReliable ? calculateSMA(volumes, 20) : 0;
+  const previousVolumes = volumes.slice(0, -1);
+  const volumeMA = volumeReliable ? calculateSMA(previousVolumes, 20) : 0;
   const currentVolume = volumes[volumes.length - 1] ?? 0;
   const volumeSpike =
     volumeReliable &&
@@ -190,7 +193,11 @@ export function computeSignal(input: SignalInput): Outlook {
     : ("flat" as const);
 
   const rsiSeries = calculateRSISeries(prices);
-  const rsiDivergence = detectRSIDivergence(prices, rsiSeries);
+  const rsiDivergence = detectRSIDivergence(
+    highPrices,
+    lowPrices,
+    rsiSeries,
+  );
 
   // ─── Layer 1: Market regime ──────────────────────────────
   const atrPercent = close > 0 ? (atr / close) * 100 : 0;
@@ -504,7 +511,11 @@ export function computeSignal(input: SignalInput): Outlook {
   // ─── Layer 2: Higher-timeframe confirmation ──────────────
   // Professional entries rarely fight the higher timeframe. Boost conviction
   // when HTF agrees, downgrade (halve) when it conflicts to cut whipsaw.
-  if (higherTimeframeTrend !== "sideways" && directionScore !== 0) {
+  if (
+    higherTimeframeReady &&
+    higherTimeframeTrend !== "sideways" &&
+    directionScore !== 0
+  ) {
     const htfSign = higherTimeframeTrend === "bullish" ? 1 : -1;
     const agrees = Math.sign(directionScore) === htfSign;
     if (agrees) {
@@ -655,6 +666,7 @@ export function computeSignal(input: SignalInput): Outlook {
     trend,
     regime,
     higherTimeframeTrend,
+    higherTimeframeReady,
     directionScore,
     categoryScores,
     reasons,
@@ -702,6 +714,7 @@ export function createUnavailableSignal(): Outlook {
     trend: "sideways",
     regime: "ranging",
     higherTimeframeTrend: "sideways",
+    higherTimeframeReady: false,
     directionScore: 0,
     categoryScores: { trend: 0, momentum: 0, volatility: 0, volume: 0 },
     reasons,

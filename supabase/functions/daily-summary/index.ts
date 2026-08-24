@@ -19,6 +19,7 @@
  * the SAME code the app uses, bundled to ./_engine.mjs by `npm run build:edge`.
  */
 import { createClient } from "@supabase/supabase-js";
+import { authorizeCronRequest } from "../_shared/cron-auth.ts";
 import {
   adaptYahooChart,
   computePnl,
@@ -39,6 +40,7 @@ const YAHOO =
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const FETCH_CONCURRENCY = 8;
+const FETCH_TIMEOUT_MS = 12_000;
 
 type RecapKind = "daily" | "weekly" | "monthly";
 
@@ -63,8 +65,13 @@ const KIND_COLUMNS: Record<RecapKind, { enabled: string; stamp: string }> = {
 async function fetchChart(symbol: string) {
   const url = `${YAHOO}/${encodeURIComponent(symbol)}?range=${RANGE}&interval=${INTERVAL}&includePrePost=false&_=${Date.now()}`;
   const res = await fetch(url, {
-    headers: { "User-Agent": UA, "Cache-Control": "no-cache", Pragma: "no-cache" },
+    headers: {
+      "User-Agent": UA,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
     cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) return null;
   const json = await res.json();
@@ -137,7 +144,7 @@ function recapLabel(
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -165,7 +172,10 @@ Deno.serve(async (req: Request) => {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {
-    return jsonResponse({ error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" }, 500);
+    return jsonResponse(
+      { error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" },
+      500,
+    );
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
 
@@ -179,30 +189,8 @@ Deno.serve(async (req: Request) => {
   const force = body.force === true;
   const forceKind: RecapKind =
     body.kind === "weekly" || body.kind === "monthly" ? body.kind : "daily";
-  if (force) {
-    const userClient = createClient(
-      url,
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization") ?? "" },
-        },
-        auth: { persistSession: false },
-      },
-    );
-    const {
-      data: { user },
-    } = await userClient.auth.getUser();
-    if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
-    const { data: profile } = await db
-      .from("profiles")
-      .select("is_admin")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!(profile as { is_admin?: boolean } | null)?.is_admin) {
-      return jsonResponse({ error: "Forbidden" }, 403);
-    }
-  }
+  const auth = await authorizeCronRequest(req, url, key, force);
+  if (!auth.ok) return jsonResponse({ error: auth.error }, auth.status);
 
   // ── Settings gate (same singleton row as auto-journal) ──
   const { data: settings } = await db
@@ -241,6 +229,7 @@ Deno.serve(async (req: Request) => {
     kind: RecapKind;
     startMs: number;
     endMs: number;
+    claimStamp?: string;
   }
   const due: DueRecap[] = [];
   if (force) {
@@ -259,14 +248,15 @@ Deno.serve(async (req: Request) => {
       // returns the row only to the FIRST caller. Runs BEFORE the slow Yahoo
       // fetch + Discord POST; a failed send releases it below.
       const stampCol = KIND_COLUMNS[kind].stamp;
+      const claimStamp = new Date().toISOString();
       const { data: claimed } = await db
         .from("journal_settings")
-        .update({ [stampCol]: new Date().toISOString() })
+        .update({ [stampCol]: claimStamp })
         .eq("id", true)
         .or(`${stampCol}.is.null,${stampCol}.lt.${sendDayMidnightIso}`)
         .select("id");
       if (claimed && claimed.length > 0) {
-        due.push({ kind, startMs: w.startMs, endMs: w.endMs });
+        due.push({ kind, startMs: w.startMs, endMs: w.endMs, claimStamp });
       }
     }
     if (due.length === 0) {
@@ -286,9 +276,9 @@ Deno.serve(async (req: Request) => {
   const priceBySymbol = new Map<string, number>();
   if (openT.length > 0) {
     const symbols = [...new Set(openT.map((r) => r.symbol))];
-    const assets = (await mapPool(symbols, FETCH_CONCURRENCY, loadAsset)).filter(
-      (a) => a != null,
-    );
+    const assets = (
+      await mapPool(symbols, FETCH_CONCURRENCY, loadAsset)
+    ).filter((a) => a != null);
     for (const a of assets) {
       if (typeof a.price === "number" && Number.isFinite(a.price)) {
         priceBySymbol.set(a.symbol, a.price);
@@ -383,7 +373,8 @@ Deno.serve(async (req: Request) => {
       await db
         .from("journal_settings")
         .update({ [stampCol]: prevStamp(item.kind) })
-        .eq("id", true);
+        .eq("id", true)
+        .eq(stampCol, item.claimStamp ?? "");
     }
 
     results.push({
@@ -409,6 +400,7 @@ async function sendDiscord(content: string): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     return res.ok;
   } catch {

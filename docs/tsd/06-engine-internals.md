@@ -116,7 +116,7 @@ else → ranging
 | `calculateCMF(candles, period=20)` | Chaikin Money Flow `Σ(MFV)/Σ(Volume)` |
 | `calculateMFI(candles, period=14)` | Money Flow Index |
 | `calculateRSISeries(closes, period)` | O(n) full RSI array |
-| `detectRSIDivergence(closes, rsiSeries)` | peak/trough matching → bullish/bearish/none |
+| `detectRSIDivergence(highs, lows, rsiSeries)` | aligned price/RSI swing matching → bullish/bearish/none |
 | `calculateFibLevels(candles)` | swing high/low → 0/23.6/38.2/50/61.8/78.6/100% |
 | `detectSwingLevels(candles)` | 3-bar fractals |
 | `calculatePivotLevels(candle)` | classic pivot P=S+H+L / R1..R3 / S1..S3 |
@@ -148,11 +148,11 @@ Tiap context: `derive*Context` (package outlook+extras) + `apply*Context` (de-ra
 
 **Urutan load-bearing:**
 1. Top-down context de-rate (BTC/IHSG/S&P, mutually exclusive per assetType)
-2. Flow nudge — `applySmartMoney` (crypto) / `applyAccumulation` (US+ID stocks)
-3. `applyRelativeStrength` (bounded ±`RELATIVE_STRENGTH.MAX_CONVICTION_ADJ 0.1`)
-4. `applyFundamentals` (stocks, browser-only)
+2. Attach smart-money / accumulation evidence (display-only)
+3. Attach relative strength (display-only)
+4. Attach fundamentals (stocks, browser-only and display-only)
 
-Semua nudge bounded ±`*_MAX_CONVICTION_ADJ`, **gak pernah flip**. Same-ref passthrough kalau gak ada yang apply.
+Hanya langkah 1 yang boleh mengubah keputusan canonical. Helper `apply*` tetap tersedia untuk eksperimen terisolasi; optional API tidak boleh membuat browser dan cron berbeda. Same-ref passthrough kalau gak ada data yang ditempel.
 
 ---
 
@@ -216,17 +216,17 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ## 🤖 core/automation/auto-journal-core.ts — `runAutoJournal` (`:100`)
 
-`runAutoJournal(assets, openRows, {contexts, recentClosed, now?}) → AutoJournalPlan {inserts, closures}`.
+`runAutoJournal(assets, openRows, {contexts, recentClosed, now?}) → AutoJournalPlan {inserts, progressUpdates, closures}`.
 
-**Emit**: skip quote stale > `QUOTE_MAX_AGE_MS` 90min; `buildFollowedTrade`; `passesEmissionGate` (counter-trend diblok kecuali post-context strength ≥ `JOURNAL_EMISSION.COUNTER_TREND_MIN_STRENGTH 60`); `REENTRY_COOLDOWN_MS` 6 jam per `symbol|signal`.
+**Emit**: skip quote stale >90min; simpan provenance engine/candle/regime/HTF/score; counter-trend harus post-context strength ≥60; cooldown 6 jam per `symbol|signal`.
 
-**Close**: replay candle sejak entry — Close 1 price TP/SL (`applyPriceSync`, secure highest TP di stop berikutnya); Close 2 signal REVERSAL (long↔short, status `reversed=true`, secure TP touched else exit current). Phantom guard: cuma candle timestamped yang mutusin.
+**Close**: replay candle sejak entry dengan stop-first OHLC. TP1/TP2 meratchet full-position stop dan milestone dipersist. Gap stop fill di open; reversal exit di close candle terkoroborasi. Phantom guard: cuma candle timestamped yang mutusin.
 
 ---
 
 ## 🧭 core/engine/context-pipeline.ts — `buildEngineContexts` (`:128`) + `passesEmissionGate`
 
-`buildEngineContexts(assetBySymbol) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. `passesEmissionGate(trade, contexts)` — aligned + benchmark-less always pass; counter-trend gated post-context strength ≥60.
+`buildEngineContexts(assetBySymbol) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. `passesEmissionGate` hanya menerapkan counter-trend strength yang sudah ada; kandidat regime/HTF tidak dipromosikan karena gagal validation→holdout.
 
 ---
 

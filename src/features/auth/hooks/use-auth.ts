@@ -37,6 +37,10 @@ function initAuth() {
     if (crossedAuthBoundary) {
       queryClient.removeQueries({ queryKey: ["profile"] });
       queryClient.removeQueries({ queryKey: ["journal-trades"] });
+      queryClient.removeQueries({ queryKey: ["screener-universe"] });
+      queryClient.removeQueries({ queryKey: ["journal-assets"] });
+      queryClient.removeQueries({ queryKey: ["admin-users"] });
+      queryClient.removeQueries({ queryKey: ["admin-access-codes"] });
     }
     store.dispatch(authActions.setSession(session));
   });

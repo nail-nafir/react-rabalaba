@@ -85,7 +85,6 @@ import { TradeDetailDialog } from "./trade-detail-dialog";
 
 const BADGE_CLASS = "font-bold tracking-wider uppercase text-[10px] rounded-md";
 
-
 // Filter unions = the taxonomy value + the UI-only "all" sentinel. `PnlFilter`
 // already bakes in "all" (it's purely a UI grouping), so it comes straight from
 // the taxonomy.
@@ -129,7 +128,9 @@ function SortButton({
       <TooltipTrigger asChild>{btn}</TooltipTrigger>
       <TooltipContent side="top">{tooltip}</TooltipContent>
     </Tooltip>
-  ) : btn;
+  ) : (
+    btn
+  );
 }
 
 interface FollowHistoryTableProps {
@@ -257,7 +258,7 @@ export function FollowHistoryTable({
 
         if (pnlFilter === "tp" && !isTp) return false;
         if (pnlFilter === "sl" && !isSl) return false;
-        if (pnlFilter === "reversal_profit" && !(isReversal && reversalR >= 0))
+        if (pnlFilter === "reversal_profit" && !(isReversal && reversalR > 0))
           return false;
         if (pnlFilter === "reversal_loss" && !(isReversal && reversalR < 0))
           return false;
@@ -324,7 +325,11 @@ export function FollowHistoryTable({
         // Sort by closedAt descending — open trades float to top, closed trades sort newest to oldest.
         accessorFn: (tr) => tr.closedAt ?? Infinity,
         header: ({ column }) => (
-            <SortButton label={t("journal.col_date")} column={column} tooltip={t("journal.col_date_methodology")} />
+          <SortButton
+            label={t("journal.col_date")}
+            column={column}
+            tooltip={t("journal.col_date_methodology")}
+          />
         ),
         cell: ({ row }) => {
           const tr = row.original;
@@ -349,18 +354,18 @@ export function FollowHistoryTable({
               {closeSec != null ? (
                 <div className="text-muted-foreground flex items-center gap-1 font-medium">
                   <LogOut className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span>{formatDayMonth(closeSec, i18n.language)}</span>
-                <span className="text-muted-foreground/40">•</span>
-                <span className="text-[10px] font-normal opacity-75">
+                  <span>{formatDayMonth(closeSec, i18n.language)}</span>
+                  <span className="text-muted-foreground/40">•</span>
+                  <span className="text-[10px] font-normal opacity-75">
                     {formatClock(closeSec)}
                   </span>
                 </div>
               ) : (
                 <div className="text-amber-400 flex items-center gap-1 font-medium">
                   <Hourglass className="h-3 w-3 text-amber-400 shrink-0" />
-                <span>{formatDayMonth(nowSec, i18n.language)}</span>
-                <span className="text-amber-500/40">•</span>
-                <span className="text-[10px] font-normal opacity-75">
+                  <span>{formatDayMonth(nowSec, i18n.language)}</span>
+                  <span className="text-amber-500/40">•</span>
+                  <span className="text-[10px] font-normal opacity-75">
                     {formatClock(nowSec)}
                   </span>
                 </div>
@@ -408,7 +413,11 @@ export function FollowHistoryTable({
             ? (livePriceRef.current[tr.symbol] ?? 0)
             : (tr.closePrice ?? 0),
         header: ({ column }) => (
-            <SortButton label={t("table.price")} column={column} tooltip={t("table.price_methodology")} />
+          <SortButton
+            label={t("table.price")}
+            column={column}
+            tooltip={t("table.price_methodology")}
+          />
         ),
         cell: ({ row }) => {
           const tr = row.original;
@@ -450,9 +459,7 @@ export function FollowHistoryTable({
                 )}
               >
                 {isClosed ? (
-                  <LogOut
-                    className={cn("h-3 w-3 shrink-0", secondColor)}
-                  />
+                  <LogOut className={cn("h-3 w-3 shrink-0", secondColor)} />
                 ) : (
                   <Hourglass className={cn("h-3 w-3 shrink-0", secondColor)} />
                 )}
@@ -509,7 +516,11 @@ export function FollowHistoryTable({
           return s && s.total > 0 ? s.wins / s.total : -1;
         },
         header: ({ column }) => (
-            <SortButton label={t("journal.col_successrate")} column={column} tooltip={t("journal.col_successrate_methodology")} />
+          <SortButton
+            label={t("journal.col_successrate")}
+            column={column}
+            tooltip={t("journal.col_successrate_methodology")}
+          />
         ),
         cell: ({ row }) => {
           const s = winrateRef.current[row.original.id];
@@ -554,7 +565,11 @@ export function FollowHistoryTable({
           return price == null ? 0 : computePnl(tr, price).pct;
         },
         header: ({ column }) => (
-            <SortButton label={t("journal.col_pnl")} column={column} tooltip={t("journal.col_pnl_methodology")} />
+          <SortButton
+            label={t("journal.col_pnl")}
+            column={column}
+            tooltip={t("journal.col_pnl_methodology")}
+          />
         ),
         cell: ({ row }) => {
           const tr = row.original;
@@ -567,7 +582,7 @@ export function FollowHistoryTable({
             return <span className="text-muted-foreground">—</span>;
           }
           const { pct, r } = computePnl(tr, price);
-          const isWin = r >= 0;
+          const isWin = r > 0;
           // Target progress lives with P&L: the magnitude (%/R) + which TP/SL was
           // hit together = the full "how did this trade perform" picture. Open →
           // live milestone (ref, off candles); closed → stored.

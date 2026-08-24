@@ -1,8 +1,9 @@
 import type { Accumulation, AssetType } from "@/types/asset";
 import type { Outlook } from "@/types/engine";
 import type { NormalizedYahooCandle } from "@/core/market/candles";
-import { TIER_THRESHOLDS, ACCUMULATION } from "@/constants/signals";
+import { ACCUMULATION } from "@/constants/signals";
 import { calculateADDelta, calculateCMF, calculateMFI } from "./indicators";
+import { alignmentFor, tierFor } from "./benchmark-derate";
 
 /** Label that means "no directional flow read" — used to keep UI color in
  *  sync (mirrors NEUTRAL_POSITIONING_LABEL in smart-money.ts). */
@@ -141,18 +142,6 @@ function labelFor(score: number): string {
 function clampUnit(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(-1, Math.min(1, value));
-}
-
-function tierFor(strength: number): Outlook["tier"] {
-  if (strength >= TIER_THRESHOLDS.A) return "A";
-  if (strength >= TIER_THRESHOLDS.B) return "B";
-  return "C";
-}
-
-function alignmentFor(strength: number): Outlook["technicalAlignment"] {
-  if (strength >= TIER_THRESHOLDS.A) return "strong";
-  if (strength >= TIER_THRESHOLDS.B) return "moderate";
-  return "weak";
 }
 
 /**

@@ -23,9 +23,9 @@
 | Output | `{ok, forced, universe, fetched, open_before, emitted, closed, alerted, emitError?}` (`:348-358`) |
 | Tables | `journal_settings` (read gate + stamp `last_run_at`), `journal_trades` (read open + recently-closed cooldown + INSERT emit + UPDATE closure), `journal_assets` (read universe), `profiles` (admin check) |
 | External | Yahoo chart via CF proxy (`YAHOO_PROXY_BASE` default `rabalaba.pages.dev/api/yahoo/v8/finance/chart`, override env), cache-bust + `Cache-Control: no-cache`, concurrency 8 (`mapPool`). Discord webhook best-effort |
-| Gating | `enabled` pause; `interval_minutes` clock-aligned WIB midnight (tick jalan kalau `slotMin % interval === 0` + dedup `last_run_at`); `market_hours_only` skip bursa tutup; universe dari `journal_assets` + komoditas/forex konstanta, fallback `EDGE_UNIVERSE` kalau table unreadable; benchmark context-only di-fetch tapi gak di-jurnal |
+| Gating | `enabled` pause; `interval_minutes` clock-aligned WIB midnight (tick jalan kalau `slotMin % interval === 0` + atomic claim `last_run_at`); `market_hours_only` skip bursa tutup; universe dari `journal_assets` + komoditas/forex konstanta, read failure fail-closed; benchmark context-only di-fetch tapi gak di-jurnal |
 | Entry | `Deno.serve` `:133`; `runAutoJournal` call `:300`; alerts `:335-336` |
-| Schedule file | `supabase/schedule-auto-journal.sql:27` — `pg_cron`+`pg_net`+`vault.create_secret` (auto_journal_url, auto_journal_bearer) |
+| Schedule file | `supabase/schedule-auto-journal.sql:27` — `pg_cron`+`pg_net`+`vault.create_secret` (auto_journal_url, rabalaba_cron_secret) |
 
 > Detail functional: [`../fsd/03-auto-journal.md`](../fsd/03-auto-journal.md).
 
@@ -69,16 +69,16 @@
 
 | File | Job | Schedule | Vault secret |
 |---|---|---|---|
-| `schedule-auto-journal.sql:27` | `auto-journal-30m` | `*/30 * * * *` | `auto_journal_url`, `auto_journal_bearer` (publishable key) |
-| `schedule-daily-summary.sql:24` | `daily-summary-hourly` | `0 * * * *` | `daily_summary_url`, reuse `auto_journal_bearer` |
-| `schedule-asset-discovery.sql:26` | `asset-discovery-daily` | `30 22 * * *` | `asset_discovery_url`, reuse `auto_journal_bearer` |
+| `schedule-auto-journal.sql:27` | `auto-journal-30m` | `*/30 * * * *` | `auto_journal_url`, `rabalaba_cron_secret` |
+| `schedule-daily-summary.sql:24` | `daily-summary-hourly` | `0 * * * *` | `daily_summary_url`, reuse `rabalaba_cron_secret` |
+| `schedule-asset-discovery.sql:26` | `asset-discovery-daily` | `30 22 * * *` | `asset_discovery_url`, reuse `rabalaba_cron_secret` |
 
-Semua: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempotent) → `cron.schedule(net.http_post Authorization: Bearer <vault>)`. Bearer = **publishable** key (public, lewat gateway; function tulis service-role).
+Semua: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempotent) → `cron.schedule(net.http_post x-cron-secret: <vault>)`. Set nilai secret yang sama sebagai Edge Function `CRON_SECRET`.
 
 ---
 
 ## ⚙️ `supabase/config.toml`
-`project_id = "nravncsodgcxwkdaeqcw"`; `[functions.auto-journal]` & `[functions.asset-discovery]` `verify_jwt = true` (cron bearer publishable lewat gateway; tulis service-role). `daily-summary` default.
+`project_id = "nravncsodgcxwkdaeqcw"`; ketiga function memakai `verify_jwt = false` karena handler membedakan cron secret dan force session admin/owner.
 
 ---
 

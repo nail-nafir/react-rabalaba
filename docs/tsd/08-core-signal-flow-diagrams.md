@@ -50,7 +50,7 @@ flowchart LR
     BA["yahoo-adapter\nnormalize quote + candles\nresample HTF trend"]
     SIG["computeSignal\nindicators → regime → scores\nLONG / SHORT / neutral"]
     TP["computeTradingPlan\nentry · stop · TP1/2/3 · RR"]
-    EN["enrichAsset\ncontext de-rate → flow nudge\nrelative strength → fundamentals*"]
+    EN["enrichAsset\ncontext de-rate\noptional evidence display-only*"]
     UI["AssetSignalTable / AssetDetailDialog\nscreener + signal detail"]
     BT["runBacktest + calibrateConfidence\nwalk-forward evidence"]
 
@@ -156,7 +156,7 @@ flowchart TB
     SIGNAL["computeSignal\nindicator set → regime → weighted scores\nHTF confirmation + data-quality gate"]
     ACTION{"LONG/SHORT\nor neutral?"}
     PLAN["computeTradingPlan\nonly for actionable signal"]
-    CONTEXT["enrichAsset\ncontext de-rate → flow nudge\nrelative strength (browser overlay too)"]
+    CONTEXT["enrichAsset\ncontext de-rate\noptional evidence display-only"]
     EMITGATE["passesEmissionGate\nasset/index context aligned?"]
     SIGNAL --> ACTION
     ACTION -- "neutral" --> NOEMIT["No new trade\nneutral never closes an open trade"]

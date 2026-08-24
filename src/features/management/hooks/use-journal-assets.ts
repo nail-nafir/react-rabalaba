@@ -11,7 +11,7 @@
  * NOTE: this is the JOURNAL (auto-signal) universe only. The screener's universe
  * stays in src/constants/assets.ts (free DEFAULT vs premium TOP) — untouched.
  */
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/services/supabase/client";
 import type {
@@ -22,8 +22,8 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { fetchYahooChart } from "@/services/api/yahoo-finance";
 import { adaptYahooChart } from "@/services/adapters/yahoo-adapter";
+import { DEFAULT_TIMEFRAME } from "@/constants/timeframes";
 
-const QUERY_KEY = ["journal-assets"] as const;
 const EMPTY: JournalAssetRow[] = [];
 const clean = (symbol: string) => symbol.trim().toUpperCase();
 
@@ -36,10 +36,11 @@ export function useJournalAssets() {
   const { user } = useAuth();
   const { isAdmin } = usePremiumAccess();
   const userId = user?.id ?? null;
+  const queryKey = useMemo(() => ["journal-assets", userId] as const, [userId]);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: QUERY_KEY,
+    queryKey,
     enabled: isAdmin,
     staleTime: 60_000,
     queryFn: async () => {
@@ -64,7 +65,7 @@ export function useJournalAssets() {
 
       // Dedup against the loaded list first (cheap, avoids a wasted Yahoo fetch).
       const existing =
-        queryClient.getQueryData<JournalAssetRow[]>(QUERY_KEY) ?? [];
+        queryClient.getQueryData<JournalAssetRow[]>(queryKey) ?? [];
       if (existing.some((a) => a.symbol.toUpperCase() === symbol)) {
         return "duplicate";
       }
@@ -72,7 +73,11 @@ export function useJournalAssets() {
       // Validate it resolves on Yahoo + derive name/asset_type, reusing the SAME
       // fetch+adapt path the cron/screener use — a typo'd symbol can't slip in as
       // a silent no-op (the cron would just fail to fetch it forever).
-      const asset = await fetchYahooChart(symbol, "1mo", "1h")
+      const asset = await fetchYahooChart(
+        symbol,
+        DEFAULT_TIMEFRAME.range,
+        DEFAULT_TIMEFRAME.interval,
+      )
         .then((chart) => adaptYahooChart(chart))
         .catch(() => null);
       if (!asset) return "invalid";
@@ -98,17 +103,17 @@ export function useJournalAssets() {
         if (error.code === "23505") return "duplicate";
         throw error;
       }
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey });
       return "added";
     },
-    [userId, queryClient],
+    [userId, queryClient, queryKey],
   );
 
   const toggleActive = useCallback(
     async (symbol: string, active: boolean): Promise<boolean> => {
       if (!userId) return false;
       // Optimistic: flip locally so the toggle responds instantly.
-      queryClient.setQueryData<JournalAssetRow[]>(QUERY_KEY, (prev) =>
+      queryClient.setQueryData<JournalAssetRow[]>(queryKey, (prev) =>
         (prev ?? []).map((a) =>
           a.symbol === symbol ? { ...a, active, source: "admin" } : a,
         ),
@@ -121,19 +126,19 @@ export function useJournalAssets() {
         .update({ active, source: "admin" } as never)
         .eq("symbol", symbol);
       if (error) {
-        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        await queryClient.invalidateQueries({ queryKey });
         return false;
       }
       return true;
     },
-    [userId, queryClient],
+    [userId, queryClient, queryKey],
   );
 
   const removeAsset = useCallback(
     async (symbol: string): Promise<boolean> => {
       if (!userId) return false;
       // Optimistic: drop locally first.
-      queryClient.setQueryData<JournalAssetRow[]>(QUERY_KEY, (prev) =>
+      queryClient.setQueryData<JournalAssetRow[]>(queryKey, (prev) =>
         (prev ?? []).filter((a) => a.symbol !== symbol),
       );
       const { error } = await supabase
@@ -141,12 +146,12 @@ export function useJournalAssets() {
         .delete()
         .eq("symbol", symbol);
       if (error) {
-        await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+        await queryClient.invalidateQueries({ queryKey });
         return false;
       }
       return true;
     },
-    [userId, queryClient],
+    [userId, queryClient, queryKey],
   );
 
   return { assets, isLoading, addAsset, toggleActive, removeAsset };

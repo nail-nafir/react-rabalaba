@@ -25,11 +25,11 @@ test.after(async () => {
 const SRC = "/src/features/market/model/screener-universe.ts";
 const ASSETS = "/src/constants/assets.ts";
 
-test("groupUniverse: null / undefined / empty → DEFAULT_* fallback", async () => {
+test("groupUniverse: null / undefined fallback, empty array stays empty", async () => {
   const { groupUniverse, FALLBACK_UNIVERSE } = await loadModule(SRC);
   assert.deepEqual(groupUniverse(null), FALLBACK_UNIVERSE);
   assert.deepEqual(groupUniverse(undefined), FALLBACK_UNIVERSE);
-  assert.deepEqual(groupUniverse([]), FALLBACK_UNIVERSE);
+  assert.deepEqual(groupUniverse([]), { crypto: [], usStock: [], idStock: [] });
 });
 
 test("groupUniverse: groups active rows by asset_type", async () => {
@@ -64,15 +64,19 @@ test("groupUniverse: ignores inactive rows and commodity/forex types", async () 
     !all.includes("GC=F") && !all.includes("EURUSD=X"),
     "commodity/forex never appear in the DB-driven lists",
   );
-  assert.notDeepEqual(u.crypto, DEFAULT_CRYPTO_TICKERS, "real rows, not fallback");
+  assert.notDeepEqual(
+    u.crypto,
+    DEFAULT_CRYPTO_TICKERS,
+    "real rows, not fallback",
+  );
 });
 
-test("groupUniverse: a present-but-empty category falls back to its DEFAULT", async () => {
-  const { groupUniverse, FALLBACK_UNIVERSE } = await loadModule(SRC);
+test("groupUniverse: a present-but-empty category stays empty", async () => {
+  const { groupUniverse } = await loadModule(SRC);
   // Rows exist (non-empty) but no us-stock / id-stock → only those fall back.
   const rows = [{ symbol: "BTC-USD", asset_type: "crypto", active: true }];
   const u = groupUniverse(rows);
   assert.deepEqual(u.crypto, ["BTC-USD"]);
-  assert.deepEqual(u.usStock, FALLBACK_UNIVERSE.usStock, "no us-stock → DEFAULT");
-  assert.deepEqual(u.idStock, FALLBACK_UNIVERSE.idStock, "no id-stock → DEFAULT");
+  assert.deepEqual(u.usStock, [], "no us-stock → empty");
+  assert.deepEqual(u.idStock, [], "no id-stock → empty");
 });

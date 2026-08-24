@@ -77,7 +77,7 @@ export interface YahooSearchResult {
 
 /**
  * Fetch chart data (OHLCV) for a single symbol.
- * Default range is 1 month with 1-hour intervals.
+ * Callers pass their explicit range and interval contract.
  */
 export async function fetchYahooChart(
   symbol: string,

@@ -169,8 +169,8 @@ export function calculateBollingerBands(
   const slice = prices.slice(-period);
   const middle = slice.reduce((s, v) => s + v, 0) / period;
 
-  // Sample variance (period - 1) matches TradingView and most charting platforms
-  const variance = slice.reduce((s, v) => s + (v - middle) ** 2, 0) / (period - 1);
+  // Population variance is the standard rolling-band convention.
+  const variance = slice.reduce((s, v) => s + (v - middle) ** 2, 0) / period;
   const stdDev = Math.sqrt(variance);
 
   const upper = middle + stdDevMultiplier * stdDev;
@@ -203,7 +203,7 @@ export function calculateBollingerBandsSeries(
     const slice = prices.slice(i - period + 1, i + 1);
     const mid = slice.reduce((s, v) => s + v, 0) / period;
     const variance =
-      slice.reduce((s, v) => s + (v - mid) ** 2, 0) / Math.max(1, period - 1);
+      slice.reduce((s, v) => s + (v - mid) ** 2, 0) / period;
     const stdDev = Math.sqrt(variance);
 
     middle[i] = mid;
@@ -402,37 +402,20 @@ export function calculateOBVTrend(
   const len = Math.min(prices.length, volumes.length);
   if (len < lookback + 1) return 'flat';
 
-  // Build OBV series
-  const obv: number[] = [0];
-  for (let i = 1; i < len; i++) {
-    if (prices[i] > prices[i - 1]) {
-      obv.push(obv[i - 1] + volumes[i]);
-    } else if (prices[i] < prices[i - 1]) {
-      obv.push(obv[i - 1] - volumes[i]);
-    } else {
-      obv.push(obv[i - 1]);
-    }
+  const start = len - lookback;
+  let signedVolume = 0;
+  let totalVolume = 0;
+  for (let i = Math.max(1, start); i < len; i++) {
+    const volume = Math.max(0, volumes[i] ?? 0);
+    totalVolume += volume;
+    if (prices[i] > prices[i - 1]) signedVolume += volume;
+    else if (prices[i] < prices[i - 1]) signedVolume -= volume;
   }
+  if (totalVolume === 0) return 'flat';
+  const normalizedChange = signedVolume / totalVolume;
 
-  // Compare OBV at end vs lookback periods ago using linear regression slope
-  const recentOBV = obv.slice(-lookback);
-  const n = recentOBV.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < n; i++) {
-    sumX += i;
-    sumY += recentOBV[i];
-    sumXY += i * recentOBV[i];
-    sumX2 += i * i;
-  }
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-
-  // Normalize slope relative to average OBV magnitude to determine significance
-  const avgOBV = Math.abs(sumY / n);
-  if (avgOBV === 0) return 'flat';
-  const normalizedSlope = slope / avgOBV;
-
-  if (normalizedSlope > 0.02) return 'rising';
-  if (normalizedSlope < -0.02) return 'falling';
+  if (normalizedChange > 0.1) return 'rising';
+  if (normalizedChange < -0.1) return 'falling';
   return 'flat';
 }
 
@@ -579,15 +562,17 @@ export function calculateRSISeries(prices: number[], period = 14): number[] {
  * Uses a lookback window to find local peaks/troughs.
  */
 export function detectRSIDivergence(
-  prices: number[],
+  highPrices: number[],
+  lowPrices: number[],
   rsiValues: number[],
   lookback = 30
 ): RsiDivergence {
-  const pLen = prices.length;
+  const pLen = Math.min(highPrices.length, lowPrices.length);
   const rLen = rsiValues.length;
   if (pLen < lookback || rLen < lookback) return "none";
 
-  const recentPrices = prices.slice(-lookback);
+  const recentHighs = highPrices.slice(-lookback);
+  const recentLows = lowPrices.slice(-lookback);
   const recentRSI = rsiValues.slice(-lookback);
 
   // 1. Find local extrema (peaks and troughs)
@@ -623,9 +608,9 @@ export function detectRSIDivergence(
     return peaks;
   };
 
-  const pTroughs = findTroughs(recentPrices);
+  const pTroughs = findTroughs(recentLows);
   const rTroughs = findTroughs(recentRSI);
-  const pPeaks = findPeaks(recentPrices);
+  const pPeaks = findPeaks(recentHighs);
   const rPeaks = findPeaks(recentRSI);
 
   // 2. Check Bullish Divergence (Price Lower Low, RSI Higher Low)
@@ -636,8 +621,12 @@ export function detectRSIDivergence(
     const lastRT = rTroughs[rTroughs.length - 1];
     const prevRT = rTroughs[rTroughs.length - 2];
 
-    // Ensure the troughs are somewhat aligned in time (within 5 candles)
-    const timeMatch = Math.abs(lastPT.index - lastRT.index) < 5;
+    // Both extrema pairs must describe the same two swings.
+    const timeMatch =
+      Math.abs(lastPT.index - lastRT.index) < 5 &&
+      Math.abs(prevPT.index - prevRT.index) < 5 &&
+      prevPT.index < lastPT.index &&
+      prevRT.index < lastRT.index;
 
     if (timeMatch && lastPT.value < prevPT.value && lastRT.value > prevRT.value) {
       // Additional filter: RSI should be in/near oversold territory
@@ -652,7 +641,11 @@ export function detectRSIDivergence(
     const lastRP = rPeaks[rPeaks.length - 1];
     const prevRP = rPeaks[rPeaks.length - 2];
 
-    const timeMatch = Math.abs(lastPP.index - lastRP.index) < 5;
+    const timeMatch =
+      Math.abs(lastPP.index - lastRP.index) < 5 &&
+      Math.abs(prevPP.index - prevRP.index) < 5 &&
+      prevPP.index < lastPP.index &&
+      prevRP.index < lastRP.index;
 
     if (timeMatch && lastPP.value > prevPP.value && lastRP.value < prevRP.value) {
       // Additional filter: RSI should be in/near overbought territory
@@ -686,14 +679,6 @@ export function calculateFibLevels(high: number, low: number): {
     1: high,
   };
 }
-
-/**
- * Market regime classification (Layer 1) now lives in its own regime engine.
- * Re-exported here so existing import sites (and tests that load this module)
- * keep working unchanged. See `./regime` for the implementation.
- */
-export { classifyRegime } from "./regime";
-export type { MarketRegimeKind, RegimeInput } from "./regime";
 
 /**
  * Detect the most recent structural swing high/low via 3-bar fractal pivots
@@ -732,4 +717,3 @@ export function detectSwingLevels(
   if (!foundLow) swingLow = Math.min(...lows.slice(start));
   return { swingHigh, swingLow };
 }
-

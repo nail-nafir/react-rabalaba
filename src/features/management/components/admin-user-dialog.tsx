@@ -2,10 +2,7 @@ import { useMemo, useState, useEffect, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  userSchema,
-  type UserFormValues,
-} from "../schemas/user-schema";
+import { userSchema, type UserFormValues } from "../schemas/user-schema";
 import {
   Dialog,
   DialogContent,
@@ -102,17 +99,25 @@ function AdminUserDialogContent({
 
   const schema = useMemo(
     () =>
-      userSchema.refine(
-        (data) =>
-          isEditMode || !trackedSet.has(data.email.trim().toLowerCase()),
-        {
+      userSchema
+        .refine(
+          (data) =>
+            isEditMode || !trackedSet.has(data.email.trim().toLowerCase()),
+          {
+            message: t(
+              "admin.users_add_already_exists",
+              "Pengguna sudah terdaftar di sistem",
+            ),
+            path: ["email"],
+          },
+        )
+        .refine((data) => isEditMode || data.password.length >= 12, {
           message: t(
-            "admin.users_add_already_exists",
-            "Pengguna sudah terdaftar di sistem",
+            "admin.users_password_min",
+            "Password awal minimal 12 karakter",
           ),
-          path: ["email"],
-        },
-      ),
+          path: ["password"],
+        }),
     [isEditMode, t, trackedSet],
   );
 
@@ -121,6 +126,7 @@ function AdminUserDialogContent({
     mode: "onChange",
     defaultValues: {
       email: "",
+      password: "",
       tier: "free",
       role: "user",
       trialExpiresAt: "",
@@ -164,6 +170,7 @@ function AdminUserDialogContent({
 
       form.reset({
         email: user.email,
+        password: "",
         tier: user.tier,
         role: getRole(user),
         trialExpiresAt: formatDateForInput(user.trial_expires_at),
@@ -172,6 +179,7 @@ function AdminUserDialogContent({
     } else {
       form.reset({
         email: "",
+        password: "",
         tier: "free",
         role: "user",
         trialExpiresAt: "",
@@ -228,6 +236,7 @@ function AdminUserDialogContent({
       try {
         const result = await addUser(
           email,
+          data.password,
           data.tier,
           data.role,
           trialExpiresAt,
@@ -277,7 +286,7 @@ function AdminUserDialogContent({
                 )
               : t(
                   "admin.users_add_dialog_desc",
-                  "Tambahkan pengguna langsung ke sistem. Password default untuk pengguna baru adalah 'ChangeMe2026!'.",
+                  "Tambahkan pengguna langsung ke sistem dan buat password awal minimal 12 karakter.",
                 )}
           </DialogDescription>
         </DialogHeader>
@@ -321,6 +330,34 @@ function AdminUserDialogContent({
             )}
           />
 
+          {!isEditMode && (
+            <Controller
+              name="password"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="gap-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[invalid=true]/field:text-destructive">
+                    {t("auth.password", "Password awal")}
+                  </label>
+                  <Input
+                    {...field}
+                    type="password"
+                    placeholder="Minimal 12 karakter"
+                    autoComplete="new-password"
+                    aria-invalid={fieldState.invalid}
+                    className="placeholder:text-sm text-sm"
+                  />
+                  {fieldState.invalid && (
+                    <FieldError
+                      errors={[fieldState.error]}
+                      className="text-[10px] sm:text-[11px] font-medium mt-1"
+                    />
+                  )}
+                </Field>
+              )}
+            />
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Controller
               name="tier"
@@ -344,7 +381,11 @@ function AdminUserDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent position="popper" align="start" className="p-0.5">
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="p-0.5"
+                    >
                       <SelectGroup>
                         {tierItems.map((item) => (
                           <SelectItem
@@ -384,7 +425,11 @@ function AdminUserDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent position="popper" align="start" className="p-0.5">
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="p-0.5"
+                    >
                       <SelectGroup>
                         {roleItems.map((item) => (
                           <SelectItem
@@ -456,7 +501,11 @@ function AdminUserDialogContent({
                         )}
                       />
                     </SelectTrigger>
-                    <SelectContent position="popper" align="start" className="p-0.5">
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="p-0.5"
+                    >
                       <SelectGroup>
                         {statusItems.map((item) => (
                           <SelectItem

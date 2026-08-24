@@ -1,5 +1,6 @@
 import type { FollowSignal, FollowStatus } from "@/constants/taxonomy/status";
 import type { SignalTier } from "@/constants/taxonomy/tier";
+import type { MarketRegime, TrendDirection } from "@/types/market";
 
 /** FollowStatus mirrored in the journal persistence contract. */
 export type JournalStatus = FollowStatus;
@@ -17,6 +18,11 @@ export interface JournalTradeRow {
   risk_reward_ratio: number | null;
   strength_at_entry: number | null;
   grade: SignalTier | null;
+  engine_version: string | null;
+  decision_candle_at: string | null;
+  regime: MarketRegime | null;
+  higher_timeframe_trend: TrendDirection | null;
+  direction_score: number | null;
   status: JournalStatus;
   highest_tp_reached: number;
   reversed: boolean;

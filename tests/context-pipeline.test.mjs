@@ -86,7 +86,7 @@ test("passesEmissionGate: aligned calls and benchmark-less classes always pass",
   const { passesEmissionGate } = await loadModule(PIPELINE);
   // SHORT in risk-off is aligned → passes regardless of strength.
   assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "short", strengthAtEntry: 20 }, RISK_OFF),
+    passesEmissionGate({ assetType: "crypto", signal: "short", strengthAtEntry: 20, regime: "trending" }, RISK_OFF),
     true,
   );
   // Commodity/forex have no benchmark → always pass.
@@ -105,12 +105,12 @@ test("passesEmissionGate: counter-trend calls gated by post-context strength", a
   const { passesEmissionGate } = await loadModule(PIPELINE);
   // LONG in risk-off is counter-trend. Below the bar → blocked.
   assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 42 }, RISK_OFF),
+    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 42, regime: "trending" }, RISK_OFF),
     false,
   );
   // Exactly at the bar (60) → exceptional counter-trend survives.
   assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 60 }, RISK_OFF),
+    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 60, regime: "trending" }, RISK_OFF),
     true,
   );
 });

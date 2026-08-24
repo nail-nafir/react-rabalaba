@@ -10,8 +10,8 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- 2. Stash the invoke URL in Vault (run once). Reuses the existing
---    'auto_journal_bearer' secret (the public publishable key) for the gateway.
+-- 2. Stash the invoke URL in Vault (run once). The function authenticates the
+--    scheduled request with the private rabalaba_cron_secret header.
 select vault.create_secret(
   'https://nravncsodgcxwkdaeqcw.supabase.co/functions/v1/daily-summary',
   'daily_summary_url'
@@ -29,9 +29,10 @@ select cron.schedule(
     url := (select decrypted_secret from vault.decrypted_secrets where name = 'daily_summary_url'),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'auto_journal_bearer')
+      'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'rabalaba_cron_secret')
     ),
-    body := jsonb_build_object('trigger', 'cron')
+    body := jsonb_build_object('trigger', 'cron'),
+    timeout_milliseconds := 30000
   );
   $$
 );

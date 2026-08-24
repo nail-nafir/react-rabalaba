@@ -28,7 +28,7 @@ export interface CalibratedConfidence {
 }
 
 /** Minimum trades in a bucket before its win-rate is considered meaningful. */
-export const MIN_CALIBRATION_SAMPLE = 8;
+export const MIN_CALIBRATION_SAMPLE = 30;
 
 export function calibrateConfidence(
   metrics: BacktestMetrics,

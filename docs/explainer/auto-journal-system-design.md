@@ -82,15 +82,15 @@ the client-side `applyPriceSync` loop, and the `follow-store` localStorage layer
                           ┌──────────────────────────────────────────────┐
                           │  Supabase (project nravncsodgcxwkdaeqcw)       │
                           │                                                │
-   pg_cron 'auto-journal-30m'  ── net.http_post (Bearer = publishable) ─┐  │
+   pg_cron 'auto-journal-30m'  ── net.http_post (x-cron-secret) ───────────┐  │
    (*/30 * * * *)             │                                         ▼  │
                           │   ┌────────────────────────────────────────┐  │
                           │   │ Edge Function: auto-journal (Deno)      │  │
-                          │   │  1. fetch universe (Yahoo, 1mo/1h)      │  │
+                          │   │  1. fetch universe (Yahoo, 60d/1h)      │  │
                           │   │  2. adaptYahooChart → UnifiedAsset      │  │
                           │   │  3. runAutoJournal(assets, openRows)    │  │
-                          │   │     → { inserts, closures }             │  │
-                          │   │  4. write (service-role key, bypass RLS)│  │
+                          │   │     → { inserts, progress, closures }   │  │
+                          │   │  4. claim slot, then write via service  │  │
                           │   │     imports ./_engine.mjs (bundled src) │  │
                           │   └───────────────┬────────────────────────┘  │
                           │                   ▼                            │
@@ -170,7 +170,9 @@ Migration `20260613000001_journal_trades.sql`.
 | `timeframe`, `entry_price`, `stop_loss` | |
 | `take_profits` double[] | `[tp1, tp2, tp3?]`, finite levels only |
 | `risk_reward_ratio`, `strength_at_entry`, `grade` | `grade` ∈ A/B/C |
-| `status` | `open` \| `tp1` \| `tp2` \| `tp3` \| `sl` \| `manual` |
+| `engine_version`, `decision_candle_at` | immutable decision provenance |
+| `regime`, `higher_timeframe_trend`, `direction_score` | entry-time engine state |
+| `status` | `open` \| `tp1` \| `tp2` \| `tp3` \| `sl` \| `reversed` |
 | `highest_tp_reached` int | monotonic milestone (0..3) |
 | `opened_at`, `closed_at`, `close_price` | |
 | `created_at`, `updated_at` | `updated_at` kept fresh by a trigger |
@@ -178,8 +180,8 @@ Migration `20260613000001_journal_trades.sql`.
 - **Dedup:** partial unique index `(symbol, timeframe) WHERE status = 'open'` —
   makes a double cron run idempotent (a 2nd insert for an already-open
   symbol/tf fails with `23505`, swallowed as non-fatal).
-- **`status = 'manual'`** is reused as the "Reversed" close (the old manual
-  close was removed). UI label: "Dibalik Arah" / "Reversed".
+- **`status = 'reversed'`** is a signal flip before any TP. A reversal after a
+  milestone keeps `tp{n}` plus `reversed=true`.
 
 **`profiles`** — per-user entitlement (server truth). Migration
 `20260614000001_auth_entitlements.sql`.
@@ -242,41 +244,41 @@ in `20260614000001`).
 ### 6.1 Autonomous journaling pipeline (every 30 min)
 
 1. **pg_cron** job `auto-journal-30m` (`*/30 * * * *`) runs
-   `net.http_post` to the function URL (from Vault), `Authorization: Bearer`
-   = the publishable key (also from Vault — it only needs to pass the Functions
-   gateway).
+   `net.http_post` to the function URL (from Vault), with the private
+   `x-cron-secret` header. The Edge Function validates it before using the
+   service-role client; manual `force=true` calls use an admin/owner session.
 2. **Edge Function** (`index.ts`):
    1. Read all `journal_trades WHERE status = 'open'` — these are both the dedup
       set and the sync targets.
-   2. Fetch the **whole universe** (`EDGE_UNIVERSE`) from Yahoo at `range=1mo`,
-      `interval=1h` (the app's default swing window), bounded concurrency 8,
-      UA-spoofed, **per-symbol fault-tolerant** (one failure ≠ run failure).
+   2. Fetch the data-driven universe from Yahoo at `range=60d`, `interval=1h`,
+      bounded concurrency 8 + 12s timeout. The slot is claimed only after IO
+      succeeds, so a proxy outage does not burn the retry window.
    3. `adaptYahooChart` each result → `UnifiedAsset` (outlook + trading plan).
-   4. `runAutoJournal(assets, openRows)` → `{ inserts, closures }` (pure core).
-   5. Apply: bulk `insert` (tolerate `23505`), then per-row `update` for each
-      closure. Writes use the **service-role key** (bypasses RLS).
+   4. `runAutoJournal` → `{ inserts, progressUpdates, closures }` (pure core).
+   5. Apply inserts, monotonic TP milestones, then terminal closures. Writes use
+      the **service-role key** (bypasses RLS).
    6. Return a JSON summary (`universe`, `fetched`, `emitted`, `closed`).
 
-`EDGE_UNIVERSE` = `TOP_CRYPTO_TICKERS + TOP_US_STOCK_TICKERS +
-TOP_ID_STOCK_TICKERS + DEFAULT_COMMODITY_TICKERS + DEFAULT_FOREX_TICKERS` (the
-premium screener universe, ~114 symbols).
+The stock/crypto universe comes from active `journal_assets`; commodity/forex
+defaults are appended and de-duplicated. Benchmark-only symbols are fetched for
+context but never journaled.
 
 ### 6.2 Decision core — `runAutoJournal()` (pure, unit-testable)
 
 `src/core/automation/auto-journal-core.ts`. No fetch, no DB — just data in, plan out.
 
-- **EMIT:** for each asset with a long/short signal **and a trading plan** and
-  **no open trade for that symbol** → `buildFollowedTrade()` →
-  `followedTradeToInsert()`.
+- **EMIT:** long/short + plan + no open duplicate + fresh quote + required
+  benchmark context. Weak counter-trend calls are blocked; regime/HTF filters
+  stay experimental until they pass validation and holdout. Optional browser
+  overlays are display-only.
 - **SYNC / Close 1 (TP/SL):** rebuild each open trade's candles since
   `followedAt`, run `applyPriceSync()` (replays candles + the live tick). A trade
-  closes on the **final TP** or **SL**; partial TP touches update
-  `highest_tp_reached` but keep it open.
+  closes on the final TP or active stop. Each partial TP ratchets the full stop;
+  gaps fill at their open and milestones persist while still open.
 - **Close 2 (signal reversal, long↔short only):** for trades still open after
   Close 1, if the engine's current signal is the opposite direction:
-  - if `highest_tp_reached >= 1` → close as `tp{n}` at that TP's price
-    (**secures the touched milestone**, mirroring the SL-after-TP rule);
-  - else → close as `manual` ("Reversed") at the current price.
+  - exit at the latest corroborated candle close (never a synthetic TP fill);
+  - status is `tp{n}` if a milestone existed, otherwise `reversed`.
   - **Neutral never closes** — conviction merely faded, let the SL do its job.
 
 ### 6.3 Trade lifecycle (state machine)
@@ -290,8 +292,8 @@ premium screener universe, ~114 symbols).
             │(running)│                                   │  / sl        │
             └───┬────┘                                    └──────────────┘
                 │ signal reversal (long↔short)
-                ├─ touched a TP (highest_tp_reached ≥ 1) ─▶ tp{n}  (secured)
-                └─ no TP touched ───────────────────────▶ manual  (Reversed)
+                ├─ touched a TP (highest_tp_reached ≥ 1) ─▶ tp{n} + reversed
+                └─ no TP touched ───────────────────────▶ reversed
 ```
 
 ### 6.4 Frontend read path
@@ -302,7 +304,7 @@ premium screener universe, ~114 symbols).
   (now empty-for-them) table. Splits rows into `openTrades` / `history`
   (identity-stable `useMemo` to avoid recharts re-render storms).
 - **`JournalDashboard`** — `buildTrackerStats()` (pure) →
-  - Daily P/L (%) bars + cumulative line (ComposedChart),
+  - Realized R bars + cumulative R line (not a portfolio-return claim),
   - Status distribution (pie), Wins vs Losses (bar), Profit Loss by Asset Type
     (bar), Signal distribution (pie).
 - **`FollowHistoryTable`** — every trade (open on top, then closed). Filters:
@@ -341,7 +343,7 @@ premium screener universe, ~114 symbols).
 | Engine façade (bundled) | `src/core/edge-engine.ts` → `_engine.mjs` |
 | Pure decision core | `src/core/automation/auto-journal-core.ts` |
 | Trade model (emit/close/stats) | `src/core/trade/follow-trade-model.ts` |
-| Row ↔ trade mapper | `src/core/trade/journal-mapper.ts` (Supabase façade: `src/services/supabase/journal-mapper.ts`) |
+| Row ↔ trade mapper | `src/core/trade/journal-mapper.ts` |
 | DB types (hand-written) | `src/services/supabase/database.types.ts` |
 | Browser Supabase client | `src/services/supabase/client.ts` (publishable key) |
 | Journal read hook | `src/features/journal/hooks/use-journal-trades.ts` |
@@ -364,8 +366,9 @@ premium screener universe, ~114 symbols).
 2. **Deploy the function:** `npm run deploy:edge`
    (= `build:edge` then `npx supabase functions deploy auto-journal`).
 3. **Schedule the cron (once):** run `supabase/schedule-auto-journal.sql` in the
-   SQL Editor — enables `pg_cron` + `pg_net`, stores the function URL + bearer in
-   **Vault**, and registers the `auto-journal-30m` job.
+   SQL Editor — enables `pg_cron` + `pg_net`, stores the function URL + private
+   `rabalaba_cron_secret` in **Vault**, and registers the `auto-journal-30m` job.
+   Set the same value as the Edge Function secret `CRON_SECRET`.
 4. **Auth config:** Dashboard → Auth → Providers → Email on; choose the
    "Confirm email" toggle (the flow handles both on/off).
 5. **Seed access codes** (SQL Editor), e.g.:
@@ -391,7 +394,8 @@ premium screener universe, ~114 symbols).
 | Var | Used by |
 |---|---|
 | `VITE_SUPABASE_URL` | browser client |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | browser client (RLS read) + cron bearer (Vault) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | browser client (RLS read) |
+| `CRON_SECRET` | scheduled Edge Function requests via `x-cron-secret` |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | auto-injected into the Edge Function (write, bypass RLS) |
 
 `VITE_ACCESS_KEY` / `VITE_TRIAL_DURATION` from the old grant are obsolete.

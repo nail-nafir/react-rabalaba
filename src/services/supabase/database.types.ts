@@ -4,10 +4,7 @@
  * no browser/Vite deps (the taxonomy imports below are type-only, erased) — so
  * BOTH the Vite app and the Cron Worker can import it.
  */
-import type {
-  JournalTradeInsert,
-  JournalTradeRow,
-} from "@/types/journal";
+import type { JournalTradeInsert, JournalTradeRow } from "@/types/journal";
 // Type-only (erased) — keeps this module runtime-pure for the Cron Worker.
 import type { Localized } from "@/lib/localized";
 
@@ -436,6 +433,11 @@ export interface Database {
       get_public_journal_success_rates: {
         Args: Record<string, never>;
         Returns: PublicJournalSuccessRateRow[];
+      };
+      /** Service-role-only atomic claim for an aligned auto-journal slot. */
+      claim_auto_journal_slot: {
+        Args: { p_slot_start: string; p_claimed_at?: string };
+        Returns: boolean;
       };
       /** Server-side access-code check — returns 'full' | 'trial' | null. */
       verify_access_code: {

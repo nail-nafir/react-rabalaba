@@ -26,7 +26,7 @@
 | `schedule-*.sql` | **Bukan** migration. Wiring pg_cron per function (auto-journal / daily-summary / asset-discovery) — jalan **paling akhir** (butuh function + Vault). | **Not** migrations. pg_cron wiring per function (auto-journal / daily-summary / asset-discovery) — runs **last** (needs functions + Vault). |
 | `functions/<nama>/` | Edge Function (auto-journal, daily-summary, asset-discovery): `index.ts` (handler) + `_engine.mjs` (engine hasil bundle) + `deno.json`. | Edge Functions (auto-journal, daily-summary, asset-discovery): `index.ts` (handler) + `_engine.mjs` (bundled engine) + `deno.json`. |
 | `functions/.env` | Env **lokal** untuk `functions serve` saja (gitignored). | **Local-only** env for `functions serve` (gitignored). |
-| `config.toml` | Config function (`verify_jwt = true`). | Function config (`verify_jwt = true`). |
+| `config.toml` | Config function (`verify_jwt = false`, handler auth). | Function config (`verify_jwt = false`, handler auth). |
 
 ### Migrations (urutan = urutan nama file / order = filename order)
 
@@ -101,8 +101,8 @@ where user_id = (select id from auth.users where email = 'nf.nailulfirdaus@gmail
 
 ### Step 4 — Deploy Edge Function
 
-🇮🇩 `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` **auto-inject saat deploy** — JANGAN di-set via `supabase secrets set`. Tidak ada secret function lain.
-🇺🇸 `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` are **auto-injected on deploy** — do NOT set them via `supabase secrets set`. There are no other function secrets.
+🇮🇩 `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` **auto-inject saat deploy** — JANGAN di-set via `supabase secrets set`. `CRON_SECRET` dan optional `DISCORD_WEBHOOK_URL` adalah secret function terpisah.
+🇺🇸 `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` are **auto-injected on deploy** — do NOT set them via `supabase secrets set`. `CRON_SECRET` and optional `DISCORD_WEBHOOK_URL` are separate function secrets.
 
 ```bash
 npm run deploy:edge        # = build:edge (bundle _engine.mjs) + deploy auto-journal
@@ -112,11 +112,11 @@ npm run deploy:discovery   # deploy asset-discovery (auto universe curation)
 
 ### Step 5 — Jadwalkan cron / Schedule the crons (MANUAL)
 
-🇮🇩 Buka `schedule-auto-journal.sql`, **paste publishable key** di placeholder `auto_journal_bearer`, lalu jalankan seluruh file di SQL Editor. Dia: enable `pg_cron`+`pg_net`, simpan URL+bearer di Vault, dan `cron.schedule('auto-journal-30m', ...)`. Lanjutkan dengan `schedule-daily-summary.sql` dan `schedule-asset-discovery.sql` (keduanya reuse bearer yang sama dari Vault).
-🇺🇸 Open `schedule-auto-journal.sql`, **paste the publishable key** into the `auto_journal_bearer` placeholder, then run the whole file in the SQL Editor. It: enables `pg_cron`+`pg_net`, stashes URL+bearer in Vault, and runs `cron.schedule('auto-journal-30m', ...)`. Then run `schedule-daily-summary.sql` and `schedule-asset-discovery.sql` (both reuse the same Vault bearer).
+🇮🇩 Jalankan `schedule-auto-journal.sql` di SQL Editor. File ini membuat secret acak `rabalaba_cron_secret` di Vault; set nilai yang sama sebagai Edge Function secret `CRON_SECRET`. Lanjutkan dengan dua schedule lain (keduanya reuse secret Vault yang sama).
+🇺🇸 Run `schedule-auto-journal.sql` in the SQL Editor. It creates a random `rabalaba_cron_secret` in Vault; set the same value as the Edge Function secret `CRON_SECRET`. Then run the two other schedule files (both reuse the same Vault secret).
 
-> 🇮🇩 Bearer = **publishable** key (memang publik); cukup buat lolos gateway. Function tetap nulis pakai service-role.
-> 🇺🇸 Bearer = the **publishable** key (it's public anyway); enough to pass the gateway. The function still writes with the service-role key.
+> 🇮🇩 Cron tidak lagi memakai publishable key sebagai autentikasi job; handler memvalidasi `x-cron-secret`. `force=true` tetap memvalidasi session admin/owner.
+> 🇺🇸 Cron no longer uses the publishable key as job authentication; the handler validates `x-cron-secret`. `force=true` still validates an admin/owner session.
 
 ### Step 6 — (Opsional) Pertajam cadence ke 15 menit / (Optional) Retune cadence to 15 min
 
@@ -179,5 +179,5 @@ supabase functions serve auto-journal --env-file supabase/functions/.env
 
 - 🇮🇩 **Migration itu append-only.** Skema berubah = file baru, bukan ngedit yang lama (yang sudah keapply di prod). / 🇺🇸 **Migrations are append-only.** Schema changes = a new file, never editing an already-applied one.
 - 🇮🇩 **Jangan diringkas/di-squash.** Kecil, idempotent, dan tiap file = satu fase (audit trail). Squash = risiko rusak pas rebuild, manfaat nol. / 🇺🇸 **Don't condense/squash.** Small, idempotent, one file per phase (audit trail). Squashing risks breaking rebuilds for zero benefit.
-- 🇮🇩 **Langkah MANUAL = bawa secret** (kode, grant admin, bearer key). Itu sebabnya keluar dari git; jangan commit nilainya. / 🇺🇸 **MANUAL steps carry secrets** (codes, admin grant, bearer key). That's why they're out of git; never commit the values.
+- 🇮🇩 **Langkah MANUAL = bawa secret** (kode, grant admin, cron secret). Itu sebabnya keluar dari git; jangan commit nilainya. / 🇺🇸 **MANUAL steps carry secrets** (codes, admin grant, cron secret). That's why they're out of git; never commit the values.
 - 🇮🇩 **Kalau dulu apply manual via SQL Editor**, tracking CLI belum tahu. `supabase db push` mungkin coba apply ulang — **aman** karena idempotent. / 🇺🇸 **If you previously applied manually via the SQL Editor**, the CLI tracker doesn't know. `supabase db push` may try to re-apply — **safe** because they're idempotent.

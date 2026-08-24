@@ -2,7 +2,7 @@
  * auto-journal — autonomous server-side trade journal (Supabase Edge Function).
  *
  * Triggered by pg_cron (~every 30 min), independent of any browser session:
- *   1. fetch the swing window (1mo of 1h candles) for the full universe — the
+ *   1. fetch the swing window (60d of 1h candles) for the full universe — the
  *      SAME timeframe the app shows by default, so the journal mirrors it
  *   2. runAutoJournal() — PURE, unit-tested core (src/core/automation/auto-journal-core):
  *      emit new long/short-with-plan signals + close open trades that hit TP/SL
@@ -13,9 +13,9 @@
  * (bypasses RLS); Supabase auto-injects SUPABASE_URL / SERVICE_ROLE_KEY.
  */
 import { createClient } from "@supabase/supabase-js";
+import { authorizeCronRequest } from "../_shared/cron-auth.ts";
 // Bundled from src/ (pure, unit-tested).
 import {
-  EDGE_UNIVERSE,
   DEFAULT_COMMODITY_TICKERS,
   DEFAULT_FOREX_TICKERS,
   ALL_BENCHMARK_SYMBOLS,
@@ -26,8 +26,9 @@ import {
   formatAlertsForDiscord,
 } from "./_engine.mjs";
 
-const RANGE = "1mo";
+const RANGE = "60d";
 const INTERVAL = "1h";
+const FETCH_TIMEOUT_MS = 12_000;
 // Route through the app's OWN Cloudflare proxy (functions/api/yahoo) by default —
 // the SAME edge/IP the browser uses, so cron and app see byte-identical data
 // (single source of truth). The old direct `query1` path hit Yahoo from the
@@ -55,6 +56,7 @@ async function fetchChart(symbol: string) {
       Pragma: "no-cache",
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) return null;
   const json = await res.json();
@@ -126,7 +128,7 @@ function isOpenInTz(tz: string, openMin: number, closeMin: number): boolean {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -139,38 +141,20 @@ Deno.serve(async (req: Request) => {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {
-    return jsonResponse({ error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" }, 500);
+    return jsonResponse(
+      { error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" },
+      500,
+    );
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
+  let pendingSlotStart: string | null = null;
 
   // Manual on-demand run from the admin UI sends { force: true }: it bypasses the
   // DUE gate (runs regardless of interval) but still respects pause. Admin-gated
   // here because a full scan is expensive and may broadcast to Discord.
   const { force } = (await req.json().catch(() => ({}))) as { force?: boolean };
-  if (force) {
-    const userClient = createClient(
-      url,
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization") ?? "" },
-        },
-        auth: { persistSession: false },
-      },
-    );
-    const {
-      data: { user },
-    } = await userClient.auth.getUser();
-    if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
-    const { data: profile } = await db
-      .from("profiles")
-      .select("is_admin")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!(profile as { is_admin?: boolean } | null)?.is_admin) {
-      return jsonResponse({ error: "Forbidden" }, 403);
-    }
-  }
+  const auth = await authorizeCronRequest(req, url, key, force === true);
+  if (!auth.ok) return jsonResponse({ error: auth.error }, auth.status);
 
   // ── Schedule gate (journal_settings — admin-editable, data-driven) ──
   // The cron ticks at a fixed BASE cadence (*/30); we decide HERE whether this
@@ -179,11 +163,14 @@ Deno.serve(async (req: Request) => {
   // Automated runs are CLOCK-ALIGNED to WIB midnight (interval 60 → every :00,
   // 360 → 00/06/12/18 WIB, 720 → 00/12 WIB), so they never drift.
   // (null settings = pre-migration → behave as before: always run.)
-  const { data: settings } = await db
+  const { data: settings, error: settingsError } = await db
     .from("journal_settings")
     .select("*")
     .eq("id", true)
     .maybeSingle();
+  if (settingsError) {
+    return jsonResponse({ error: settingsError.message }, 500);
+  }
   if (settings) {
     // Pause is honored even for a manual force run (admin must enable first).
     if (!settings.enabled) {
@@ -202,7 +189,11 @@ Deno.serve(async (req: Request) => {
       const minsSinceWibMidnight = wib.getUTCHours() * 60 + wib.getUTCMinutes();
       const slotMin = Math.floor(minsSinceWibMidnight / TICK_MIN) * TICK_MIN;
       if (slotMin % settings.interval_minutes !== 0) {
-        return jsonResponse({ ok: true, skipped: "not-aligned", slot_min: slotMin });
+        return jsonResponse({
+          ok: true,
+          skipped: "not-aligned",
+          slot_min: slotMin,
+        });
       }
       // Dedup: don't re-run the same slot (retried/duplicate tick). The slot's
       // WIB start as a UTC instant; a stamp at/after it means we already ran it.
@@ -210,10 +201,7 @@ Deno.serve(async (req: Request) => {
         Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()) -
         WIB_OFFSET_MS;
       const slotStartMs = wibMidnightUtcMs + slotMin * 60_000;
-      const lastRun = settings.last_run_at ? Date.parse(settings.last_run_at) : 0;
-      if (lastRun >= slotStartMs) {
-        return jsonResponse({ ok: true, skipped: "already-ran-slot" });
-      }
+      pendingSlotStart = new Date(slotStartMs).toISOString();
     }
   }
   const marketHoursOnly = settings?.market_hours_only ?? false;
@@ -228,45 +216,52 @@ Deno.serve(async (req: Request) => {
   // Recently-closed trades — feed the re-entry cooldown so a just-stopped
   // symbol+direction isn't re-taken immediately. Window must cover the core's
   // REENTRY_COOLDOWN_MS (6h, see auto-journal-core).
-  const cooldownCutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const { data: recentClosed } = await db
+  const cooldownCutoff = new Date(
+    Date.now() - 6 * 60 * 60 * 1000,
+  ).toISOString();
+  const { data: recentClosed, error: recentClosedError } = await db
     .from("journal_trades")
     .select("symbol,signal,closed_at")
     .neq("status", "open")
     .gte("closed_at", cooldownCutoff);
+  if (recentClosedError) {
+    return jsonResponse({ error: recentClosedError.message }, 500);
+  }
 
   // Universe is DATA-DRIVEN for crypto/US/ID stocks: the active rows in
   // journal_assets (managed via the in-app admin UI) — adding/removing a symbol
   // needs NO redeploy. Commodity & forex are CONSTANT-driven (not the DB
-  // universe) and appended below, deduped. null data = table unreadable/missing
-  // (e.g. before the read policy is applied) → bundled EDGE_UNIVERSE fallback
-  // (which already includes commodity/forex). An empty [] = admin paused every
-  // stock/crypto → still journals commodity/forex (the constant base), nothing more.
-  const { data: assetRows } = await db
+  // universe) and appended below, deduped. A read failure is fatal: falling
+  // back to a bundled universe would journal symbols the browser does not show.
+  const { data: assetRows, error: assetError } = await db
     .from("journal_assets")
     .select("symbol, asset_type")
     .eq("active", true);
-  let universeRows: { symbol: string; asset_type: string | null }[];
-  if (assetRows == null) {
-    universeRows = EDGE_UNIVERSE.map((symbol) => ({ symbol, asset_type: null }));
-  } else {
-    const constantRows = [
-      ...DEFAULT_COMMODITY_TICKERS.map((symbol) => ({
-        symbol,
-        asset_type: "commodity",
-      })),
-      ...DEFAULT_FOREX_TICKERS.map((symbol) => ({ symbol, asset_type: "forex" })),
-    ];
-    const seen = new Set<string>();
-    universeRows = [
-      ...(assetRows as { symbol: string; asset_type: string | null }[]),
-      ...constantRows,
-    ].filter((r) => {
-      if (seen.has(r.symbol)) return false;
-      seen.add(r.symbol);
-      return true;
-    });
+  if (assetError || assetRows == null) {
+    return jsonResponse(
+      { error: assetError?.message ?? "journal_assets returned no data" },
+      500,
+    );
   }
+  const constantRows = [
+    ...DEFAULT_COMMODITY_TICKERS.map((symbol) => ({
+      symbol,
+      asset_type: "commodity",
+    })),
+    ...DEFAULT_FOREX_TICKERS.map((symbol) => ({
+      symbol,
+      asset_type: "forex",
+    })),
+  ];
+  const seen = new Set<string>();
+  let universeRows = [
+    ...(assetRows as { symbol: string; asset_type: string | null }[]),
+    ...constantRows,
+  ].filter((r) => {
+    if (seen.has(r.symbol)) return false;
+    seen.add(r.symbol);
+    return true;
+  });
   // When market_hours_only, drop symbols whose exchange is currently closed —
   // also dodges journaling equities off a stale weekend/overnight last price.
   if (marketHoursOnly) {
@@ -292,29 +287,78 @@ Deno.serve(async (req: Request) => {
   // Only the journaled universe is eligible for emit/sync; context-only
   // benchmarks are excluded so an index can never become a journaled trade.
   const assets = fetched.filter((a) => universeSet.has(a.symbol));
+  if (assets.length === 0) {
+    return jsonResponse({ error: "No fresh market data fetched" }, 502);
+  }
 
   // Top-down contexts, computed once (same derive* the app uses).
   const contexts = buildEngineContexts(assetBySymbol);
 
-  // Pure decision core (unit-tested): what to INSERT and what to CLOSE.
-  const { inserts, closures } = runAutoJournal(assets, openRows ?? [], {
-    recentClosed: recentClosed ?? [],
-    contexts,
-  });
+  // Claim only after market-data IO succeeds. A transient proxy outage can now
+  // retry the same slot instead of burning it before any decision was possible.
+  if (pendingSlotStart) {
+    const { data: claimed, error: claimError } = await db.rpc(
+      "claim_auto_journal_slot",
+      {
+        p_slot_start: pendingSlotStart,
+        p_claimed_at: new Date().toISOString(),
+      },
+    );
+    if (claimError) return jsonResponse({ error: claimError.message }, 500);
+    if (claimed !== true) {
+      return jsonResponse({ ok: true, skipped: "already-ran-slot" });
+    }
+  }
 
-  // Apply EMITs. 23505 = an overlapping run already inserted → non-fatal.
+  // Pure decision core (unit-tested): what to INSERT and what to CLOSE.
+  const { inserts, closures, progressUpdates } = runAutoJournal(
+    assets,
+    openRows ?? [],
+    {
+      recentClosed: recentClosed ?? [],
+      contexts,
+    },
+  );
+
+  // Apply EMITs one row at a time so a unique conflict does not make the whole
+  // batch look emitted. The candidate count is small; correctness beats a
+  // bulk write here.
   let emitted = 0;
   let emitError: string | null = null;
+  const inserted = [] as typeof inserts;
   if (inserts.length > 0) {
-    const { error } = await db.from("journal_trades").insert(inserts);
-    if (error && error.code !== "23505") emitError = error.message;
-    else emitted = inserts.length;
+    for (const item of inserts) {
+      const { error } = await db.from("journal_trades").insert(item);
+      if (!error) {
+        inserted.push(item);
+        emitted++;
+      } else if (error.code !== "23505" && !emitError) {
+        emitError = error.message;
+      }
+    }
+  }
+
+  // Persist ratchet milestones even while a trade remains open. The conditional
+  // update keeps progress monotonic across concurrent/retried runs.
+  let progressed = 0;
+  for (const update of progressUpdates) {
+    const { data, error } = await db
+      .from("journal_trades")
+      .update({ highest_tp_reached: update.highest_tp_reached })
+      .eq("id", update.id)
+      .eq("status", "open")
+      .lt("highest_tp_reached", update.highest_tp_reached)
+      .select("id")
+      .maybeSingle();
+    if (!error && data) progressed++;
+    else if (error && !emitError) emitError = error.message;
   }
 
   // Apply CLOSEs.
   let closed = 0;
+  const appliedClosures = [] as typeof closures;
   for (const c of closures) {
-    const { error } = await db
+    const { data, error } = await db
       .from("journal_trades")
       .update({
         status: c.status,
@@ -323,8 +367,16 @@ Deno.serve(async (req: Request) => {
         highest_tp_reached: c.highest_tp_reached,
         reversed: c.reversed ?? false,
       })
-      .eq("id", c.id);
-    if (!error) closed++;
+      .eq("id", c.id)
+      .eq("status", "open")
+      .select("id")
+      .maybeSingle();
+    if (!error && data) {
+      closed++;
+      appliedClosures.push(c);
+    } else if (error && !emitError) {
+      emitError = error.message;
+    }
   }
 
   // Broadcast alerts to Discord (GoTrade-style: new signal / TP / SL). Best
@@ -332,18 +384,15 @@ Deno.serve(async (req: Request) => {
   // DISCORD_WEBHOOK_URL simply means alerts are off (no-op).
   let alerted = 0;
   try {
-    const alerts = buildAutoJournalAlerts({ inserts, closures });
+    const alerts = buildAutoJournalAlerts({
+      inserts: inserted,
+      closures: appliedClosures,
+    });
     const message = formatAlertsForDiscord(alerts);
     if (message && (await sendDiscord(message))) alerted = alerts.length;
   } catch {
     // swallow — alerts are non-critical
   }
-
-  // Stamp the run so the interval clock advances (only reached when due + ran).
-  await db
-    .from("journal_settings")
-    .update({ last_run_at: new Date().toISOString() })
-    .eq("id", true);
 
   return jsonResponse({
     ok: emitError == null,
@@ -352,6 +401,7 @@ Deno.serve(async (req: Request) => {
     fetched: assets.length,
     open_before: (openRows ?? []).length,
     emitted,
+    progressed,
     closed,
     alerted,
     ...(emitError ? { emitError } : {}),
@@ -368,6 +418,7 @@ async function sendDiscord(content: string): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     return res.ok;
   } catch {

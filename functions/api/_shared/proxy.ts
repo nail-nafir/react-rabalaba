@@ -113,7 +113,10 @@ export function jsonErrorResponse(
 
 function buildUpstreamUrl(requestUrl: URL, routePrefix: string, origin: string) {
   const upstreamPath = requestUrl.pathname.replace(routePrefix, "") || "/";
-  const upstreamUrl = new URL(upstreamPath, origin);
+  const upstreamUrl = new URL(origin);
+  // Assign only the path on the already-pinned origin. `new URL("//host", base)`
+  // would otherwise treat a double-slash request path as a new authority.
+  upstreamUrl.pathname = `/${upstreamPath.replace(/^\/+/, "")}`;
   upstreamUrl.search = requestUrl.search;
   return upstreamUrl;
 }

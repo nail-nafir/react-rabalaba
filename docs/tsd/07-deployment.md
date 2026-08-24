@@ -55,7 +55,7 @@ Jalankan di Supabase SQL Editor (urutan bebas, tapi setelah function di-deploy):
 -- supabase/schedule-asset-discovery.sql  → job asset-discovery-daily 30 22 * * *
 ```
 
-Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempotent) → `cron.schedule(net.http_post Authorization: Bearer <vault>)`. Paste **publishable** key sebagai bearer (public; lewat gateway; function tulis service-role).
+Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempotent) → `cron.schedule(net.http_post x-cron-secret: <vault>)`. Set nilai `rabalaba_cron_secret` yang sama sebagai Edge Function secret `CRON_SECRET`.
 
 > Optional: `cron.alter_job` retune auto-journal ke `*/15` (README Step 6).
 
@@ -67,7 +67,7 @@ Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempo
 | Var | Untuk / For |
 |---|---|
 | `VITE_SUPABASE_URL` | browser client |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | browser client (RLS read) + cron bearer (Vault) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | browser client (RLS read) |
 
 ### Cloudflare Pages Functions (dashboard env vars)
 | Var | Untuk / For |
@@ -78,7 +78,7 @@ Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempo
 | Secret | Untuk / For |
 |---|---|
 | `auto_journal_url` | URL function auto-journal |
-| `auto_journal_bearer` | publishable key (dipake 3 cron) |
+| `rabalaba_cron_secret` | private header secret (dipakai 3 cron; sama dengan `CRON_SECRET`) |
 | `daily_summary_url` | URL function daily-summary |
 | `asset_discovery_url` | URL function asset-discovery |
 
@@ -87,6 +87,7 @@ Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempo
 |---|---|
 | `SUPABASE_URL` | function client |
 | `SUPABASE_SERVICE_ROLE_KEY` | bypass RLS (write) |
+| `CRON_SECRET` | private `x-cron-secret` checked for scheduled invocations |
 | `DISCORD_WEBHOOK_URL` | alert recap (per function) |
 | `YAHOO_PROXY_BASE` / `DISCOVERY_PROXY_BASE` | override CF proxy URL (optional fallback) |
 | `DISCOVERY_MAX_AUTO_ACTIVE` | override cap (default 60) |

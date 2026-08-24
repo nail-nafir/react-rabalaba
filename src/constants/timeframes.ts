@@ -2,13 +2,8 @@ export interface SignalProfile {
   /** Minimum candle count before the engine can emit LONG/SHORT.
    *  Below this, data is too shallow for reliable indicators (e.g. EMA50). */
   minCandles: number;
-  /** Weighted score must reach this to emit a LONG signal.
-   *  Higher = more confirmations needed = fewer false positives. */
-  longThreshold: number;
-  /** Weighted score must drop below this to emit a SHORT signal. */
-  shortThreshold: number;
   /** Regime-weighted directionScore (|value| in 0..1) required to emit a
-   *  directional signal. Replaces the legacy flat-score thresholds. */
+   *  directional signal. */
   directionThreshold: number;
 }
 
@@ -32,8 +27,6 @@ export const TIMEFRAME_PRESETS = {
     description: "1 Day / 5min candles",
     signalProfile: {
       minCandles: 120,
-      longThreshold: 3.75,
-      shortThreshold: -3.75,
       directionThreshold: 0.4,
     },
   },
@@ -41,14 +34,12 @@ export const TIMEFRAME_PRESETS = {
    *  EMA50 needs ≥50 candles; threshold at 3.25 balances signal quality
    *  vs. responsiveness. */
   swing: {
-    range: "1mo",
+    range: "60d",
     interval: "1h",
     label: "Swing",
-    description: "1 Month / 1h candles",
+    description: "60 Days / 1h candles",
     signalProfile: {
       minCandles: 120,
-      longThreshold: 3.25,
-      shortThreshold: -3.25,
       directionThreshold: 0.3,
     },
   },
@@ -62,8 +53,6 @@ export const TIMEFRAME_PRESETS = {
     description: "6 Months / Daily candles",
     signalProfile: {
       minCandles: 120,
-      longThreshold: 3.25,
-      shortThreshold: -3.25,
       directionThreshold: 0.3,
     },
   },
@@ -71,7 +60,14 @@ export const TIMEFRAME_PRESETS = {
 
 export type TimeframePresetKey = keyof typeof TIMEFRAME_PRESETS;
 
-/** Default timeframe for all market data fetching — 1 month range, 1h candles */
+/** Higher-timeframe resampling without an additional network request. */
+export const HIGHER_TIMEFRAME_FACTOR: Record<TimeframePresetKey, number> = {
+  scalp: 12,
+  swing: 4,
+  position: 5,
+};
+
+/** Default timeframe for all market data fetching — 60 days, 1h candles. */
 export const DEFAULT_TIMEFRAME: TimeframePreset = TIMEFRAME_PRESETS["swing"];
 
 /**
@@ -87,6 +83,15 @@ export function resolveTimeframePreset(
       return key as TimeframePresetKey;
     }
   }
-  // Default: swing (1mo/1h)
+  // Default: swing (60d/1h)
+  return "swing";
+}
+
+/** Canonical storage/UI label for Yahoo ranges and legacy persisted labels. */
+export function canonicalTimeframe(value?: string): TimeframePresetKey {
+  if (value === "scalp" || value === "swing" || value === "position") {
+    return value;
+  }
+  if (value === "1d/position" || value === "1d") return "position";
   return "swing";
 }

@@ -10,7 +10,7 @@
  *      (src/core/automation/asset-discovery-core) — crypto bases are resolved to REAL
  *      Yahoo tickers via search + name match (PEPE-USD is PEPEGOLD; the real
  *      Pepe is PEPE24478-USD), then every new candidate must round-trip a
- *      1mo/1h chart with ≥ MIN_CANDLES bars so the signal engine can actually
+ *      60d/1h chart with ≥ MIN_CANDLES bars so the signal engine can actually
  *      work it on the very next auto-journal run
  *   3. apply the plan to journal_assets: INSERT new auto assets (active,
  *      source='auto'), refresh/reactivate rediscovered ones, PRUNE stale ones
@@ -21,6 +21,7 @@
  * redeploy. Writes use the service-role key (bypasses RLS).
  */
 import { createClient } from "@supabase/supabase-js";
+import { authorizeCronRequest } from "../_shared/cron-auth.ts";
 // Bundled from src/ (pure, unit-tested).
 import {
   adaptYahooChart,
@@ -38,8 +39,9 @@ import {
   formatDiscoveryForDiscord,
 } from "./_engine.mjs";
 
-const RANGE = "1mo";
+const RANGE = "60d";
 const INTERVAL = "1h";
+const FETCH_TIMEOUT_MS = 12_000;
 // Broader than auto-journal's YAHOO_PROXY_BASE: discovery goes through the
 // app's Cloudflare proxies for ALL THREE upstreams (yahoo/coingecko/binance),
 // same edge + caching + crumb handling the browser uses. Override for a
@@ -70,7 +72,10 @@ const IDX_SCREENER_BODY = {
   sortField: "dayvolume",
   sortType: "DESC",
   quoteType: "EQUITY",
-  query: { operator: "and", operands: [{ operator: "eq", operands: ["region", "id"] }] },
+  query: {
+    operator: "and",
+    operands: [{ operator: "eq", operands: ["region", "id"] }],
+  },
   userId: "",
   userIdType: "guid",
 };
@@ -99,6 +104,7 @@ async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
     const res = await fetch(url, {
       ...init,
       headers: { "User-Agent": UA, ...(init?.headers ?? {}) },
+      signal: init?.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -118,6 +124,7 @@ async function fetchChart(symbol: string) {
       Pragma: "no-cache",
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) return null;
   const json = await res.json();
@@ -135,7 +142,10 @@ async function validateChart(symbol: string, market: DiscoveryMarket) {
     if (!asset) return null;
     if (asset.assetType !== market) return null;
     const candles = asset.quoteIndicators
-      ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps)
+      ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps, {
+          requireTimestamps: true,
+          requirePhysical: true,
+        })
       : [];
     if (candles.length < MIN_CANDLES) return null;
     if (!Number.isFinite(asset.price) || asset.price <= 0) return null;
@@ -194,7 +204,12 @@ async function validateMarket(
     if (typeof asset.name === "string" && asset.name.length > 0) {
       name = asset.name;
     }
-    validated.push({ symbol: asset.symbol ?? symbol, name, assetType: market, reason: c.reason });
+    validated.push({
+      symbol: asset.symbol ?? symbol,
+      name,
+      assetType: market,
+      reason: c.reason,
+    });
   }
   return { validated, failed };
 }
@@ -203,7 +218,7 @@ async function validateMarket(
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -215,7 +230,10 @@ Deno.serve(async (req: Request) => {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) {
-    return jsonResponse({ error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" }, 500);
+    return jsonResponse(
+      { error: "Missing SUPABASE_URL / SERVICE_ROLE_KEY" },
+      500,
+    );
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
 
@@ -223,30 +241,8 @@ Deno.serve(async (req: Request) => {
   // the once-per-day gate but still respects the pause flag. Admin-gated here
   // because a run fetches external feeds and may broadcast to Discord.
   const { force } = (await req.json().catch(() => ({}))) as { force?: boolean };
-  if (force) {
-    const userClient = createClient(
-      url,
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization") ?? "" },
-        },
-        auth: { persistSession: false },
-      },
-    );
-    const {
-      data: { user },
-    } = await userClient.auth.getUser();
-    if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
-    const { data: profile } = await db
-      .from("profiles")
-      .select("is_admin")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!(profile as { is_admin?: boolean } | null)?.is_admin) {
-      return jsonResponse({ error: "Forbidden" }, 403);
-    }
-  }
+  const auth = await authorizeCronRequest(req, url, key, force === true);
+  if (!auth.ok) return jsonResponse({ error: auth.error }, auth.status);
 
   // ── Settings gate (journal_settings singleton — admin-editable) ──
   // discovery_enabled defaults FALSE: deploying + scheduling this function
@@ -308,11 +304,14 @@ Deno.serve(async (req: Request) => {
       fetchJson(
         `${PROXY_BASE}/yahoo/v1/finance/screener/predefined/saved?scrIds=most_actives&count=${FEED_COUNT}`,
       ).then(parseYahooScreener),
-      fetchJson(`${PROXY_BASE}/yahoo/v1/finance/screener?lang=en-US&region=ID`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(IDX_SCREENER_BODY),
-      }).then(parseYahooScreener),
+      fetchJson(
+        `${PROXY_BASE}/yahoo/v1/finance/screener?lang=en-US&region=ID`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(IDX_SCREENER_BODY),
+        },
+      ).then(parseYahooScreener),
     ]);
 
   // A market whose feeds ALL failed is excluded from pruning this run — a
@@ -482,6 +481,7 @@ async function sendDiscord(content: string): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     return res.ok;
   } catch {

@@ -19,12 +19,12 @@
 
 | # | 🇮🇩 Yang terjadi | 🇺🇸 What happens |
 |---|---|---|
-| 1 | ⏰ pg_cron `*/30 * * * *` POST ke function (Bearer = publishable key di Vault) | ⏰ pg_cron POSTs to the function |
+| 1 | ⏰ pg_cron `*/30 * * * *` POST ke function (`x-cron-secret` dari Vault) | ⏰ pg_cron POSTs with the private cron-secret header |
 | 2 | 🦾 Baca `journal_settings`: enabled? udah waktunya (clock-aligned ke WIB midnight)? | 🦾 Read `journal_settings`: enabled? due? |
 | 3 | 📥 Baca trade open + yang baru ditutup (cooldown) + universe (`journal_assets` + komoditas/forex konstanta) | 📥 Read open + recently-closed + universe |
-| 4 | 🌐 Fetch candle Yahoo 1mo/1h per aset (concurrency 8, lewat CF proxy, cache-bust) | 🌐 Fetch Yahoo 1mo/1h candles (concurrency 8, via CF proxy) |
+| 4 | 🌐 Fetch candle Yahoo 60d/1h per aset (concurrency 8, timeout 12 detik, lewat CF proxy) | 🌐 Fetch Yahoo 60d/1h candles (bounded concurrency + timeout) |
 | 5 | 🧠 `buildEngineContexts` (BTC/IHSG/S&P top-down) + `runAutoJournal(assets, openRows, {contexts, recentClosed})` | 🧠 Build contexts + run pure decision core |
-| 6 | ✍️ INSERT emit baru + UPDATE closure (service-role, bypass RLS) | ✍️ INSERT emits + UPDATE closures |
+| 6 | ✍️ Claim slot setelah fetch sukses; INSERT emit + UPDATE milestone/closure | ✍️ Claim after successful IO; persist emits, milestones, closures |
 | 7 | 📢 `buildAutoJournalAlerts` + `formatAlertsForDiscord` → POST webhook (best-effort) | 📢 Build alerts + format Discord + POST webhook |
 | 8 | 🕒 Stamp `journal_settings.last_run_at` | 🕒 Stamp `last_run_at` |
 
@@ -40,13 +40,14 @@ File: `src/core/automation/auto-journal-core.ts:100` (`runAutoJournal`). Pure, u
 - Skip quote stale > 90 menit (`QUOTE_MAX_AGE_MS`).
 - Enrich aset dengan context own-index.
 - `buildFollowedTrade` snapshot.
-- `passesEmissionGate` — counter-trend call vs context di-blok **kecuali** post-context strength ≥ `JOURNAL_EMISSION.COUNTER_TREND_MIN_STRENGTH` (60).
+- `passesEmissionGate` — counter-trend diblok kecuali post-context strength ≥60. Kandidat regime/HTF tetap eksperimen karena gagal stabil di validation→holdout.
+- Snapshot menyimpan `engine_version`, `decision_candle_at`, regime, HTF trend, dan direction score untuk audit cohort.
 - `REENTRY_COOLDOWN_MS` 6 jam per `symbol|signal` — simbol+arah sama diblok 6 jam, arah lawan boleh.
 
 ### Close (trade open)
 Replay candle sejak entry per trade:
-- **Close 1** — price TP/SL via `applyPriceSync` (secures highest TP di stop berikutnya).
-- **Close 2** — signal **REVERSAL** (long↔short), secure TP yang udah ke-touch di harganya, kalau belum exit di current. Status `reversed=true`.
+- **Close 1** — full-position ratchet: TP yang dicapai dipersist, jadi stop aktif berikutnya; gap fill di open aktual.
+- **Close 2** — signal **REVERSAL** (long↔short) exit di close candle terkoroborasi; gak ada perfect-fill sintetis.
 
 ### Phantom guard 🇮🇩🇺🇸
 🇮🇩 Hanya candle **timestamped** yang mutusin TP/SL. Spot price ≥ SL diabaikan (anti phantom close dari quote transient). Test: `auto-journal-core.test.mjs` "phantom spot guard".

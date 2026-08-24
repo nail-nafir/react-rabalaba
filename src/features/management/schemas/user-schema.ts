@@ -10,6 +10,7 @@ export const userSchema = z.object({
     .email(
       i18next.t("admin.users_add_invalid_email", "Format email tidak valid"),
     ),
+  password: z.string(),
   tier: z.enum(["free", "trial", "premium"]),
   role: z.enum(["user", "admin", "owner"]),
   trialExpiresAt: z.string().optional().or(z.literal("")),

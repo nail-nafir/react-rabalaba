@@ -181,9 +181,8 @@ function AssetDetailDialogContent({
   const asset = assets?.[0];
 
   // Apply the same enrichment the screener uses (shared enrichAsset chain),
-  // so conviction / tier shown here is consistent: context de-rate (BTC for
-  // crypto / IHSG for id-stock / S&P 500 for us-stock) + flow nudge
-  // (smart-money / accumulation).
+  // so conviction / tier shown here is consistent: benchmark context may
+  // de-rate; optional flow/fundamental reads are display-only.
   const { data: marketContext } = useCryptoContext();
   const { data: idxContext } = useIdxContext();
   const { data: usContext } = useUsContext();
@@ -255,9 +254,10 @@ function AssetDetailDialogContent({
   // hit-rate from the same walk-forward backtest. Honest beats precise — shows
   // "insufficient sample" rather than a fake number when the tier rarely traded.
   const calibration = useMemo(() => {
-    if (!backtest || !outlook || outlook.signal === "neutral") return null;
-    return calibrateConfidence(backtest, outlook.tier, outlook.regime);
-  }, [backtest, outlook]);
+    const technical = asset?.outlook;
+    if (!backtest || !technical || technical.signal === "neutral") return null;
+    return calibrateConfidence(backtest, technical.tier, technical.regime);
+  }, [backtest, asset]);
 
   // Current price and change percent
   const currentPrice = asset?.price ?? 0;

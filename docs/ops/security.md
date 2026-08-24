@@ -7,9 +7,9 @@
 
 ## TL;DR
 
-🇮🇩 Prinsip inti: **jangan percaya browser**. Semua gerbang sensitif (premium/admin/write) dipaksa di **server** Postgres via RLS + RPC `SECURITY DEFINER`. Browser pakai **publishable key** (read-only by RLS). Cron pakai **service-role** (bypass RLS, gak pernah di bundle). Secret (kode redeem, bearer cron) di Supabase Vault / Cloudflare env vars, **gak pernah** commit ke git.
+🇮🇩 Prinsip inti: **jangan percaya browser**. Semua gerbang sensitif (premium/admin/write) dipaksa di **server** Postgres via RLS + RPC `SECURITY DEFINER`. Browser pakai **publishable key** (read-only by RLS). Cron memvalidasi header privat `x-cron-secret` sebelum memakai service-role (bypass RLS, gak pernah di bundle). Secret (kode redeem, cron secret) di Supabase Vault / function env vars, **gak pernah** commit ke git.
 
-🇺🇸 Core principle: **don't trust the browser**. Every sensitive gate (premium/admin/write) is enforced on the **server** Postgres via RLS + `SECURITY DEFINER` RPCs. The browser uses the **publishable key** (read-only by RLS). The cron uses the **service-role** key (bypasses RLS, never bundled). Secrets (redeem codes, cron bearer) live in Supabase Vault / Cloudflare env vars, **never** committed to git.
+🇺🇸 Core principle: **don't trust the browser**. Every sensitive gate (premium/admin/write) is enforced on the **server** Postgres via RLS + `SECURITY DEFINER` RPCs. The browser uses the **publishable key** (read-only by RLS). Cron requests carry a private `x-cron-secret` before the service-role key is used (never bundled). Secrets (redeem codes, cron secret) live in Supabase Vault / function env vars, **never** committed to git.
 
 > Detail schema: [`../tsd/03-database-schema.md`](../tsd/03-database-schema.md). Auth flow: [`../fsd/06-auth-entitlement.md`](../fsd/06-auth-entitlement.md).
 
@@ -36,15 +36,15 @@
 
 | Key | Scope | Akses / Access | Disimpan / Stored |
 |---|---|---|---|
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Browser | RLS-bound (read-only per policy) | `.env` (gitignored) + Vault (cron bearer) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Browser | RLS-bound (read-only per policy) | `.env` (gitignored) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Cron edge function | Bypass RLS (full write) | **Auto-inject saat deploy** — JANGAN set via `secrets set`, gak pernah di bundle/git |
-| `auto_journal_bearer` (publishable) | Cron pg_cron → gateway | Cuma lewat gateway; function tetap tulis service-role | Supabase Vault (`schedule-*.sql`) |
+| `rabalaba_cron_secret` | Cron pg_cron → Edge Function | Private header checked by every scheduled function | Supabase Vault + Edge Function `CRON_SECRET` |
 | Access codes / invitation codes | DB rows | RPC-only | DB (gak di git) |
 | `DISCORD_WEBHOOK_URL` | Cron alert | Per edge function env | Supabase function env (dashboard) |
 | `COINGECKO_DEMO_API_KEY` | CF proxy coingecko | Inject `x-cg-demo-api-key` header | Cloudflare Pages env vars (dashboard) |
 | `YAHOO_PROXY_BASE` / `DISCOVERY_PROXY_BASE` | Cron fallback override | Optional | Supabase function env |
 
-> ⚠️ 🇮🇩 **Aturan**: apapun yang bawa secret (kode, bearer, service-role) KELUAR dari git. `.env.example` cuma list `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (key name TANPA value). `.env` gitignored.
+> ⚠️ 🇮🇩 **Aturan**: apapun yang bawa secret (kode, cron secret, service-role) KELUAR dari git. `.env.example` cuma list `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (key name TANPA value). `.env` gitignored.
 > 🇺🇸 **Rule**: anything carrying a secret stays OUT of git. `.env.example` only lists `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (key names WITHOUT values). `.env` is gitignored.
 
 > 🇮🇩 Catatan: var env lama (`VITE_ACCESS_KEY`/`VITE_ACCESS_CODE`/`VITE_TRIAL_CODE`/`VITE_TRIAL_DURATION`) udah **dihapus** — model akses pindah ke DB `access_codes` + RPC `redeem_access_code` (migrasi #3).
@@ -91,7 +91,7 @@
                                                           ▲
                                                           │ service-role (bypass RLS)
                                                           │ auto-inject, never bundled
-┌─────────────────┐     pg_cron + publishable bearer  │
+┌─────────────────┐     pg_cron + private cron secret │
 │  ⏰ pg_cron     │ ──POST──▶ 🦾 EDGE FUNCTION ────────┘
 │                 │           (Deno, trusted)
 │                 │           writes journal_trades

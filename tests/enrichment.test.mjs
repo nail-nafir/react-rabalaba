@@ -136,14 +136,12 @@ function makeIdxCtx(overrides = {}) {
   };
 }
 
-test("enrichAsset id-stock: IDX de-rate applies BEFORE the accumulation nudge (combined math)", async () => {
+test("enrichAsset id-stock: IDX de-rate is canonical and accumulation is display-only", async () => {
   const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const { deriveAccumulation } = await loadModule(
     "/src/core/engine/accumulation.ts",
   );
-  const { ACCUMULATION, IDX_CONTEXT } = await loadModule(
-    "/src/constants/signals.ts",
-  );
+  const { IDX_CONTEXT } = await loadModule("/src/constants/signals.ts");
 
   const flowCandles = makeFlowCandles({ days: 21 });
   const asset = makeAsset({
@@ -157,17 +155,12 @@ test("enrichAsset id-stock: IDX de-rate applies BEFORE the accumulation nudge (c
 
   const out = enrichAsset(asset, { idxContext: makeIdxCtx() });
 
-  // Order: ×0.6 de-rate first, THEN the flow nudge on the de-rated strength.
+  // Only the required benchmark context changes the executable conviction.
   const deRated = Math.round(80 * IDX_CONTEXT.COUNTER_MARKET_DERATE);
-  const expected = Math.min(
-    100,
-    Math.round(deRated * (1 + acc.score * ACCUMULATION.MAX_CONVICTION_ADJ)),
-  );
-  assert.equal(out.outlook.strength, expected);
+  assert.equal(out.outlook.strength, deRated);
+  assert.deepEqual(out.accumulation, acc);
   assert.ok(out.outlook.reasons.warnings.some((w) => w.includes("IDX context")));
-  assert.ok(
-    out.outlook.reasons.warnings.some((w) => w.includes("Accumulation flow")),
-  );
+  assert.ok(!out.outlook.reasons.warnings.some((w) => w.includes("Accumulation flow")));
 
   // (d) No mutation of the cached input.
   assert.equal(asset.outlook.strength, 80);
@@ -192,7 +185,7 @@ test("enrichAsset id-stock: accumulation attaches even when the signal is neutra
   assert.notEqual(out, asset);
 });
 
-test("enrichAsset us-stock: accumulation applies (general flow read, not id-only)", async () => {
+test("enrichAsset us-stock: accumulation attaches without changing the signal", async () => {
   const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const flowCandles = makeFlowCandles({ days: 21 }); // reads as accumulation
   const asset = makeAsset({
@@ -208,24 +201,15 @@ test("enrichAsset us-stock: accumulation applies (general flow read, not id-only
 
   assert.ok(out.accumulation, "flow read attached to a US stock");
   assert.equal(out.accumulation.daysAnalyzed, 21);
-  // Supportive flow into a LONG nudges conviction up, bounded to +15%.
-  assert.ok(out.outlook.strength > 50, "supportive flow boosts conviction");
-  assert.ok(out.outlook.strength <= Math.round(50 * 1.15));
-  assert.ok(
-    out.outlook.reasons.warnings.some((w) => w.includes("Accumulation flow")),
-    "flow nudge ran for the US stock",
-  );
+  assert.equal(out.outlook, asset.outlook, "display data cannot rewrite conviction");
   // No crypto cross-wiring: BTC crypto-context must not attach to a US stock.
   assert.equal(out.smartMoney, undefined);
 });
 
-test("enrichAsset crypto: result is identical to the legacy applyCryptoContext → applySmartMoney chain", async () => {
+test("enrichAsset crypto: context changes the signal while smart-money stays display-only", async () => {
   const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
   const { applyCryptoContext } = await loadModule(
     "/src/core/engine/crypto-context.ts",
-  );
-  const { applySmartMoney } = await loadModule(
-    "/src/core/engine/smart-money.ts",
   );
 
   const asset = makeAsset({
@@ -244,9 +228,9 @@ test("enrichAsset crypto: result is identical to the legacy applyCryptoContext �
   };
 
   const out = enrichAsset(asset, { cryptoContext: ctx, smartMoney: sm });
-  const legacy = applySmartMoney(applyCryptoContext(asset.outlook, asset, ctx), sm);
+  const canonical = applyCryptoContext(asset.outlook, asset, ctx);
 
-  assert.deepEqual(out.outlook, legacy);
+  assert.deepEqual(out.outlook, canonical);
   assert.equal(out.smartMoney, sm, "positioning attached");
   assert.equal(out.accumulation, undefined, "no id-stock extras on crypto");
 });
@@ -326,7 +310,7 @@ test("enrichAsset commodity & forex: passthrough — no accumulation, no smartMo
   }
 });
 
-test("enrichAsset us-stock SHORT + distribution flow: conviction dampened, signal stays SHORT", async () => {
+test("enrichAsset us-stock SHORT: flow attaches but cannot dampen conviction", async () => {
   // Verifies the agreement sign-flip path in applyAccumulation when the
   // outlook is SHORT but the flow reads as accumulation (heavy buying on
   // up days) — the flow OPPOSES the short, so conviction should drop.
@@ -352,14 +336,9 @@ test("enrichAsset us-stock SHORT + distribution flow: conviction dampened, signa
 
   assert.ok(out.accumulation, "accumulation derived for SHORT us-stock");
   assert.ok(out.accumulation.score > 0, "fixture reads as accumulation (opposing the SHORT)");
-  // Conviction must be dampened (opposing flow).
-  assert.ok(out.outlook.strength < 60, "opposing flow dampens conviction on SHORT");
-  // Signal must never flip.
+  assert.equal(out.outlook.strength, 60, "display-only flow leaves conviction alone");
   assert.equal(out.outlook.signal, "short", "signal stays SHORT — flow never flips it");
-  assert.ok(
-    out.outlook.reasons.warnings.some((w) => w.includes("dampened")),
-    "dampening note appended",
-  );
+  assert.ok(!out.outlook.reasons.warnings.some((w) => w.includes("dampened")));
   // Original untouched.
   assert.equal(asset.outlook.strength, 60);
   assert.equal(asset.outlook.signal, "short");

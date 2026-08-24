@@ -242,9 +242,8 @@ export function AssetSignalTable() {
 
   // Enrichment pass over the full universe (where cross-asset data exists),
   // via the shared enrichAsset chain (same one the detail dialog uses):
-  // context de-rate (BTC for crypto / IHSG for id-stock / S&P 500 for us-stock)
-  // → flow nudge (smart-money / accumulation). computeSignal stays pure &
-  // per-asset; this layer never mutates cache data.
+  // benchmark context may de-rate; optional flow/fundamental reads are
+  // display-only. computeSignal stays pure and this layer never mutates cache.
   const enrichedAssets = useMemo<UnifiedAsset[]>(() => {
     if (allAssets.length === 0) return allAssets;
     return allAssets.map((asset) =>

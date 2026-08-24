@@ -9,15 +9,8 @@ import type { CryptoContext, IdxContext, UsContext } from "@/types/market";
 import { applyCryptoContext } from "./crypto-context";
 import { applyIdxContext } from "./idx-context";
 import { applyUsContext } from "./us-context";
-import { applyFundamentals } from "./fundamentals";
-import { applySmartMoney } from "./smart-money";
+import { deriveAccumulation, supportsAccumulation } from "./accumulation";
 import {
-  applyAccumulation,
-  deriveAccumulation,
-  supportsAccumulation,
-} from "./accumulation";
-import {
-  applyRelativeStrength,
   deriveRelativeStrength,
   type WindowReturns,
 } from "./relative-strength";
@@ -56,6 +49,11 @@ export interface EnrichmentInputs {
   fundamentals?: Fundamentals;
 }
 
+export interface EnrichmentOptions {
+  /** Keep optional per-asset overlays out of the canonical signal path. */
+  applyOptionalOverlays?: boolean;
+}
+
 /**
  * Shared post-signal enrichment chain — the ONE place the apply-layer order
  * lives, consumed by both the screener table and the detail dialog so the
@@ -63,15 +61,11 @@ export interface EnrichmentInputs {
  *
  * ORDER (load-bearing — change it and the math changes):
  *  1) Top-down context de-rate (BTC for crypto / IHSG for id-stock / S&P 500
- *     for us-stock — mutually exclusive by assetType). The macro regime caps
- *     conviction BEFORE any flow read fine-tunes it.
- *  2) Flow nudge (smart-money positioning for crypto / accumulation for
- *     equities — US & ID stocks) — bounded ±15%, never flips a signal.
- *  3) Relative strength vs the asset's own benchmark (id→IHSG, us→S&P,
- *     crypto→BTC) — a bounded ±10% leadership nudge + display read; never
- *     flips a signal. Only runs when the context carries benchmark returns.
- *  4) [Phase 2] speculative-risk LAST — a warning layer on top of the final
- *     state (escalates risk only, never touches signal/strength/tier).
+ *     for us-stock — mutually exclusive by assetType). This is the only
+ *     enrichment allowed to change the executable decision.
+ *  2) Optional flow, relative-strength and fundamental reads are attached for
+ *     display only. They never change the executable signal/strength/tier, so
+ *     browser and cron decisions stay identical when optional APIs differ.
  *
  * Pure & immutable: computeSignal stays per-asset, cache data is never
  * mutated, and the SAME asset reference comes back when nothing applied.
@@ -81,11 +75,13 @@ export interface EnrichmentInputs {
 export function enrichAsset(
   asset: UnifiedAsset,
   inputs: EnrichmentInputs,
+  options: EnrichmentOptions = {},
 ): UnifiedAsset {
   if (!asset.outlook) return asset;
 
   const { cryptoContext, idxContext, usContext, smartMoney, fundamentals } =
     inputs;
+  const applyOptionalOverlays = options.applyOptionalOverlays ?? true;
   let outlook = asset.outlook;
   let accumulation: Accumulation | undefined;
 
@@ -101,54 +97,47 @@ export function enrichAsset(
 
   // The asset's daily candles feed BOTH the flow read (equities) and the
   // relative-strength read (any benchmarked class) — resample once.
-  const daily = asset.quoteIndicators
-    ? resampleCandlesToDaily(
-        normalizeYahooCandles(asset.quoteIndicators, asset.timestamps),
-      )
-    : [];
+  const daily =
+    applyOptionalOverlays && asset.quoteIndicators
+      ? resampleCandlesToDaily(
+          normalizeYahooCandles(asset.quoteIndicators, asset.timestamps),
+        )
+      : [];
 
-  // 2) Flow nudge.
+  // 2) Attach flow evidence for display.
   const attachSmartMoney =
-    asset.assetType === "crypto" ? smartMoney : undefined;
-  if (attachSmartMoney) {
-    outlook = applySmartMoney(outlook, attachSmartMoney);
-  } else if (supportsAccumulation(asset.assetType)) {
+    applyOptionalOverlays && asset.assetType === "crypto"
+      ? smartMoney
+      : undefined;
+  if (applyOptionalOverlays && supportsAccumulation(asset.assetType)) {
     // Attached even when the outlook is neutral — flow context is useful
     // pre-signal (the dialog shows the panel without a signal gate).
     accumulation = deriveAccumulation(daily) ?? undefined;
-    if (accumulation) outlook = applyAccumulation(outlook, accumulation);
   }
 
-  // 3) Relative strength vs the asset's OWN benchmark — a bounded leadership
-  //    nudge (leader strengthens an aligned trade, laggard dampens it) plus a
-  //    display read. Only runs when its context carries benchmark returns.
+  // 3) Attach relative strength vs the asset's own benchmark for display.
+  //    Only runs when its context carries benchmark returns.
   let relativeStrength: RelativeStrength | undefined;
   const bench = benchmarkReturnsFor(asset.assetType, {
     cryptoContext,
     idxContext,
     usContext,
   });
-  if (bench && daily.length > 0) {
+  if (applyOptionalOverlays && bench && daily.length > 0) {
     relativeStrength =
       deriveRelativeStrength(
         daily.map((c) => c.close),
         bench.returns,
         bench.name,
       ) ?? undefined;
-    if (relativeStrength) {
-      outlook = applyRelativeStrength(outlook, relativeStrength);
-    }
   }
 
-  // 4) Fundamentals + analyst overlay (stocks only) — earnings-blackout
-  //    de-rate, a small analyst-consensus nudge, and valuation caution flags.
-  //    Browser-only (per-asset fetch); the cron leaves `fundamentals` undefined.
+  // 4) Attach fundamentals + analyst context for stock dialogs. Browser-only
+  //    (per-asset fetch); the cron leaves `fundamentals` undefined.
   const isStock =
     asset.assetType === "us-stock" || asset.assetType === "id-stock";
-  const attachFundamentals = isStock ? fundamentals : undefined;
-  if (attachFundamentals) {
-    outlook = applyFundamentals(outlook, attachFundamentals);
-  }
+  const attachFundamentals =
+    applyOptionalOverlays && isStock ? fundamentals : undefined;
 
   if (
     outlook === asset.outlook &&

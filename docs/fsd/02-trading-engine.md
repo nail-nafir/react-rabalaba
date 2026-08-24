@@ -66,40 +66,44 @@ Tiap context deriving `RiskState` (`risk_on`/`risk_off`/`neutral`) dari benchmar
 
 File: `src/core/engine/enrichment.ts:81` (`enrichAsset`).
 
-🇮🇩 Rantai pasca-sinyal **shared** oleh screener table & asset detail dialog (jaga conviction/tier gak drift). **Urutan load-bearing:**
+🇮🇩 Rantai pasca-sinyal **shared** oleh screener table, dialog, dan cron. Hanya konteks benchmark wajib yang masuk jalur keputusan:
 
 1. **Top-down context de-rate** (BTC/IHSG/S&P, mutually exclusive per assetType)
-2. **Flow nudge** — smart-money (crypto) / accumulation (US+ID stocks)
-3. **Relative-strength** vs own benchmark (bounded ±10%)
-4. **Fundamentals/analyst overlay** (stocks, browser-only)
+2. **Display-only evidence** — smart-money, accumulation, relative-strength, dan fundamentals ditempel ke aset tapi tidak mengubah signal/strength/tier.
 
-🇺🇸 Post-signal chain **shared** by the screener table & asset detail dialog (keeps conviction/tier from drifting). **Load-bearing ORDER:** (1) context de-rate → (2) flow nudge → (3) relative-strength → (4) fundamentals overlay.
+🇺🇸 The chain is shared by browser and cron. Required benchmark context may de-rate the decision; optional APIs are display-only and cannot make browser and cron disagree.
 
 ### Smart money (crypto) — `smart-money.ts:172`
-`derivePositioning(input) → SmartMoney` (score `[-1..1]`, label, flow) dari matriks OI×price + contrarian funding extreme + L/S ratio. `applySmartMoney` nudge conviction ±`MAX_CONVICTION_ADJ` (gak pernah flip).
+`derivePositioning(input) → SmartMoney` (score `[-1..1]`, label, flow) dari matriks OI×price + contrarian funding extreme + L/S ratio. `applySmartMoney` tetap tersedia untuk eksperimen, tetapi jalur canonical hanya menempelkan hasil untuk display.
 
 ### Accumulation (equity) — `accumulation.ts:199`
-`deriveAccumulation(dailyCandles) → Accumulation | null` dari CMF/MFI/A-D delta/up-down volume/spike bias. Honesty gate: zero-volume >30% → `null`. `applyAccumulation` nudge ±`MAX_CONVICTION_ADJ`. `supportsAccumulation(assetType)` — equities only.
+`deriveAccumulation(dailyCandles) → Accumulation | null` dari CMF/MFI/A-D delta/up-down volume/spike bias. Honesty gate: zero-volume >30% → `null`. `applyAccumulation` hanya helper eksperimen; canonical path display-only. `supportsAccumulation(assetType)` — equities only.
 
 ### Relative-strength — `relative-strength.ts:152`
-`computeWindowReturns` → `{r1w, r1m}`, `deriveRelativeStrength` → label outperform/inline/underperform, `applyRelativeStrength` — leadership nudge bounded ±`MAX_CONVICTION_ADJ`.
+`computeWindowReturns` → `{r1w, r1m}`, `deriveRelativeStrength` → label outperform/inline/underperform. Helper nudge tetap tersedia untuk eksperimen, tetapi canonical path display-only.
 
 ### Fundamentals (stocks) — `fundamentals.ts:108`
-`applyFundamentals(outlook, f)`: pre-earnings blackout de-rate, analyst consensus nudge (bounded), valuation caution (high D/E, rich P/E on LONG). Conservative — gak pernah flip.
+Fundamental, earnings, dan analyst data ditampilkan sebagai konteks. Helper `applyFundamentals` tetap tersedia untuk eksperimen, tetapi tidak masuk keputusan executable.
 
 ---
 
 ## 📊 Backtest & Calibration
 
 ### Backtest — `backtest.ts:364` (`runBacktest`)
-🇮🇩 Walk-forward backtester **no lookahead**. Single position, entry di next bar open, exit via scale-out (50/30/20% di TP1/2/3, stop→breakeven after TP1) atau single TP1 (legacy), stop, opposite signal, atau end-of-data. Deduct fee+slippage per aset (`BACKTEST_COSTS`). Output `BacktestMetrics` (winRate, expectancy, profitFactor, maxDrawdownR, per-regime, **per-tier**).
+🇮🇩 Walk-forward backtester **no lookahead**. Keputusan candle `i` dieksekusi di open `i+1`; reversal ditutup di open sebelum high/low diproses. Default exit full-position ratchet: TP1/TP2 jadi stop aktif, TP akhir menutup posisi, dan gap stop fill di harga open. Scale-out/TP1 tinggal mode pembanding. Gross+net R, fee/slippage, timestamp keputusan/entry/exit ikut dicatat.
 
-🇺🇸 Walk-forward backtester with **no lookahead**. Single position, entries filled at next bar's open, exits via scale-out (50/30/20% at TP1/2/3, stop→breakeven after TP1) or single TP1 (legacy), stop, opposite signal, or end-of-data. Deducts per-asset fees+slippage. Output `BacktestMetrics`.
+🇺🇸 No-lookahead walk-forward backtest with executable open→intrabar ordering, full-position TP ratchet, gap fills, and gross/net R.
 
 > Invariant test: corrupt future candles gak ubah entry masa lalu (`signal-engine.test.mjs`).
 
 ### Calibration — `calibration.ts:52` (`calibrateConfidence`)
-`calibrateConfidence(metrics, tier, regime) → CalibratedConfidence`. Petakan tier+regime sinyal live ke **hit-rate historis** trade sebanding. Return `null` winRate kalau sample < `MIN_CALIBRATION_SAMPLE` (8) — kejujuran di atas presisi palsu. Jembatan "alignment teknis" → "probabilitas profit".
+`calibrateConfidence(metrics, tier, regime) → CalibratedConfidence`. Tier teknis mentah dipetakan ke **hit-rate historis** backtest yang setara. Return `null` kalau sample < `MIN_CALIBRATION_SAMPLE` (30); overlay/context browser tidak boleh mengganti cohort kalibrasi.
+
+### Evidence gate — `scripts/gate-compare.mjs`
+
+`npm run gate:compare -- 10` memakai kontrak production `60d/1h`, lalu membagi waktu 50% history / 25% validation / 25% holdout. Kandidat harus menaikkan win rate ≥2pp tanpa menurunkan expectancy/PF, tanpa memperburuk drawdown, dan mempertahankan ≥50% trade.
+
+Audit 2026-08-24: tidak ada kandidat baru yang lolos validation, jadi filter regime/HTF/tier **tidak dipromosikan** walaupun beberapa tampak bagus di holdout. Ini mencegah tuning ke satu periode; jalur live hanya menerima perbaikan correctness dan gate benchmark yang sudah ada.
 
 ---
 

@@ -1,9 +1,6 @@
 import type { YahooQuoteIndicators } from "@/types/asset";
 import type { TrendDirection } from "@/types/market";
-import {
-  calculateEMA,
-  calculateDMI,
-} from "@/core/engine/indicators";
+import { calculateEMA, calculateDMI } from "@/core/engine/indicators";
 import { SIGNAL_THRESHOLDS } from "@/constants/signals";
 
 export interface NormalizedYahooCandle {
@@ -24,6 +21,11 @@ export interface SignalSeries {
   periodLow: number;
 }
 
+export interface HigherTimeframeState {
+  trend: TrendDirection;
+  ready: boolean;
+}
+
 function isFiniteNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -40,6 +42,7 @@ function isFiniteNumber(value: number | null | undefined): value is number {
 export function normalizeYahooCandles(
   quote: YahooQuoteIndicators | null | undefined,
   timestamps: number[] = [],
+  options: { requireTimestamps?: boolean; requirePhysical?: boolean } = {},
 ): NormalizedYahooCandle[] {
   if (
     !quote ||
@@ -61,24 +64,72 @@ export function normalizeYahooCandles(
     const low = quote.low[i];
     const close = quote.close[i];
 
+    const timestamp =
+      isFiniteNumber(timestamps[i]) && timestamps[i] > 0 ? timestamps[i] : null;
+
     if (
       !isFiniteNumber(open) ||
       !isFiniteNumber(high) ||
       !isFiniteNumber(low) ||
       !isFiniteNumber(close) ||
-      high < low
+      open <= 0 ||
+      high <= 0 ||
+      low <= 0 ||
+      close <= 0 ||
+      high < low ||
+      (options.requirePhysical &&
+        (high < Math.max(open, close) || low > Math.min(open, close))) ||
+      (options.requireTimestamps && timestamp == null)
     ) {
       continue;
     }
 
     const rawVolume = volumes[i];
-    const volume = isFiniteNumber(rawVolume) ? rawVolume : 0;
-    const timestamp = isFiniteNumber(timestamps[i]) ? timestamps[i] : i;
+    const volume = isFiniteNumber(rawVolume) && rawVolume >= 0 ? rawVolume : 0;
 
-    candles.push({ open, high, low, close, volume, timestamp });
+    candles.push({ open, high, low, close, volume, timestamp: timestamp ?? i });
   }
 
-  return candles;
+  candles.sort((a, b) => a.timestamp - b.timestamp);
+  return candles.filter(
+    (candle, index) =>
+      index === 0 || candle.timestamp !== candles[index - 1].timestamp,
+  );
+}
+
+/** Convert Yahoo interval labels to seconds. Unknown intervals fail closed. */
+export function intervalSeconds(interval?: string): number | null {
+  const match = interval?.match(/^(\d+)(m|h|d|wk)$/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multiplier = unit === "m" ? 60 : unit === "h" ? 3600 : unit === "d" ? 86400 : 604800;
+  return amount > 0 ? amount * multiplier : null;
+}
+
+/**
+ * Keep only candles whose full interval has elapsed. Every candle followed by a
+ * newer candle is necessarily complete; only the trailing bar needs a clock
+ * check. A regular-session end can shorten the final intraday bar.
+ */
+export function closedCandlesForSignal(
+  candles: NormalizedYahooCandle[],
+  options: { interval?: string; nowSeconds?: number; regularSessionEnd?: number } = {},
+): NormalizedYahooCandle[] {
+  if (candles.length === 0) return candles;
+  const seconds = intervalSeconds(options.interval);
+  if (seconds == null) return candles.slice(0, -1);
+
+  const last = candles[candles.length - 1];
+  let closesAt = last.timestamp + seconds;
+  if (
+    typeof options.regularSessionEnd === "number" &&
+    options.regularSessionEnd > last.timestamp
+  ) {
+    closesAt = Math.min(closesAt, options.regularSessionEnd);
+  }
+  const now = options.nowSeconds ?? Date.now() / 1000;
+  return now >= closesAt ? candles : candles.slice(0, -1);
 }
 
 /**
@@ -120,12 +171,30 @@ export function buildSignalSeriesFromCandles(
 export function resampleCandles(
   candles: NormalizedYahooCandle[],
   factor: number,
+  options: { includeTrailingPartial?: boolean } = {},
 ): NormalizedYahooCandle[] {
   if (factor <= 1 || candles.length === 0) return candles;
 
   const result: NormalizedYahooCandle[] = [];
-  for (let i = 0; i < candles.length; i += factor) {
-    const bucket = candles.slice(i, i + factor);
+  const gaps = candles
+    .slice(1)
+    .map((candle, index) => candle.timestamp - candles[index].timestamp)
+    .filter((gap) => gap > 0);
+  const baseGap =
+    gaps.length > 0
+      ? [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)]
+      : 0;
+  let bucket: NormalizedYahooCandle[] = [];
+  const flush = (trailing = false) => {
+    if (bucket.length === 0) return;
+    if (
+      trailing &&
+      options.includeTrailingPartial === false &&
+      bucket.length < factor
+    ) {
+      bucket = [];
+      return;
+    }
     result.push({
       open: bucket[0].open,
       high: Math.max(...bucket.map((c) => c.high)),
@@ -134,7 +203,18 @@ export function resampleCandles(
       volume: bucket.reduce((sum, c) => sum + c.volume, 0),
       timestamp: bucket[bucket.length - 1].timestamp,
     });
+    bucket = [];
+  };
+  for (const candle of candles) {
+    const previous = bucket[bucket.length - 1];
+    const sessionGap =
+      previous &&
+      baseGap > 0 &&
+      candle.timestamp - previous.timestamp > baseGap * 1.5;
+    if (sessionGap || bucket.length >= factor) flush();
+    bucket.push(candle);
   }
+  flush(true);
   return result;
 }
 
@@ -181,7 +261,13 @@ export function resampleCandlesToDaily(
 export function deriveCandleTrend(
   candles: NormalizedYahooCandle[],
 ): TrendDirection {
-  if (candles.length < 50) return "sideways";
+  return deriveCandleTrendState(candles).trend;
+}
+
+export function deriveCandleTrendState(
+  candles: NormalizedYahooCandle[],
+): HigherTimeframeState {
+  if (candles.length < 50) return { trend: "sideways", ready: false };
 
   const closes = candles.map((c) => c.close);
   const highs = candles.map((c) => c.high);
@@ -191,12 +277,14 @@ export function deriveCandleTrend(
   const ema50 = calculateEMA(closes, 50);
   const dmi = calculateDMI(highs, lows, closes);
 
-  if (dmi.adx < SIGNAL_THRESHOLDS.ADX_WEAK_TREND) return "sideways";
+  if (dmi.adx < SIGNAL_THRESHOLDS.ADX_WEAK_TREND) {
+    return { trend: "sideways", ready: true };
+  }
   if (close > ema20 && ema20 > ema50 && dmi.plusDI > dmi.minusDI) {
-    return "bullish";
+    return { trend: "bullish", ready: true };
   }
   if (close < ema20 && ema20 < ema50 && dmi.minusDI > dmi.plusDI) {
-    return "bearish";
+    return { trend: "bearish", ready: true };
   }
-  return "sideways";
+  return { trend: "sideways", ready: true };
 }

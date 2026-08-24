@@ -30,7 +30,8 @@ function makeTrendCandles({
 }) {
   return Array.from({ length: count }, (_, index) => {
     const close = start + step * index;
-    const previousClose = index === 0 ? close - step : start + step * (index - 1);
+    const previousClose =
+      index === 0 ? close - step : start + step * (index - 1);
 
     return {
       open: previousClose,
@@ -59,9 +60,7 @@ function makeRangingCandles(count) {
 }
 
 async function computeFromCandles(candles, options = {}) {
-  const { computeSignal } = await loadModule(
-    "/src/core/engine/signals.ts",
-  );
+  const { computeSignal } = await loadModule("/src/core/engine/signals.ts");
   const { buildSignalSeriesFromCandles } = await loadModule(
     "/src/core/market/candles.ts",
   );
@@ -103,6 +102,75 @@ test("normalizes Yahoo candles without breaking OHLCV alignment", async () => {
   assert.deepEqual(signalSeries.lowPrices, [8, 9, 11]);
 });
 
+test("cron candle mode rejects impossible OHLC rows and missing timestamps", async () => {
+  const { normalizeYahooCandles } = await loadModule(
+    "/src/core/market/candles.ts",
+  );
+  const candles = normalizeYahooCandles(
+    {
+      open: [100, 100, 100],
+      high: [99, 102, 102],
+      low: [98, 98, 98],
+      close: [99, 101, 101],
+      volume: [-1, 10, 10],
+    },
+    [1, 2, null],
+    { requireTimestamps: true, requirePhysical: true },
+  );
+
+  assert.equal(candles.length, 1);
+  assert.equal(candles[0].timestamp, 2);
+  assert.equal(candles[0].volume, 10);
+});
+
+test("resampling starts a new bucket across a session gap", async () => {
+  const { resampleCandles } = await loadModule("/src/core/market/candles.ts");
+  const candles = Array.from({ length: 5 }, (_, index) => ({
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100,
+    volume: 1,
+    timestamp: index < 3 ? index + 1 : index + 18,
+  }));
+
+  assert.deepEqual(
+    resampleCandles(candles, 3).map((candle) => candle.volume),
+    [3, 2],
+  );
+});
+
+test("signal candles exclude the still-forming bar and HTF drops a trailing partial bucket", async () => {
+  const { closedCandlesForSignal, resampleCandles, deriveCandleTrendState } =
+    await loadModule("/src/core/market/candles.ts");
+  const candles = Array.from({ length: 5 }, (_, index) => ({
+    open: 100 + index,
+    high: 102 + index,
+    low: 99 + index,
+    close: 101 + index,
+    volume: 10,
+    timestamp: 100 + index * 60,
+  }));
+
+  assert.equal(
+    closedCandlesForSignal(candles, { interval: "1m", nowSeconds: 399 })
+      .length,
+    4,
+  );
+  assert.equal(
+    closedCandlesForSignal(candles, { interval: "1m", nowSeconds: 400 })
+      .length,
+    5,
+  );
+  assert.deepEqual(
+    resampleCandles(candles, 3, { includeTrailingPartial: false }).map(
+      (candle) => candle.volume,
+    ),
+    [30],
+  );
+  assert.equal(deriveCandleTrendState(candles).ready, false);
+});
+
 test("RSI stays neutral in a flat market and DMI exposes ADX direction", async () => {
   const { calculateRSI, calculateDMI } = await loadModule(
     "/src/core/engine/indicators.ts",
@@ -136,7 +204,12 @@ test("clean bullish trend returns LONG with ready data", async () => {
 
 test("clean bearish trend returns SHORT with ready data", async () => {
   const result = await computeFromCandles(
-    makeTrendCandles({ count: 130, start: 280, step: -1, volumeSpikeAtEnd: true }),
+    makeTrendCandles({
+      count: 130,
+      start: 280,
+      step: -1,
+      volumeSpikeAtEnd: true,
+    }),
   );
 
   assert.equal(result.dataQuality.ready, true);
@@ -147,7 +220,9 @@ test("clean bearish trend returns SHORT with ready data", async () => {
 });
 
 test("strong uptrend overbought RSI does not auto-short", async () => {
-  const result = await computeFromCandles(makeTrendCandles({ count: 80, step: 1 }));
+  const result = await computeFromCandles(
+    makeTrendCandles({ count: 80, step: 1 }),
+  );
 
   assert.notEqual(result.signal, "short");
   assert.ok(result.directionScore > 0);
@@ -159,12 +234,16 @@ test("strong uptrend overbought RSI does not auto-short", async () => {
 });
 
 test("insufficient candle depth forces neutral and caps confidence", async () => {
-  const result = await computeFromCandles(makeTrendCandles({ count: 40, step: 1 }));
+  const result = await computeFromCandles(
+    makeTrendCandles({ count: 40, step: 1 }),
+  );
 
   assert.equal(result.dataQuality.ready, false);
   assert.equal(result.signal, "neutral");
   assert.ok(result.strength <= 25);
-  assert.ok(result.reasons.warnings.some((warning) => warning.includes("requires 120")));
+  assert.ok(
+    result.reasons.warnings.some((warning) => warning.includes("requires 120")),
+  );
 });
 
 test("ranging market stays neutral", async () => {
@@ -176,10 +255,12 @@ test("ranging market stays neutral", async () => {
 
 test("zero-heavy volume marks data unreliable and disables OBV/spike", async () => {
   // Bullish trend but ~half the recent candles report zero volume (crypto-like).
-  const candles = makeTrendCandles({ count: 130, step: 1 }).map((candle, i) => ({
-    ...candle,
-    volume: i % 2 === 0 ? 0 : 1_000,
-  }));
+  const candles = makeTrendCandles({ count: 130, step: 1 }).map(
+    (candle, i) => ({
+      ...candle,
+      volume: i % 2 === 0 ? 0 : 1_000,
+    }),
+  );
   // Force a fake "spike" on the last candle that should be ignored.
   candles[candles.length - 1].volume = 50_000;
 
@@ -207,9 +288,7 @@ test("healthy volume keeps reliability flag on", async () => {
 });
 
 test("classifyRegime distinguishes the four regimes", async () => {
-  const { classifyRegime } = await loadModule(
-    "/src/core/engine/indicators.ts",
-  );
+  const { classifyRegime } = await loadModule("/src/core/engine/regime.ts");
 
   const base = {
     strongAdx: 25,
@@ -231,7 +310,12 @@ test("classifyRegime distinguishes the four regimes", async () => {
     "high_volatility",
   );
   assert.equal(
-    classifyRegime({ adx: 12, atrPercent: 1, bbBandwidthPercent: 1.5, ...base }),
+    classifyRegime({
+      adx: 12,
+      atrPercent: 1,
+      bbBandwidthPercent: 1.5,
+      ...base,
+    }),
     "low_volatility",
   );
 });
@@ -360,10 +444,12 @@ test("trading plan falls back cleanly with thin data", async () => {
 });
 
 async function runBacktestOn(candles, options = {}) {
-  const { runBacktest } = await loadModule(
-    "/src/core/engine/backtest.ts",
-  );
-  return runBacktest(candles, { assetType: "us-stock", timeframe: "swing", ...options });
+  const { runBacktest } = await loadModule("/src/core/engine/backtest.ts");
+  return runBacktest(candles, {
+    assetType: "us-stock",
+    timeframe: "swing",
+    ...options,
+  });
 }
 
 test("backtest reports a profitable uptrend with valid metrics", async () => {
@@ -377,6 +463,10 @@ test("backtest reports a profitable uptrend with valid metrics", async () => {
   assert.ok(metrics.maxDrawdownR >= 0);
   // No lookahead: every entry fills at the entry bar's open.
   assert.ok(trades.every((t) => t.entryIndex >= 120));
+  assert.ok(trades.every((t) => t.decisionIndex < t.entryIndex));
+  assert.ok(trades.every((t) => t.decisionTimestamp < t.entryTimestamp));
+  assert.ok(trades.every((t) => t.exitTimestamp >= t.entryTimestamp));
+  assert.ok(trades.every((t) => t.grossR >= t.r));
 });
 
 test("backtest has no lookahead: future candles do not change past entries", async () => {
@@ -387,9 +477,7 @@ test("backtest has no lookahead: future candles do not change past entries", asy
 
   // Corrupt everything AFTER the first trade's entry bar, then re-run.
   const corrupted = candles.map((c, i) =>
-    i > first.entryIndex
-      ? { ...c, open: 1, high: 1, low: 1, close: 1 }
-      : c,
+    i > first.entryIndex ? { ...c, open: 1, high: 1, low: 1, close: 1 } : c,
   );
   const { trades: after } = await runBacktestOn(corrupted);
 
@@ -397,4 +485,24 @@ test("backtest has no lookahead: future candles do not change past entries", asy
   assert.equal(after[0].entryIndex, first.entryIndex);
   assert.equal(after[0].entryPrice, first.entryPrice);
   assert.equal(after[0].direction, first.direction);
+});
+
+test("backtest fills a stop gap at the next bar open", async () => {
+  const candles = makeTrendCandles({ count: 300, step: 2 });
+  const { trades } = await runBacktestOn(candles);
+  const first = trades[0];
+  assert.ok(first && first.exitIndex > first.entryIndex);
+
+  const gapIndex = first.entryIndex + 1;
+  const gapped = candles.map((candle, index) =>
+    index === gapIndex
+      ? { ...candle, open: 1, high: 1, low: 1, close: 1 }
+      : candle,
+  );
+  const { trades: after } = await runBacktestOn(gapped);
+
+  assert.equal(after[0].entryIndex, first.entryIndex);
+  assert.equal(after[0].exitIndex, gapIndex);
+  assert.equal(after[0].exitPrice, 1);
+  assert.equal(after[0].exitReason, "stop_loss");
 });

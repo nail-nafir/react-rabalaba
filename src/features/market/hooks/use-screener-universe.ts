@@ -14,6 +14,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/services/supabase/client";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
   groupUniverse,
   FALLBACK_UNIVERSE,
@@ -25,9 +26,11 @@ export function useScreenerUniverse(): ScreenerUniverse & {
   isLoading: boolean;
 } {
   const { hasAccess } = usePremiumAccess();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["screener-universe"],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["screener-universe", userId],
     enabled: hasAccess,
     staleTime: 60_000,
     queryFn: async (): Promise<UniverseRow[]> => {
@@ -40,15 +43,17 @@ export function useScreenerUniverse(): ScreenerUniverse & {
     },
   });
 
-  // Free users don't query → DEFAULT_*. Premium: group DB rows (with the same
-  // DEFAULT_* fallback while loading / if the read returns nothing). Memoized on
+  // Free users don't query → DEFAULT_*. Premium: group DB rows, using defaults
+  // only while loading. A read error is explicit and does not silently scan a
+  // different universe.
   // `data` so the ticker arrays keep a STABLE identity across renders — the
   // screener feeds them straight into useMarketData, which is sensitive to
   // unstable references (see the render-loop guard in asset-signal-table).
-  const grouped = useMemo(
-    () => (hasAccess ? groupUniverse(data) : FALLBACK_UNIVERSE),
-    [hasAccess, data],
-  );
+  const grouped = useMemo(() => {
+    if (!hasAccess) return FALLBACK_UNIVERSE;
+    if (isError) return { crypto: [], usStock: [], idStock: [] };
+    return data === undefined ? FALLBACK_UNIVERSE : groupUniverse(data);
+  }, [hasAccess, data, isError]);
 
   return {
     crypto: grouped.crypto,

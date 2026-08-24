@@ -219,3 +219,22 @@ test("proxyJsonGet bypasses cache for no-cache headers and cache-buster params",
   assert.deepEqual(await firstBusted.json(), { calls: 3 });
   assert.deepEqual(await secondBusted.json(), { calls: 4 });
 });
+
+test("proxyJsonGet pins double-slash paths to the configured upstream origin", async () => {
+  installCache();
+  let fetchedUrl;
+  globalThis.fetch = async (input) => {
+    fetchedUrl = new URL(input.toString());
+    return Response.json({ ok: true });
+  };
+
+  const { proxyJsonGet } = await loadModule("/functions/api/_shared/proxy.ts");
+  const request = context(
+    "https://rabalaba.pages.dev/api/test//attacker.example/path",
+    { "Cache-Control": "no-cache" },
+  );
+  await proxyJsonGet(request, options());
+
+  assert.equal(fetchedUrl.origin, "https://upstream.example");
+  assert.equal(fetchedUrl.pathname, "/attacker.example/path");
+});

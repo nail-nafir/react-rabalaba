@@ -3,22 +3,27 @@ import type { MarketRegime } from "@/types/market";
 import { computeSignal } from "./signals";
 import type { Outlook } from "@/types/engine";
 import { computeTradingPlan } from "./trading-plan";
-import { buildSignalSeriesFromCandles } from "@/core/market/candles";
+import {
+  buildSignalSeriesFromCandles,
+  deriveCandleTrendState,
+  resampleCandles,
+} from "@/core/market/candles";
 import type { NormalizedYahooCandle } from "@/core/market/candles";
 import {
   TIMEFRAME_PRESETS,
+  HIGHER_TIMEFRAME_FACTOR,
   type TimeframePresetKey,
 } from "@/constants/timeframes";
 import { BACKTEST_COSTS } from "@/constants/signals";
 
 /**
  * Exit model:
- * - "scaleOut" (default): scale out 50% at TP1, 30% at TP2, 20% at TP3, and move
- *   the stop to breakeven after TP1 — matching the 3-TP plan the UI actually
- *   shows the trader. This is what the displayed win-rate should reflect.
+ * - "secured" (default): hold one position and ratchet the full-position stop
+ *   to every reached TP until the final target exits.
+ * - "scaleOut": legacy partial-fill model, retained for comparison only.
  * - "tp1": legacy single full exit at TP1. Kept for comparison.
  */
-export type ExitMode = "tp1" | "scaleOut";
+export type ExitMode = "secured" | "tp1" | "scaleOut";
 
 const SCALE_OUT_LEGS: { tpIndex: number; fraction: number }[] = [
   { tpIndex: 0, fraction: 0.5 },
@@ -28,11 +33,18 @@ const SCALE_OUT_LEGS: { tpIndex: number; fraction: number }[] = [
 
 export interface BacktestTrade {
   direction: Exclude<SignalDirection, "neutral">;
+  decisionIndex: number;
+  decisionTimestamp: number;
   entryIndex: number;
+  entryTimestamp: number;
   entryPrice: number;
+  exitIndex: number;
+  exitTimestamp: number;
   /** Blended average exit price across partial fills. */
   exitPrice: number;
   exitReason: "take_profit" | "stop_loss" | "opposite_signal" | "end_of_data";
+  /** Realized reward-to-risk multiple before fees + slippage. */
+  grossR: number;
   /** Realized reward-to-risk multiple, NET of fees + slippage. */
   r: number;
   regime: MarketRegime;
@@ -67,9 +79,12 @@ interface TradeLeg {
 
 interface OpenTrade {
   direction: Exclude<SignalDirection, "neutral">;
+  decisionIndex: number;
+  decisionTimestamp: number;
   entryIndex: number;
+  entryTimestamp: number;
   entryPrice: number;
-  /** Current stop — moves to breakeven after the first take-profit fills. */
+  /** Current stop — ratchets to the latest reached target in secured mode. */
   stop: number;
   legs: TradeLeg[];
   nextLeg: number;
@@ -81,6 +96,8 @@ interface OpenTrade {
   remaining: number;
   /** Net R accumulated from partial exits so far. */
   realizedR: number;
+  /** Gross R accumulated from partial exits so far. */
+  grossRealizedR: number;
   /** Σ fraction × fill price, for reporting a blended exit price. */
   weightedExit: number;
   /** fee + slippage per side, as a fraction of price. */
@@ -134,6 +151,11 @@ function partialR(
 }
 
 function closeRemaining(trade: OpenTrade, exitPrice: number): void {
+  const move =
+    trade.direction === "long"
+      ? exitPrice - trade.entryPrice
+      : trade.entryPrice - exitPrice;
+  trade.grossRealizedR += (move / trade.risk) * trade.remaining;
   trade.realizedR += partialR(trade, exitPrice, trade.remaining);
   trade.weightedExit += exitPrice * trade.remaining;
   trade.remaining = 0;
@@ -146,13 +168,36 @@ function closeRemaining(trade: OpenTrade, exitPrice: number): void {
 function stepBar(
   trade: OpenTrade,
   bar: NormalizedYahooCandle,
-  moveToBE: boolean,
+  exitMode: ExitMode,
 ): "take_profit" | "stop_loss" | null {
+  const gapThroughStop =
+    trade.direction === "long"
+      ? bar.open <= trade.stop
+      : bar.open >= trade.stop;
   const stopHit =
-    trade.direction === "long" ? bar.low <= trade.stop : bar.high >= trade.stop;
+    gapThroughStop ||
+    (trade.direction === "long"
+      ? bar.low <= trade.stop
+      : bar.high >= trade.stop);
   if (stopHit) {
-    closeRemaining(trade, trade.stop);
+    closeRemaining(trade, gapThroughStop ? bar.open : trade.stop);
     return "stop_loss";
+  }
+
+  if (exitMode === "secured") {
+    while (trade.nextLeg < trade.legs.length) {
+      const target = trade.legs[trade.nextLeg].price;
+      const tpHit =
+        trade.direction === "long" ? bar.high >= target : bar.low <= target;
+      if (!tpHit) break;
+      trade.nextLeg += 1;
+      if (trade.nextLeg === trade.legs.length) {
+        closeRemaining(trade, target);
+        return "take_profit";
+      }
+      trade.stop = target;
+    }
+    return null;
   }
 
   while (trade.nextLeg < trade.legs.length) {
@@ -162,12 +207,21 @@ function stepBar(
     if (!tpHit) break;
 
     const fillFraction = Math.min(leg.fraction, trade.remaining);
+    const move =
+      trade.direction === "long"
+        ? leg.price - trade.entryPrice
+        : trade.entryPrice - leg.price;
+    trade.grossRealizedR += (move / trade.risk) * fillFraction;
     trade.realizedR += partialR(trade, leg.price, fillFraction);
     trade.weightedExit += leg.price * fillFraction;
     trade.remaining -= fillFraction;
 
     // Lock in the trade after the first target: move stop to breakeven.
-    if (trade.nextLeg === 0 && moveToBE && trade.legs.length > 1) {
+    if (
+      trade.nextLeg === 0 &&
+      exitMode === "scaleOut" &&
+      trade.legs.length > 1
+    ) {
       trade.stop = trade.entryPrice;
     }
     trade.nextLeg += 1;
@@ -184,13 +238,21 @@ function stepBar(
 function finalize(
   trade: OpenTrade,
   exitReason: BacktestTrade["exitReason"],
+  exitIndex: number,
+  exitTimestamp: number,
 ): BacktestTrade {
   return {
     direction: trade.direction,
+    decisionIndex: trade.decisionIndex,
+    decisionTimestamp: trade.decisionTimestamp,
     entryIndex: trade.entryIndex,
+    entryTimestamp: trade.entryTimestamp,
     entryPrice: trade.entryPrice,
+    exitIndex,
+    exitTimestamp,
     exitPrice: trade.weightedExit, // already fraction-weighted; sums to full size
     exitReason,
+    grossR: trade.grossRealizedR,
     r: trade.realizedR,
     regime: trade.regime,
     tier: trade.tier,
@@ -200,9 +262,9 @@ function finalize(
 /**
  * Walk-forward backtest with NO lookahead: at each bar i the engine only sees
  * candles[0..i] and any entry is filled at candle[i+1].open. A single position
- * is held at a time. Exits: scale-out at TP1/TP2/TP3 (or single TP1 in "tp1"
- * mode), stop (→ breakeven after TP1), opposite signal at the next open, or
- * end-of-data at the final close. Fees + slippage are deducted from every fill.
+ * is held at a time. Exits use the selected mode, opposite signal at the next
+ * open, or end-of-data at the final close. Fees + slippage are deducted from
+ * every fill.
  */
 export function runBacktest(
   candles: NormalizedYahooCandle[],
@@ -210,6 +272,8 @@ export function runBacktest(
     assetType?: AssetType;
     timeframe?: TimeframePresetKey;
     exitMode?: ExitMode;
+    /** Stress fees + slippage without changing production constants. */
+    costMultiplier?: number;
     /** Optional gate: return false to BLOCK an otherwise-valid entry. Lets a
      *  harness model the journal's context emission-gate without touching the
      *  exit model. Receives the entry signal + the decision bar. */
@@ -223,41 +287,60 @@ export function runBacktest(
   const {
     assetType,
     timeframe = "swing",
-    exitMode = "scaleOut",
+    exitMode = "secured",
+    costMultiplier = 1,
     entryFilter,
   } = options;
   const warmup = TIMEFRAME_PRESETS[timeframe].signalProfile.minCandles;
-  const costRate = costRateFor(assetType);
+  const costRate = costRateFor(assetType) * Math.max(0, costMultiplier);
 
   const trades: BacktestTrade[] = [];
   let open: OpenTrade | null = null;
 
   for (let i = warmup; i < candles.length - 1; i++) {
-    const series = buildSignalSeriesFromCandles(candles.slice(0, i + 1));
-    const outlook = computeSignal({ ...series, assetType, timeframe });
+    const decisionCandles = candles.slice(0, i + 1);
+    const series = buildSignalSeriesFromCandles(decisionCandles);
+    const higherTimeframe = deriveCandleTrendState(
+      resampleCandles(decisionCandles, HIGHER_TIMEFRAME_FACTOR[timeframe], {
+        includeTrailingPartial: false,
+      }),
+    );
+    const outlook = computeSignal({
+      ...series,
+      assetType,
+      timeframe,
+      higherTimeframeTrend: higherTimeframe.trend,
+      higherTimeframeReady: higherTimeframe.ready,
+    });
     const nextBar = candles[i + 1];
+    const nextIndex = i + 1;
 
-    // 1. Manage an open position against the next bar (no same-bar entry+exit).
-    if (open) {
-      const reason = stepBar(open, nextBar, exitMode === "scaleOut");
-      if (reason) {
-        trades.push(finalize(open, reason));
-        open = null;
-      } else if (
-        outlook.signal !== "neutral" &&
-        outlook.signal !== open.direction
-      ) {
-        closeRemaining(open, nextBar.open);
-        trades.push(finalize(open, "opposite_signal"));
-        open = null;
-      }
+    // The new decision is known before the next open, so a reversal exits at
+    // that open before any high/low from the new bar can affect the old trade.
+    if (
+      open &&
+      outlook.signal !== "neutral" &&
+      outlook.signal !== open.direction
+    ) {
+      closeRemaining(open, nextBar.open);
+      trades.push(
+        finalize(open, "opposite_signal", nextIndex, nextBar.timestamp),
+      );
+      open = null;
     }
 
-    // 2. Enter a new position while flat, filled at the next bar's open.
-    const entryAllowed =
-      !entryFilter ||
-      entryFilter({ outlook, barIndex: i, timestamp: candles[i].timestamp });
-    if (!open && outlook.signal !== "neutral" && entryAllowed) {
+    // Enter while flat at the next open. A reversal can therefore flip at the
+    // same executable price; an intrabar exit cannot retroactively re-enter.
+    if (
+      !open &&
+      outlook.signal !== "neutral" &&
+      (!entryFilter ||
+        entryFilter({
+          outlook,
+          barIndex: i,
+          timestamp: candles[i].timestamp,
+        }))
+    ) {
       const plan = computeTradingPlan(
         outlook,
         nextBar.open,
@@ -265,18 +348,33 @@ export function runBacktest(
       );
       if (plan) {
         const risk = Math.abs(nextBar.open - plan.stopLoss);
-        const tps = [
+        if (risk <= 0) continue;
+        const allTps = [
           plan.takeProfit1,
           plan.takeProfit2,
-          plan.takeProfit3 ?? plan.takeProfit2,
-        ];
+          plan.takeProfit3,
+        ].filter(
+          (v): v is number => typeof v === "number" && Number.isFinite(v),
+        );
+        const tps = exitMode === "tp1" ? allTps.slice(0, 1) : allTps;
+        if (tps.length === 0) continue;
         const legPlan =
           exitMode === "scaleOut"
-            ? SCALE_OUT_LEGS
-            : [{ tpIndex: 0, fraction: 1 }];
+            ? tps.length === 1
+              ? [{ tpIndex: 0, fraction: 1 }]
+              : tps.length === 2
+                ? [
+                    { tpIndex: 0, fraction: 0.5 },
+                    { tpIndex: 1, fraction: 0.5 },
+                  ]
+                : SCALE_OUT_LEGS
+            : tps.map((_, tpIndex) => ({ tpIndex, fraction: 1 }));
         open = {
           direction: outlook.signal,
-          entryIndex: i + 1,
+          decisionIndex: i,
+          decisionTimestamp: candles[i].timestamp,
+          entryIndex: nextIndex,
+          entryTimestamp: nextBar.timestamp,
           entryPrice: nextBar.open,
           stop: plan.stopLoss,
           legs: legPlan.map((l) => ({
@@ -289,17 +387,29 @@ export function runBacktest(
           tier: outlook.tier,
           remaining: 1,
           realizedR: 0,
+          grossRealizedR: 0,
           weightedExit: 0,
           costRate,
         };
+      }
+    }
+
+    if (open) {
+      const reason = stepBar(open, nextBar, exitMode);
+      if (reason) {
+        trades.push(finalize(open, reason, nextIndex, nextBar.timestamp));
+        open = null;
       }
     }
   }
 
   // Close any position still open at the final close.
   if (open && candles.length > 0) {
-    closeRemaining(open, candles[candles.length - 1].close);
-    trades.push(finalize(open, "end_of_data"));
+    const finalIndex = candles.length - 1;
+    closeRemaining(open, candles[finalIndex].close);
+    trades.push(
+      finalize(open, "end_of_data", finalIndex, candles[finalIndex].timestamp),
+    );
   }
 
   return { metrics: summarize(trades), trades };

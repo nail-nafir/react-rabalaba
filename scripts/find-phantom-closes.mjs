@@ -92,7 +92,7 @@ async function fetchClosedRows() {
 
 /** Raw Yahoo chart result (meta + timestamp + indicators) via the clean proxy. */
 async function fetchChart(symbol) {
-  const url = `${PROXY}/${encodeURIComponent(symbol)}?range=1mo&interval=1h&includePrePost=false&_=${Date.now()}`;
+  const url = `${PROXY}/${encodeURIComponent(symbol)}?range=60d&interval=1h&includePrePost=false&_=${Date.now()}`;
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache" },
   });

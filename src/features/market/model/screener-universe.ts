@@ -21,9 +21,7 @@ export interface UniverseRow {
   active: boolean;
 }
 
-/** DEFAULT_* fallback. Used for free users, a not-yet-applied premium RLS policy,
- *  a load/read failure, OR any single category that comes back empty — so the
- *  screener is never blank. */
+/** DEFAULT_* fallback for free users and the initial loading state. */
 export const FALLBACK_UNIVERSE: ScreenerUniverse = {
   crypto: DEFAULT_CRYPTO_TICKERS,
   usStock: DEFAULT_US_STOCK_TICKERS,
@@ -32,22 +30,21 @@ export const FALLBACK_UNIVERSE: ScreenerUniverse = {
 
 /**
  * Group active `journal_assets` rows into the screener's per-type ticker lists.
- * Pure + fallback-safe: no rows (null/empty → not loaded, RLS-blocked, or error)
- * → all DEFAULT_*; a present-but-empty category also falls back so a panel never
- * goes blank. Commodity/forex rows are ignored (constants, not the DB universe).
+ * Pure: undefined means not loaded; an empty array is a real empty universe.
+ * Commodity/forex rows are ignored (constants, not the DB universe).
  */
 export function groupUniverse(
   rows: UniverseRow[] | null | undefined,
 ): ScreenerUniverse {
-  if (!rows || rows.length === 0) return FALLBACK_UNIVERSE;
+  if (!rows) return FALLBACK_UNIVERSE;
   const pick = (type: string) =>
     rows.filter((r) => r.active && r.asset_type === type).map((r) => r.symbol);
   const crypto = pick("crypto");
   const usStock = pick("us-stock");
   const idStock = pick("id-stock");
   return {
-    crypto: crypto.length ? crypto : FALLBACK_UNIVERSE.crypto,
-    usStock: usStock.length ? usStock : FALLBACK_UNIVERSE.usStock,
-    idStock: idStock.length ? idStock : FALLBACK_UNIVERSE.idStock,
+    crypto,
+    usStock,
+    idStock,
   };
 }

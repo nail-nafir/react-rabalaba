@@ -15,10 +15,6 @@ import type { MarketRegime } from "@/constants/taxonomy/regime";
  * no-trade pre-breakout state), then trending takes priority over
  * high_volatility so a clean strong trend is not mislabeled.
  */
-/** @deprecated Use `MarketRegime` from @/constants/taxonomy/regime — kept as an
- *  alias so existing engine imports keep resolving. */
-export type MarketRegimeKind = MarketRegime;
-
 export interface RegimeInput {
   adx: number;
   atrPercent: number;
@@ -29,7 +25,7 @@ export interface RegimeInput {
   squeezeMaxAdx: number;
 }
 
-export function classifyRegime(params: RegimeInput): MarketRegimeKind {
+export function classifyRegime(params: RegimeInput): MarketRegime {
   const {
     adx,
     atrPercent,

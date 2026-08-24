@@ -7,7 +7,7 @@
  * Both RPCs are SECURITY DEFINER + gated by is_admin(); the hook itself is
  * disabled unless the caller isAdmin (same guard as useJournalAssets).
  */
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/services/supabase/client";
 import type {
@@ -15,9 +15,8 @@ import type {
   AccessCodeRow,
 } from "@/services/supabase/database.types";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 
-const USERS_KEY = ["admin-users"] as const;
-const CODES_KEY = ["admin-access-codes"] as const;
 const EMPTY_USERS: AdminUserRow[] = [];
 const EMPTY_CODES: AccessCodeRow[] = [];
 
@@ -25,32 +24,38 @@ export type AddUserResult = "added" | "duplicate" | "invalid";
 
 export function useAdminUsers() {
   const { isAdmin } = usePremiumAccess();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const usersKey = useMemo(() => ["admin-users", userId] as const, [userId]);
+  const codesKey = useMemo(
+    () => ["admin-access-codes", userId] as const,
+    [userId],
+  );
   const queryClient = useQueryClient();
 
   const addUser = useCallback(
     async (
       email: string,
+      password: string,
       tier: "free" | "trial" | "premium" = "free",
       role: "user" | "admin" | "owner" = "user",
       trialExpiresAt: string | null = null,
-      isBlocked: boolean = false
+      isBlocked: boolean = false,
     ): Promise<AddUserResult> => {
       const cleanEmail = email.trim().toLowerCase();
-      if (!cleanEmail) return "invalid";
+      if (!cleanEmail || password.length < 12) return "invalid";
 
-      const existing =
-        queryClient.getQueryData<AdminUserRow[]>(USERS_KEY) ?? [];
+      const existing = queryClient.getQueryData<AdminUserRow[]>(usersKey) ?? [];
       if (existing.some((u) => u.email.toLowerCase() === cleanEmail)) {
         return "duplicate";
       }
 
-      const defaultPassword = "ChangeMe2026!";
       const isOwner = role === "owner";
       const is_admin = role === "admin" || role === "owner";
 
       const { error } = await supabase.rpc("admin_create_user", {
         p_email: cleanEmail,
-        p_password: defaultPassword,
+        p_password: password,
         p_tier: tier,
         p_is_admin: is_admin,
         p_is_owner: isOwner,
@@ -59,16 +64,19 @@ export function useAdminUsers() {
       } as never);
 
       if (error) {
-        if (error.code === "23505" || error.message?.includes("already exists")) {
+        if (
+          error.code === "23505" ||
+          error.message?.includes("already exists")
+        ) {
           return "duplicate";
         }
         return "invalid";
       }
 
-      await queryClient.invalidateQueries({ queryKey: USERS_KEY });
+      await queryClient.invalidateQueries({ queryKey: usersKey });
       return "added";
     },
-    [queryClient]
+    [queryClient, usersKey],
   );
 
   const addAccessCode = useCallback(
@@ -77,7 +85,7 @@ export function useAdminUsers() {
       kind: "full" | "trial" = "full",
       maxRedemptions: number | null = null,
       trialDays: number | null = null,
-      note: string | null = null
+      note: string | null = null,
     ): Promise<"added" | "duplicate" | "invalid"> => {
       const cleanCode = code.trim();
       if (!cleanCode) return "invalid";
@@ -91,34 +99,35 @@ export function useAdminUsers() {
       } as never);
 
       if (error) {
-        if (error.code === "23505" || error.message?.includes("already exists")) {
+        if (
+          error.code === "23505" ||
+          error.message?.includes("already exists")
+        ) {
           return "duplicate";
         }
         return "invalid";
       }
 
-      await queryClient.invalidateQueries({ queryKey: CODES_KEY });
+      await queryClient.invalidateQueries({ queryKey: codesKey });
       return "added";
     },
-    [queryClient]
+    [queryClient, codesKey],
   );
 
   const { data: usersData, isLoading: isLoadingUsers } = useQuery({
-    queryKey: USERS_KEY,
+    queryKey: usersKey,
     enabled: isAdmin,
     staleTime: 60_000,
     queryFn: async () => {
       // Hand-written Database type doesn't resolve no-arg rpc() shapes; cast.
-      const { data, error } = await supabase.rpc(
-        "admin_list_users" as never,
-      );
+      const { data, error } = await supabase.rpc("admin_list_users" as never);
       if (error) throw error;
       return data as AdminUserRow[];
     },
   });
 
   const { data: codesData, isLoading: isLoadingCodes } = useQuery({
-    queryKey: CODES_KEY,
+    queryKey: codesKey,
     enabled: isAdmin,
     staleTime: 60_000,
     queryFn: async () => {
@@ -141,10 +150,10 @@ export function useAdminUsers() {
         return false;
       }
 
-      await queryClient.invalidateQueries({ queryKey: USERS_KEY });
+      await queryClient.invalidateQueries({ queryKey: usersKey });
       return true;
     },
-    [queryClient]
+    [queryClient, usersKey],
   );
 
   const deleteUser = useCallback(
@@ -157,10 +166,10 @@ export function useAdminUsers() {
         return false;
       }
 
-      await queryClient.invalidateQueries({ queryKey: USERS_KEY });
+      await queryClient.invalidateQueries({ queryKey: usersKey });
       return true;
     },
-    [queryClient]
+    [queryClient, usersKey],
   );
 
   const deleteAccessCode = useCallback(
@@ -173,10 +182,10 @@ export function useAdminUsers() {
         return false;
       }
 
-      await queryClient.invalidateQueries({ queryKey: CODES_KEY });
+      await queryClient.invalidateQueries({ queryKey: codesKey });
       return true;
     },
-    [queryClient]
+    [queryClient, codesKey],
   );
 
   const updateUser = useCallback(
@@ -185,7 +194,7 @@ export function useAdminUsers() {
       tier: "free" | "trial" | "premium",
       role: "user" | "admin" | "owner",
       trialExpiresAt: string | null = null,
-      isBlocked: boolean = false
+      isBlocked: boolean = false,
     ): Promise<boolean> => {
       const isOwner = role === "owner";
       const is_admin = role === "admin" || role === "owner";
@@ -203,10 +212,10 @@ export function useAdminUsers() {
         return false;
       }
 
-      await queryClient.invalidateQueries({ queryKey: USERS_KEY });
+      await queryClient.invalidateQueries({ queryKey: usersKey });
       return true;
     },
-    [queryClient]
+    [queryClient, usersKey],
   );
 
   return {

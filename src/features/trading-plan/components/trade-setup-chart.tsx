@@ -21,7 +21,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Grid, Layers, RotateCcw, SlidersHorizontal, Activity, BarChart2 } from "lucide-react";
+import {
+  Grid,
+  Layers,
+  RotateCcw,
+  SlidersHorizontal,
+  Activity,
+  BarChart2,
+} from "lucide-react";
 import {
   calculateEMASeries,
   calculateBollingerBandsSeries,
@@ -566,7 +573,11 @@ export function TradeSetupChart({
       macro: ema.macro
         .slice(vp.start, vp.start + vp.span)
         .map((value, index) =>
-          vp.start + index >= Math.min(EMA_MACRO_PERIOD - 1, Math.max(0, Math.floor(candles.length * 0.05)))
+          vp.start + index >=
+          Math.min(
+            EMA_MACRO_PERIOD - 1,
+            Math.max(0, Math.floor(candles.length * 0.05)),
+          )
             ? value
             : null,
         ),
@@ -609,7 +620,13 @@ export function TradeSetupChart({
     const macroEmas = showEma200 ? visibleEma.macro : [];
     const bbUpper = showBollingerBands ? visibleBb.upper : [];
     const bbLower = showBollingerBands ? visibleBb.lower : [];
-    const emaPrices = [...fastEmas, ...slowEmas, ...macroEmas, ...bbUpper, ...bbLower].filter(
+    const emaPrices = [
+      ...fastEmas,
+      ...slowEmas,
+      ...macroEmas,
+      ...bbUpper,
+      ...bbLower,
+    ].filter(
       (value): value is number => value !== null && Number.isFinite(value),
     );
     if (emaPrices.length === 0) {
@@ -622,7 +639,16 @@ export function TradeSetupChart({
     }
     const pad = (max - min) * 0.02 || 1;
     return { min: Math.max(0, min - pad), max: max + pad };
-  }, [model.priceMax, model.priceMin, showEma20, showEma50, showEma200, showBollingerBands, visibleEma, visibleBb]);
+  }, [
+    model.priceMax,
+    model.priceMin,
+    showEma20,
+    showEma50,
+    showEma200,
+    showBollingerBands,
+    visibleEma,
+    visibleBb,
+  ]);
 
   // Interaction plumbing: handlers read live values through refs so the
   // native wheel listener (registered once, non-passive so preventDefault
@@ -795,9 +821,12 @@ export function TradeSetupChart({
     projXRef.current = PROJ_X;
   });
 
-  const y = (price: number) =>
-    CHART_TOP +
-    (1 - priceToRatio(price, priceDomain.min, priceDomain.max)) * CHART_H;
+  const y = useCallback(
+    (price: number) =>
+      CHART_TOP +
+      (1 - priceToRatio(price, priceDomain.min, priceDomain.max)) * CHART_H,
+    [priceDomain.min, priceDomain.max],
+  );
 
   // Inverse of y(): the price at a chart Y — for the crosshair price pill.
   const priceFromY = (yc: number) => {
@@ -830,7 +859,13 @@ export function TradeSetupChart({
     for (let i = 0; i < visibleBb.upper.length; i++) {
       const u = visibleBb.upper[i];
       const l = visibleBb.lower[i];
-      if (u === null || l === null || !Number.isFinite(u) || !Number.isFinite(l)) continue;
+      if (
+        u === null ||
+        l === null ||
+        !Number.isFinite(u) ||
+        !Number.isFinite(l)
+      )
+        continue;
       const x = CHART_LEFT + (i + 0.5) * slot;
       topPath += `${topPath ? " L" : "M"}${x} ${y(u)}`;
       bottomPath = ` L${x} ${y(l)}` + bottomPath;
@@ -1288,18 +1323,34 @@ export function TradeSetupChart({
                   />
                   <line
                     x1={CHART_LEFT}
-                    y1={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.7) * (CHART_H * 0.22)}
+                    y1={
+                      CHART_BOTTOM -
+                      CHART_H * 0.25 +
+                      (1 - 0.7) * (CHART_H * 0.22)
+                    }
                     x2={PROJ_X}
-                    y2={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.7) * (CHART_H * 0.22)}
+                    y2={
+                      CHART_BOTTOM -
+                      CHART_H * 0.25 +
+                      (1 - 0.7) * (CHART_H * 0.22)
+                    }
                     className="stroke-rose-400/60"
                     strokeWidth={1}
                     strokeDasharray="2 2"
                   />
                   <line
                     x1={CHART_LEFT}
-                    y1={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.3) * (CHART_H * 0.22)}
+                    y1={
+                      CHART_BOTTOM -
+                      CHART_H * 0.25 +
+                      (1 - 0.3) * (CHART_H * 0.22)
+                    }
                     x2={PROJ_X}
-                    y2={CHART_BOTTOM - CHART_H * 0.25 + (1 - 0.3) * (CHART_H * 0.22)}
+                    y2={
+                      CHART_BOTTOM -
+                      CHART_H * 0.25 +
+                      (1 - 0.3) * (CHART_H * 0.22)
+                    }
                     className="stroke-emerald-400/60"
                     strokeWidth={1}
                     strokeDasharray="2 2"

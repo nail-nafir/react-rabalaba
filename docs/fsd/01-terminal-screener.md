@@ -56,7 +56,7 @@ Komponen: `src/features/market/components/asset-signal-table.tsx:90` (`AssetSign
 `useSmartMoney(cryptoForSmartMoney)` — cuman untuk crypto dengan sinyal **non-neutral actionable** (jaga Binance call tetap bounded). Positioning (funding/OI/long-short) → `derivePositioning`.
 
 ### Enrichment (`:238-253`)
-`enrichAsset(asset, { cryptoContext, idxContext, usContext, smartMoney })` dari `src/core/engine/enrichment.ts:81`. Rantai: **context de-rate** (BTC/IHSG/S&P) → **flow nudge** (smart-money crypto / accumulation equity). `computeSignal` tetap pure per-aset. Lihat `fsd/02` & `tsd/06` untuk detail engine.
+`enrichAsset(asset, { cryptoContext, idxContext, usContext, smartMoney })` dari `src/core/engine/enrichment.ts:81`. Hanya **context de-rate** (BTC/IHSG/S&P) yang mengubah keputusan; smart-money, accumulation, relative strength, dan fundamentals display-only. `computeSignal` tetap pure per-aset. Lihat `fsd/02` & `tsd/06` untuk detail engine.
 
 ### Kolom tabel (`:316-553`)
 TanStack Table, `pageSize 10` (`:553`):

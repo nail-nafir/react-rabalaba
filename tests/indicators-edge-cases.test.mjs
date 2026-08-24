@@ -304,25 +304,28 @@ test("calculateRSISeries: tail value matches single calculateRSI", async () => {
 // ─── detectRSIDivergence ─────────────────────────────────────
 test("detectRSIDivergence: short arrays → none", async () => {
   const { detectRSIDivergence } = await loadModule(IND);
-  assert.equal(detectRSIDivergence(ramp(10), ramp(10)), "none");
+  assert.equal(detectRSIDivergence(ramp(10), ramp(10), ramp(10)), "none");
 });
 
 test("detectRSIDivergence: flat series → none", async () => {
   const { detectRSIDivergence } = await loadModule(IND);
   const flat = Array(40).fill(100);
-  assert.equal(detectRSIDivergence(flat, flat), "none");
+  assert.equal(detectRSIDivergence(flat, flat, flat), "none");
 });
 
 test("detectRSIDivergence: monotonic series → none (no two extrema)", async () => {
   const { detectRSIDivergence } = await loadModule(IND);
-  assert.equal(detectRSIDivergence(ramp(40), ramp(40, 10, 1)), "none");
+  assert.equal(
+    detectRSIDivergence(ramp(40), ramp(40), ramp(40, 10, 1)),
+    "none",
+  );
 });
 
 test("detectRSIDivergence: returns one of the three labels", async () => {
   const { detectRSIDivergence } = await loadModule(IND);
   const prices = Array.from({ length: 40 }, (_, i) => 100 + Math.sin(i / 2) * 8);
   const rsi = Array.from({ length: 40 }, (_, i) => 50 + Math.cos(i / 2) * 20);
-  const out = detectRSIDivergence(prices, rsi);
+  const out = detectRSIDivergence(prices, prices, rsi);
   assert.ok(["bullish", "bearish", "none"].includes(out));
 });
 

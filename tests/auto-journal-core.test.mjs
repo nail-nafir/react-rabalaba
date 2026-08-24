@@ -36,7 +36,16 @@ function makeAsset({ symbol, signal, price = 100, sl = 90, tps = [110, 120], quo
     timeframe: "1mo",
     price,
     quoteTime,
-    outlook: { signal, strength: neutral ? 10 : 70, tier: neutral ? "C" : "B" },
+    decisionCandleTime: quoteTime - 60 * 60 * 1000,
+    outlook: {
+      signal,
+      strength: neutral ? 10 : 70,
+      tier: neutral ? "C" : "B",
+      regime: "trending",
+      higherTimeframeReady: true,
+      higherTimeframeTrend: signal === "short" ? "bearish" : "bullish",
+      directionScore: signal === "short" ? -0.7 : signal === "long" ? 0.7 : 0,
+    },
     tradingPlan: neutral
       ? null
       : {
@@ -115,6 +124,9 @@ test("runAutoJournal: emits long/short with a plan, skips neutral", async () => 
   assert.equal(inserts.find((i) => i.symbol === "AAA").signal, "long");
   assert.equal(inserts.find((i) => i.symbol === "CCC").signal, "short");
   assert.equal(inserts[0].status, "open");
+  assert.equal(inserts[0].engine_version, "engine-v2");
+  assert.equal(inserts[0].regime, "trending");
+  assert.ok(inserts[0].decision_candle_at);
   assert.equal(closures.length, 0);
 });
 
@@ -157,6 +169,37 @@ test("runAutoJournal: leaves an open trade open when no TP/SL is hit", async () 
   const { closures } = runAutoJournal(assets, openRows);
 
   assert.equal(closures.length, 0, "no TP/SL hit → stays open");
+});
+
+test("runAutoJournal persists a reached TP milestone before the final exit", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const openedAtMs = Date.UTC(2024, 0, 1);
+  const openRows = [
+    makeRow({
+      symbol: "AAA",
+      entry: 100,
+      stop: 90,
+      tps: [110, 120],
+      openedAtMs,
+    }),
+  ];
+  const assets = [
+    makeCandleAsset({
+      symbol: "AAA",
+      price: 105,
+      openedAtMs,
+      highs: [116],
+      lows: [101],
+      closes: [115],
+    }),
+  ];
+
+  const { closures, progressUpdates } = runAutoJournal(assets, openRows);
+
+  assert.equal(closures.length, 0);
+  assert.deepEqual(progressUpdates, [
+    { id: "AAA-id", highest_tp_reached: 1 },
+  ]);
 });
 
 test("runAutoJournal: closes a long trade on signal REVERSAL to short", async () => {

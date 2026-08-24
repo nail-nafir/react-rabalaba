@@ -64,14 +64,14 @@ test("calibrateConfidence exposes win-rate when the sample is large enough", asy
     "/src/core/engine/calibration.ts",
   );
   const metrics = makeMetrics(
-    { trades: 20, winRate: 0.55, expectancy: 0.25 },
-    { trades: 12, winRate: 0.5, expectancy: 0.1 },
+    { trades: 35, winRate: 0.55, expectancy: 0.25 },
+    { trades: 32, winRate: 0.5, expectancy: 0.1 },
   );
   const c = calibrateConfidence(metrics, "A", "trending");
 
   assert.equal(c.sufficient, true);
   assert.equal(c.winRate, 0.55);
-  assert.equal(c.sample, 20);
+  assert.equal(c.sample, 35);
   assert.equal(c.regimeWinRate, 0.5);
-  assert.equal(c.regimeSample, 12);
+  assert.equal(c.regimeSample, 32);
 });

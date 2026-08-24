@@ -210,12 +210,15 @@ test("short: TP3 touched by a low wick closes at tp3 with the REAL hit time", as
 
 test("long: candle extremes drive TP (high wick) + SL (low wick) + hit time", async () => {
   const { evaluateFollow } = await loadModule(SRC);
-  // tp1 = 120; price 110 but a high wicked to 122 -> tp1 reached, stays open
+  // tp1 = 120; a high wicks through TP1, then the 110 close crosses the new
+  // ratcheted stop, so the full position realizes TP1.
   const mid = evaluateFollow(longTrade(), 110, [
     { high: 122, low: 108, timestamp: 2000 },
   ]);
   assert.equal(mid.highestTpReached, 1);
-  assert.equal(mid.closed, false);
+  assert.equal(mid.closed, true);
+  assert.equal(mid.status, "tp1");
+  assert.equal(mid.closePrice, 120);
   // sl = 80; price 100 but a low wicked to 79 at t=3000 -> stop hit
   const sl = evaluateFollow(longTrade(), 100, [
     { high: 101, low: 79, timestamp: 3000 },
@@ -256,7 +259,11 @@ test("order matters: TP1 hit BEFORE SL secures a close at tp1", async () => {
 // ── User spec: SL-loss only when NO TP was ever touched; a touched TP secures ──
 test("spec LONG: 100→180→220→35 secures tp2 (tp1+tp2 touched, then SL)", async () => {
   const { evaluateFollow } = await loadModule(SRC);
-  const t = longTrade({ entryPrice: 100, stopLoss: 50, takeProfits: [150, 200, 250] });
+  const t = longTrade({
+    entryPrice: 100,
+    stopLoss: 50,
+    takeProfits: [150, 200, 250],
+  });
   const ev = evaluateFollow(t, 35, [
     { high: 180, low: 100, timestamp: 1 },
     { high: 220, low: 180, timestamp: 2 },
@@ -269,7 +276,11 @@ test("spec LONG: 100→180→220→35 secures tp2 (tp1+tp2 touched, then SL)", a
 
 test("spec LONG: 100→35 straight to SL is a stop-loss (no TP touched)", async () => {
   const { evaluateFollow } = await loadModule(SRC);
-  const t = longTrade({ entryPrice: 100, stopLoss: 50, takeProfits: [150, 200, 250] });
+  const t = longTrade({
+    entryPrice: 100,
+    stopLoss: 50,
+    takeProfits: [150, 200, 250],
+  });
   const ev = evaluateFollow(t, 35, [{ high: 100, low: 35, timestamp: 1 }]);
   assert.equal(ev.status, "sl");
   assert.equal(ev.closePrice, 50);
@@ -277,7 +288,11 @@ test("spec LONG: 100→35 straight to SL is a stop-loss (no TP touched)", async 
 
 test("spec SHORT: 700→400→320→800 secures tp2", async () => {
   const { evaluateFollow } = await loadModule(SRC);
-  const t = shortTrade({ entryPrice: 700, stopLoss: 750, takeProfits: [500, 350, 250] });
+  const t = shortTrade({
+    entryPrice: 700,
+    stopLoss: 750,
+    takeProfits: [500, 350, 250],
+  });
   const ev = evaluateFollow(t, 800, [
     { high: 700, low: 400, timestamp: 1 },
     { high: 450, low: 320, timestamp: 2 },
@@ -289,21 +304,39 @@ test("spec SHORT: 700→400→320→800 secures tp2", async () => {
 
 test("spec SHORT: 700→800 straight to SL is a stop-loss", async () => {
   const { evaluateFollow } = await loadModule(SRC);
-  const t = shortTrade({ entryPrice: 700, stopLoss: 750, takeProfits: [500, 350, 250] });
+  const t = shortTrade({
+    entryPrice: 700,
+    stopLoss: 750,
+    takeProfits: [500, 350, 250],
+  });
   const ev = evaluateFollow(t, 800, [{ high: 800, low: 700, timestamp: 1 }]);
   assert.equal(ev.status, "sl");
   assert.equal(ev.closePrice, 750);
 });
 
-test("same bar touches a TP and the SL: the TP is secured (taken), not a loss", async () => {
+test("same bar touches a TP and the SL: conservative stop-first outcome", async () => {
   const { evaluateFollow } = await loadModule(SRC);
   // ONE candle dips to tp1 (low 79 <= 80) and also spikes to SL (high 121).
   const ev = evaluateFollow(shortTrade(), 60, [
     { high: 121, low: 79, timestamp: 1 },
   ]);
-  assert.equal(ev.status, "tp1");
-  assert.equal(ev.closePrice, 80);
+  assert.equal(ev.status, "sl");
+  assert.equal(ev.closePrice, 120);
   assert.equal(ev.closed, true);
+});
+
+test("ratcheted stop uses the gap open instead of a perfect TP fill", async () => {
+  const { evaluateFollow } = await loadModule(SRC);
+  const ev = evaluateFollow(longTrade(), 115, [
+    { open: 100, high: 122, low: 100, timestamp: 1000 },
+    { open: 110, high: 115, low: 105, timestamp: 2000 },
+  ]);
+
+  assert.equal(ev.closed, true);
+  assert.equal(ev.status, "tp1");
+  assert.equal(ev.highestTpReached, 1);
+  assert.equal(ev.closePrice, 110);
+  assert.equal(ev.closedAt, 2000);
 });
 
 test("evaluateFollow falls back to the snapshot price when no range is given", async () => {
@@ -337,10 +370,38 @@ test("applyPriceSync partitions open/closed and skips missing prices", async () 
   assert.equal(stillOpen.length, 2);
 });
 
+test("applyPriceSync reports a TP milestone while the trade stays open", async () => {
+  const { applyPriceSync } = await loadModule(SRC);
+  const trade = longTrade();
+  const { stillOpen, justClosed, progressed } = applyPriceSync(
+    [trade],
+    { [trade.symbol]: 125 },
+    {
+      [trade.symbol]: [
+        { open: 100, high: 122, low: 100, timestamp: 1000 },
+      ],
+    },
+  );
+
+  assert.equal(justClosed.length, 0);
+  assert.equal(stillOpen[0].highestTpReached, 1);
+  assert.equal(progressed[0].highestTpReached, 1);
+});
+
 test("buildTrackerStats: win rate, cumulative equity, per-asset, direction", async () => {
   const { buildTrackerStats } = await loadModule(SRC);
-  const win = longTrade({ symbol: "A", status: "tp1", closePrice: 120, closedAt: 2 });
-  const loss = longTrade({ symbol: "B", status: "sl", closePrice: 80, closedAt: 1 });
+  const win = longTrade({
+    symbol: "A",
+    status: "tp1",
+    closePrice: 120,
+    closedAt: 2,
+  });
+  const loss = longTrade({
+    symbol: "B",
+    status: "sl",
+    closePrice: 80,
+    closedAt: 1,
+  });
   const stats = buildTrackerStats([win, loss], 3);
   assert.equal(stats.closed, 2);
   assert.equal(stats.open, 3);

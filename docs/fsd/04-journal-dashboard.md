@@ -1,7 +1,7 @@
 # FSD 04 — Journal Dashboard
 
-> 🇮🇩 Dashboard portfolio premium: equity curve, outcome donut, performa per tipe aset, top performers, tabel transaksi.
-> 🇺🇸 Premium portfolio dashboard: equity curve, outcome donut, per-asset-type performance, top performers, transactions table.
+> 🇮🇩 Statistik jurnal premium: kurva realized R, outcome donut, performa per tipe aset, top performers, tabel transaksi.
+> 🇺🇸 Premium journal statistics: realized-R curve, outcome donut, per-asset-type performance, top performers, transactions table.
 
 ---
 
@@ -19,14 +19,14 @@
 
 Komponen: `src/features/journal/components/journal-dashboard.tsx:117` (`JournalDashboard`).
 
-### 1. Equity & Benchmark (`:758`)
-`ComposedChart` recharts: bar win/loss harian + garis kumulatif + garis putus-putus benchmark BTC/IHSG/S&P500. Benchmark di-fetch via `fetchYahooChart` dengan `dailyRangeForSpan` (hindari Yahoo `max` coarsening).
+### 1. Journal R Curve
+`ComposedChart`: realized R harian/jam + cumulative R. Ini sengaja **bukan portfolio return** karena jurnal tidak menyimpan notional, sizing, cash, atau overlap posisi; benchmark return yang beda unit sudah dihapus.
 
 ### 2. Outcome Distribution (`:950`)
 Donut: `sl`/`tp1`/`tp2`/`tp3`/`reversed-win`/`reversed-loss` (`:511-537`). Pattern hatched buat reversal. Center: win-rate.
 
-### 3. Per Asset-Type Performance (`:1117`)
-Bar per tipe aset + legend win-rate.
+### 3. Per Asset-Type Performance
+Bar realized R per tipe aset + jumlah/porsi transaksi.
 
 > Empty state kalau `stats.closed === 0` (`:735-743`).
 
@@ -76,12 +76,12 @@ File: `src/core/trade/follow-trade-model.ts:396` (`buildTrackerStats`).
 | Fungsi / Function | Output |
 |---|---|
 | `computePnl(trade, price)` (`:166`) | `{pct, r}` direction-aware |
-| `evaluateFollow(trade, price, candles)` (`:166`) | replay candle, TP-first per bar, secure highest TP di stop berikutnya, close di terminal event pertama dengan `closedAt` real |
-| `applyPriceSync(openTrades, prices, candlesBySymbol)` | partisi open/closed |
+| `evaluateFollow(trade, price, candles)` | replay candle, stop-first per bar, ratchet stop ke TP terakhir, gap fill di open aktual |
+| `applyPriceSync(openTrades, prices, candlesBySymbol)` | partisi open/closed + milestone yang harus dipersist |
 | `deriveFollowProgress` | live-ratcheted milestone buat trade running |
 | `buildTrackerStats(history, openCount)` (`:396`) | equity/daily series, status distribution, per-asset, asset-type, long-vs-short, win/loss, by-grade |
 
-> Mapper DB↔frontend: `src/services/supabase/journal-mapper.ts` (`rowToFollowedTrade`, `followedTradeToInsert`) — pure, dipake app (read) + cron (write).
+> Mapper DB↔frontend: `src/core/trade/journal-mapper.ts` — pure, dipake app + cron.
 
 ---
 

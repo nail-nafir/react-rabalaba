@@ -68,3 +68,18 @@ test("migration exposes only the aggregate RPC and keeps privileges explicit", (
   );
   assert.doesNotMatch(sql, /create policy/i);
 });
+
+test("engine-hardening migration defines wins from strict direction-aware PnL", () => {
+  const sql = readFileSync(
+    new URL(
+      "../supabase/migrations/20260822000001_engine_hardening.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(sql, /signal = 'long' and jt\.close_price > jt\.entry_price/i);
+  assert.match(sql, /signal = 'short' and jt\.close_price < jt\.entry_price/i);
+  assert.match(sql, /engine_version text/i);
+  assert.match(sql, /decision_candle_at timestamptz/i);
+});

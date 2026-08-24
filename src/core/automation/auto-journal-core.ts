@@ -15,6 +15,7 @@ import {
 import { enrichAsset } from "@/core/engine/enrichment";
 import {
   passesEmissionGate,
+  hasRequiredContext,
   type EngineContexts,
 } from "@/core/engine/context-pipeline";
 import { normalizeYahooCandles } from "@/core/market/candles";
@@ -22,10 +23,8 @@ import {
   followedTradeToInsert,
   rowToFollowedTrade,
 } from "@/core/trade/journal-mapper";
-import type {
-  JournalTradeRow,
-  JournalTradeInsert,
-} from "@/types/journal";
+import type { JournalTradeRow, JournalTradeInsert } from "@/types/journal";
+import { canonicalTimeframe } from "@/constants/timeframes";
 
 /** A terminal-level hit → fields to UPDATE on the existing open row. */
 export interface JournalClosure {
@@ -56,6 +55,12 @@ export interface JournalClosure {
 export interface AutoJournalPlan {
   inserts: JournalTradeInsert[];
   closures: JournalClosure[];
+  progressUpdates: JournalProgressUpdate[];
+}
+
+export interface JournalProgressUpdate {
+  id: string;
+  highest_tp_reached: number;
 }
 
 /** Minimal shape of a recently-closed row needed for the re-entry cooldown. */
@@ -90,11 +95,16 @@ const REENTRY_COOLDOWN_MS = 6 * 60 * 60 * 1000;
  *  market can manufacture a phantom TP/SL on sync or a wrong-direction emit. When a
  *  market is legitimately closed (equities overnight, forex weekend) its quote ages
  *  out → we skip it that cycle and the trade stays open, which is the safe failure
- *  direction. No timestamp → can't judge → treat as fresh so assets without a
- *  quoteTime still flow through. */
+ *  direction. No timestamp → fail closed. */
 function isStaleQuote(asset: UnifiedAsset, now: number): boolean {
-  if (typeof asset.quoteTime !== "number") return false; // no timestamp → can't judge
-  return now - asset.quoteTime > QUOTE_MAX_AGE_MS;
+  if (
+    typeof asset.quoteTime !== "number" ||
+    !Number.isFinite(asset.quoteTime)
+  ) {
+    return true;
+  }
+  const age = now - asset.quoteTime;
+  return age > QUOTE_MAX_AGE_MS || age < -5 * 60 * 1000;
 }
 
 export function runAutoJournal(
@@ -103,7 +113,9 @@ export function runAutoJournal(
   options: RunAutoJournalOptions = {},
 ): AutoJournalPlan {
   const now = options.now ?? Date.now();
-  const openSymbols = new Set(openRows.map((r) => r.symbol));
+  const openKeys = new Set(
+    openRows.map((r) => `${r.symbol}|${canonicalTimeframe(r.timeframe)}`),
+  );
   const assetBySymbol = new Map(assets.map((a) => [a.symbol, a]));
 
   // Re-entry cooldown: latest close time per `${symbol}|${signal}`.
@@ -126,12 +138,22 @@ export function runAutoJournal(
   // symbols still in their post-close re-entry cooldown (duplicate-loser churn).
   const inserts: JournalTradeInsert[] = [];
   for (const asset of assets) {
-    if (openSymbols.has(asset.symbol)) continue;
+    if (
+      openKeys.has(`${asset.symbol}|${canonicalTimeframe(asset.timeframe)}`)
+    ) {
+      continue;
+    }
     if (isStaleQuote(asset, now)) continue;
+    if (
+      options.contexts &&
+      !hasRequiredContext(asset.assetType, options.contexts)
+    ) {
+      continue;
+    }
     // Enrich with the asset's OWN-index context so the journaled call is
     // index-aware: the de-rate the app shows now actually shapes what's called.
     const enriched = options.contexts
-      ? enrichAsset(asset, options.contexts)
+      ? enrichAsset(asset, options.contexts, { applyOptionalOverlays: false })
       : asset;
     const trade = buildFollowedTrade(enriched);
     if (!trade) continue;
@@ -152,7 +174,10 @@ export function runAutoJournal(
     // stays open untouched until a fresh quote arrives.
     if (!asset || isStaleQuote(asset, now)) continue;
     const candles = asset.quoteIndicators
-      ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps)
+      ? normalizeYahooCandles(asset.quoteIndicators, asset.timestamps, {
+          requireTimestamps: true,
+          requirePhysical: true,
+        })
       : [];
     const since = candles.filter((c) => c.timestamp * 1000 >= t.followedAt);
     // Evaluate ONLY off the timestamped candle record, NEVER the raw spot price:
@@ -164,14 +189,16 @@ export function runAutoJournal(
     if (since.length === 0) continue;
     prices[t.symbol] = since[since.length - 1].close;
     candlesBySymbol[t.symbol] = since.map<FollowCandle>((c) => ({
+      open: c.open,
       high: c.high,
       low: c.low,
+      close: c.close,
       timestamp: c.timestamp * 1000,
     }));
   }
 
   // Close 1 — price hit TP/SL (the hard, realized exit).
-  const { stillOpen, justClosed } = applyPriceSync(
+  const { stillOpen, justClosed, progressed } = applyPriceSync(
     openTrades,
     prices,
     candlesBySymbol,
@@ -191,12 +218,13 @@ export function runAutoJournal(
     signal: t.signal,
     grade: t.grade ?? null,
   }));
+  const progressUpdates: JournalProgressUpdate[] = progressed.map((trade) => ({
+    id: trade.id,
+    highest_tp_reached: trade.highestTpReached,
+  }));
 
-  // Close 2 — signal REVERSAL (long↔short). The thesis is now actively wrong,
-  // so exit. But if a TP milestone was already touched, SECURE it (close as that
-  // TP at its price, mirroring the SL-after-TP rule in evaluateFollow) — the
-  // dedicated "reversed" status is ONLY for a flip that never reached any TP.
-  // Both carry reversed=true. Neutral does NOT close: conviction faded, not flipped.
+  // Close 2 — signal REVERSAL (long↔short). Neutral does not close: conviction
+  // faded, but the thesis has not flipped.
   for (const t of stillOpen) {
     const asset = assetBySymbol.get(t.symbol);
     // Never reverse-close off a stale signal.
@@ -207,12 +235,12 @@ export function runAutoJournal(
       (t.signal === "short" && signal === "long");
     if (!isReversal) continue;
     const securedTp = t.highestTpReached;
-    // Secured-TP reversal closes AT that TP price (keeps the R/accounting); a
-    // flip with no TP exits at the current price.
-    const close_price =
-      securedTp >= 1
-        ? (t.takeProfits[securedTp - 1] ?? prices[t.symbol] ?? null)
-        : (prices[t.symbol] ?? null);
+    // A real ratchet would already have stopped on a crossed TP level. If the
+    // position is still open, a reversal exits at the corroborated current close.
+    const close_price = prices[t.symbol];
+    if (typeof close_price !== "number" || !Number.isFinite(close_price)) {
+      continue;
+    }
     closures.push({
       id: t.id,
       symbol: t.symbol,
@@ -224,12 +252,12 @@ export function runAutoJournal(
       highest_tp_reached: securedTp,
       tp_total: t.takeProfits.length,
       reversed: true,
-      pnl_pct: close_price != null ? computePnl(t, close_price).pct : 0,
+      pnl_pct: computePnl(t, close_price).pct,
       duration_ms: Math.max(0, now - t.followedAt),
       signal: t.signal,
       grade: t.grade ?? null,
     });
   }
 
-  return { inserts, closures };
+  return { inserts, closures, progressUpdates };
 }

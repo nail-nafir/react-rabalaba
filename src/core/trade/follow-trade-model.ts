@@ -8,6 +8,8 @@ import {
   type FollowStatus,
   type LifecycleStatus,
 } from "@/constants/taxonomy/status";
+import { ENGINE_VERSION } from "@/constants/signals";
+import type { MarketRegime, TrendDirection } from "@/types/market";
 
 // Re-export the followed-trade status taxonomy so existing imports of these
 // names from this module (UI + engine) keep resolving unchanged.
@@ -34,6 +36,11 @@ export interface FollowedTrade {
   riskRewardRatio: number;
   strengthAtEntry: number;
   grade?: SignalTier;
+  engineVersion?: string;
+  decisionCandleTime?: number;
+  regime?: MarketRegime;
+  higherTimeframeTrend?: TrendDirection;
+  directionScore?: number;
   followedAt: number;
   /** Monotonic milestone progress: 0 = none, 1..3 = highest TP touched. */
   highestTpReached: number;
@@ -106,7 +113,7 @@ export function buildTradeWinrateSnapshots(
 
     for (const trade of ordered) {
       total += 1;
-      if (computePnl(trade, trade.closePrice ?? trade.entryPrice).r >= 0) {
+      if (computePnl(trade, trade.closePrice ?? trade.entryPrice).r > 0) {
         wins += 1;
       }
       const snapshot = { wins, total };
@@ -143,18 +150,21 @@ export interface FollowEvaluation {
 
 /** Minimal candle for follow evaluation. `timestamp` in ms, ascending order. */
 export interface FollowCandle {
+  open?: number;
   high: number;
   low: number;
+  close?: number;
   timestamp: number;
 }
 
 /**
  * Evaluate a trade against the candle history since it was followed (+ the live
  * price), REPLAYED IN ORDER so the outcome respects sequence:
- * - within each bar a touched target is "taken" first — a TP counts as secured
- *   profit even if the stop is hit in the same bar (follower's assumption);
- * - the trade closes on the FIRST terminal event — final TP, or SL (a loss ONLY
- *   if no TP was ever touched, else a secured close at the highest TP so far);
+ * - within each bar the stop is checked first — OHLC cannot prove intrabar
+ *   ordering, so the engine takes the conservative outcome;
+ * - each reached TP becomes the full-position stop; a later gap fills at its
+ *   open rather than assuming a perfect target fill;
+ * - the trade closes on the first terminal event — final TP or active stop;
  * - otherwise it stays open with the milestone the candles actually show.
  *
  * Why ordered: aggregate highs/lows can't tell whether the stop or a target came
@@ -173,8 +183,8 @@ export function evaluateFollow(
   const finalIndex = takeProfits.length;
   const hasCandles = !!candles && candles.length > 0;
 
-  const stopHitBy = (probe: number) =>
-    isLong ? probe <= stopLoss : probe >= stopLoss;
+  const activeStopFor = (milestone: number) =>
+    milestone > 0 ? (takeProfits[milestone - 1] ?? stopLoss) : stopLoss;
   const tpCountBy = (probe: number) => {
     let n = 0;
     for (let i = 0; i < takeProfits.length; i++) {
@@ -190,12 +200,18 @@ export function evaluateFollow(
 
   // Steps in chronological order: each candle (favorable extreme for TP, adverse
   // for SL), then the latest live tick (no timestamp -> caller stamps "now").
-  const steps: { tpProbe: number; slProbe: number; at?: number }[] = [];
+  const steps: {
+    tpProbe: number;
+    slProbe: number;
+    open?: number;
+    at?: number;
+  }[] = [];
   if (hasCandles) {
     for (const c of candles!) {
       steps.push({
         tpProbe: isLong ? c.high : c.low,
         slProbe: isLong ? c.low : c.high,
+        open: c.open,
         at: c.timestamp,
       });
     }
@@ -203,27 +219,23 @@ export function evaluateFollow(
   steps.push({ tpProbe: price, slProbe: price });
 
   for (const step of steps) {
-    // Targets first: a touched TP is "taken", so it secures profit even if the
-    // stop is hit in the same bar; touching the final TP is a full win.
-    const reachedNow = tpCountBy(step.tpProbe);
-    if (reachedNow > highestTpReached) highestTpReached = reachedNow;
-    if (finalIndex > 0 && highestTpReached >= finalIndex) {
-      return {
-        status: `tp${finalIndex}` as FollowStatus,
-        highestTpReached: finalIndex,
-        closePrice: takeProfits[finalIndex - 1],
-        closed: true,
-        closedAt: step.at,
-      };
-    }
-    // Then the stop: a loss ONLY if no TP has ever been touched; otherwise close
-    // securing the highest TP reached so far.
-    if (stopHitBy(step.slProbe)) {
+    const activeStop = activeStopFor(highestTpReached);
+    const gapThroughStop =
+      typeof step.open === "number" &&
+      Number.isFinite(step.open) &&
+      (isLong ? step.open <= activeStop : step.open >= activeStop);
+    const stopHit =
+      gapThroughStop ||
+      (isLong ? step.slProbe <= activeStop : step.slProbe >= activeStop);
+    // Stop first: an OHLC bar cannot tell whether its high or low happened
+    // first, so same-bar TP+SL is treated as the safer stop outcome.
+    if (stopHit) {
+      const closePrice = gapThroughStop ? step.open : activeStop;
       if (highestTpReached === 0) {
         return {
           status: "sl",
           highestTpReached: 0,
-          closePrice: stopLoss,
+          closePrice,
           closed: true,
           closedAt: step.at,
         };
@@ -231,7 +243,20 @@ export function evaluateFollow(
       return {
         status: `tp${highestTpReached}` as FollowStatus,
         highestTpReached,
-        closePrice: takeProfits[highestTpReached - 1],
+        closePrice,
+        closed: true,
+        closedAt: step.at,
+      };
+    }
+
+    // Targets are evaluated only when the stop was not touched.
+    const reachedNow = tpCountBy(step.tpProbe);
+    if (reachedNow > highestTpReached) highestTpReached = reachedNow;
+    if (finalIndex > 0 && highestTpReached >= finalIndex) {
+      return {
+        status: `tp${finalIndex}` as FollowStatus,
+        highestTpReached: finalIndex,
+        closePrice: takeProfits[finalIndex - 1],
         closed: true,
         closedAt: step.at,
       };
@@ -266,7 +291,13 @@ export interface FollowProgress {
 export function deriveFollowProgress(
   trade: FollowedTrade,
   price: number,
-  rawCandles?: { high: number; low: number; timestamp: number }[],
+  rawCandles?: {
+    open?: number;
+    high: number;
+    low: number;
+    close?: number;
+    timestamp: number;
+  }[],
 ): FollowProgress {
   const tpTotal = trade.takeProfits.length;
   if (trade.status !== "open") {
@@ -283,6 +314,8 @@ export function deriveFollowProgress(
     .map<FollowCandle>((c) => ({
       high: c.high,
       low: c.low,
+      open: c.open,
+      close: c.close,
       timestamp: c.timestamp * 1000,
     }));
   const live = evaluateFollow(trade, price, since);
@@ -305,9 +338,14 @@ export function applyPriceSync(
   openTrades: FollowedTrade[],
   prices: Record<string, number>,
   candlesBySymbol?: Record<string, FollowCandle[]>,
-): { stillOpen: FollowedTrade[]; justClosed: FollowedTrade[] } {
+): {
+  stillOpen: FollowedTrade[];
+  justClosed: FollowedTrade[];
+  progressed: FollowedTrade[];
+} {
   const stillOpen: FollowedTrade[] = [];
   const justClosed: FollowedTrade[] = [];
+  const progressed: FollowedTrade[] = [];
   for (const trade of openTrades) {
     const price = prices[trade.symbol];
     if (typeof price !== "number" || !Number.isFinite(price)) {
@@ -324,12 +362,14 @@ export function applyPriceSync(
         closedAt: ev.closedAt ?? Date.now(),
       });
     } else if (ev.highestTpReached !== trade.highestTpReached) {
-      stillOpen.push({ ...trade, highestTpReached: ev.highestTpReached });
+      const updated = { ...trade, highestTpReached: ev.highestTpReached };
+      stillOpen.push(updated);
+      progressed.push(updated);
     } else {
       stillOpen.push(trade);
     }
   }
-  return { stillOpen, justClosed };
+  return { stillOpen, justClosed, progressed };
 }
 
 /** Snapshot a followable asset into a FollowedTrade, or null if not followable. */
@@ -358,6 +398,13 @@ export function buildFollowedTrade(asset: UnifiedAsset): FollowedTrade | null {
     riskRewardRatio: tradingPlan.riskRewardRatio,
     strengthAtEntry: outlook.strength,
     grade: outlook.tier,
+    engineVersion: ENGINE_VERSION,
+    decisionCandleTime: asset.decisionCandleTime,
+    regime: outlook.regime,
+    higherTimeframeTrend: outlook.higherTimeframeReady
+      ? outlook.higherTimeframeTrend
+      : undefined,
+    directionScore: outlook.directionScore,
     followedAt: now,
     highestTpReached: 0,
     status: "open",
@@ -379,12 +426,12 @@ export interface TrackerStats {
     cumR: number;
     symbol: string;
   }[];
-  /** % P/L summed per calendar day (local), with the running cumulative %. */
-  dailySeries: { date: string; dayPct: number; cumPct: number }[];
+  /** Realized R summed per calendar day (local), with running cumulative R. */
+  dailySeries: { date: string; dayR: number; cumR: number }[];
   statusDistribution: { status: LifecycleStatus; count: number }[];
-  perAsset: { symbol: string; pct: number }[];
-  /** % P/L summed per asset type (crypto / stock / forex …). */
-  byAssetType: { assetType: string; pct: number }[];
+  perAsset: { symbol: string; r: number }[];
+  /** Realized R summed per asset type (crypto / stock / forex …). */
+  byAssetType: { assetType: string; r: number }[];
   longVsShort: { signal: FollowSignal; count: number; r: number }[];
   /** Closed-trade outcome tally: profitable vs losing trades. */
   winLoss: { wins: number; losses: number };
@@ -411,7 +458,7 @@ export function buildTrackerStats(
   const assetTypeMap = new Map<string, number>();
   const dirMap = new Map<FollowSignal, { count: number; r: number }>();
   const gradeMap = new Map<SignalTier, { count: number; r: number }>();
-  const dateToPct = new Map<string, number>();
+  const dateToR = new Map<string, number>();
   const equitySeries: TrackerStats["equitySeries"] = [];
   let totalR = 0;
   let wins = 0;
@@ -419,7 +466,7 @@ export function buildTrackerStats(
   let cumR = 0;
 
   ordered.forEach((t, i) => {
-    const { pct, r } = computePnl(t, t.closePrice ?? t.entryPrice);
+    const { r } = computePnl(t, t.closePrice ?? t.entryPrice);
     totalR += r;
     cumR += r;
     if (r > 0) wins++;
@@ -432,8 +479,8 @@ export function buildTrackerStats(
       symbol: t.symbol,
     });
     statusCounts.set(t.status, (statusCounts.get(t.status) ?? 0) + 1);
-    perAssetMap.set(t.symbol, (perAssetMap.get(t.symbol) ?? 0) + pct);
-    assetTypeMap.set(t.assetType, (assetTypeMap.get(t.assetType) ?? 0) + pct);
+    perAssetMap.set(t.symbol, (perAssetMap.get(t.symbol) ?? 0) + r);
+    assetTypeMap.set(t.assetType, (assetTypeMap.get(t.assetType) ?? 0) + r);
     const d = dirMap.get(t.signal) ?? { count: 0, r: 0 };
     dirMap.set(t.signal, { count: d.count + 1, r: d.r + r });
     if (t.grade) {
@@ -441,7 +488,7 @@ export function buildTrackerStats(
       gradeMap.set(t.grade, { count: g.count + 1, r: g.r + r });
     }
     const day = dayKey(t.closedAt ?? t.followedAt);
-    dateToPct.set(day, (dateToPct.get(day) ?? 0) + pct);
+    dateToR.set(day, (dateToR.get(day) ?? 0) + r);
   });
 
   const today = new Date();
@@ -457,18 +504,18 @@ export function buildTrackerStats(
   }
   const minDayStr = daysInMonth[0];
 
-  let initialCumPct = 0;
-  for (const [date, pct] of dateToPct.entries()) {
+  let initialCumR = 0;
+  for (const [date, r] of dateToR.entries()) {
     if (date < minDayStr) {
-      initialCumPct += pct;
+      initialCumR += r;
     }
   }
 
-  let dayCum = initialCumPct;
+  let dayCum = initialCumR;
   const dailySeries = daysInMonth.map((date) => {
-    const dayPct = dateToPct.get(date) ?? 0;
-    dayCum += dayPct;
-    return { date, dayPct, cumPct: dayCum };
+    const dayR = dateToR.get(date) ?? 0;
+    dayCum += dayR;
+    return { date, dayR, cumR: dayCum };
   });
 
   return {
@@ -485,13 +532,13 @@ export function buildTrackerStats(
       status,
       count: status === "open" ? openCount : closed,
     })),
-    perAsset: [...perAssetMap.entries()].map(([symbol, pct]) => ({
+    perAsset: [...perAssetMap.entries()].map(([symbol, r]) => ({
       symbol,
-      pct,
+      r,
     })),
     byAssetType: TRADEABLE_ASSET_TYPES.map((assetType) => ({
       assetType,
-      pct: assetTypeMap.get(assetType) ?? 0,
+      r: assetTypeMap.get(assetType) ?? 0,
     })),
     // Fixed order (long → short) to match the signal filter dropdown. Uses the shared FOLLOW_SIGNALS array.
     longVsShort: FOLLOW_SIGNALS.map((signal) => {

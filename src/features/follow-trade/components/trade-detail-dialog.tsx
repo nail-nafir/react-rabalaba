@@ -119,8 +119,9 @@ function TradeDetailReadyDialog({
     if (siblings.length === 0) return null;
     const sameSymbol = siblings.filter((s) => s.symbol === trade.symbol);
     if (sameSymbol.length === 0) return null;
-    const sorted = sameSymbol.sort((a, b) =>
-      a.followedAt - b.followedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    const sorted = sameSymbol.sort(
+      (a, b) =>
+        a.followedAt - b.followedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );
     const idx = sorted.findIndex((s) => s.id === trade.id);
     return idx === -1 ? null : idx + 1;
@@ -189,7 +190,7 @@ function TradeDetailReadyDialog({
     ];
     if (isClosed && trade.closedAt != null && trade.closePrice != null) {
       const outcome =
-        computePnl(trade, trade.closePrice).r >= 0 ? "profit" : "loss";
+        computePnl(trade, trade.closePrice).r > 0 ? "profit" : "loss";
       list.push({
         kind: "close",
         timestamp: toSec(trade.closedAt),
@@ -200,7 +201,7 @@ function TradeDetailReadyDialog({
     return list;
   }, [trade, isClosed]);
 
-  const pos = pnl.r >= 0;
+  const pos = pnl.r > 0;
   const sign = (v: number) => (v >= 0 ? "+" : "");
 
   const { isSharing, shareSetup } = useShareSetup();
@@ -261,88 +262,98 @@ function TradeDetailReadyDialog({
     ? t("journal.trade_detail")
     : t("journal.open_position");
   return (
-    <DialogContent
-        className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
-      >
-        <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
-          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-            {trade.symbol}
+    <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
+        <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+          {trade.symbol}
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-bold tracking-wider uppercase text-[10px] rounded-md",
+              SIGNAL_COLORS[trade.signal].bg,
+              SIGNAL_COLORS[trade.signal].text,
+              SIGNAL_COLORS[trade.signal].border,
+            )}
+          >
+            {t(SIGNAL_LABEL_KEYS[trade.signal])}
+          </Badge>
+          {tradeNumber !== null && (
             <Badge
               variant="outline"
               className={cn(
                 "font-bold tracking-wider uppercase text-[10px] rounded-md",
-                SIGNAL_COLORS[trade.signal].bg,
-                SIGNAL_COLORS[trade.signal].text,
-                SIGNAL_COLORS[trade.signal].border,
+                SIGNAL_COLORS.neutral.bg,
+                SIGNAL_COLORS.neutral.text,
+                SIGNAL_COLORS.neutral.border,
               )}
             >
-              {t(SIGNAL_LABEL_KEYS[trade.signal])}
+              #{tradeNumber}
             </Badge>
-            {tradeNumber !== null && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "font-bold tracking-wider uppercase text-[10px] rounded-md",
-                  SIGNAL_COLORS.neutral.bg,
-                  SIGNAL_COLORS.neutral.text,
-                  SIGNAL_COLORS.neutral.border,
-                )}
-              >
-                #{tradeNumber}
-              </Badge>
-            )}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {trade.name} · {t(`common.asset_types.${trade.assetType}`)}
-          </DialogDescription>
-
-          {/* Price + P/L row */}
-          {chartLoading && !isClosed ? (
-            <div className="space-y-2 mt-2">
-              <Skeleton className="h-8 w-40" />
-              <Skeleton className="h-15 w-full rounded" />
-            </div>
-          ) : (
-            <div className="flex items-end justify-between gap-3 mt-2">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {priceLabel}
-                </p>
-                <div className="flex items-end gap-3 min-w-0">
-                  <span className="text-xl sm:text-3xl font-bold wrap-break-word">
-                    {formatPrice(displayPrice, trade.assetType)}
-                  </span>
-                  {!isClosed && (
-                    <PercentageChange
-                      value={changePercent}
-                      className="text-sm pb-1"
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="text-right leading-tight">
-                <div
-                  className={`text-xl font-bold ${
-                    pos ? PALETTE.positive.text : PALETTE.negative.text
-                  }`}
-                >
-                  {sign(pnl.pct)}
-                  {pnl.pct.toFixed(2)}%
-                </div>
-                <div
-                  className={`text-xs font-semibold ${
-                    pos ? "text-emerald-400/80" : "text-rose-400/80"
-                  }`}
-                >
-                  {sign(pnl.r)}
-                  {formatRatio(pnl.r)}R
-                </div>
-              </div>
-            </div>
           )}
+        </DialogTitle>
+        <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+          {trade.name} · {t(`common.asset_types.${trade.assetType}`)}
+        </DialogDescription>
 
-          {/* Meta badges */}
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
+        {/* Price + P/L row */}
+        {chartLoading && !isClosed ? (
+          <div className="space-y-2 mt-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-15 w-full rounded" />
+          </div>
+        ) : (
+          <div className="flex items-end justify-between gap-3 mt-2">
+            <div className="space-y-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {priceLabel}
+              </p>
+              <div className="flex items-end gap-3 min-w-0">
+                <span className="text-xl sm:text-3xl font-bold wrap-break-word">
+                  {formatPrice(displayPrice, trade.assetType)}
+                </span>
+                {!isClosed && (
+                  <PercentageChange
+                    value={changePercent}
+                    className="text-sm pb-1"
+                  />
+                )}
+              </div>
+            </div>
+            <div className="text-right leading-tight">
+              <div
+                className={`text-xl font-bold ${
+                  pos ? PALETTE.positive.text : PALETTE.negative.text
+                }`}
+              >
+                {sign(pnl.pct)}
+                {pnl.pct.toFixed(2)}%
+              </div>
+              <div
+                className={`text-xs font-semibold ${
+                  pos ? "text-emerald-400/80" : "text-rose-400/80"
+                }`}
+              >
+                {sign(pnl.r)}
+                {formatRatio(pnl.r)}R
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Meta badges */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          <Badge
+            variant="outline"
+            className={cn(
+              "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
+              PALETTE.positive.bg,
+              PALETTE.positive.border,
+              PALETTE.positive.text,
+            )}
+          >
+            {t("journal.datetime_entry")} {formattedFollowedDate}
+          </Badge>
+          {formattedClosedDate && (
             <Badge
               variant="outline"
               className={cn(
@@ -352,118 +363,106 @@ function TradeDetailReadyDialog({
                 PALETTE.positive.text,
               )}
             >
-              {t("journal.datetime_entry")} {formattedFollowedDate}
+              {t("journal.datetime_closed")} {formattedClosedDate}
             </Badge>
-            {formattedClosedDate && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
-                  PALETTE.positive.bg,
-                  PALETTE.positive.border,
-                  PALETTE.positive.text,
-                )}
-              >
-                {t("journal.datetime_closed")} {formattedClosedDate}
-              </Badge>
-            )}
-            {(progress.tpTotal > 0 || progress.slHit) && (
-              <TpProgress
-                reached={progress.tpReached}
-                total={progress.tpTotal}
-                slHit={progress.slHit}
-                isClosed={progress.lifecycle !== "open"}
-                size="sm"
-                variant="badge"
-              />
-            )}
-            {progress.reversed && (
-              <ReversedBadge reversedPnl={pos ? "profit" : "loss"} />
-            )}
-            <LifecycleBadge open={progress.lifecycle === "open"} />
-          </div>
-          <Separator className="mt-4" />
-        </DialogHeader>
+          )}
+          {(progress.tpTotal > 0 || progress.slHit) && (
+            <TpProgress
+              reached={progress.tpReached}
+              total={progress.tpTotal}
+              slHit={progress.slHit}
+              isClosed={progress.lifecycle !== "open"}
+              size="sm"
+              variant="badge"
+            />
+          )}
+          {progress.reversed && (
+            <ReversedBadge reversedPnl={pos ? "profit" : "loss"} />
+          )}
+          <LifecycleBadge open={progress.lifecycle === "open"} />
+        </div>
+        <Separator className="mt-4" />
+      </DialogHeader>
 
-        <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
-          {/* Trading Plan Chart — uses the saved setup, not the live signal.
+      <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
+        {/* Trading Plan Chart — uses the saved setup, not the live signal.
               The header (title + settings + share) stays mounted through
               loading/empty states so the toggle can't strand the user in a
               mode with no way back. */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">{chartTitle}</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <TradeSetupChartSettings
-                  showEma20={showEma20}
-                  onShowEma20Change={setShowEma20}
-                  showEma50={showEma50}
-                  onShowEma50Change={setShowEma50}
-                  showEma200={showEma200}
-                  onShowEma200Change={setShowEma200}
-                  showBollingerBands={showBollingerBands}
-                  onShowBollingerBandsChange={setShowBollingerBands}
-                  showVolume={showVolume}
-                  onShowVolumeChange={setShowVolume}
-                  showRsi={showRsi}
-                  onShowRsiChange={setShowRsi}
-                  showZones={showZones}
-                  onShowZonesChange={setShowZones}
-                  showGrid={showGrid}
-                  onShowGridChange={setShowGrid}
-                  disabled={chartLoading || candles.length === 0}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleShare}
-                  disabled={isSharing || chartLoading || candles.length === 0}
-                  title={t("dialog.share")}
-                  aria-label={t("dialog.share")}
-                  className="size-11 cursor-pointer sm:size-7"
-                >
-                  {isSharing ? (
-                    <Loader2 data-icon="inline-start" className="animate-spin" />
-                  ) : (
-                    <Share2 data-icon="inline-start" />
-                  )}
-                </Button>
-              </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">{chartTitle}</h3>
             </div>
-
-            {chartLoading ? (
-              <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t("dialog.loading")}
-              </div>
-            ) : candles.length > 0 ? (
-              <TradeSetupChart
-                candles={candles}
-                plan={tradingPlan}
-                signal={signal}
-                assetType={trade.assetType}
-                currentPrice={displayPrice}
-                markers={markers}
+            <div className="flex items-center gap-2">
+              <TradeSetupChartSettings
                 showEma20={showEma20}
+                onShowEma20Change={setShowEma20}
                 showEma50={showEma50}
+                onShowEma50Change={setShowEma50}
                 showEma200={showEma200}
+                onShowEma200Change={setShowEma200}
                 showBollingerBands={showBollingerBands}
+                onShowBollingerBandsChange={setShowBollingerBands}
                 showVolume={showVolume}
+                onShowVolumeChange={setShowVolume}
                 showRsi={showRsi}
+                onShowRsiChange={setShowRsi}
                 showZones={showZones}
+                onShowZonesChange={setShowZones}
                 showGrid={showGrid}
+                onShowGridChange={setShowGrid}
+                disabled={chartLoading || candles.length === 0}
               />
-            ) : (
-              <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-                {t("dialog.not_enough_data")}
-              </div>
-            )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleShare}
+                disabled={isSharing || chartLoading || candles.length === 0}
+                title={t("dialog.share")}
+                aria-label={t("dialog.share")}
+                className="size-11 cursor-pointer sm:size-7"
+              >
+                {isSharing ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <Share2 data-icon="inline-start" />
+                )}
+              </Button>
+            </div>
           </div>
+
+          {chartLoading ? (
+            <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("dialog.loading")}
+            </div>
+          ) : candles.length > 0 ? (
+            <TradeSetupChart
+              candles={candles}
+              plan={tradingPlan}
+              signal={signal}
+              assetType={trade.assetType}
+              currentPrice={displayPrice}
+              markers={markers}
+              showEma20={showEma20}
+              showEma50={showEma50}
+              showEma200={showEma200}
+              showBollingerBands={showBollingerBands}
+              showVolume={showVolume}
+              showRsi={showRsi}
+              showZones={showZones}
+              showGrid={showGrid}
+            />
+          ) : (
+            <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
+              {t("dialog.not_enough_data")}
+            </div>
+          )}
         </div>
+      </div>
     </DialogContent>
   );
 }

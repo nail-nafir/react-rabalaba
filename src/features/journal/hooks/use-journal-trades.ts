@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/services/supabase/client";
-import { rowToFollowedTrade } from "@/services/supabase/journal-mapper";
+import { rowToFollowedTrade } from "@/core/trade/journal-mapper";
 import type { JournalTradeRow } from "@/services/supabase/database.types";
 import type { FollowedTrade } from "@/core/trade/follow-trade-model";
 import type {

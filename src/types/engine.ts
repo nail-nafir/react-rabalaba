@@ -24,6 +24,8 @@ export interface SignalInput {
   assetType?: AssetType;
   timeframe?: import("@/constants/timeframes").TimeframePresetKey;
   higherTimeframeTrend?: TrendDirection;
+  /** Whether the higher-timeframe sample is deep and complete enough to score. */
+  higherTimeframeReady?: boolean;
 }
 
 export interface SignalReasons {
@@ -49,6 +51,7 @@ export interface Outlook {
   trend: TrendDirection;
   regime: MarketRegime;
   higherTimeframeTrend: TrendDirection;
+  higherTimeframeReady: boolean;
   directionScore: number;
   categoryScores: {
     trend: number;
