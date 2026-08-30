@@ -76,14 +76,14 @@ edit src/ (logic)
 | 0 | ⏰ pg_cron jam 14:30 kirim HTTP POST ke function | ⏰ pg_cron at 14:30 sends an HTTP POST to the function | `schedule-auto-journal.sql` |
 | 1 | 🦾 Badan bangun, ambil service-role key (bypass RLS) | 🦾 Body wakes, grabs the service-role key (bypasses RLS) | `index.ts` |
 | 2 | 🚦 Cek `journal_settings`: aktif? udah waktunya? → ya, lanjut | 🚦 Check `journal_settings`: enabled? due? → yes, continue | `index.ts` + 📒 |
-| 3 | 📥 Baca trade open + yang baru ditutup + universe (`journal_assets` + commodity/forex konstanta) | 📥 Read open trades + recently-closed + universe (`journal_assets` + commodity/forex constants) | `index.ts` + 📒 |
+| 3 | 📥 Baca trade open + universe (`journal_assets` + commodity/forex konstanta) | 📥 Read open trades + universe (`journal_assets` + commodity/forex constants) | `index.ts` + 📒 |
 | 4 | 🌐 Fetch Yahoo tiap simbol (8 paralel) → `adaptYahooChart` → aset (harga, candle, sinyal, plan) | 🌐 Fetch Yahoo per symbol (8 parallel) → `adaptYahooChart` → asset (price, candles, signal, plan) | `index.ts` + 🧠 adapter |
 | 5 | 🧠 `runAutoJournal(aset, openRows)` mutusin: **EMIT** BTC short baru, **CLOSE** SOL (kena TP) | 🧠 `runAutoJournal(assets, openRows)` decides: **EMIT** new BTC short, **CLOSE** SOL (hit TP) | `auto-journal-core.ts` |
-| 6 | ✍️ Badan INSERT BTC + UPDATE SOL ke `journal_trades` | ✍️ Body INSERTs BTC + UPDATEs SOL into `journal_trades` | `index.ts` + 📒 |
+| 6 | ✍️ Badan UPDATE SOL dulu, lalu INSERT sinyal aktif ke `journal_trades` | ✍️ Body UPDATEs SOL first, then INSERTs the current signal into `journal_trades` | `index.ts` + 📒 |
 | 7 | 🏁 Stamp `last_run_at`, balikin ringkasan JSON, robot tidur | 🏁 Stamp `last_run_at`, return a JSON summary, robot sleeps | `index.ts` + 📒 |
 
-🇮🇩 Di Step 5, otak juga jaga-jaga: skip data basi (`isStaleQuote`), skip simbol yang masih cooldown 6 jam, dan tutup kalau sinyal balik arah.
-🇺🇸 In Step 5, the brain also guards: skip stale data (`isStaleQuote`), skip symbols still in the 6-hour cooldown, and close on a signal reversal.
+🇮🇩 Di Step 5, otak skip data basi (`isStaleQuote`) dan dedup trade yang masih open. Kalau TP/SL/reversal menutup trade, sinyal yang masih tampil boleh langsung memulai perjalanan baru pada scan yang sama.
+🇺🇸 In Step 5, the brain skips stale data and trades that remain open. When TP/SL/reversal closes one, the signal still on-screen may start its next journey in the same scan.
 
 ---
 

@@ -174,14 +174,16 @@ Migration `20260613000001_journal_trades.sql`.
 | `regime`, `higher_timeframe_trend`, `direction_score` | entry-time engine state |
 | `status` | `open` \| `tp1` \| `tp2` \| `tp3` \| `sl` \| `reversed` |
 | `highest_tp_reached` int | monotonic milestone (0..3) |
+| `exit_reason` | exact close event; null for open and pre-v4 history |
+| `reversed` boolean | legacy-compatible reversal audit flag |
 | `opened_at`, `closed_at`, `close_price` | |
 | `created_at`, `updated_at` | `updated_at` kept fresh by a trigger |
 
 - **Dedup:** partial unique index `(symbol, timeframe) WHERE status = 'open'` —
   makes a double cron run idempotent (a 2nd insert for an already-open
   symbol/tf fails with `23505`, swallowed as non-fatal).
-- **`status = 'reversed'`** is a signal flip before any TP. A reversal after a
-  milestone keeps `tp{n}` plus `reversed=true`.
+- **`status = 'reversed'`** records every signal flip. Any prior TP milestone
+  remains in `highest_tp_reached`; `exit_reason='reversal'` is authoritative.
 
 **`profiles`** — per-user entitlement (server truth). Migration
 `20260614000001_auth_entitlements.sql`.
@@ -255,9 +257,11 @@ in `20260614000001`).
       succeeds, so a proxy outage does not burn the retry window.
    3. `adaptYahooChart` each result → `UnifiedAsset` (outlook + trading plan).
    4. `runAutoJournal` → `{ inserts, progressUpdates, closures }` (pure core).
-   5. Apply inserts, monotonic TP milestones, then terminal closures. Writes use
+   5. Apply monotonic TP milestones, terminal closures, then current-signal
+      inserts. This permits same-scan replacement after TP/SL/reversal. Writes use
       the **service-role key** (bypasses RLS).
-   6. Return a JSON summary (`universe`, `fetched`, `emitted`, `closed`).
+   6. Return a JSON summary (`universe`, `fetched`, `emitted`, `closed`,
+      `alerts_total`, `alerted`).
 
 The stock/crypto universe comes from active `journal_assets`; commodity/forex
 defaults are appended and de-duplicated. Benchmark-only symbols are fetched for
@@ -267,18 +271,19 @@ context but never journaled.
 
 `src/core/automation/auto-journal-core.ts`. No fetch, no DB — just data in, plan out.
 
-- **EMIT:** long/short + plan + no open duplicate + fresh quote + required
-  benchmark context. Weak counter-trend calls are blocked; regime/HTF filters
-  stay experimental until they pass validation and holdout. Optional browser
-  overlays are display-only.
+- **EMIT:** every long/short + plan + fresh quote with no surviving open
+  symbol/timeframe duplicate. Available benchmark context applies the same
+  strength/tier de-rate as the browser but never hides a displayed signal;
+  missing context falls back to the raw screen decision.
 - **SYNC / Close 1 (TP/SL):** rebuild each open trade's candles since
-  `followedAt`, run `applyPriceSync()` (replays candles + the live tick). A trade
-  closes on the final TP or active stop. Each partial TP ratchets the full stop;
-  gaps fill at their open and milestones persist while still open.
+  `followedAt`, then run `applyPriceSync()`. TP1 raises the next-step stop to
+  entry; TP2 raises it to TP1; the final TP closes. A gap through the currently
+  active stop fills at its open.
 - **Close 2 (signal reversal, long↔short only):** for trades still open after
   Close 1, if the engine's current signal is the opposite direction:
   - exit at the latest corroborated candle close (never a synthetic TP fill);
-  - status is `tp{n}` if a milestone existed, otherwise `reversed`.
+  - status and `exit_reason` are `reversed` / `reversal`; TP progress remains in
+    `highest_tp_reached`.
   - **Neutral never closes** — conviction merely faded, let the SL do its job.
 
 ### 6.3 Trade lifecycle (state machine)
@@ -287,13 +292,12 @@ context but never journaled.
             emit (cron)
                 │
                 ▼
-            ┌────────┐   final TP / SL (candle replay)   ┌──────────────┐
+            ┌────────┐   active stop / final TP           ┌──────────────┐
             │  open  │ ─────────────────────────────────▶│ tp1/tp2/tp3  │
             │(running)│                                   │  / sl        │
             └───┬────┘                                    └──────────────┘
                 │ signal reversal (long↔short)
-                ├─ touched a TP (highest_tp_reached ≥ 1) ─▶ tp{n} + reversed
-                └─ no TP touched ───────────────────────▶ reversed
+                └────────────────────────────────────────▶ reversed
 ```
 
 ### 6.4 Frontend read path

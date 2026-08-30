@@ -17,7 +17,7 @@ export function MobileNav() {
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-border/50 bg-background/95 backdrop-blur-lg px-2 py-2 pb-safe"
-      aria-label="Mobile navigation"
+      aria-label={t("common.mobile_navigation")}
     >
       {NAV_ITEMS.map((item) => {
         const isActive =
@@ -30,7 +30,7 @@ export function MobileNav() {
             to={item.to}
             className={cn(
               buttonVariants({ variant: "link" }),
-              "relative flex flex-col items-center gap-1 rounded-lg px-3 py-1 h-auto transition-colors no-underline!",
+              "relative min-h-12 flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition-colors no-underline!",
               isActive
                 ? "text-primary hover:text-primary"
                 : "text-muted-foreground hover:text-foreground",

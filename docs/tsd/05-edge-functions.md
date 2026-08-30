@@ -20,10 +20,10 @@
 | Path | `supabase/functions/auto-journal/index.ts` (383 baris) |
 | Trigger | pg_cron `*/30 * * * *` (job `auto-journal-30m`) via `net.http_post` `body:{trigger:'cron'}`. Juga browser invoke admin `{force:true}` |
 | Input | `{force?: boolean}` (`:149`). Force butuh admin (`:150-173`) |
-| Output | `{ok, forced, universe, fetched, open_before, emitted, closed, alerted, emitError?}` (`:348-358`) |
-| Tables | `journal_settings` (read gate + stamp `last_run_at`), `journal_trades` (read open + recently-closed cooldown + INSERT emit + UPDATE closure), `journal_assets` (read universe), `profiles` (admin check) |
-| External | Yahoo chart via CF proxy (`YAHOO_PROXY_BASE` default `rabalaba.pages.dev/api/yahoo/v8/finance/chart`, override env), cache-bust + `Cache-Control: no-cache`, concurrency 8 (`mapPool`). Discord webhook best-effort |
-| Gating | `enabled` pause; `interval_minutes` clock-aligned WIB midnight (tick jalan kalau `slotMin % interval === 0` + atomic claim `last_run_at`); `market_hours_only` skip bursa tutup; universe dari `journal_assets` + komoditas/forex konstanta, read failure fail-closed; benchmark context-only di-fetch tapi gak di-jurnal |
+| Output | `{ok, forced, universe, fetched, open_before, emitted, progressed, closed, alerts_total, alerted, emitError?}` |
+| Tables | `journal_settings` (read gate + stamp `last_run_at`), `journal_trades` (read open + UPDATE milestone/closure + INSERT current signal), `journal_assets` (read universe), `profiles` (admin check) |
+| External | Yahoo chart via CF proxy (`YAHOO_PROXY_BASE` default `rabalaba.pages.dev/api/yahoo/v8/finance/chart`, override env), cache-bust + `Cache-Control: no-cache`, concurrency 8 (`mapPool`). Discord webhook uses complete ≤1900-char batches, best-effort |
+| Gating | `enabled` pause; `interval_minutes` clock-aligned WIB midnight (tick jalan kalau `slotMin % interval === 0` + atomic claim `last_run_at`); `market_hours_only` skip bursa tutup; universe dari `journal_assets` + komoditas/forex konstanta, read failure fail-closed; stale/neutral/still-open dedup tidak di-emit, context hanya de-rate strength/tier |
 | Entry | `Deno.serve` `:133`; `runAutoJournal` call `:300`; alerts `:335-336` |
 | Schedule file | `supabase/schedule-auto-journal.sql:27` — `pg_cron`+`pg_net`+`vault.create_secret` (auto_journal_url, rabalaba_cron_secret) |
 

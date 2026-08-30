@@ -64,7 +64,7 @@ flowchart LR
   subgraph SERVER["Server path / Jalur server"]
     TRIGGER["pg_cron or admin force\nauto-journal"]
     SETTINGS[("journal_settings\nenabled · interval · market hours")]
-    OPEN[("journal_trades\nopen + recent closed")]
+    OPEN[("journal_trades\nopen")]
     AJ["auto-journal\nfetch + adapt + contexts"]
     CORE["runAutoJournal\nemit inserts + sync closures"]
     WRITES["Service-role DB writes\nINSERT new trade / UPDATE closure"]
@@ -81,7 +81,7 @@ flowchart LR
 
   WRITES --> JT[("journal_trades")]
   JT --> JD["Journal UI\nuseJournalTrades → dashboard / history"]
-  WRITES --> ALERT["buildAutoJournalAlerts\nformatAlertsForDiscord"]
+  WRITES --> ALERT["buildAutoJournalAlerts\nformatAlertBatchesForDiscord"]
   ALERT --> DISCORD["Discord webhook\nimmediate signal / TP / SL alert"]
 
   subgraph RECAP["Periodic recap / Rekap periodik"]
@@ -157,17 +157,15 @@ flowchart TB
     ACTION{"LONG/SHORT\nor neutral?"}
     PLAN["computeTradingPlan\nonly for actionable signal"]
     CONTEXT["enrichAsset\ncontext de-rate\noptional evidence display-only"]
-    EMITGATE["passesEmissionGate\nasset/index context aligned?"]
     SIGNAL --> ACTION
     ACTION -- "neutral" --> NOEMIT["No new trade\nneutral never closes an open trade"]
-    ACTION -- "LONG / SHORT" --> PLAN --> CONTEXT --> EMITGATE
+    ACTION -- "LONG / SHORT" --> PLAN --> CONTEXT
   end
 
   subgraph DECISIONS["Journal decision lane / Lane keputusan jurnal"]
     LOOP["For each fetched journal asset"]
-    OPENQ{"Symbol already\nhas open trade?"}
+    OPENQ{"Symbol/timeframe still open\nafter planned closures?"}
     STALEQ{"Quote older than\n90-minute freshness guard?"}
-    COOLDOWN{"Same symbol + direction\nin 6-hour cooldown?"}
     INSERT["Build FollowedTrade\nINSERT journal_trades"]
     SKIPNEW["Skip new emission"]
     LOOP --> STALEQ
@@ -175,10 +173,7 @@ flowchart TB
     STALEQ -- "no" --> OPENQ
     OPENQ -- "yes" --> SKIPNEW
     OPENQ -- "no" --> SIGNAL
-    EMITGATE -- "blocked" --> SKIPNEW
-    EMITGATE -- "pass" --> COOLDOWN
-    COOLDOWN -- "yes" --> SKIPNEW
-    COOLDOWN -- "no" --> INSERT
+    CONTEXT --> INSERT
   end
 
   subgraph SYNC["Open-trade sync lane / Lane sinkronisasi trade"]
@@ -186,14 +181,14 @@ flowchart TB
     FRESH{"Fresh asset and\ncandle since entry?"}
     REPLAY["Replay timestamped candles\nsince followedAt"]
     HITS["applyPriceSync\nTP/SL ordered evaluation"]
-    RESULT{"TP / SL / reversal\nhit?"}
-    SECURED["If TP and SL share a candle:\nTP is secured first"]
-    CLOSE["UPDATE journal_trades\nclosed status + price + P&L"]
+    RESULT{"Final TP / active stop /\nreversal hit?"}
+    SECURED["Stop-first within a candle\nTP1→entry; TP2→TP1 next step"]
+    CLOSE["UPDATE journal_trades\nstatus + exit_reason + price"]
     KEEP["Leave open\nno raw spot-only close"]
     OPENLOOP --> FRESH
     FRESH -- "no" --> KEEP
     FRESH -- "yes" --> REPLAY --> HITS --> RESULT
-    RESULT -- "TP/SL" --> SECURED --> CLOSE
+    RESULT -- "final TP / active stop" --> SECURED --> CLOSE
     RESULT -- "opposite signal" --> CLOSE
     RESULT -- "none / neutral" --> KEEP
   end
@@ -201,7 +196,7 @@ flowchart TB
   subgraph OUTPUT["Persistence + notification lane / Lane persistensi + notifikasi"]
     DB["journal_trades\nINSERTs + UPDATEs"]
     CYCLE["Collect per-run results\nno-op branches produce no DB write"]
-    ALERTS["buildAutoJournalAlerts\nformatAlertsForDiscord"]
+    ALERTS["buildAutoJournalAlerts\nformatAlertBatchesForDiscord"]
     WEBHOOK["Discord webhook\nbest-effort"]
     STAMP["Stamp journal_settings.last_run_at\nonly after a due run"]
     INSERT --> DB
@@ -211,8 +206,9 @@ flowchart TB
     CYCLE --> STAMP
   end
 
-  HEALTH -- "yes" --> LOOP
-  LOOP --> OPENLOOP
+  HEALTH -- "yes" --> OPENLOOP
+  CLOSE --> LOOP
+  KEEP --> LOOP
   OMIT --> CYCLE
   NOEMIT --> CYCLE
   SKIPNEW --> CYCLE
@@ -221,12 +217,11 @@ flowchart TB
 
 ### Decision notes / Catatan keputusan
 
-- 🇮🇩 Data-quality, stale quote, missing candle, duplicate open symbol, and
-  re-entry cooldown all suppress a new journal emission; they do not delete or
-  reopen existing data.
-- 🇺🇸 Data-quality, stale quote, missing candle, duplicate open symbol, and
-  re-entry cooldown suppress a new journal emission; they never delete or
-  reopen existing data.
+- 🇮🇩 Data-quality, stale quote, missing candle, dan trade yang tetap open
+  menahan emission. Trade yang ditutup boleh diganti sinyal aktif dalam scan sama.
+- 🇺🇸 Data quality, stale quotes, missing candles, and still-open duplicates
+  suppress emission. A closed trade may be replaced by the current signal in
+  the same scan.
 - 🇮🇩 Trade terbuka disinkronkan dari candle bertimestamp sejak entry. Harga
   spot mentah tidak boleh sendirian menciptakan TP/SL phantom.
 - 🇺🇸 Open trades are synchronized from timestamped candles since entry. A raw
@@ -279,7 +274,7 @@ sequenceDiagram
     A-->>S: skipped — no market fetch
   else Due and enabled
     A->>DB: Read active journal_assets
-    A->>DB: Read open trades + recent closed rows
+    A->>DB: Read open trades
     A->>P: Fetch universe + context-only benchmark charts
     P->>M: Yahoo chart requests
     alt One provider response fails
@@ -292,35 +287,33 @@ sequenceDiagram
     end
     A->>E: adaptYahooChart + buildEngineContexts
     E-->>A: UnifiedAsset list + top-down contexts
-    A->>E: runAutoJournal(assets, openRows, recentClosed, contexts)
-    E-->>A: inserts + closures
+    A->>E: runAutoJournal(assets, openRows, contexts)
+    E-->>A: progress updates + closures + current-signal inserts
 
-    alt New LONG/SHORT passes freshness, open-symbol, context, cooldown gates
+    opt Existing trade reaches a non-terminal TP milestone
+      A->>DB: UPDATE highest_tp_reached
+    end
+    opt Active stop, final TP, or opposite signal closes an existing trade
+      A->>DB: UPDATE status + exit_reason + close price
+      Note over E,A: Milestones/closures persist before same-scan replacement
+    end
+    alt Fresh actionable LONG/SHORT and no surviving open symbol/timeframe
       A->>DB: INSERT journal_trades
-    else Neutral / stale / duplicate / cooldown / blocked context
+    else Neutral / stale / still-open duplicate
       A->>A: Skip new emission
     end
 
-    opt Existing open trade has fresh candles since entry
-      A->>E: Replay candles + applyPriceSync
-      alt TP/SL or opposite signal closes trade
-        E-->>A: Closure status, price, P&L
-        A->>DB: UPDATE journal_trades
-        Note over E,A: TP is secured before SL when both touch one candle
-      else No exit or neutral
-        E-->>A: Keep trade open
-      end
-    end
-
     opt There are inserts or closures
-      A->>E: buildAutoJournalAlerts + formatAlertsForDiscord
-      E-->>A: Discord message ≤ provider limit
-      A->>DC: POST immediate signal / TP / SL alert
-      alt Webhook fails
-        DC-->>A: Error
-        A->>A: Swallow alert failure — journal remains successful
-      else Webhook succeeds
-        DC-->>A: 2xx
+      A->>E: buildAutoJournalAlerts + formatAlertBatchesForDiscord
+      E-->>A: Complete alert batches ≤1900 chars
+      loop Each batch
+        A->>DC: POST immediate signal / TP / SL alerts
+        alt Webhook fails
+          DC-->>A: Error
+          A->>A: Stop delivery — journal remains successful
+        else Webhook succeeds
+          DC-->>A: 2xx
+        end
       end
     end
     A->>DB: Stamp journal_settings.last_run_at

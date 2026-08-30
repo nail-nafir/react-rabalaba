@@ -38,7 +38,7 @@ export {
 } from "@/constants/benchmarks";
 export {
   buildAutoJournalAlerts,
-  formatAlertsForDiscord,
+  formatAlertBatchesForDiscord,
   formatDailySummaryForDiscord,
 } from "./automation/alerts";
 // WIB calendar-window math for the daily/weekly/monthly Discord recaps.

@@ -18,6 +18,9 @@ const INTERVAL = "1h";
 const VALIDATION_START = 0.5;
 const HOLDOUT_START = 0.75;
 const FETCH_TIMEOUT_MS = 15_000;
+// Research-only threshold. Production journals every fresh actionable signal
+// shown by the screener; this script only measures hypothetical entry filters.
+const COUNTER_TREND_RESEARCH_MIN = 60;
 const PROXY =
   process.env.YAHOO_PROXY_BASE ??
   "https://rabalaba.pages.dev/api/yahoo/v8/finance/chart";
@@ -127,12 +130,9 @@ async function main() {
       deriveCandleTrendState,
       resampleCandles,
     } = await load("/src/core/market/candles.ts");
-    const {
-      CRYPTO_CONTEXT,
-      IDX_CONTEXT,
-      US_CONTEXT,
-      JOURNAL_EMISSION,
-    } = await load("/src/constants/signals.ts");
+    const { CRYPTO_CONTEXT, IDX_CONTEXT, US_CONTEXT } = await load(
+      "/src/constants/signals.ts",
+    );
     const { HIGHER_TIMEFRAME_FACTOR, TIMEFRAME_PRESETS } = await load(
       "/src/constants/timeframes.ts",
     );
@@ -152,7 +152,7 @@ async function main() {
       "id-stock": deriveIdxRiskState,
       "us-stock": deriveUsRiskState,
     };
-    const minCounterTrend = JOURNAL_EMISSION.COUNTER_TREND_MIN_STRENGTH;
+    const minCounterTrend = COUNTER_TREND_RESEARCH_MIN;
     const warmup = TIMEFRAME_PRESETS.swing.signalProfile.minCandles;
 
     const benchmarkSeries = {};

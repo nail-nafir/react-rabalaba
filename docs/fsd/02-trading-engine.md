@@ -90,9 +90,9 @@ Fundamental, earnings, dan analyst data ditampilkan sebagai konteks. Helper `app
 ## 📊 Backtest & Calibration
 
 ### Backtest — `backtest.ts:364` (`runBacktest`)
-🇮🇩 Walk-forward backtester **no lookahead**. Keputusan candle `i` dieksekusi di open `i+1`; reversal ditutup di open sebelum high/low diproses. Default exit full-position ratchet: TP1/TP2 jadi stop aktif, TP akhir menutup posisi, dan gap stop fill di harga open. Scale-out/TP1 tinggal mode pembanding. Gross+net R, fee/slippage, timestamp keputusan/entry/exit ikut dicatat.
+🇮🇩 Walk-forward backtester **no lookahead**. Keputusan candle `i` dieksekusi di open `i+1`; reversal ditutup di open sebelum high/low diproses. Default `progressive`: TP1 memindahkan stop ke entry, TP2 memindahkannya ke TP1, dan TP final menutup posisi. Stop baru aktif mulai candle berikutnya; gap stop fill di harga open. `terminal`, `secured`, scale-out, dan TP1 tetap tersedia sebagai mode riset pembanding. Gross+net R, fee/slippage, timestamp keputusan/entry/exit ikut dicatat.
 
-🇺🇸 No-lookahead walk-forward backtest with executable open→intrabar ordering, full-position TP ratchet, gap fills, and gross/net R.
+🇺🇸 No-lookahead walk-forward backtest. Its default progressive mode moves the stop to entry after TP1 and one target behind after each later partial TP; terminal/secured/scale-out/TP1 remain explicit research comparisons.
 
 > Invariant test: corrupt future candles gak ubah entry masa lalu (`signal-engine.test.mjs`).
 
@@ -102,6 +102,8 @@ Fundamental, earnings, dan analyst data ditampilkan sebagai konteks. Helper `app
 ### Evidence gate — `scripts/gate-compare.mjs`
 
 `npm run gate:compare -- 10` memakai kontrak production `60d/1h`, lalu membagi waktu 50% history / 25% validation / 25% holdout. Kandidat harus menaikkan win rate ≥2pp tanpa menurunkan expectancy/PF, tanpa memperburuk drawdown, dan mempertahankan ≥50% trade.
+
+Script ini khusus riset filter entry hipotetis. Production tidak memakai hasil kandidat secara otomatis: setiap sinyal actionable yang tampil dari scan fresh tetap masuk jurnal agar parity screener → jurnal terjaga.
 
 Audit 2026-08-24: tidak ada kandidat baru yang lolos validation, jadi filter regime/HTF/tier **tidak dipromosikan** walaupun beberapa tampak bagus di holdout. Ini mencegah tuning ke satu periode; jalur live hanya menerima perbaikan correctness dan gate benchmark yang sudah ada.
 

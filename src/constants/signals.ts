@@ -7,8 +7,8 @@
 import type { CategoryKey } from "@/constants/taxonomy/category";
 import type { MarketRegime } from "@/constants/taxonomy/regime";
 
-/** Persisted with every new journal decision so V1/V2 cohorts never mix silently. */
-export const ENGINE_VERSION = "engine-v2";
+/** Persisted with every new journal decision so behavior cohorts never mix silently. */
+export const ENGINE_VERSION = "engine-v4";
 
 /** Weighted scoring — each indicator contributes differently based on reliability */
 export const SIGNAL_WEIGHTS = {
@@ -186,20 +186,6 @@ export const RELATIVE_STRENGTH = {
   /** Max conviction multiplier from relative strength (±). Smaller than flow
    *  (ACCUMULATION/SMART_MONEY) because it's a secondary, slower read. */
   MAX_CONVICTION_ADJ: 0.1,
-};
-
-/** Auto-journal emission gate. The cron now enriches each candidate with its
- *  top-down context (BTC/IHSG/S&P) BEFORE emitting, so a call that fights its
- *  benchmark is de-rated first. This gate then decides whether such a
- *  counter-trend call is strong enough to still be journaled. */
-export const JOURNAL_EMISSION = {
-  /** When a journaled call fights its benchmark risk state, only emit it if its
-   *  POST-context strength still clears this bar — i.e. the setup was strong
-   *  enough that even after the de-rate it remains a high-conviction call.
-   *  Counter-trend calls below this are skipped (don't trade against the index).
-   *  Aligned calls and classes with no benchmark (commodity/forex) are
-   *  unaffected. Tunable via `npm run gate:compare`. */
-  COUNTER_TREND_MIN_STRENGTH: 60,
 };
 
 /** Accumulation/distribution flow scoring for equities (US & ID stocks).

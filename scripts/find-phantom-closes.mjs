@@ -9,16 +9,19 @@
  *   STAGE 1 — replay the REAL 1h candles (via the app's clean CF proxy), only the
  *   bars with `timestamp <= closed_at`, and ask: did the adverse extreme (low for
  *   a long / high for a short) EVER cross the SL before the close?
+ *     - v4 protected stop (`breakeven_stop` / `progressive_stop`) => PROTECTED
+ *       (excluded: this legacy tool only validates the original SL)
  *     - status `sl`            + SL never touched          => PHANTOM (unambiguous)
  *     - status `tp{all}` reached (final TP)                => WIN     (legit)
  *     - SL touched before close                            => LEGIT
- *     - status `reversed` (no-TP reversal) + no SL touch   => REVERSAL (legit by
- *                                                             design — reversal is
- *                                                             a valid exit trigger)
+ *     - status `reversed` + no SL touch                   => REVERSAL (legit by
+ *                                                            design; TP progress is
+ *                                                            stored separately)
  *     - status `tp{n}` (n<all) + SL never touched          => needs STAGE 2
  *
- *   STAGE 2 — a secured-TP close with no SL touch is EITHER a phantom (bad-bar SL
- *   touch that the clean data no longer shows) OR a legit reversal-after-TP. The
+ *   STAGE 2 — a historical v3 secured-TP close with no SL touch is EITHER a
+ *   phantom (bad-bar SL touch that the clean data no longer shows) OR a legit
+ *   reversal-after-TP. The
  *   only thing that tells them apart is whether the engine SIGNAL had actually
  *   flipped at close time — which isn't stored. So we RE-RUN the same engine
  *   (`adaptYahooChart`) on the candles truncated to `closed_at` and read the
@@ -82,7 +85,7 @@ const { adaptYahooChart } = await vite.ssrLoadModule(
 );
 
 async function fetchClosedRows() {
-  const url = `${SUPABASE_URL}/rest/v1/journal_trades?status=neq.open&select=id,symbol,signal,status,entry_price,stop_loss,take_profits,highest_tp_reached,opened_at,closed_at,close_price&order=closed_at.desc`;
+  const url = `${SUPABASE_URL}/rest/v1/journal_trades?status=neq.open&select=id,symbol,signal,status,exit_reason,entry_price,stop_loss,take_profits,highest_tp_reached,opened_at,closed_at,close_price&order=closed_at.desc`;
   const res = await fetch(url, {
     headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
   });
@@ -155,6 +158,21 @@ function classify(row, raw) {
   const closedAt = Date.parse(row.closed_at);
   const finalIdx = tps.length;
 
+  // The legacy report only validates the original fixed SL. Never label a v4
+  // raised-stop exit phantom until this tool replays the progressive ladder.
+  if (
+    row.exit_reason === "breakeven_stop" ||
+    row.exit_reason === "progressive_stop"
+  ) {
+    return {
+      verdict: "PROTECTED",
+      note: `${row.exit_reason} (excluded from legacy original-SL audit)`,
+      ext: null,
+      slHit: null,
+      sig: null,
+    };
+  }
+
   if (!raw?.timestamp?.length)
     return { verdict: "UNKNOWN", note: "no candle data", ext: null, slHit: null, sig: null };
 
@@ -190,11 +208,11 @@ function classify(row, raw) {
     return { verdict: "LEGIT", note: "SL touched before close", ext, slHit, sig: null };
   if (row.status === "sl")
     return { verdict: "PHANTOM", note: "status sl but SL never touched", ext, slHit, sig: null };
-  // 'reversed' (current) or legacy 'manual' (pre-migration rows): a no-TP reversal.
+  // 'reversed' (current) or legacy 'manual': TP progress is stored separately.
   if (row.status === "reversed" || row.status === "manual")
-    return { verdict: "REVERSAL", note: "reversal close, no TP (legit by design)", ext, slHit, sig: null };
+    return { verdict: "REVERSAL", note: "reversal close (legit by design)", ext, slHit, sig: null };
 
-  // Secured-TP close, SL never touched → decide by the signal at close time.
+  // Historical v3 secured-TP close → decide by the signal at close time.
   const sig = signalAtClose(raw, closedAt);
   if (sig == null)
     return { verdict: "SUSPECT", note: "tp close, no SL touch, signal undecidable", ext, slHit, sig };
@@ -224,7 +242,8 @@ await vite.close();
 const count = (v) => results.filter((r) => r.verdict === v).length;
 console.log(
   `\n${count("PHANTOM")} PHANTOM, ${count("REVERSAL")} REVERSAL, ${count("WIN")} WIN, ` +
-    `${count("LEGIT")} LEGIT, ${count("SUSPECT")} SUSPECT(undecided), ${count("UNKNOWN")} UNKNOWN`,
+    `${count("LEGIT")} LEGIT, ${count("PROTECTED")} PROTECTED(excluded), ` +
+    `${count("SUSPECT")} SUSPECT(undecided), ${count("UNKNOWN")} UNKNOWN`,
 );
 
 const phantoms = results.filter((r) => r.verdict === "PHANTOM");

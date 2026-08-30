@@ -184,3 +184,11 @@
 .animate-ticker:hover {
     animation-play-state: paused;
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-shimmer::after,
+    .animate-ticker,
+    .animate-pulse {
+        animation: none;
+    }
+}

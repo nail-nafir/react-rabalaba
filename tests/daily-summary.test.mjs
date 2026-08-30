@@ -50,6 +50,14 @@ const INPUT = {
       pnlPct: 0.28,
       durationMs: 52 * 1000,
     },
+    {
+      symbol: "BTC-USD",
+      signal: "long",
+      grade: "A",
+      status: "protected_stop",
+      pnlPct: 0,
+      durationMs: 2 * 60 * 60 * 1000,
+    },
   ],
   emitted: [
     { symbol: "BTC-USD", signal: "long", grade: "A" },
@@ -69,15 +77,19 @@ test("formatDailySummaryForDiscord renders the compact scoreboard recap", async 
   // Scoreboard header present.
   assert.ok(msg.includes("🗓️ REKAP 29-06-2026"));
 
-  // Scoreboard: 3 closed → 2 wins (12, 0.28) / 1 loss (-8.3) → 67%.
+  // Scoreboard: BE is reported but excluded from the 2 wins / 1 loss denominator.
   // Total = 12 - 8.3 + 0.28 = 3.98 ≈ +4%; terbaik EIGEN +12%, terburuk MYX -8.3%.
   assert.ok(msg.includes("💰 TOTAL: `(+4%)`"));
   assert.ok(msg.includes("👑 TERBAIK: **EIGEN-USD** `(+12%)`"));
   assert.ok(msg.includes("🥀 TERBURUK: **MYX-USD** `(-8.3%)`"));
   assert.ok(msg.includes("🚨 SINYAL BARU: `2`"));
   assert.ok(msg.includes("⏳ MASIH TERBUKA: `3`"));
-  assert.ok(msg.includes("🏁 SUDAH DITUTUP: `3`"));
-  assert.ok(msg.includes("🥇 RASIO LABA RUGI: `67%` `(2 Laba / 1 Rugi)`"));
+  assert.ok(msg.includes("🏁 SUDAH DITUTUP: `4`"));
+  assert.ok(
+    msg.includes(
+      "🥇 RASIO LABA RUGI: `67%` `(2 Laba / 1 Rugi / 1 Impas)`",
+    ),
+  );
 
   // The compact recap DROPS the per-trade / per-signal / per-open listings.
   assert.ok(!msg.includes("📢 DITUTUP HARI INI:"));

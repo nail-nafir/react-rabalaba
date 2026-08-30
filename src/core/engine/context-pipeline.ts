@@ -5,12 +5,11 @@
  * SAME derive* functions — so the auto-journal cron de-rates identically to the
  * app. No fetch, no DB, no React → fully unit-testable and edge-bundle-safe.
  */
-import type { AssetType, UnifiedAsset } from "@/types/asset";
+import type { UnifiedAsset } from "@/types/asset";
 import type { CryptoContext, IdxContext, UsContext } from "@/types/market";
 import { deriveCryptoContext } from "@/core/engine/crypto-context";
 import { deriveIdxContext } from "@/core/engine/idx-context";
 import { deriveUsContext } from "@/core/engine/us-context";
-import { fightsBenchmark } from "@/core/engine/benchmark-derate";
 import { computeWindowReturns } from "@/core/engine/relative-strength";
 import {
   normalizeYahooCandles,
@@ -18,8 +17,6 @@ import {
 } from "@/core/market/candles";
 import { IDX_BENCHMARK_SYMBOL, USDIDR_SYMBOL } from "@/constants/idx";
 import { US_BENCHMARK_SYMBOL, VIX_SYMBOL, DXY_SYMBOL } from "@/constants/us";
-import { JOURNAL_EMISSION } from "@/constants/signals";
-import type { RiskState } from "@/types/market";
 
 const BTC_SYMBOL = "BTC-USD";
 
@@ -95,45 +92,4 @@ export function buildEngineContexts(
   }
 
   return contexts;
-}
-
-/** Benchmark availability required before server-side emission. */
-export function hasRequiredContext(
-  assetType: AssetType,
-  contexts: EngineContexts,
-): boolean {
-  if (assetType === "crypto") return contexts.cryptoContext != null;
-  if (assetType === "id-stock") return contexts.idxContext != null;
-  if (assetType === "us-stock") return contexts.usContext != null;
-  return true;
-}
-
-/** Risk state of the benchmark this asset answers to, or undefined when no
- *  context covers its class (commodity/forex). */
-function riskStateFor(
-  assetType: AssetType,
-  contexts: EngineContexts,
-): RiskState | undefined {
-  if (assetType === "crypto") return contexts.cryptoContext?.riskState;
-  if (assetType === "id-stock") return contexts.idxContext?.riskState;
-  if (assetType === "us-stock") return contexts.usContext?.riskState;
-  return undefined;
-}
-
-/**
- * Auto-journal emission gate. A counter-trend call must clear the post-context
- * strength floor. Aligned calls and classes without a benchmark pass.
- */
-export function passesEmissionGate(
-  trade: {
-    assetType: AssetType;
-    signal: "long" | "short";
-    strengthAtEntry: number;
-  },
-  contexts: EngineContexts,
-): boolean {
-  const riskState = riskStateFor(trade.assetType, contexts);
-  if (!riskState) return true;
-  if (!fightsBenchmark(trade.signal, riskState)) return true;
-  return trade.strengthAtEntry >= JOURNAL_EMISSION.COUNTER_TREND_MIN_STRENGTH;
 }

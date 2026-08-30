@@ -67,7 +67,7 @@ export function Header() {
                     !isActive && "text-muted-foreground",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon data-icon="inline-start" aria-hidden="true" />
                   {t(`common.${to.replace("/", "")}`)}
                 </Link>
               );

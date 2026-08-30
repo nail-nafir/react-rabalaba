@@ -1430,7 +1430,9 @@ export function TradeSetupChart({
                     ? "text-muted-foreground"
                     : m.outcome === "loss"
                       ? "text-rose-400"
-                      : "text-emerald-400";
+                      : m.outcome === "profit"
+                        ? "text-emerald-400"
+                        : "text-muted-foreground";
                 const arrowH = 7;
                 const arrowHalf = 5;
                 const word = m.kind === "entry" ? "ENTRY" : "CLOSED";

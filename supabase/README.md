@@ -53,6 +53,9 @@
 | 27 | `20260702000001_asset_discovery` | Auto-discovery universe aset. / Asset-universe auto-discovery. |
 | 28 | `20260702000002_journal_periodic_summary` | Rangkuman mingguan/bulanan. / Weekly/monthly summaries. |
 | 29 | `20260713093413_user_testimonials` | Pengajuan privat, featured snapshot publik, RLS/trigger, dan RPC moderasi. / Private submissions, public featured snapshots, RLS/triggers, and moderation RPCs. |
+| 30–35 | `20260714000000…20260822000001` | Testimonial purchase proof, public success rate, journal period, asset-name backfill, dan engine hardening. / Testimonial purchase proof, public success rate, journal periods, asset-name backfill, and engine hardening. |
+| 36 | `20260829100120_progressive_exit_v4` | `exit_reason` exact + adopsi progressive stop untuk trade open. / Exact `exit_reason` + progressive-stop adoption for open trades. |
+| 37 | `20260830095557_exclude_breakeven_from_public_win_rate` | Keluarkan trade impas dari denominator success-rate publik. / Exclude breakeven trades from the public success-rate denominator. |
 
 ---
 
@@ -71,8 +74,8 @@ supabase link --project-ref nravncsodgcxwkdaeqcw
 supabase db push
 ```
 
-🇮🇩 Fallback manual: buka **SQL Editor**, lalu paste semua file migration **urut #1 → #29**. Aman kalau dobel (migration memakai pola idempotent seperti `create ... if not exists`, `create or replace`, dan `drop policy if exists`).
-🇺🇸 Manual fallback: open the **SQL Editor**, then paste every migration **in order #1 → #29**. Replays are safe because migrations use idempotent patterns such as `create ... if not exists`, `create or replace`, and `drop policy if exists`.
+🇮🇩 Fallback manual: buka **SQL Editor**, lalu paste semua file migration **urut #1 → #36**. Aman kalau dobel (migration memakai pola idempotent seperti `create ... if not exists`, `create or replace`, dan `drop policy if exists`).
+🇺🇸 Manual fallback: open the **SQL Editor**, then paste every migration **in order #1 → #36**. Replays are safe because migrations use idempotent patterns such as `create ... if not exists`, `create or replace`, and `drop policy if exists`.
 
 ### Step 2 — Seed access codes (MANUAL)
 

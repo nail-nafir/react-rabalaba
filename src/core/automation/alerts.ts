@@ -7,9 +7,16 @@
  * Bundled into the edge engine so the app and cron share one source.
  */
 import type { AutoJournalPlan } from "./auto-journal-core";
+import type { ExitReason } from "@/constants/taxonomy/status";
 
 export interface JournalAlert {
-  kind: "new_long" | "new_short" | "tp_hit" | "sl_hit" | "reversed";
+  kind:
+    | "new_long"
+    | "new_short"
+    | "tp_hit"
+    | "sl_hit"
+    | "protected_stop"
+    | "reversed";
   symbol: string;
   grade?: string | null;
   /** Entry price for a new signal. */
@@ -20,18 +27,18 @@ export interface JournalAlert {
   stopLoss?: number;
   /** Close price for an outcome (TP/SL/reversal). */
   price?: number | null;
-  /** TP milestone (1/2/3) for a tp_hit — INCLUDING a secured-TP reversal, which
-   *  is now reported AS its TP. A bare `reversed` outcome is always a no-TP flip
-   *  (tpLevel 0). */
+  /** Highest TP milestone touched before the outcome. */
   tpLevel?: number;
-  /** Total TP levels the plan had. Retained for back-compat; the reversal label
-   *  no longer prints it. */
+  /** TP levels secured by the realized close price. */
+  securedTpLevel?: number;
+  /** Total TP levels the plan had. */
   tpTotal?: number;
   /** Realized P&L % for an outcome (signed). */
   pnlPct?: number;
   /** Hold time in ms for an outcome (entry → close), for the DURATION line. */
   durationMs?: number;
   signal?: "long" | "short" | null;
+  exitReason?: ExitReason;
 }
 
 /**
@@ -54,6 +61,13 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
   }
 
   for (const c of plan.closures) {
+    const reason =
+      c.exit_reason ??
+      (c.reversed || c.status === "reversed"
+        ? "reversal"
+        : c.status === "sl"
+          ? "initial_stop"
+          : "final_take_profit");
     const base = {
       symbol: c.symbol,
       price: c.close_price,
@@ -61,26 +75,30 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
       durationMs: c.duration_ms,
       grade: c.grade,
       signal: c.signal,
+      exitReason: reason,
+      tpLevel: c.highest_tp_reached ?? 0,
+      securedTpLevel: c.secured_tp_level,
+      tpTotal: c.tp_total,
     };
-    // Mirror the donut/table buckets: a reversal that SECURED a TP folds into
-    // that TP outcome (🎯 TP{n}), exactly like a price TP hit; only a NO-TP
-    // reversal stays a "reversed" event (🔄), later split into PROFIT / LOSS by
-    // realized P&L. A clean stop / TP is a pure sl_hit / tp_hit.
-    const securedTp = c.highest_tp_reached ?? 0;
-    if (c.reversed && securedTp >= 1) {
-      alerts.push({ kind: "tp_hit", ...base, tpLevel: securedTp });
-    } else if (c.reversed) {
-      alerts.push({ kind: "reversed", ...base, tpLevel: 0, tpTotal: c.tp_total });
-    } else if (c.status === "sl") {
+    if (reason === "reversal") {
+      alerts.push({ kind: "reversed", ...base });
+    } else if (reason === "initial_stop") {
       alerts.push({ kind: "sl_hit", ...base });
-    } else if (/^tp[123]$/.test(c.status)) {
+    } else if (
+      reason === "breakeven_stop" ||
+      reason === "progressive_stop"
+    ) {
+      alerts.push({ kind: "protected_stop", ...base });
+    } else if (reason === "final_take_profit") {
       alerts.push({
         kind: "tp_hit",
         ...base,
-        tpLevel: Number(c.status.slice(2)),
+        tpLevel:
+          c.highest_tp_reached ??
+          Number(/^tp([123])$/.exec(c.status)?.[1] ?? 0),
       });
     } else {
-      alerts.push({ kind: "reversed", ...base, tpLevel: 0, tpTotal: c.tp_total });
+      alerts.push({ kind: "reversed", ...base });
     }
   }
 
@@ -90,6 +108,11 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
 /** Discord `content` is capped at 2000 chars; stay under to avoid 400s.
  *  Exported so every sensei broadcast (alerts, recap, discovery) shares it. */
 export const DISCORD_MAX = 1900;
+
+export interface DiscordAlertBatch {
+  content: string;
+  alertCount: number;
+}
 
 /** Light horizontal rule dividing the message into sections. */
 export const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━";
@@ -131,12 +154,11 @@ function formatDuration(ms?: number): string {
   return `${seconds} DETIK`;
 }
 
-/** Outcome label for a NO-TP signal-reversal close — split by realized P&L into
- *  "REVERSED PROFIT" / "REVERSED LOSS" (flat → PROFIT, matching the donut's
- *  r ≥ 0 rule). A reversal that SECURED a TP is reported AS that TP (TP{n}), so
- *  it never reaches this label. */
+/** Outcome label for a signal-reversal close, split by realized P&L. */
 function reversedResultLabel(pnlPct?: number): string {
-  return (pnlPct ?? 0) >= 0 ? "REVERSED PROFIT" : "REVERSED LOSS";
+  if ((pnlPct ?? 0) > 0) return "REVERSED PROFIT";
+  if ((pnlPct ?? 0) < 0) return "REVERSED LOSS";
+  return "REVERSED FLAT";
 }
 
 /** Direction-aware % of a target price from entry: a TP reads positive and an SL
@@ -146,79 +168,143 @@ function pctFrom(entry: number, target: number, isLong: boolean): number {
   return isLong ? raw : -raw;
 }
 
-/**
- * Render alerts into a single Discord message: 🚨 SINYAL (new entries) → 📢
- * HASIL (TP / SL / REVERSED outcomes with realized %), each section split by a
- * divider rule. Each signal/outcome spans two lines (headline + ↳ detail).
- * Returns null when there's nothing to say so the caller can skip POST.
- */
-export function formatAlertsForDiscord(alerts: JournalAlert[]): string | null {
-  if (alerts.length === 0) return null;
+type DiscordAlertBlock = {
+  section: "signal" | "outcome";
+  content: string;
+};
 
-  // New signals: "<emoji> **SYM** • DIR • GRADE" then the Entry / TP1..TP3 / SL
-  // ladder, each on its own "↳" line with a direction-aware % from entry.
-  const renderSignal = (a: JournalAlert) => {
-    const isLong = a.kind === "new_long";
-    const emoji = isLong ? "🟢" : "🔴";
-    const dir = isLong ? "LONG" : "SHORT";
-    const head = [`**${a.symbol}**`, dir];
-    if (a.grade) head.push(a.grade);
-    const lines = [`${emoji} ${head.join(" • ")}`];
-    if (a.entry != null) lines.push(`↳ ENTRY:${atPrice(a.entry)}`);
-    (a.takeProfits ?? []).forEach((tp, i) => {
-      const pnl = a.entry != null ? pctFrom(a.entry, tp, isLong) : undefined;
-      lines.push(`↳ TP${i + 1}:${atPrice(tp)}${pctSuffix(pnl)}`);
-    });
-    if (a.stopLoss != null && a.entry != null) {
-      const pnl = pctFrom(a.entry, a.stopLoss, isLong);
-      lines.push(`↳ SL:${atPrice(a.stopLoss)}${pctSuffix(pnl)}`);
-    }
-    return lines.join("\n");
-  };
-  // LONG first, then SHORT — blocks separated by a blank line.
-  const signalBody = [
-    ...alerts.filter((a) => a.kind === "new_long"),
-    ...alerts.filter((a) => a.kind === "new_short"),
-  ]
-    .map(renderSignal)
+function renderSignal(a: JournalAlert): string {
+  const isLong = a.kind === "new_long";
+  const emoji = isLong ? "🟢" : "🔴";
+  const dir = isLong ? "LONG" : "SHORT";
+  const head = [`**${a.symbol}**`, dir];
+  if (a.grade) head.push(a.grade);
+  const lines = [`${emoji} ${head.join(" • ")}`];
+  if (a.entry != null) lines.push(`↳ ENTRY:${atPrice(a.entry)}`);
+  (a.takeProfits ?? []).forEach((tp, i) => {
+    const pnl = a.entry != null ? pctFrom(a.entry, tp, isLong) : undefined;
+    lines.push(`↳ TP${i + 1}:${atPrice(tp)}${pctSuffix(pnl)}`);
+  });
+  if (a.stopLoss != null && a.entry != null) {
+    const pnl = pctFrom(a.entry, a.stopLoss, isLong);
+    lines.push(`↳ SL:${atPrice(a.stopLoss)}${pctSuffix(pnl)}`);
+  }
+  return lines.join("\n");
+}
+
+function renderOutcome(
+  emoji: string,
+  alert: JournalAlert,
+  result: string,
+): string {
+  const head = [`**${alert.symbol}**`];
+  if (alert.signal) head.push(alert.signal.toUpperCase());
+  if (alert.grade) head.push(alert.grade);
+  const lines = [
+    `${emoji} ${head.join(" • ")}`,
+    `↳ ${result}:${atPrice(alert.price)}${pctSuffix(alert.pnlPct)}`,
+  ];
+  if ((alert.tpLevel ?? 0) > 0 && alert.kind !== "tp_hit") {
+    lines.push(`↳ SEMPAT: \`TP${alert.tpLevel}\``);
+  }
+  const duration = formatDuration(alert.durationMs);
+  if (duration) lines.push(`↳ DURATION: \`${duration}\``);
+  return lines.join("\n");
+}
+
+function tpResultLabel(alert: JournalAlert): string {
+  const level = alert.securedTpLevel ?? alert.tpLevel ?? 0;
+  const total = alert.tpTotal ?? alert.tpLevel ?? 0;
+  return `TP ${level}/${total}`;
+}
+
+function protectedResultLabel(alert: JournalAlert): string {
+  if ((alert.pnlPct ?? 0) < 0) return "SL";
+  if ((alert.pnlPct ?? 0) === 0) return "BE";
+  return tpResultLabel(alert);
+}
+
+function renderAlertBatch(blocks: DiscordAlertBlock[]): string {
+  const signalBody = blocks
+    .filter((block) => block.section === "signal")
+    .map((block) => block.content)
     .join("\n\n");
-
-  // Outcomes: "<emoji> **SYM** • DIR • GRADE" then "↳ <result> @ `price` (±%)".
-  const renderOutcome = (emoji: string, a: JournalAlert, result: string) => {
-    const head = [`**${a.symbol}**`];
-    if (a.signal) head.push(a.signal.toUpperCase());
-    if (a.grade) head.push(a.grade);
-    const lines = [
-      `${emoji} ${head.join(" • ")}`,
-      `↳ ${result}:${atPrice(a.price)}${pctSuffix(a.pnlPct)}`,
-    ];
-    const duration = formatDuration(a.durationMs);
-    if (duration) lines.push(`↳ DURATION: \`${duration}\``);
-    return lines.join("\n");
-  };
-
-  // TP, then SL, then REVERSED — blocks separated by a blank line.
-  const outcomeBody = [
-    ...alerts
-      .filter((a) => a.kind === "tp_hit")
-      .map((a) => renderOutcome("🎯", a, `TP${a.tpLevel ?? ""}`)),
-    ...alerts
-      .filter((a) => a.kind === "sl_hit")
-      .map((a) => renderOutcome("⛔", a, "SL")),
-    ...alerts
-      .filter((a) => a.kind === "reversed")
-      .map((a) => renderOutcome("🔄", a, reversedResultLabel(a.pnlPct))),
-  ].join("\n\n");
-
+  const outcomeBody = blocks
+    .filter((block) => block.section === "outcome")
+    .map((block) => block.content)
+    .join("\n\n");
   const sections: string[] = [];
   if (signalBody) sections.push("🚨 SINYAL:\n\n" + signalBody);
   if (outcomeBody) sections.push("📢 HASIL:\n\n" + outcomeBody);
+  return sections.join(`\n\n${DIVIDER}\n\n`);
+}
 
-  let msg = sections.join(`\n\n${DIVIDER}\n\n`);
-  if (msg.length > DISCORD_MAX) {
-    msg = msg.slice(0, DISCORD_MAX - 20) + "\n… (truncated)";
+/**
+ * Render every alert without truncation, packing complete signal/outcome blocks
+ * into Discord-safe messages. LONG precedes SHORT; TP precedes SL/reversal.
+ */
+export function formatAlertBatchesForDiscord(
+  alerts: JournalAlert[],
+): DiscordAlertBatch[] {
+  const blocks: DiscordAlertBlock[] = [
+    ...alerts
+      .filter((alert) => alert.kind === "new_long")
+      .map((alert) => ({ section: "signal" as const, content: renderSignal(alert) })),
+    ...alerts
+      .filter((alert) => alert.kind === "new_short")
+      .map((alert) => ({ section: "signal" as const, content: renderSignal(alert) })),
+    ...alerts
+      .filter((alert) => alert.kind === "tp_hit")
+      .map((alert) => ({
+        section: "outcome" as const,
+        content: renderOutcome("🎯", alert, tpResultLabel(alert)),
+      })),
+    ...alerts
+      .filter((alert) => alert.kind === "sl_hit")
+      .map((alert) => ({
+        section: "outcome" as const,
+        content: renderOutcome("⛔", alert, "SL"),
+      })),
+    ...alerts
+      .filter((alert) => alert.kind === "protected_stop")
+      .map((alert) => ({
+        section: "outcome" as const,
+        content: renderOutcome("🛡️", alert, protectedResultLabel(alert)),
+      })),
+    ...alerts
+      .filter((alert) => alert.kind === "reversed")
+      .map((alert) => ({
+        section: "outcome" as const,
+        content: renderOutcome(
+          "🔄",
+          alert,
+          reversedResultLabel(alert.pnlPct),
+        ),
+      })),
+  ];
+
+  const batches: DiscordAlertBatch[] = [];
+  let current: DiscordAlertBlock[] = [];
+  for (const block of blocks) {
+    const candidate = [...current, block];
+    if (current.length > 0 && renderAlertBatch(candidate).length > DISCORD_MAX) {
+      batches.push({
+        content: renderAlertBatch(current),
+        alertCount: current.length,
+      });
+      current = [block];
+    } else {
+      current = candidate;
+    }
   }
-  return msg;
+  if (current.length > 0) {
+    const content = renderAlertBatch(current);
+    if (content.length > DISCORD_MAX) {
+      throw new RangeError("A single Discord alert exceeds the message limit");
+    }
+    batches.push({ content, alertCount: current.length });
+  }
+  return batches;
 }
 
 /** One closed trade in the end-of-day recap (realized, direction-aware %). */
@@ -228,12 +314,10 @@ export interface DailySummaryClosed {
   grade?: string | null;
   /** tp1 | tp2 | tp3 | sl | reversed */
   status: string;
-  /** Closed by a SIGNAL REVERSAL (vs a price TP/SL hit). A secured-TP reversal
-   *  has status `tp{n}` AND reversed=true, so this flag — not status — is what
-   *  marks it in the recap. */
+  /** Closed by a SIGNAL REVERSAL (vs a price TP/SL hit). A reversal after TP
+   *  keeps this legacy flag while v4 also stores status `reversed`. */
   reversed?: boolean;
-  /** TP level secured (highest_tp_reached) + plan's TP total. A secured-TP
-   *  reversal is reported AS that TP (TP{n}); tpTotal is kept for back-compat. */
+  /** Highest TP reached before the close + plan's TP total. */
   tpReached?: number;
   tpTotal?: number;
   pnlPct: number;
@@ -289,8 +373,9 @@ export function formatDailySummaryForDiscord(
 
   const wins = closed.filter((c) => c.pnlPct > 0).length;
   const losses = closed.filter((c) => c.pnlPct < 0).length;
+  const breakevens = closed.filter((c) => c.pnlPct === 0).length;
   const winRate =
-    closed.length > 0 ? Math.round((wins / closed.length) * 100) : 0;
+    wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
   const totalPct = closed.reduce((s, c) => s + (c.pnlPct ?? 0), 0);
   const ranked = [...closed].sort((a, b) => b.pnlPct - a.pnlPct);
   const best = ranked[0];
@@ -309,7 +394,7 @@ export function formatDailySummaryForDiscord(
   recap.push(`🏁 SUDAH DITUTUP: \`${closed.length}\``);
   if (closed.length > 0) {
     recap.push(
-      `🥇 RASIO LABA RUGI: \`${winRate}%\` \`(${wins} Laba / ${losses} Rugi)\``,
+      `🥇 RASIO LABA RUGI: \`${winRate}%\` \`(${wins} Laba / ${losses} Rugi / ${breakevens} Impas)\``,
     );
   }
 

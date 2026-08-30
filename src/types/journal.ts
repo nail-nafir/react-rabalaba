@@ -1,4 +1,8 @@
-import type { FollowSignal, FollowStatus } from "@/constants/taxonomy/status";
+import type {
+  ExitReason,
+  FollowSignal,
+  FollowStatus,
+} from "@/constants/taxonomy/status";
 import type { SignalTier } from "@/constants/taxonomy/tier";
 import type { MarketRegime, TrendDirection } from "@/types/market";
 
@@ -25,6 +29,7 @@ export interface JournalTradeRow {
   direction_score: number | null;
   status: JournalStatus;
   highest_tp_reached: number;
+  exit_reason: ExitReason | null;
   reversed: boolean;
   opened_at: string;
   closed_at: string | null;

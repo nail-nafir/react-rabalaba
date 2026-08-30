@@ -82,39 +82,6 @@ const RISK_OFF = {
   },
 };
 
-test("passesEmissionGate: aligned calls and benchmark-less classes always pass", async () => {
-  const { passesEmissionGate } = await loadModule(PIPELINE);
-  // SHORT in risk-off is aligned → passes regardless of strength.
-  assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "short", strengthAtEntry: 20, regime: "trending" }, RISK_OFF),
-    true,
-  );
-  // Commodity/forex have no benchmark → always pass.
-  assert.equal(
-    passesEmissionGate({ assetType: "forex", signal: "long", strengthAtEntry: 10 }, RISK_OFF),
-    true,
-  );
-  // No context supplied for the class → passes.
-  assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 10 }, {}),
-    true,
-  );
-});
-
-test("passesEmissionGate: counter-trend calls gated by post-context strength", async () => {
-  const { passesEmissionGate } = await loadModule(PIPELINE);
-  // LONG in risk-off is counter-trend. Below the bar → blocked.
-  assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 42, regime: "trending" }, RISK_OFF),
-    false,
-  );
-  // Exactly at the bar (60) → exceptional counter-trend survives.
-  assert.equal(
-    passesEmissionGate({ assetType: "crypto", signal: "long", strengthAtEntry: 60, regime: "trending" }, RISK_OFF),
-    true,
-  );
-});
-
 test("buildEngineContexts: derives a crypto context from BTC, omits missing benchmarks", async () => {
   const { buildEngineContexts } = await loadModule(PIPELINE);
   const map = new Map([
@@ -126,25 +93,33 @@ test("buildEngineContexts: derives a crypto context from BTC, omits missing benc
   assert.equal(ctx.usContext, undefined, "no S&P fetched → no us context");
 });
 
-test("runAutoJournal with contexts: blocks a weak counter-trend call, keeps the aligned one", async () => {
+test("runAutoJournal with contexts: journals every screen signal with its de-rated strength", async () => {
   const { runAutoJournal } = await loadModule(CORE);
   const assets = [
-    // LONG into a risk-off market, strength 70 → de-rated to 42 → blocked.
+    // LONG into a risk-off market, strength 70 → de-rated to 42 but still shown.
     makeAsset({ symbol: "AAA", signal: "long", strength: 70 }),
     // SHORT into risk-off (aligned) → emitted untouched.
     makeAsset({ symbol: "BBB", signal: "short", sl: 110, tps: [90, 80], strength: 70 }),
-    // Exceptional LONG, strength 100 → de-rated to 60 → survives the gate.
+    // Exceptional LONG, strength 100 → de-rated to 60.
     makeAsset({ symbol: "CCC", signal: "long", strength: 100 }),
   ];
 
   const { inserts } = runAutoJournal(assets, [], { contexts: RISK_OFF });
-  const symbols = inserts.map((i) => i.symbol).sort();
-  assert.deepEqual(symbols, ["BBB", "CCC"], "weak counter-trend AAA blocked");
+  const bySymbol = Object.fromEntries(inserts.map((insert) => [insert.symbol, insert]));
+  assert.deepEqual(Object.keys(bySymbol).sort(), ["AAA", "BBB", "CCC"]);
+  assert.equal(bySymbol.AAA.strength_at_entry, 42);
+  assert.equal(bySymbol.AAA.grade, "C");
+  assert.equal(bySymbol.BBB.strength_at_entry, 70);
+  assert.equal(bySymbol.CCC.strength_at_entry, 60);
 });
 
-test("runAutoJournal WITHOUT contexts: legacy behavior, emits the raw signal", async () => {
+test("runAutoJournal with a missing benchmark context emits the raw screen signal", async () => {
   const { runAutoJournal } = await loadModule(CORE);
-  // Same weak counter-trend LONG, but no contexts → emitted as before.
-  const { inserts } = runAutoJournal([makeAsset({ symbol: "AAA", signal: "long", strength: 70 })], []);
+  const { inserts } = runAutoJournal(
+    [makeAsset({ symbol: "AAA", signal: "long", strength: 70 })],
+    [],
+    { contexts: {} },
+  );
   assert.deepEqual(inserts.map((i) => i.symbol), ["AAA"]);
+  assert.equal(inserts[0].strength_at_entry, 70);
 });

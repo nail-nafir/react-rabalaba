@@ -1,7 +1,7 @@
 # FSD 04 — Journal Dashboard
 
-> 🇮🇩 Statistik jurnal premium: kurva realized R, outcome donut, performa per tipe aset, top performers, tabel transaksi.
-> 🇺🇸 Premium journal statistics: realized-R curve, outcome donut, per-asset-type performance, top performers, transactions table.
+> 🇮🇩 Statistik jurnal premium: performa sinyal, outcome donut, performa per tipe aset, top performers, tabel transaksi.
+> 🇺🇸 Premium journal statistics: signal performance, outcome donut, per-asset-type performance, top performers, transactions table.
 
 ---
 
@@ -17,18 +17,23 @@
 
 ## 📊 Tiga kartu / Three cards
 
-Komponen: `src/features/journal/components/journal-dashboard.tsx:117` (`JournalDashboard`).
+Komponen: `src/features/journal/components/journal-dashboard.tsx` (`JournalDashboard`).
 
-### 1. Journal R Curve
-`ComposedChart`: realized R harian/jam + cumulative R. Ini sengaja **bukan portfolio return** karena jurnal tidak menyimpan notional, sizing, cash, atau overlap posisi; benchmark return yang beda unit sudah dihapus.
+### 1. Acuan Kinerja / Performance Benchmark
 
-### 2. Outcome Distribution (`:950`)
-Donut: `sl`/`tp1`/`tp2`/`tp3`/`reversed-win`/`reversed-loss` (`:511-537`). Pattern hatched buat reversal. Center: win-rate.
+`ComposedChart`: laba/rugi dan kumulatif jurnal dalam persen, dibandingkan dengan return Bitcoin (`BTC-USD`) dan Gold (`GC=F`) yang dinormalisasi dari awal timeframe terpilih. Persen jurnal adalah penjumlahan aritmetis return tiap sinyal yang sudah ditutup, sesuai arah LONG/SHORT.
+
+Ini **bukan portfolio return** karena jurnal tidak menyimpan notional, sizing, cash, atau overlap posisi. BTC dan Gold hanya benchmark pembanding, bukan aset yang diasumsikan dimiliki pengguna.
+
+### 2. Outcome Distribution
+
+Donut: SL / impas / Take Profit / reversal profit / reversal loss. Protected stop yang merealisasikan profit masuk Take Profit; gap negatif masuk SL; penyebab exit exact tetap tersimpan untuk audit. Pattern hatched buat reversal. Center: win-rate `wins / (wins + losses)`; trade impas ditampilkan tetapi tidak masuk denominator.
 
 ### 3. Per Asset-Type Performance
-Bar realized R per tipe aset + jumlah/porsi transaksi.
 
-> Empty state kalau `stats.closed === 0` (`:735-743`).
+Bar total persen sinyal per tipe aset + jumlah/porsi transaksi. Nilainya adalah penjumlahan return tiap sinyal, bukan return portfolio berbobot modal.
+
+> Empty state kalau `stats.closed === 0`.
 
 ---
 
@@ -52,10 +57,10 @@ File: `src/features/follow-trade/components/follow-history-table.tsx:786` (`Foll
 | Grade | badge A/B/C |
 | Success-rate | bar historis |
 | Signal | LONG/SHORT/NEUTRAL |
-| P&L | % + R dengan live milestone via `deriveFollowProgress` |
-| Lifecycle badge | RUNNING/CLOSED + outcome (TP/SL) |
+| P&L | % + R + hasil ringkas (`TP n/total`, `BE`, `SL`, atau `Reversal`) via `deriveFollowProgress` |
+| Lifecycle badge | RUNNING/CLOSED, terpisah dari hasil trade |
 
-Filter: aset, direction, lifecycle (open/closed), PnL/outcome (tp/sl/reversal_profit/reversal_loss — mirror donut). Live price via `useMarketData(openSymbols)` di refs (jaga column def memoized). Row click → `TradeDetailDialog`.
+Filter: aset, direction, lifecycle (open/closed), PnL/outcome (tp/sl/breakeven/reversal_profit/reversal_loss — mirror donut). Live price via `useMarketData(openSymbols)` di refs (jaga column def memoized). Row click → `TradeDetailDialog`.
 
 ---
 
@@ -63,9 +68,9 @@ Filter: aset, direction, lifecycle (open/closed), PnL/outcome (tp/sl/reversal_pr
 
 File: `src/features/follow-trade/components/trade-detail-dialog.tsx:375` (`TradeDetailDialog`).
 
-🇮🇩 View per-trade. Reconstruct `TradingPlan` dari level tersimpan (`buildPlanFromTrade`, tampilkan setup *as-followed* bukan sinyal live). Trade open chart window live recent; trade closed pakai `computeTradeChartWindow` + `usePeriodCandles` buat satu seri continuous. Meta badge entry/close, lifecycle + TP progress + reversed badge, `TradeSetupChart` dengan marker entry/close, tombol share.
+🇮🇩 View per-trade. Reconstruct `TradingPlan` dari level tersimpan (`buildPlanFromTrade`, tampilkan setup *as-followed* bukan sinyal live). Trade open hanya menampilkan `TP n/total`; trade closed menampilkan hasil yang diamankan dari harga tutup aktual + “Sempat TPn” sebagai perjalanan sekunder. `TradeSetupChart` menampilkan marker entry/close dan tombol share.
 
-🇺🇸 Per-trade view. Reconstructs the `TradingPlan` from saved levels (`buildPlanFromTrade`, shows the *as-followed* setup not the live signal). Open trades chart the live recent window; closed trades use `computeTradeChartWindow` + `usePeriodCandles` for one continuous series. Entry/close meta badges, lifecycle + TP progress + reversed badge, `TradeSetupChart` with entry/close markers, share button.
+🇺🇸 Per-trade view. Reconstructs the saved plan; open trades show only `TP n/total`, while closed trades show the result secured by the actual close plus the highest TP reached as secondary journey context.
 
 ---
 
@@ -76,10 +81,10 @@ File: `src/core/trade/follow-trade-model.ts:396` (`buildTrackerStats`).
 | Fungsi / Function | Output |
 |---|---|
 | `computePnl(trade, price)` (`:166`) | `{pct, r}` direction-aware |
-| `evaluateFollow(trade, price, candles)` | replay candle, stop-first per bar, ratchet stop ke TP terakhir, gap fill di open aktual |
+| `evaluateFollow(trade, price, candles)` | replay candle stop-first; TP1→stop entry, TP2→stop TP1; stop baru aktif langkah berikutnya; gap fill di open aktual |
 | `applyPriceSync(openTrades, prices, candlesBySymbol)` | partisi open/closed + milestone yang harus dipersist |
-| `deriveFollowProgress` | live-ratcheted milestone buat trade running |
-| `buildTrackerStats(history, openCount)` (`:396`) | equity/daily series, status distribution, per-asset, asset-type, long-vs-short, win/loss, by-grade |
+| `deriveFollowProgress` | milestone tertinggi + TP yang benar-benar diamankan dari close aktual + alasan exit exact/fallback historis |
+| `buildTrackerStats(history, openCount)` (`:396`) | equity/daily series, status distribution, per-asset, asset-type, long-vs-short, win/loss/impas, by-grade; impas keluar dari denominator win-rate |
 
 > Mapper DB↔frontend: `src/core/trade/journal-mapper.ts` — pure, dipake app + cron.
 

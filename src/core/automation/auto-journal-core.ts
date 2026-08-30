@@ -10,14 +10,12 @@ import {
   buildFollowedTrade,
   applyPriceSync,
   computePnl,
+  countTakeProfitsAtPrice,
   type FollowCandle,
+  type ExitReason,
 } from "@/core/trade/follow-trade-model";
 import { enrichAsset } from "@/core/engine/enrichment";
-import {
-  passesEmissionGate,
-  hasRequiredContext,
-  type EngineContexts,
-} from "@/core/engine/context-pipeline";
+import type { EngineContexts } from "@/core/engine/context-pipeline";
 import { normalizeYahooCandles } from "@/core/market/candles";
 import {
   followedTradeToInsert,
@@ -36,11 +34,13 @@ export interface JournalClosure {
   close_price: number | null;
   closed_at: string;
   highest_tp_reached: number;
-  /** Total TP levels the plan had — lets a reversal alert read "TP 2/3 secured"
+  exit_reason: ExitReason;
+  /** Total TP levels the plan had — lets a reversal alert retain its TP progress
    *  vs "no TP", mirroring the trade-detail badge. NOT persisted. */
   tp_total?: number;
-  /** True only for a SIGNAL-REVERSAL close (vs a price TP/SL hit). Lets the UI
-   *  mark a reversal-after-TP apart from a stop-after-TP (both are status tp{n}). */
+  /** TP levels secured by the realized close price. NOT persisted. */
+  secured_tp_level?: number;
+  /** True only for a SIGNAL-REVERSAL close (legacy audit compatibility). */
   reversed?: boolean;
   /** Realized P&L % at the close price. NOT persisted (DB UPDATE ignores it) —
    *  carried only for the Discord outcome line. */
@@ -63,22 +63,12 @@ export interface JournalProgressUpdate {
   highest_tp_reached: number;
 }
 
-/** Minimal shape of a recently-closed row needed for the re-entry cooldown. */
-export interface RecentClose {
-  symbol: string;
-  signal: string;
-  closed_at: string | null;
-}
-
 export interface RunAutoJournalOptions {
   /** Wall-clock "now" in ms. Default Date.now(); injectable for tests. */
   now?: number;
-  /** Recently-closed trades, used to enforce the re-entry cooldown. */
-  recentClosed?: RecentClose[];
   /** Top-down contexts (BTC/IHSG/S&P). When supplied, each emission candidate
-   *  is enriched (index-aware de-rate) and run through the emission gate so a
-   *  weak counter-trend call against its own index is NOT journaled. Omitted →
-   *  legacy behavior (emit the raw per-asset signal, no context). */
+   *  gets the same index-aware de-rate shown by the screener. Context changes
+   *  strength/tier, never whether an actionable screen signal is journaled. */
   contexts?: EngineContexts;
 }
 
@@ -86,10 +76,6 @@ export interface RunAutoJournalOptions {
  *  not a live tick. The cron must skip it so it never journals/syncs off stale
  *  prices (wrong direction, wrong entry, or a phantom TP/SL). ~1.5× the 1h candle. */
 const QUOTE_MAX_AGE_MS = 90 * 60 * 1000;
-/** After a trade closes, don't re-take the SAME symbol+direction within this
- *  window — the thesis just played out; wait for a genuinely new setup. A flip
- *  to the OPPOSITE side is still allowed immediately (different direction key). */
-const REENTRY_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 /** Stale-quote guard for ALL asset types (not just crypto): a stale price in any
  *  market can manufacture a phantom TP/SL on sync or a wrong-direction emit. When a
@@ -113,56 +99,7 @@ export function runAutoJournal(
   options: RunAutoJournalOptions = {},
 ): AutoJournalPlan {
   const now = options.now ?? Date.now();
-  const openKeys = new Set(
-    openRows.map((r) => `${r.symbol}|${canonicalTimeframe(r.timeframe)}`),
-  );
   const assetBySymbol = new Map(assets.map((a) => [a.symbol, a]));
-
-  // Re-entry cooldown: latest close time per `${symbol}|${signal}`.
-  const lastCloseByKey = new Map<string, number>();
-  for (const c of options.recentClosed ?? []) {
-    if (!c.closed_at) continue;
-    const closedAt = Date.parse(c.closed_at);
-    if (!Number.isFinite(closedAt)) continue;
-    const key = `${c.symbol}|${c.signal}`;
-    lastCloseByKey.set(key, Math.max(lastCloseByKey.get(key) ?? 0, closedAt));
-  }
-  const inCooldown = (symbol: string, signal: string) => {
-    const last = lastCloseByKey.get(`${symbol}|${signal}`);
-    return last != null && now - last < REENTRY_COOLDOWN_MS;
-  };
-
-  // EMIT: a fresh long/short with a plan, and no open trade for the symbol yet.
-  // Guarded: skip STALE snapshots (the wrong-direction bug), counter-trend calls
-  // that don't clear the emission gate (don't trade against the index), and
-  // symbols still in their post-close re-entry cooldown (duplicate-loser churn).
-  const inserts: JournalTradeInsert[] = [];
-  for (const asset of assets) {
-    if (
-      openKeys.has(`${asset.symbol}|${canonicalTimeframe(asset.timeframe)}`)
-    ) {
-      continue;
-    }
-    if (isStaleQuote(asset, now)) continue;
-    if (
-      options.contexts &&
-      !hasRequiredContext(asset.assetType, options.contexts)
-    ) {
-      continue;
-    }
-    // Enrich with the asset's OWN-index context so the journaled call is
-    // index-aware: the de-rate the app shows now actually shapes what's called.
-    const enriched = options.contexts
-      ? enrichAsset(asset, options.contexts, { applyOptionalOverlays: false })
-      : asset;
-    const trade = buildFollowedTrade(enriched);
-    if (!trade) continue;
-    if (options.contexts && !passesEmissionGate(trade, options.contexts)) {
-      continue;
-    }
-    if (inCooldown(trade.symbol, trade.signal)) continue;
-    inserts.push(followedTradeToInsert(trade));
-  }
 
   // SYNC: replay candles since entry for each open trade; close on TP/SL.
   const openTrades = openRows.map(rowToFollowedTrade);
@@ -212,7 +149,11 @@ export function runAutoJournal(
       ? new Date(t.closedAt).toISOString()
       : new Date().toISOString(),
     highest_tp_reached: t.highestTpReached,
+    exit_reason:
+      t.exitReason ??
+      (t.status === "sl" ? "initial_stop" : "final_take_profit"),
     tp_total: t.takeProfits.length,
+    secured_tp_level: countTakeProfitsAtPrice(t, t.closePrice),
     pnl_pct: computePnl(t, t.closePrice ?? t.entryPrice).pct,
     duration_ms: Math.max(0, (t.closedAt ?? now) - t.followedAt),
     signal: t.signal,
@@ -234,9 +175,9 @@ export function runAutoJournal(
       (t.signal === "long" && signal === "short") ||
       (t.signal === "short" && signal === "long");
     if (!isReversal) continue;
-    const securedTp = t.highestTpReached;
-    // A real ratchet would already have stopped on a crossed TP level. If the
-    // position is still open, a reversal exits at the corroborated current close.
+    const reachedTp = t.highestTpReached;
+    // Partial targets are progress only. A true opposite signal still exits the
+    // open position at the corroborated current close.
     const close_price = prices[t.symbol];
     if (typeof close_price !== "number" || !Number.isFinite(close_price)) {
       continue;
@@ -244,19 +185,48 @@ export function runAutoJournal(
     closures.push({
       id: t.id,
       symbol: t.symbol,
-      // Secured TP keeps its tp{n}; a no-TP flip gets the dedicated "reversed"
-      // status. Both carry reversed=true so the UI/alerts mark them as reversals.
-      status: securedTp >= 1 ? `tp${securedTp}` : "reversed",
+      // Exit cause and TP journey are independent: status records reversal,
+      // while highest_tp_reached preserves how far price travelled first.
+      status: "reversed",
+      exit_reason: "reversal",
       close_price,
-      closed_at: new Date().toISOString(),
-      highest_tp_reached: securedTp,
+      closed_at: new Date(now).toISOString(),
+      highest_tp_reached: reachedTp,
       tp_total: t.takeProfits.length,
+      secured_tp_level: countTakeProfitsAtPrice(t, close_price),
       reversed: true,
       pnl_pct: computePnl(t, close_price).pct,
       duration_ms: Math.max(0, now - t.followedAt),
       signal: t.signal,
       grade: t.grade ?? null,
     });
+  }
+
+  // EMIT after closure planning so a TP/SL/reversal can be replaced by the
+  // signal currently shown in the screener during this SAME scan. Rows that
+  // remain open still dedupe by canonical symbol+timeframe.
+  const closingIds = new Set(closures.map((c) => c.id));
+  const openKeys = new Set(
+    openRows
+      .filter((row) => !closingIds.has(row.id))
+      .map((row) =>
+        `${row.symbol}|${canonicalTimeframe(row.timeframe)}`,
+      ),
+  );
+  const inserts: JournalTradeInsert[] = [];
+  for (const asset of assets) {
+    const key = `${asset.symbol}|${canonicalTimeframe(asset.timeframe)}`;
+    if (openKeys.has(key) || isStaleQuote(asset, now)) continue;
+
+    // Keep the journal's recorded strength/tier identical to the screener's
+    // top-down de-rate, but do not hide a signal the screener exposes.
+    const enriched = options.contexts
+      ? enrichAsset(asset, options.contexts, { applyOptionalOverlays: false })
+      : asset;
+    const trade = buildFollowedTrade(enriched);
+    if (!trade) continue;
+    inserts.push(followedTradeToInsert(trade));
+    openKeys.add(key);
   }
 
   return { inserts, closures, progressUpdates };

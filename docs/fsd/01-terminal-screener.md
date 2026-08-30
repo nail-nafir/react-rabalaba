@@ -71,7 +71,7 @@ TanStack Table, `pageSize 10` (`:553`):
 | Trend | `TrendIndicator` (bullish/bearish/sideways) |
 | **Strength** | `StrengthBar` (default sort desc) |
 | **Grade / Tier** | badge A/B/C + hint suppressed |
-| **Success rate** | agregat all-time per-symbol dari RPC `get_public_journal_success_rates`; anon/free/premium melihat angka identik, jurnal mentah tetap premium |
+| **Success rate** | agregat all-time per-symbol dari RPC `get_public_journal_success_rates`; denominator hanya win+loss (impas dikecualikan), anon/free/premium melihat angka identik, jurnal mentah tetap premium |
 | Signal | badge LONG/SHORT/NEUTRAL |
 | Sparkline | `Sparkline` mini price line |
 

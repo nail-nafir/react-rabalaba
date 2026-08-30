@@ -55,7 +55,7 @@ export interface ChartMarker {
   /** Price at which the marker is drawn (entryPrice / closePrice). */
   price: number;
   /** Close markers are colored by realized outcome; entry stays neutral. */
-  outcome?: "profit" | "loss";
+  outcome?: "profit" | "loss" | "flat";
 }
 
 /** A chart marker resolved to a concrete candle index within the view window. */

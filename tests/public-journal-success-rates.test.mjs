@@ -83,3 +83,27 @@ test("engine-hardening migration defines wins from strict direction-aware PnL", 
   assert.match(sql, /engine_version text/i);
   assert.match(sql, /decision_candle_at timestamptz/i);
 });
+
+test("latest success-rate migration excludes breakeven from the denominator", () => {
+  const sql = readFileSync(
+    new URL(
+      "../supabase/migrations/20260830095557_exclude_breakeven_from_public_win_rate.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(sql, /get_public_journal_success_rates\(\)/i);
+  assert.match(sql, /count\(\*\) filter \([\s\S]*close_price <> jt\.entry_price/i);
+  assert.match(sql, /security definer/i);
+  assert.match(sql, /set search_path = ''/i);
+  assert.match(sql, /from public\.journal_trades jt/i);
+  assert.match(
+    sql,
+    /revoke all on function public\.get_public_journal_success_rates\(\) from public/i,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.get_public_journal_success_rates\(\)[\s\S]*to anon, authenticated/i,
+  );
+});

@@ -17,7 +17,7 @@ npm run dev            # http://localhost:5173
 
 Test & build:
 ```bash
-npm test               # 35 file / 325 case (node --test)
+npm test               # 36 file / 353 case (node --test)
 npm run build          # tsc -b + vite build → dist/
 npm run lint           # eslint
 ```
@@ -37,7 +37,7 @@ npm run lint           # eslint
 | `npm run deploy:edge` | build:edge + deploy `auto-journal` |
 | `npm run deploy:summary` | build:edge + deploy `daily-summary` |
 | `npm run deploy:discovery` | build:edge + deploy `asset-discovery` |
-| `npm run gate:compare` | bandingin win% raw vs emission-gated backtest |
+| `npm run gate:compare` | riset filter entry hipotetis; jurnal production tetap parity dengan screener |
 
 > Deploy lengkap: [`docs/tsd/07-deployment.md`](docs/tsd/07-deployment.md).
 

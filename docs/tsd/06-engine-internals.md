@@ -26,10 +26,10 @@
 | `relative-strength.ts` | 152 | `computeWindowReturns`, `deriveRelativeStrength`, `applyRelativeStrength` |
 | `fundamentals.ts` | 108 | `applyFundamentals` |
 | `../lib/analysis-text.ts` | 16 | `resolveAnalysisText` UI localization helper |
-| `../core/automation/auto-journal-core.ts` | 235 | `runAutoJournal`, `AutoJournalPlan`, `JournalClosure` |
+| `../core/automation/auto-journal-core.ts` | 223 | `runAutoJournal`, `AutoJournalPlan`, `JournalClosure` |
 | `../core/automation/asset-discovery-core.ts` | 631 | feed parsers, rankers, `planDiscovery`, `binancePerpBase`, `pickYahooCryptoSymbol`, `dedupeCandidates`, `formatDiscoveryForDiscord` |
-| `../core/engine/context-pipeline.ts` | 125 | `buildEngineContexts`, `passesEmissionGate` |
-| `../core/automation/alerts.ts` | 354 | `buildAutoJournalAlerts`, `formatAlertsForDiscord`, `formatDailySummaryForDiscord` |
+| `../core/engine/context-pipeline.ts` | 95 | `buildEngineContexts` |
+| `../core/automation/alerts.ts` | 402 | `buildAutoJournalAlerts`, `formatAlertBatchesForDiscord`, `formatDailySummaryForDiscord` |
 | `../core/automation/period-summary.ts` | 66 | `recapWindow` |
 | `../core/edge-engine.ts` | 103 | facade re-export (cron entry) |
 
@@ -192,7 +192,7 @@ Hanya langkah 1 yang boleh mengubah keputusan canonical. Helper `apply*` tetap t
 ## 📊 backtest.ts — `runBacktest(candles, options) → {metrics, trades}` (`:364`)
 
 - Single position, entry next bar open, **no lookahead** (invariant: corrupt future candles gak ubah entry masa lalu).
-- Exit: scale-out (50/30/20% TP1/2/3, stop→breakeven after TP1) atau single TP1 (legacy `tp1`), stop, opposite signal, end-of-data.
+- Default `progressive`: TP1→stop entry, TP2→stop TP1, lalu TP final; stop baru berlaku candle berikutnya. `terminal`, `secured` (full-position ratchet), scale-out (50/30/20%), dan single TP1 tetap mode riset eksplisit.
 - Cost: `BACKTEST_COSTS.crypto {fee 0.0004, slippage 0.0006}` / `default {0.0002, 0.0003}` per side.
 - Output `BacktestMetrics`: winRate, expectancy, profitFactor, maxDrawdownR, per-regime, **per-tier**. Optional `entryFilter` model emission gate.
 
@@ -216,17 +216,17 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ## 🤖 core/automation/auto-journal-core.ts — `runAutoJournal` (`:100`)
 
-`runAutoJournal(assets, openRows, {contexts, recentClosed, now?}) → AutoJournalPlan {inserts, progressUpdates, closures}`.
+`runAutoJournal(assets, openRows, {contexts, now?}) → AutoJournalPlan {inserts, progressUpdates, closures}`.
 
-**Emit**: skip quote stale >90min; simpan provenance engine/candle/regime/HTF/score; counter-trend harus post-context strength ≥60; cooldown 6 jam per `symbol|signal`.
+**Emit**: skip quote stale >90min; simpan provenance engine/candle/regime/HTF/score; context menyesuaikan strength/tier tetapi semua LONG/SHORT screener yang actionable tetap masuk. Closure direncanakan sebelum emit agar signal aktif bisa reopen pada scan yang sama.
 
-**Close**: replay candle sejak entry dengan stop-first OHLC. TP1/TP2 meratchet full-position stop dan milestone dipersist. Gap stop fill di open; reversal exit di close candle terkoroborasi. Phantom guard: cuma candle timestamped yang mutusin.
+**Close**: replay candle sejak entry dengan stop-first OHLC. TP1 mengaktifkan stop entry pada langkah berikutnya; TP2 mengaktifkan stop TP1; TP final atau reversal menutup posisi. Gap active-stop fill di open; reversal exit di close candle terkoroborasi. `exit_reason` menyimpan penyebab exact. Phantom guard: cuma candle timestamped yang mutusin. Trade tertutup engine-v3 tetap utuh; migration v4 hanya mengubah cohort yang masih open.
 
 ---
 
-## 🧭 core/engine/context-pipeline.ts — `buildEngineContexts` (`:128`) + `passesEmissionGate`
+## 🧭 core/engine/context-pipeline.ts — `buildEngineContexts`
 
-`buildEngineContexts(assetBySymbol) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. `passesEmissionGate` hanya menerapkan counter-trend strength yang sudah ada; kandidat regime/HTF tidak dipromosikan karena gagal validation→holdout.
+`buildEngineContexts(assetBySymbol) → EngineContexts {cryptoContext?, idxContext?, usContext?}` — server-side equivalent 3 context hook. Context yang tersedia dipakai untuk de-rate yang sama dengan browser; context yang gagal dimuat tidak memblokir signal mentah yang tetap tampil di screener.
 
 ---
 
@@ -244,9 +244,9 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 ## 📢 core/automation/alerts.ts (354 baris)
 
-- `buildAutoJournalAlerts(plan)` — inserts→`new_long`/`new_short`, closures→`tp_hit`/`sl_hit`/`reversed` (mirror donut bucket, secured-TP reversal reports AS its TP).
-- `formatAlertsForDiscord` — 🚨 SINYAL → 📢 HASIL, direction-aware % dari entry, label durasi Indonesia.
-- `formatDailySummaryForDiscord` — scoreboard TOTAL/TERBAIK/TERBURUK/SINYAL BARU/MASIH TERBUKA/SUDAH DITUTUP/RASIO LABA RUGI; empty day → null.
+- `buildAutoJournalAlerts(plan)` — inserts→`new_long`/`new_short`, closures→`tp_hit`/`sl_hit`/`protected_stop`/`reversed` dari `exit_reason`; hasil utama memakai TP yang diamankan dari close aktual (`TP n/total` / `BE` / `SL`), milestone tertinggi tetap ikut sebagai konteks perjalanan.
+- `formatAlertBatchesForDiscord` — 🚨 SINYAL → 📢 HASIL, direction-aware %, label durasi Indonesia, semua alert dibagi ke batch utuh ≤1900 karakter.
+- `formatDailySummaryForDiscord` — scoreboard TOTAL/TERBAIK/TERBURUK/SINYAL BARU/MASIH TERBUKA/SUDAH DITUTUP/RASIO LABA-RUGI-IMPAS; empty day → null.
 - `DISCORD_MAX 1900`, `DIVIDER`.
 
 ---

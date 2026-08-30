@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueries } from "@tanstack/react-query";
 import {
   Bar,
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   XAxis,
   YAxis,
   PieChart,
@@ -13,7 +15,7 @@ import {
 } from "recharts";
 import {
   buildTrackerStats,
-  computePnl,
+  tradeOutcomeBucket,
   type FollowedTrade,
 } from "@/core/trade/follow-trade-model";
 import { PALETTE } from "@/constants";
@@ -22,6 +24,14 @@ import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FilterGroup } from "@/components/shared/filter-group";
+import {
+  benchmarkQueryWindow,
+  buildAssetTypePercentSeries,
+  buildJournalPerformanceSeries,
+  type BenchmarkDataKey,
+  type JournalChartTimeframe,
+} from "@/features/journal/model/journal-performance";
+import { fetchYahooChart } from "@/services/api/yahoo-finance";
 
 import {
   ChartContainer,
@@ -37,8 +47,30 @@ const NEG = PALETTE.negative.fill;
 // data/layout prop identity changes, which can cascade into "Maximum update
 // depth exceeded" under re-render bursts (see components/charts/sparkline.tsx).
 const CHART_MARGIN = { left: 4, right: 8, top: 8 };
-const CHART_YAXIS_WIDTH = 40;
+const CHART_YAXIS_WIDTH = 52;
 const BACKGROUND_RING = [{ value: 100 }];
+const BENCHMARKS = [
+  {
+    dataKey: "btcPct",
+    symbol: "BTC-USD",
+    labelKey: "journal.benchmark_btc",
+    color: "#f7931a",
+    dash: "4 4",
+  },
+  {
+    dataKey: "goldPct",
+    symbol: "GC=F",
+    labelKey: "journal.benchmark_gold",
+    color: "#d4af37",
+    dash: "10 3 2 3",
+  },
+] as const satisfies readonly {
+  dataKey: BenchmarkDataKey;
+  symbol: string;
+  labelKey: string;
+  color: string;
+  dash: string;
+}[];
 
 function ChartCard({
   title,
@@ -65,29 +97,14 @@ function ChartCard({
   );
 }
 
-const dayKey = (ms: number) => {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const formatPercent = (value: number) =>
+  `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+
+const formatPercentTick = (value: number) => {
+  const absolute = Math.abs(value);
+  if (absolute >= 1000) return `${(value / 1000).toFixed(1)}k%`;
+  return `${Number(value.toFixed(absolute < 10 ? 1 : 0))}%`;
 };
-
-function getDatesRange(startDate: Date, endDate: Date): string[] {
-  const dates: string[] = [];
-  const current = new Date(startDate);
-  current.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-
-  while (current <= end) {
-    const y = current.getFullYear();
-    const m = String(current.getMonth() + 1).padStart(2, "0");
-    const d = String(current.getDate()).padStart(2, "0");
-    dates.push(`${y}-${m}-${d}`);
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
-}
-
-type TimeframeOption = "1D" | "1W" | "1M" | "ALL";
 
 interface JournalDashboardProps {
   history: FollowedTrade[];
@@ -103,7 +120,7 @@ export function JournalDashboard({
   const { t } = useTranslation();
   const openCount = openTrades.length;
   // Default to 1D (1 hari).
-  const [timeframe, setTimeframe] = useState<TimeframeOption>("1D");
+  const [timeframe, setTimeframe] = useState<JournalChartTimeframe>("1D");
 
   // Timestamp of the earliest trade defines the "ALL" journal span.
   const oldestTradeMs = useMemo(() => {
@@ -118,10 +135,22 @@ export function JournalDashboard({
   const timeframeOptions = useMemo(
     () =>
       [
-        { value: "1D" as TimeframeOption, label: t("journal.timeframe_1d") },
-        { value: "1W" as TimeframeOption, label: t("journal.timeframe_1w") },
-        { value: "1M" as TimeframeOption, label: t("journal.timeframe_1m") },
-        { value: "ALL" as TimeframeOption, label: t("journal.timeframe_all") },
+        {
+          value: "1D" as JournalChartTimeframe,
+          label: t("journal.timeframe_1d"),
+        },
+        {
+          value: "1W" as JournalChartTimeframe,
+          label: t("journal.timeframe_1w"),
+        },
+        {
+          value: "1M" as JournalChartTimeframe,
+          label: t("journal.timeframe_1m"),
+        },
+        {
+          value: "ALL" as JournalChartTimeframe,
+          label: t("journal.timeframe_all"),
+        },
       ] as const,
     [t],
   );
@@ -167,123 +196,81 @@ export function JournalDashboard({
     [filteredHistory, openCount],
   );
 
-  const computedChartData = useMemo(() => {
-    const today = new Date();
+  const benchmarkWindow = useMemo(
+    () => benchmarkQueryWindow(timeframe, oldestTradeMs),
+    [timeframe, oldestTradeMs],
+  );
+  const benchmarkQueries = useQueries({
+    queries: BENCHMARKS.map(({ symbol }) => ({
+      queryKey: [
+        "journal-benchmark",
+        symbol,
+        benchmarkWindow.range,
+        benchmarkWindow.interval,
+      ],
+      queryFn: () =>
+        fetchYahooChart(
+          symbol,
+          benchmarkWindow.range,
+          benchmarkWindow.interval,
+        ),
+      enabled: stats.closed > 0,
+      staleTime: 300_000,
+    })),
+  });
+  const btcBenchmark = benchmarkQueries[0]?.data;
+  const goldBenchmark = benchmarkQueries[1]?.data;
 
-    let startOfTimeframe = new Date(today);
-
-    if (timeframe === "1D") {
-      const hours: string[] = [];
-      for (let h = 0; h < 24; h++) {
-        hours.push(`${String(h).padStart(2, "0")}:00`);
-      }
-
-      const hourToR = new Map<string, number>();
-
-      const startOfToday = new Date(today);
-      startOfToday.setHours(0, 0, 0, 0);
-      const startOfTodayMs = startOfToday.getTime();
-
-      history.forEach((t) => {
-        if (t.status === "open" || !t.closedAt || t.closedAt < startOfTodayMs)
-          return;
-        const r = computePnl(t, t.closePrice ?? t.entryPrice).r;
-        const hour = `${String(new Date(t.closedAt).getHours()).padStart(2, "0")}:00`;
-        hourToR.set(hour, (hourToR.get(hour) ?? 0) + r);
-      });
-
-      let runningCum = 0;
-
-      return hours.map((hour) => {
-        const dayR = hourToR.get(hour) ?? 0;
-        const dayRWin = dayR >= 0 ? dayR : null;
-        const dayRLoss = dayR < 0 ? dayR : null;
-        runningCum += dayR;
-
-        return {
-          date: hour,
-          dayR,
-          dayRWin,
-          dayRLoss,
-          cumR: runningCum,
-        };
-      });
-    }
-
-    let endOfRange = today;
-
-    if (timeframe === "1W") {
-      const day = today.getDay();
-      startOfTimeframe.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-      startOfTimeframe.setHours(0, 0, 0, 0);
-
-      const endOfTimeframe = new Date(startOfTimeframe);
-      endOfTimeframe.setDate(startOfTimeframe.getDate() + 6);
-      endOfTimeframe.setHours(23, 59, 59, 999);
-      endOfRange = endOfTimeframe;
-    } else if (timeframe === "1M") {
-      startOfTimeframe.setDate(today.getDate() - 29);
-    } else if (history.length > 0) {
-      startOfTimeframe = new Date(oldestTradeMs);
-    } else {
-      startOfTimeframe.setDate(today.getDate() - 29);
-    }
-
-    const dateList = getDatesRange(startOfTimeframe, endOfRange);
-
-    const dateToR = new Map<string, number>();
-
-    history.forEach((t) => {
-      if (t.status === "open") return;
-      const { r } = computePnl(t, t.closePrice ?? t.entryPrice);
-      const day = dayKey(t.closedAt ?? t.followedAt);
-      dateToR.set(day, (dateToR.get(day) ?? 0) + r);
-    });
-
-    let runningCumR = 0;
-
-    return dateList.map((date) => {
-      const dayR = dateToR.get(date) ?? 0;
-      const dayRWin = dayR >= 0 ? dayR : null;
-      const dayRLoss = dayR < 0 ? dayR : null;
-      runningCumR += dayR;
-
-      return {
-        date,
-        dayR,
-        dayRWin,
-        dayRLoss,
-        cumR: runningCumR,
-      };
-    });
-  }, [timeframe, history, oldestTradeMs]);
+  const computedChartData = useMemo(
+    () =>
+      buildJournalPerformanceSeries({
+        history,
+        timeframe,
+        oldestTradeMs,
+        benchmarkData: {
+          btcPct: btcBenchmark,
+          goldPct: goldBenchmark,
+        },
+      }),
+    [history, timeframe, oldestTradeMs, btcBenchmark, goldBenchmark],
+  );
+  const assetTypePerformance = useMemo(
+    () =>
+      buildAssetTypePercentSeries(
+        filteredHistory,
+        stats.byAssetType.map(({ assetType }) => assetType),
+      ),
+    [filteredHistory, stats.byAssetType],
+  );
 
   const outcomeData = useMemo(() => {
     let sl = 0;
-    let tp1 = 0;
-    let tp2 = 0;
-    let tp3 = 0;
-    // A no-TP reversal close still realizes a P/L, so split it by R-sign into a
-    // win/loss bucket — this is what buildTrackerStats already counts in the
-    // Center win-rate: use the same strict-positive rule as the core model.
+    let breakeven = 0;
+    let takeProfit = 0;
     let reversedWin = 0;
     let reversedLoss = 0;
 
     filteredHistory.forEach((t) => {
-      if (t.status === "sl") sl++;
-      else if (t.status === "tp1") tp1++;
-      else if (t.status === "tp2") tp2++;
-      else if (t.status === "tp3") tp3++;
-      else if (t.status === "reversed") {
-        const { r } = computePnl(t, t.closePrice ?? t.entryPrice);
-        if (r > 0) reversedWin++;
-        else reversedLoss++;
+      switch (tradeOutcomeBucket(t)) {
+        case "tp":
+          takeProfit++;
+          break;
+        case "breakeven":
+          breakeven++;
+          break;
+        case "reversal_profit":
+          reversedWin++;
+          break;
+        case "reversal_loss":
+          reversedLoss++;
+          break;
+        default:
+          sl++;
       }
     });
 
-    // Ordered so the loss family (red) and win family (green) read cohesively
-    // around the donut, with reversals hatched to stay distinct from clean
-    // TP/SL exits.
+    // Five result buckets keep the legend compact. Exact exit causes remain in
+    // the transaction audit while profitable protected stops roll into TP.
     const data: {
       name: string;
       value: number;
@@ -300,6 +287,11 @@ export function JournalDashboard({
         striped: true,
       },
       {
+        name: t("journal.breakevens"),
+        value: breakeven,
+        fill: PALETTE.neutral.fill,
+      },
+      {
         name: t("journal.outcome_reversed_win"),
         value: reversedWin,
         fill: POS,
@@ -307,19 +299,9 @@ export function JournalDashboard({
         striped: true,
       },
       {
-        name: t("journal.outcome_tp1"),
-        value: tp1,
-        fill: "rgba(16, 185, 129, 0.4)",
-      },
-      {
-        name: t("journal.outcome_tp2"),
-        value: tp2,
-        fill: "rgba(16, 185, 129, 0.7)",
-      },
-      {
-        name: t("journal.outcome_tp3"),
-        value: tp3,
-        fill: "rgba(16, 185, 129, 1)",
+        name: t("journal.outcome_take_profit"),
+        value: takeProfit,
+        fill: POS,
       },
     ];
     return data;
@@ -339,6 +321,8 @@ export function JournalDashboard({
     const total = stats.closed;
     const winPct = total > 0 ? (stats.winLoss.wins / total) * 100 : 0;
     const lossPct = total > 0 ? (stats.winLoss.losses / total) * 100 : 0;
+    const breakevenPct =
+      total > 0 ? (stats.winLoss.breakevens / total) * 100 : 0;
 
     return [
       {
@@ -347,6 +331,7 @@ export function JournalDashboard({
         pct: `${winPct.toFixed(0)}%`,
         color: POS,
         type: "count",
+        dash: undefined,
       },
       {
         name: t("journal.losses"),
@@ -354,25 +339,48 @@ export function JournalDashboard({
         pct: `${lossPct.toFixed(0)}%`,
         color: NEG,
         type: "count",
+        dash: undefined,
       },
+      ...(stats.winLoss.breakevens > 0
+        ? [
+            {
+              name: t("journal.breakevens"),
+              value: stats.winLoss.breakevens,
+              pct: `${breakevenPct.toFixed(0)}%`,
+              color: PALETTE.neutral.fill,
+              type: "count",
+              dash: undefined,
+            },
+          ]
+        : []),
+      ...BENCHMARKS.map((benchmark) => ({
+        name: t(benchmark.labelKey),
+        value: lastData?.[benchmark.dataKey] ?? null,
+        pct: undefined,
+        color: benchmark.color,
+        type: "percent",
+        dash: benchmark.dash,
+      })),
       {
         name: t("journal.cumulative"),
-        value: lastData?.cumR ?? 0,
+        value: lastData?.cumPct ?? 0,
+        pct: undefined,
         color: "var(--color-primary)",
-        type: "r",
+        type: "percent",
+        dash: undefined,
       },
     ];
   }, [computedChartData, stats.winLoss, stats.closed, t]);
 
   const assetTypeLegendItems = useMemo(() => {
     const total = stats.closed;
-    return stats.byAssetType.map((d) => {
+    return assetTypePerformance.map((d) => {
       const count = filteredHistory.filter(
         (t) => t.assetType === d.assetType,
       ).length;
       const pct = total > 0 ? (count / total) * 100 : 0;
 
-      const valNum = Number(d.r);
+      const valNum = d.pct;
       const isZero = valNum === 0;
       const color = isZero ? "var(--color-zinc-500)" : valNum > 0 ? POS : NEG;
       const displayName = t(`common.asset_types.${d.assetType}`, d.assetType);
@@ -384,7 +392,7 @@ export function JournalDashboard({
         color,
       };
     });
-  }, [stats, filteredHistory, t]);
+  }, [assetTypePerformance, stats.closed, filteredHistory, t]);
 
   if (isLoading) {
     return (
@@ -414,9 +422,15 @@ export function JournalDashboard({
   }
 
   const equityConfig: ChartConfig = {
-    dayRWin: { label: t("journal.wins"), color: POS },
-    dayRLoss: { label: t("journal.losses"), color: NEG },
-    cumR: { label: t("journal.cumulative"), color: "var(--color-primary)" },
+    dayPctWin: { label: t("journal.wins"), color: POS },
+    dayPctLoss: { label: t("journal.losses"), color: NEG },
+    cumPct: { label: t("journal.cumulative"), color: "var(--color-primary)" },
+    ...Object.fromEntries(
+      BENCHMARKS.map((benchmark) => [
+        benchmark.dataKey,
+        { label: t(benchmark.labelKey), color: benchmark.color },
+      ]),
+    ),
   };
 
   const outcomeConfig: ChartConfig = {
@@ -482,7 +496,7 @@ export function JournalDashboard({
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <ChartCard title={t("journal.chart_equity_benchmark")}>
-            <div className="flex-1 h-65 flex items-center justify-center mt-2">
+            <div className="flex min-h-72 flex-1 items-center justify-center mt-2">
               <div className="h-full w-full flex flex-col items-center justify-center">
                 <div className="h-48 w-full relative">
                   <ChartContainer
@@ -490,10 +504,12 @@ export function JournalDashboard({
                     className="h-full w-full"
                   >
                     <ComposedChart
+                      accessibilityLayer
                       data={computedChartData}
                       margin={CHART_MARGIN}
                     >
                       <CartesianGrid vertical={false} />
+                      <ReferenceLine y={0} stroke="var(--color-border)" />
                       <XAxis
                         dataKey="date"
                         tickLine={false}
@@ -507,7 +523,9 @@ export function JournalDashboard({
                         axisLine={false}
                         width={CHART_YAXIS_WIDTH}
                         fontSize={12}
-                        tickFormatter={(v) => `${v}R`}
+                        tickFormatter={(value) =>
+                          formatPercentTick(Number(value))
+                        }
                       />
                       <ChartTooltip
                         content={({ active, payload, label }) => {
@@ -525,16 +543,20 @@ export function JournalDashboard({
                               labelFormatter={(l) => fmtFullDate(String(l))}
                               formatter={(value, name, item) => {
                                 const isWin =
-                                  item.dataKey === "dayRWin" ||
-                                  name === "dayRWin";
+                                  item.dataKey === "dayPctWin" ||
+                                  name === "dayPctWin";
                                 const isLoss =
-                                  item.dataKey === "dayRLoss" ||
-                                  name === "dayRLoss";
-
+                                  item.dataKey === "dayPctLoss" ||
+                                  name === "dayPctLoss";
+                                const benchmark = BENCHMARKS.find(
+                                  ({ dataKey }) =>
+                                    item.dataKey === dataKey ||
+                                    name === dataKey,
+                                );
                                 const valNum = Number(value);
-                                const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}R`;
+                                const formattedValue = formatPercent(valNum);
 
-                                let dotColor = "var(--color-cumR)";
+                                let dotColor = "var(--color-cumPct)";
                                 let displayName = t("journal.cumulative");
 
                                 if (isWin) {
@@ -543,6 +565,9 @@ export function JournalDashboard({
                                 } else if (isLoss) {
                                   dotColor = NEG;
                                   displayName = t("journal.losses");
+                                } else if (benchmark) {
+                                  dotColor = benchmark.color;
+                                  displayName = t(benchmark.labelKey);
                                 }
 
                                 return (
@@ -568,65 +593,96 @@ export function JournalDashboard({
                       />
 
                       <Bar
-                        dataKey="dayRWin"
+                        dataKey="dayPctWin"
                         stackId="a"
                         radius={4}
                         fill={POS}
                       />
                       <Bar
-                        dataKey="dayRLoss"
+                        dataKey="dayPctLoss"
                         stackId="a"
                         radius={4}
                         fill={NEG}
                       />
+                      {BENCHMARKS.map((benchmark) => (
+                        <Line
+                          key={benchmark.dataKey}
+                          type="monotone"
+                          dataKey={benchmark.dataKey}
+                          stroke={benchmark.color}
+                          strokeWidth={1.5}
+                          strokeDasharray={benchmark.dash}
+                          dot={false}
+                          connectNulls
+                        />
+                      ))}
                       <Line
                         type="monotone"
-                        dataKey="cumR"
-                        stroke="var(--color-cumR)"
+                        dataKey="cumPct"
+                        stroke="var(--color-cumPct)"
                         strokeWidth={2}
                         dot={false}
                       />
                     </ComposedChart>
                   </ChartContainer>
                 </div>
-                {/* Premium Legend at the Bottom */}
-                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[12px] text-muted-foreground font-normal px-2 mt-3 w-full">
-                  {equityLegendItems.map((d, i) => {
+                <div className="mt-3 flex w-full flex-wrap justify-center gap-x-4 gap-y-1.5 px-2 text-[12px] font-normal text-muted-foreground">
+                  {equityLegendItems.map((d) => {
                     const isCount = d.type === "count";
-                    const valNum = Number(d.value);
-                    const formattedValue = `${valNum >= 0 ? "+" : ""}${valNum.toFixed(2)}R`;
+                    const hasValue = d.value !== null;
+                    const valNum = hasValue ? Number(d.value) : 0;
                     return (
                       <div
-                        key={i}
+                        key={d.name}
                         className={cn(
-                          "flex items-center gap-1.5 transition-colors group",
-                          isCount && d.value === 0 && "opacity-40",
+                          "flex items-center gap-1.5",
+                          ((isCount && d.value === 0) ||
+                            (!isCount && !hasValue)) &&
+                            "opacity-40",
                         )}
                       >
-                        <span
-                          className="h-1.5 w-1.5 rounded-full shrink-0 group-hover:scale-125 transition-transform"
-                          style={{ backgroundColor: d.color }}
-                        />
-                        <span className="transition-colors dark:opacity-60">
-                          {d.name}
-                        </span>
+                        {isCount ? (
+                          <span
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: d.color }}
+                          />
+                        ) : (
+                          <svg
+                            aria-hidden="true"
+                            className="shrink-0"
+                            width="14"
+                            height="6"
+                            viewBox="0 0 14 6"
+                          >
+                            <line
+                              x1="0"
+                              y1="3"
+                              x2="14"
+                              y2="3"
+                              stroke={d.color}
+                              strokeWidth="2"
+                              strokeDasharray={d.dash}
+                            />
+                          </svg>
+                        )}
+                        <span>{d.name}</span>
                         <span
                           className={cn(
-                            "",
-                            isCount
-                              ? "dark:opacity-60"
-                              : valNum === 0
-                                ? "text-zinc-500"
+                            !isCount &&
+                              (valNum === 0
+                                ? "text-muted-foreground"
                                 : valNum > 0
                                   ? "text-emerald-400"
-                                  : "text-rose-400",
+                                  : "text-rose-400"),
                           )}
                         >
-                          {isCount ? d.value : formattedValue}
+                          {isCount
+                            ? d.value
+                            : hasValue
+                              ? formatPercent(valNum)
+                              : "—"}
                         </span>
-                        {isCount && (
-                          <span className="dark:opacity-60">({d.pct})</span>
-                        )}
+                        {isCount && <span>({d.pct})</span>}
                       </div>
                     );
                   })}
@@ -637,7 +693,7 @@ export function JournalDashboard({
 
           {/* Card 2: Distribusi Hasil Akhir Trade */}
           <ChartCard title={t("journal.chart_outcome_distribution")}>
-            <div className="flex-1 h-65 flex items-center justify-center relative mt-2">
+            <div className="relative mt-2 flex min-h-72 flex-1 items-center justify-center">
               {pieData.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-zinc-500 text-xs font-medium select-none">
                   {t("journal.chart_no_closed_trades")}
@@ -650,7 +706,7 @@ export function JournalDashboard({
                       config={outcomeConfig}
                       className="h-full w-full"
                     >
-                      <PieChart>
+                      <PieChart accessibilityLayer>
                         <defs>
                           <pattern
                             id="reversal-win"
@@ -744,6 +800,12 @@ export function JournalDashboard({
                       <span className="text-[10px] text-muted-foreground mt-1 leading-none">
                         {stats.winLoss.wins} {t("journal.profit_abbr")} /{" "}
                         {stats.winLoss.losses} {t("journal.loss_abbr")}
+                        {stats.winLoss.breakevens > 0 && (
+                          <>
+                            {" "}/ {stats.winLoss.breakevens}{" "}
+                            {t("journal.breakeven_abbr")}
+                          </>
+                        )}
                       </span>
                       <span className="text-[10px] text-foreground mt-0.5">
                         {stats.closed} {t("journal.transactions")}
@@ -793,8 +855,8 @@ export function JournalDashboard({
 
           {/* Card 3: Performa Per Kategori Aset */}
           <ChartCard title={t("journal.chart_asset_performance")}>
-            <div className="flex-1 h-65 flex items-center justify-center mt-2">
-              {stats.byAssetType.length === 0 ? (
+            <div className="flex min-h-72 flex-1 items-center justify-center mt-2">
+              {assetTypePerformance.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-zinc-500 text-xs font-medium select-none">
                   {t("journal.chart_no_category_data")}
                 </div>
@@ -802,19 +864,22 @@ export function JournalDashboard({
                 <div className="h-full w-full flex flex-col items-center justify-center">
                   <div className="h-48 w-full relative">
                     <ChartContainer
-                      config={{ r: { label: t("journal.total_pnl") } }}
+                      config={{ pct: { label: t("journal.total_pnl") } }}
                       className="h-full w-full"
                     >
                       <ComposedChart
-                        data={stats.byAssetType}
+                        accessibilityLayer
+                        data={assetTypePerformance}
                         margin={CHART_MARGIN}
                       >
                         <CartesianGrid vertical={false} />
+                        <ReferenceLine y={0} stroke="var(--color-border)" />
                         <XAxis
                           dataKey="assetType"
+                          interval={0}
                           tickLine={false}
                           axisLine={false}
-                          fontSize={12}
+                          fontSize={11}
                           tickFormatter={(v) => {
                             return t(`common.asset_types.${v}`, v) as string;
                           }}
@@ -824,7 +889,9 @@ export function JournalDashboard({
                           axisLine={false}
                           width={CHART_YAXIS_WIDTH}
                           fontSize={12}
-                          tickFormatter={(v) => `${v}R`}
+                          tickFormatter={(value) =>
+                            formatPercentTick(Number(value))
+                          }
                         />
                         <ChartTooltip
                           content={({ active, payload, label }) => {
@@ -871,7 +938,7 @@ export function JournalDashboard({
                                           )}
                                         >
                                           {valNum > 0 ? "+" : ""}
-                                          {valNum.toFixed(2)}R
+                                          {valNum.toFixed(2)}%
                                         </span>
                                       </div>
                                     </>
@@ -881,12 +948,12 @@ export function JournalDashboard({
                             );
                           }}
                         />
-                        <Bar dataKey="r" radius={4}>
-                          {stats.byAssetType.map((entry, index) => {
+                        <Bar dataKey="pct" radius={4}>
+                          {assetTypePerformance.map((entry, index) => {
                             const fill =
-                              entry.r === 0
+                              entry.pct === 0
                                 ? "var(--color-zinc-500)"
-                                : entry.r > 0
+                                : entry.pct > 0
                                   ? POS
                                   : NEG;
                             return <Cell key={`cell-${index}`} fill={fill} />;

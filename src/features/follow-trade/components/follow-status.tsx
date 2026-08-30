@@ -2,15 +2,15 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PALETTE } from "@/constants";
+import type { ExitReason } from "@/core/trade/follow-trade-model";
+import { tradeOutcomeLabel } from "@/features/follow-trade/model/follow-outcome";
 
 /**
  * Status visuals for a followed trade, kept deliberately SEPARATE so the two
  * orthogonal dimensions never get conflated:
  *  - `LifecycleBadge` — is the position RUNNING or CLOSED (server truth)
- *  - `TpProgress`     — how far OUTCOME got: TP pips touched (+ SL if stopped)
- * A trade can be running yet already have touched TP2; a closed trade can be a
- * stop-out. Both are shown for open and closed rows alike. Plain DOM (no
- * recharts) → cheap + identity-stable in big tables.
+ *  - `TpProgress`     — running protection or closed outcome + journey
+ * Plain DOM (no recharts) keeps large tables cheap and identity-stable.
  */
 
 export function LifecycleBadge({
@@ -44,32 +44,33 @@ export function LifecycleBadge({
 interface TpProgressProps {
   /** TP levels touched (0..total). */
   reached: number;
+  /** TP levels secured by the realized close price. */
+  secured: number;
   total: number;
-  /** Stopped out (no TP secured). */
-  slHit?: boolean;
-  /** Exited on a signal reversal — appends a "· Reversed" marker to the TP. */
-  reversed?: boolean;
-  /** For a NO-TP reversal close, whether it realized a profit or loss — colors
-   *  the standalone REVERSED marker green/red to match the donut's Reversal
-   *  Profit / Loss slices. Omit for the neutral (uncolored) marker. */
-  reversedPnl?: "profit" | "loss";
+  exitReason?: ExitReason;
+  pnlTone?: "profit" | "loss" | "flat";
   size?: "xs" | "sm";
   className?: string;
   isClosed?: boolean;
   variant?: "text" | "badge";
+  showJourney?: boolean;
 }
 
 export function TpProgress({
   reached,
+  secured,
   total,
-  slHit = false,
-  reversed = false,
+  exitReason,
+  pnlTone = "flat",
   size = "xs",
   className,
   isClosed = false,
   variant = "text",
+  showJourney = false,
 }: TpProgressProps) {
-  if (total === 0 && !slHit) {
+  const { t } = useTranslation();
+
+  if (total === 0 && !isClosed) {
     if (variant === "badge") return null;
     return (
       <span className="text-xs text-muted-foreground">—</span>
@@ -77,67 +78,68 @@ export function TpProgress({
   }
 
   if (variant === "badge") {
-    // Closed reversal with no TP secured (status `reversed`): the outcome badge
-    // is empty here — the separate <ReversedBadge> beside it carries the marker,
-    // so render nothing to avoid a duplicate "Reversed" pill.
-    if (!slHit && reached === 0 && isClosed) return null;
-    let colorCls: string;
-    let content: string;
-    if (slHit) {
-      colorCls = cn(
-        PALETTE.negative.bg,
-        PALETTE.negative.text,
-        PALETTE.negative.border,
+    const tone =
+      pnlTone === "profit"
+        ? PALETTE.positive
+        : pnlTone === "loss"
+          ? PALETTE.negative
+          : PALETTE.neutral;
+    const badgeClass =
+      "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider";
+    if (!isClosed) {
+      const progressTone = reached > 0 ? PALETTE.positive : PALETTE.neutral;
+      return (
+        <Badge
+          variant="outline"
+          className={cn(
+            badgeClass,
+            progressTone.bg,
+            progressTone.text,
+            progressTone.border,
+            className,
+          )}
+        >
+          {t("journal.tp_progress", { reached, total })}
+        </Badge>
       );
-      content = "SL";
-    } else if (reached > 0) {
-      // Keep the TP badge clean — the reversal is shown as its OWN badge.
-      colorCls = cn(
-        PALETTE.positive.bg,
-        PALETTE.positive.text,
-        PALETTE.positive.border,
-      );
-      content = `TP ${reached}/${total}`;
-    } else {
-      colorCls = cn(
-        PALETTE.neutral.bg,
-        PALETTE.neutral.text,
-        PALETTE.neutral.border,
-      );
-      content = `TP 0/${total}`;
     }
 
+    const hasJourney =
+      showJourney && reached > 0 && exitReason !== "final_take_profit";
     return (
-      <Badge
-        variant="outline"
-        className={cn(
-          "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
-          colorCls,
-          className,
+      <>
+        <Badge
+          variant="outline"
+          className={cn(
+            badgeClass,
+            tone.bg,
+            tone.text,
+            tone.border,
+            className,
+          )}
+        >
+          {tradeOutcomeLabel(t, exitReason, secured, total, pnlTone)}
+        </Badge>
+        {hasJourney && (
+          <Badge
+            variant="outline"
+            className={cn(
+              badgeClass,
+              PALETTE.neutral.bg,
+              PALETTE.neutral.text,
+              PALETTE.neutral.border,
+              className,
+            )}
+          >
+            {t("journal.reached_tp", { level: reached })}
+          </Badge>
         )}
-      >
-        {content}
-      </Badge>
+      </>
     );
   }
 
   const labelCls = size === "sm" ? "text-[11px]" : "text-xs";
-
-  if (slHit) {
-    return (
-      <span
-        className={cn(
-          "text-muted-foreground",
-          labelCls,
-          className,
-        )}
-      >
-        SL
-      </span>
-    );
-  }
-
-  if (reached > 0) {
+  if (!isClosed) {
     return (
       <span
         className={cn(
@@ -146,17 +148,7 @@ export function TpProgress({
           className,
         )}
       >
-        <span>
-          TP {reached}/{total}
-        </span>
-        {reversed && (
-          <>
-            <span>•</span>
-            <span>
-              REVERSED
-            </span>
-          </>
-        )}
+        <span>{t("journal.tp_progress", { reached, total })}</span>
       </span>
     );
   }
@@ -164,48 +156,12 @@ export function TpProgress({
   return (
     <span
       className={cn(
-        "text-muted-foreground",
+        "text-muted-foreground flex items-baseline gap-1",
         labelCls,
         className,
       )}
     >
-      {isClosed ? "REVERSED" : `TP 0/${total}`}
+      <span>{tradeOutcomeLabel(t, exitReason, secured, total, pnlTone)}</span>
     </span>
-  );
-}
-
-/**
- * Standalone "Reversed" pill — shown NEXT TO the TP/SL outcome badge (not merged)
- * so a reversal-after-TP reads as two distinct facts: it secured a TP *and* it
- * exited on the flip. Neutral-toned to mirror the no-TP reversed-close color.
- */
-export function ReversedBadge({
-  reversedPnl,
-  className,
-}: {
-  /** Tints the pill green/red by the reversal's realized P/L, mirroring the
-   *  donut's Reversal Profit / Loss. Omit for the neutral pill. */
-  reversedPnl?: "profit" | "loss";
-  className?: string;
-}) {
-  const tone =
-    reversedPnl === "profit"
-      ? PALETTE.positive
-      : reversedPnl === "loss"
-        ? PALETTE.negative
-        : PALETTE.neutral;
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "w-fit rounded-md text-[10px] font-bold uppercase tracking-wider",
-        tone.bg,
-        tone.text,
-        tone.border,
-        className,
-      )}
-    >
-      REVERSED
-    </Badge>
   );
 }

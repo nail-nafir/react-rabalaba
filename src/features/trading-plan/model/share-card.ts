@@ -342,7 +342,9 @@ export function buildShareCardSvg(
           ? C.muted
           : m.outcome === "loss"
             ? C.rose
-            : C.emerald;
+            : m.outcome === "profit"
+              ? C.emerald
+              : C.muted;
       const word = (
         m.kind === "entry" ? meta.markerLabels!.entry : meta.markerLabels!.close
       ).toUpperCase();
@@ -415,7 +417,9 @@ export function buildShareCardSvg(
   // "SIGNAL" chip; a position breaks into separate pills \u2014 POSITION, its
   // lifecycle (OPEN / CLOSED), and, once closed, how it ended (TP* / SL /
   // REVERSED) colored by realized outcome.
-  const pnlWin = (meta.pnlR ?? 0) >= 0;
+  const pnlR = meta.pnlR ?? 0;
+  const pnlWin = pnlR > 0;
+  const pnlLoss = pnlR < 0;
   const neutralChip = {
     text: C.muted,
     fill: "rgba(128, 128, 128, 0.08)",
@@ -423,7 +427,9 @@ export function buildShareCardSvg(
   };
   const outcomeChip = pnlWin
     ? { text: C.emerald, fill: C.emeraldFill, stroke: C.emerald }
-    : { text: C.rose, fill: C.roseFill, stroke: C.rose };
+    : pnlLoss
+      ? { text: C.rose, fill: C.roseFill, stroke: C.rose }
+      : neutralChip;
   const statusPills: { text: string; chip: typeof neutralChip }[] =
     meta.isPosition
       ? [
@@ -435,10 +441,10 @@ export function buildShareCardSvg(
           ...(meta.closed && meta.closeReason
             ? [
                 {
-                  // TP \u2192 \u2713, SL \u2192 \u2715 (colored by outcome); a no-TP reversed exit \u2192
-                  // \u21A9 stays neutral like the position chip (no win/loss verdict).
-                  text: `${meta.closeReason === "REVERSED" ? "\u21A9" : pnlWin ? "\u2713" : "\u2715"} ${meta.closeReason}`,
-                  chip: meta.closeReason === "REVERSED" ? neutralChip : outcomeChip,
+                  text: `${/REVERS/.test(meta.closeReason) ? "\u21A9" : pnlWin ? "\u2713" : pnlLoss ? "\u2715" : "\u2022"} ${meta.closeReason}`,
+                  chip: /REVERS/.test(meta.closeReason)
+                    ? neutralChip
+                    : outcomeChip,
                 },
               ]
             : []),
@@ -660,5 +666,3 @@ export async function shareOrDownloadPng(
 }
 
 export const SHARE_CARD_SIZE = { width: W, height: H };
-
-

@@ -469,6 +469,19 @@ test("backtest reports a profitable uptrend with valid metrics", async () => {
   assert.ok(trades.every((t) => t.grossR >= t.r));
 });
 
+test("backtest defaults to progressive exits while alternatives stay explicit", async () => {
+  const candles = makeTrendCandles({ count: 300, step: 2 });
+  const implicit = await runBacktestOn(candles);
+  const progressive = await runBacktestOn(candles, { exitMode: "progressive" });
+  const terminal = await runBacktestOn(candles, { exitMode: "terminal" });
+  const secured = await runBacktestOn(candles, { exitMode: "secured" });
+
+  assert.deepEqual(implicit, progressive);
+  assert.equal(terminal.trades[0].exitReason, "final_take_profit");
+  assert.equal(secured.trades[0].exitReason, "progressive_stop");
+  assert.ok(terminal.trades[0].exitIndex > secured.trades[0].exitIndex);
+});
+
 test("backtest has no lookahead: future candles do not change past entries", async () => {
   const candles = makeTrendCandles({ count: 300, step: 2 });
   const { trades } = await runBacktestOn(candles);
@@ -504,5 +517,5 @@ test("backtest fills a stop gap at the next bar open", async () => {
   assert.equal(after[0].entryIndex, first.entryIndex);
   assert.equal(after[0].exitIndex, gapIndex);
   assert.equal(after[0].exitPrice, 1);
-  assert.equal(after[0].exitReason, "stop_loss");
+  assert.equal(after[0].exitReason, "initial_stop");
 });

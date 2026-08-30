@@ -48,10 +48,11 @@ curl -sI "https://rabalaba.pages.dev/api/coingecko/api/v3/global" | grep -iE "x-
 | Gejala / Symptom | Cek / Check | Aksi / Action |
 |---|---|---|
 | `cron.job` gak ada job `auto-journal-30m` | `select * from cron.job;` | Re-run `supabase/schedule-auto-journal.sql`, then verify Vault `rabalaba_cron_secret` matches Edge secret `CRON_SECRET` |
+| `net._http_response.status_code = 401` | `select status_code, content, created from net._http_response order by created desc limit 10;` | Set project Edge secret `CRON_SECRET` persis sama dengan Vault `rabalaba_cron_secret`; secret langsung aktif, schedule SQL gak perlu diulang |
 | `net._http_response.timed_out = true` sekitar 5 detik | `select status_code, timed_out, error_msg, created from net._http_response order by created desc limit 10;` | Re-run ketiga `supabase/schedule-*.sql`; file canonical menetapkan timeout 120s untuk scan/discovery dan 30s untuk recap |
 | Job ada tapi `status='failed'` | `cron.job_run_details.return_message` | Cek 429/timeout di return_message → lihat §2 |
 | Job sukses tapi `emitted=0` terus | `journal_settings.enabled` / `interval_minutes` / `last_run_at` | Pause? clock-align gak match? `last_run_at` dedup? Set `enabled=true`, atau admin "Scan Sekarang" force |
-| `emitError` di response body | Discord/log function | Stale quote (90m) atau universe kosong → cek `journal_assets` active rows |
+| `emitError` di response body | Response/log function | DB write gagal; cek detail error dan constraint `journal_trades` |
 | Universe kosong | `select count(*) from journal_assets where active;` | Re-seed atau admin "Discover Now" |
 
 ### 2. CoinGecko/Binance 429 di proxy (cron path)
@@ -69,7 +70,7 @@ curl -sI "https://rabalaba.pages.dev/api/coingecko/api/v3/search/trending" | gre
   - Yahoo block IP CF colo → gampang langka; kalau terjadi, fallback env `YAHOO_PROXY_BASE` di edge function ke mirror lain.
 
 ### 4. Discord alert gak masuk
-- Cron `alerted: false` tapi run sukses → webhook gagal (best-effort, gak gagalkan run).
+- Cron `alerted < alerts_total` tapi run sukses → delivery webhook parsial/gagal (best-effort, gak gagalkan run).
 - Cek `DISCORD_WEBHOOK_URL` env function (per function). Webhook Discord bisa ke-revoke/expire → bikin ulang webhook, set env, redeploy function.
 
 ### 5. Daily-summary double-send / gak kirim

@@ -31,6 +31,7 @@ import {
   buildTradeWinrateSnapshots,
   computePnl,
   deriveFollowProgress,
+  tradeOutcomeBucket,
   type FollowedTrade,
   type FollowProgress,
   type FollowSignal,
@@ -94,7 +95,12 @@ type LifecycleFilter = "all" | LifecycleStatus;
 /** PnL filters that only make sense for CLOSED trades — an open position hasn't
  *  stopped out or reversal-closed yet, so picking one of these forces lifecycle
  *  off "open" (and vice-versa). */
-const CLOSED_ONLY_PNL: PnlFilter[] = ["sl", "reversal_profit", "reversal_loss"];
+const CLOSED_ONLY_PNL: PnlFilter[] = [
+  "sl",
+  "breakeven",
+  "reversal_profit",
+  "reversal_loss",
+];
 
 function SortIcon({ column }: { column: Column<FollowedTrade, unknown> }) {
   const isSorted = column.getIsSorted();
@@ -168,9 +174,9 @@ export function FollowHistoryTable({
   );
 
   // Live TP/SL milestone per OPEN trade, replayed off the same fetched candles
-  // (the cron only persists `highestTpReached` on close, so the stored value is
-  // a stale 0 while running). Kept in a ref so the memoized column defs read
-  // fresh progress WITHOUT being recreated each render — same reason as prices.
+  // with the cron-persisted milestone as its monotonic floor. Kept in a ref so
+  // the memoized column defs read fresh progress WITHOUT being recreated each
+  // render — same reason as prices.
   const progressBySymbol = useMemo(() => {
     const assetBySym = new Map((liveAssets ?? []).map((a) => [a.symbol, a]));
     const map: Record<string, FollowProgress> = {};
@@ -241,27 +247,11 @@ export function FollowHistoryTable({
               deriveFollowProgress(tr, tr.entryPrice))
             : deriveFollowProgress(tr, tr.closePrice ?? tr.entryPrice);
 
-        // Mirror the donut's outcome buckets EXACTLY. A reversal-after-TP keeps
-        // its tp{n} status, so it belongs to "tp" (it still secured a TP); only a
-        // NO-TP reversal (status "reversed") is a reversal bucket, split by
-        // realized P/L. Every closed trade lands in exactly one of
-        // tp / sl / reversal_profit / reversal_loss.
-        const isTp =
-          tr.status === "open"
-            ? progress.tpReached > 0
-            : tr.status === "tp1" || tr.status === "tp2" || tr.status === "tp3";
-        const isSl = tr.status === "open" ? progress.slHit : tr.status === "sl";
-        const isReversal = tr.status === "reversed";
-        const reversalR = isReversal
-          ? computePnl(tr, tr.closePrice ?? tr.entryPrice).r
-          : 0;
-
-        if (pnlFilter === "tp" && !isTp) return false;
-        if (pnlFilter === "sl" && !isSl) return false;
-        if (pnlFilter === "reversal_profit" && !(isReversal && reversalR > 0))
+        if (tr.status === "open") {
+          if (pnlFilter !== "tp" || progress.tpReached === 0) return false;
+        } else if (tradeOutcomeBucket(tr) !== pnlFilter) {
           return false;
-        if (pnlFilter === "reversal_loss" && !(isReversal && reversalR < 0))
-          return false;
+        }
       }
 
       if (
@@ -582,7 +572,13 @@ export function FollowHistoryTable({
             return <span className="text-muted-foreground">—</span>;
           }
           const { pct, r } = computePnl(tr, price);
-          const isWin = r > 0;
+          const pnlTone = r > 0 ? "profit" : r < 0 ? "loss" : "flat";
+          const pnlColor =
+            pnlTone === "profit"
+              ? PALETTE.positive.textStrong
+              : pnlTone === "loss"
+                ? PALETTE.negative.textStrong
+                : PALETTE.neutral.textStrong;
           // Target progress lives with P&L: the magnitude (%/R) + which TP/SL was
           // hit together = the full "how did this trade perform" picture. Open →
           // live milestone (ref, off candles); closed → stored.
@@ -597,9 +593,7 @@ export function FollowHistoryTable({
                 <span
                   className={cn(
                     "text-sm font-bold tracking-tight leading-none",
-                    isWin
-                      ? PALETTE.positive.textStrong
-                      : PALETTE.negative.textStrong,
+                    pnlColor,
                   )}
                 >
                   {pct >= 0 ? "+" : ""}
@@ -608,9 +602,7 @@ export function FollowHistoryTable({
                 <span
                   className={cn(
                     "opacity-40",
-                    isWin
-                      ? PALETTE.positive.textStrong
-                      : PALETTE.negative.textStrong,
+                    pnlColor,
                   )}
                 >
                   •
@@ -618,9 +610,11 @@ export function FollowHistoryTable({
                 <span
                   className={cn(
                     "text-[10px] leading-none",
-                    isWin
+                    pnlTone === "profit"
                       ? "text-emerald-600/70 dark:text-emerald-400/70"
-                      : "text-rose-600/70 dark:text-rose-400/70",
+                      : pnlTone === "loss"
+                        ? "text-rose-600/70 dark:text-rose-400/70"
+                        : "text-muted-foreground",
                   )}
                 >
                   {r >= 0 ? "+" : ""}
@@ -629,10 +623,10 @@ export function FollowHistoryTable({
               </div>
               <TpProgress
                 reached={progress.tpReached}
+                secured={progress.tpSecured}
                 total={progress.tpTotal}
-                slHit={progress.slHit}
-                reversed={progress.reversed}
-                reversedPnl={isWin ? "profit" : "loss"}
+                exitReason={progress.exitReason}
+                pnlTone={pnlTone}
                 isClosed={tr.status !== "open"}
               />
             </div>

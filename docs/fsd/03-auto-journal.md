@@ -21,11 +21,11 @@
 |---|---|---|
 | 1 | ⏰ pg_cron `*/30 * * * *` POST ke function (`x-cron-secret` dari Vault) | ⏰ pg_cron POSTs with the private cron-secret header |
 | 2 | 🦾 Baca `journal_settings`: enabled? udah waktunya (clock-aligned ke WIB midnight)? | 🦾 Read `journal_settings`: enabled? due? |
-| 3 | 📥 Baca trade open + yang baru ditutup (cooldown) + universe (`journal_assets` + komoditas/forex konstanta) | 📥 Read open + recently-closed + universe |
+| 3 | 📥 Baca trade open + universe (`journal_assets` + komoditas/forex konstanta) | 📥 Read open trades + universe |
 | 4 | 🌐 Fetch candle Yahoo 60d/1h per aset (concurrency 8, timeout 12 detik, lewat CF proxy) | 🌐 Fetch Yahoo 60d/1h candles (bounded concurrency + timeout) |
-| 5 | 🧠 `buildEngineContexts` (BTC/IHSG/S&P top-down) + `runAutoJournal(assets, openRows, {contexts, recentClosed})` | 🧠 Build contexts + run pure decision core |
-| 6 | ✍️ Claim slot setelah fetch sukses; INSERT emit + UPDATE milestone/closure | ✍️ Claim after successful IO; persist emits, milestones, closures |
-| 7 | 📢 `buildAutoJournalAlerts` + `formatAlertsForDiscord` → POST webhook (best-effort) | 📢 Build alerts + format Discord + POST webhook |
+| 5 | 🧠 `buildEngineContexts` (BTC/IHSG/S&P top-down) + `runAutoJournal(assets, openRows, {contexts})` | 🧠 Build contexts + run pure decision core |
+| 6 | ✍️ Claim slot setelah fetch sukses; UPDATE milestone/closure lalu INSERT sinyal aktif | ✍️ Claim after successful IO; persist milestones/closures before current signals |
+| 7 | 📢 `buildAutoJournalAlerts` + `formatAlertBatchesForDiscord` → POST webhook per batch (best-effort) | 📢 Build alerts + batch Discord messages + POST webhook |
 | 8 | 🕒 Stamp `journal_settings.last_run_at` | 🕒 Stamp `last_run_at` |
 
 > Entry: `supabase/functions/auto-journal/index.ts:133` (`Deno.serve`), `:300` (`runAutoJournal` call).
@@ -38,16 +38,18 @@ File: `src/core/automation/auto-journal-core.ts:100` (`runAutoJournal`). Pure, u
 
 ### Emit (trade baru)
 - Skip quote stale > 90 menit (`QUOTE_MAX_AGE_MS`).
-- Enrich aset dengan context own-index.
+- Enrich aset dengan context own-index agar strength/tier sama dengan screener; context tidak menyembunyikan sinyal.
 - `buildFollowedTrade` snapshot.
-- `passesEmissionGate` — counter-trend diblok kecuali post-context strength ≥60. Kandidat regime/HTF tetap eksperimen karena gagal stabil di validation→holdout.
-- Snapshot menyimpan `engine_version`, `decision_candle_at`, regime, HTF trend, dan direction score untuk audit cohort.
-- `REENTRY_COOLDOWN_MS` 6 jam per `symbol|signal` — simbol+arah sama diblok 6 jam, arah lawan boleh.
+- Setiap LONG/SHORT fresh + trading plan yang tampil masuk jurnal selama tidak ada trade yang tetap open pada symbol/timeframe yang sama.
+- Closure direncanakan dulu, sehingga TP/SL/reversal bisa langsung membuka perjalanan sinyal aktif dalam scan yang sama.
+- Snapshot menyimpan `engine_version` (`engine-v4`), `decision_candle_at`, regime, HTF trend, dan direction score untuk audit cohort.
 
 ### Close (trade open)
 Replay candle sejak entry per trade:
-- **Close 1** — full-position ratchet: TP yang dicapai dipersist, jadi stop aktif berikutnya; gap fill di open aktual.
+- **Close 1** — progressive stop: TP1 memindahkan stop aktif ke entry; TP2 memindahkannya ke TP1; TP final menutup posisi. Stop baru aktif pada candle/evaluasi berikutnya dan gap mengisi di open aktual.
 - **Close 2** — signal **REVERSAL** (long↔short) exit di close candle terkoroborasi; gak ada perfect-fill sintetis.
+
+Trade lama `engine-v3` yang sudah ditutup di ratchet non-final tidak ditulis ulang. Migration v4 hanya memindahkan trade yang masih `open` ke kontrak progressive dan menambah `exit_reason` (`initial_stop`, `breakeven_stop`, `progressive_stop`, `final_take_profit`, `reversal`) untuk audit.
 
 ### Phantom guard 🇮🇩🇺🇸
 🇮🇩 Hanya candle **timestamped** yang mutusin TP/SL. Spot price ≥ SL diabaikan (anti phantom close dari quote transient). Test: `auto-journal-core.test.mjs` "phantom spot guard".
@@ -70,12 +72,13 @@ Replay candle sejak entry per trade:
 
 ## 📢 Discord Alert
 
-File: `src/core/automation/alerts.ts:354` (`buildAutoJournalAlerts`, `formatAlertsForDiscord`).
+File: `src/core/automation/alerts.ts` (`buildAutoJournalAlerts`, `formatAlertBatchesForDiscord`).
 
 - Emit insert → `new_long` / `new_short`.
-- Closure → `tp_hit` / `sl_hit` / `reversed` (mirror donut bucket UI, termasuk secured-TP reversal).
+- Closure internal → `tp_hit` / `sl_hit` / `protected_stop` / `reversed`, berdasarkan `exit_reason`; output protected stop memakai hasil nyata `TP n/total`, `BE`, atau `SL`, lalu milestone tertinggi ditulis sebagai `SEMPAT TPn`.
 - Format: 🚨 SINYAL → 📢 HASIL, direction-aware % dari entry, label durasi Indonesia.
-- `DISCORD_MAX = 1900` char cap.
+- `DISCORD_MAX = 1900` per batch; blok alert tidak dipotong.
+- HTTP 429 menghormati `Retry-After` dan retry sekali bila masih dalam budget function.
 - Best-effort: gagal webhook gak gagalkan run.
 
 ---

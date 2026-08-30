@@ -11,7 +11,11 @@ import {
   computeTradeChartWindow,
   fitTradeWindowCandles,
 } from "@/features/follow-trade/model/trade-chart-window";
-import { LifecycleBadge, ReversedBadge, TpProgress } from "./follow-status";
+import {
+  LifecycleBadge,
+  TpProgress,
+} from "./follow-status";
+import { tradeOutcomeLabel } from "@/features/follow-trade/model/follow-outcome";
 import {
   formatPrice,
   formatRatio,
@@ -189,8 +193,8 @@ function TradeDetailReadyDialog({
       },
     ];
     if (isClosed && trade.closedAt != null && trade.closePrice != null) {
-      const outcome =
-        computePnl(trade, trade.closePrice).r > 0 ? "profit" : "loss";
+      const r = computePnl(trade, trade.closePrice).r;
+      const outcome = r > 0 ? "profit" : r < 0 ? "loss" : "flat";
       list.push({
         kind: "close",
         timestamp: toSec(trade.closedAt),
@@ -201,8 +205,16 @@ function TradeDetailReadyDialog({
     return list;
   }, [trade, isClosed]);
 
-  const pos = pnl.r > 0;
+  const pnlTone = pnl.r > 0 ? "profit" : pnl.r < 0 ? "loss" : "flat";
+  const pnlColor =
+    pnlTone === "profit"
+      ? PALETTE.positive
+      : pnlTone === "loss"
+        ? PALETTE.negative
+        : PALETTE.neutral;
   const sign = (v: number) => (v >= 0 ? "+" : "");
+  // Running protection is replayed live; closed rows use their persisted exit.
+  const progress = deriveFollowProgress(trade, livePrice, candles);
 
   const { isSharing, shareSetup } = useShareSetup();
 
@@ -234,7 +246,15 @@ function TradeDetailReadyDialog({
       tradingPlan,
       isPosition: true,
       closed: isClosed,
-      closeReason: isClosed ? trade.status.toUpperCase() : undefined,
+      closeReason: isClosed
+        ? tradeOutcomeLabel(
+            t,
+            progress.exitReason,
+            progress.tpSecured,
+            progress.tpTotal,
+            pnlTone,
+          ).toUpperCase()
+        : undefined,
       entryPrice: trade.entryPrice,
       pnlPct: pnl.pct,
       pnlR: pnl.r,
@@ -251,10 +271,6 @@ function TradeDetailReadyDialog({
   const formattedClosedDate = trade.closedAt
     ? formatTradeDate(trade.closedAt)
     : null;
-  // Split lifecycle (running/closed) from outcome (TP/SL). For a running trade
-  // the milestone is recomputed LIVE off the fetched candles — the stored value
-  // is stale 0 until the cron closes it (see core/automation/auto-journal-core.ts).
-  const progress = deriveFollowProgress(trade, livePrice, candles);
   const priceLabel = isClosed
     ? t("journal.close_price")
     : t("journal.current_price");
@@ -322,7 +338,7 @@ function TradeDetailReadyDialog({
             <div className="text-right leading-tight">
               <div
                 className={`text-xl font-bold ${
-                  pos ? PALETTE.positive.text : PALETTE.negative.text
+                  pnlColor.text
                 }`}
               >
                 {sign(pnl.pct)}
@@ -330,7 +346,7 @@ function TradeDetailReadyDialog({
               </div>
               <div
                 className={`text-xs font-semibold ${
-                  pos ? "text-emerald-400/80" : "text-rose-400/80"
+                  pnlColor.text
                 }`}
               >
                 {sign(pnl.r)}
@@ -369,15 +385,15 @@ function TradeDetailReadyDialog({
           {(progress.tpTotal > 0 || progress.slHit) && (
             <TpProgress
               reached={progress.tpReached}
+              secured={progress.tpSecured}
               total={progress.tpTotal}
-              slHit={progress.slHit}
+              exitReason={progress.exitReason}
+              pnlTone={pnlTone}
               isClosed={progress.lifecycle !== "open"}
               size="sm"
               variant="badge"
+              showJourney
             />
-          )}
-          {progress.reversed && (
-            <ReversedBadge reversedPnl={pos ? "profit" : "loss"} />
           )}
           <LifecycleBadge open={progress.lifecycle === "open"} />
         </div>

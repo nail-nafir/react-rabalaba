@@ -27,7 +27,7 @@
 | [`fsd/01-terminal-screener.md`](fsd/01-terminal-screener.md) | Terminal: market pulse + screener table + asset detail + share card |
 | [`fsd/02-trading-engine.md`](fsd/02-trading-engine.md) | Pipeline sinyal, regime, 3 context (BTC/IHSG/S&P), enrichment, backtest, calibration |
 | [`fsd/03-auto-journal.md`](fsd/03-auto-journal.md) | Robot jurnal otomatis (cron 30m) *Auto-journal robot* |
-| [`fsd/04-journal-dashboard.md`](fsd/04-journal-dashboard.md) | Statistik jurnal, realized R curve, outcome donut, top performers |
+| [`fsd/04-journal-dashboard.md`](fsd/04-journal-dashboard.md) | Statistik jurnal, kurva performa, outcome donut, top performers |
 | [`fsd/05-economic-calendar.md`](fsd/05-economic-calendar.md) | Kalender ekonomi *Economic calendar* |
 | [`fsd/06-auth-entitlement.md`](fsd/06-auth-entitlement.md) | Login, OAuth, premium/trial, redeem code, invite, subscription, disclaimer |
 | [`fsd/07-admin-console.md`](fsd/07-admin-console.md) | Admin console: users, assets, codes, invitations, plans, payments, disclaimer, statistics |
@@ -52,7 +52,7 @@
 | File | Topik / Topic |
 |---|---|
 | [`testing/00-overview.md`](testing/00-overview.md) | Framework `node --test`, Vite SSR load real `.ts`, cara run |
-| [`testing/01-coverage-inventory.md`](testing/01-coverage-inventory.md) | 35 file / 325 case map per modul |
+| [`testing/01-coverage-inventory.md`](testing/01-coverage-inventory.md) | 36 file / 348 case map per modul |
 | [`testing/02-gaps-and-conventions.md`](testing/02-gaps-and-conventions.md) | Gap coverage + rekomendasi test baru + convention |
 
 ### Ops

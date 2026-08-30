@@ -1,15 +1,15 @@
 # TSD 03 — Database Schema
 
-> 🇮🇩 Schema Supabase Postgres: 15 tabel, 25 function/RPC, RLS, 30 migrasi.
-> 🇺🇸 Supabase Postgres schema: 15 tables, 25 functions/RPCs, RLS, 30 migrations.
+> 🇮🇩 Schema Supabase Postgres: 15 tabel, 28 function/RPC publik, RLS, 36 migrasi.
+> 🇺🇸 Supabase Postgres schema: 15 tables, 28 public functions/RPCs, RLS, 36 migrations.
 
 ---
 
 ## TL;DR
 
-🇮🇩 30 migrasi timestamp-order (idempotent) di `supabase/migrations/` bikin 15 tabel + 25 function/RPC + 5 trigger + RLS penuh. Ekstensi: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Tipe schema hand-written ada di `src/services/supabase/database.types.ts` (type-only, edge-safe).
+🇮🇩 36 migrasi timestamp-order (idempotent) di `supabase/migrations/` bikin 15 tabel + 28 function/RPC publik + RLS penuh. Ekstensi: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Tipe schema hand-written ada di `src/services/supabase/database.types.ts` (type-only, edge-safe).
 
-🇺🇸 30 timestamp-ordered idempotent migrations in `supabase/migrations/` create 15 tables + 25 functions/RPCs + 5 triggers + full RLS. Extensions: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Hand-written schema types live in `src/services/supabase/database.types.ts` (type-only, edge-safe).
+🇺🇸 36 timestamp-ordered idempotent migrations in `supabase/migrations/` create 15 tables + 28 public functions/RPCs + full RLS. Extensions: `pg_cron`, `pg_net`, `vault`. Project ref `nravncsodgcxwkdaeqcw`. Hand-written schema types live in `src/services/supabase/database.types.ts` (type-only, edge-safe).
 
 ---
 
@@ -17,7 +17,7 @@
 
 | Tabel / Table | PK | Kunci / Key columns | RLS policy |
 |---|---|---|---|
-| `journal_trades` | id | symbol, signal, status `open\|tp1\|tp2\|tp3\|sl\|reversed\|manual`, opened_at, closed_at, reversed | `journal_trades_premium_read` — authenticated + `is_premium()`. Write: service-role only; unique partial index menjaga satu trade terbuka per simbol/timeframe. Public aggregate hanya lewat `get_public_journal_success_rates()` |
+| `journal_trades` | id | symbol, signal, status, `highest_tp_reached`, `exit_reason`, opened_at, closed_at, reversed | `journal_trades_premium_read` — authenticated + `is_premium()`. Write: service-role only; unique partial index menjaga satu trade terbuka per simbol/timeframe. Public aggregate hanya lewat `get_public_journal_success_rates()` |
 | `journal_assets` | symbol | name, asset_type, active, source `admin\|auto`, discovery_reason, last_discovered_at, sort_order, created_by | premium read (`is_premium()`) OR admin (`is_admin()`). Admin all (FOR ALL) |
 | `journal_settings` | bool singleton | enabled, interval_minutes, market_hours_only, last_run_at, daily/weekly/monthly summary flags+hour+stamps, discovery flags+caps+prune | admin all |
 | `profiles` | user_id→auth.users | tier `free\|trial\|premium`, trial_expires_at, is_admin, is_owner, is_blocked, last_active_at | own-row select |
@@ -37,7 +37,7 @@
 
 ---
 
-## ⚙️ Function/RPC (25)
+## ⚙️ Function/RPC (28 public)
 
 | RPC | Guard | Fungsi / Purpose |
 |---|---|---|
@@ -48,8 +48,11 @@
 | `is_owner()` | — | owner (respect blocked) |
 | `handle_new_user()` | trigger | auto-create `free` profile on signup |
 | `set_updated_at()` | trigger | stamp `updated_at` |
-| `get_public_journal_success_rates()` | anon-safe aggregate | per-symbol `{symbol,wins,total}` dari trade tertutup; tidak mengekspos row jurnal |
+| `get_public_journal_success_rates()` | anon-safe aggregate | per-symbol `{symbol,wins,total}` dari trade tertutup; `total` hanya win+loss (impas dikecualikan), tanpa mengekspos row jurnal |
 | `touch_last_active()` | own-row | stamp `profiles.last_active_at` |
+| `get_journal_period_config()` | premium/admin | read active journal period settings |
+| `admin_start_new_journal_period(...)` | `is_admin()` | atomically start/reset the configured journal period |
+| `claim_auto_journal_slot(...)` | service-role | atomic per-slot cron claim; prevents duplicate runs |
 | `admin_list_users()` | `is_admin()` | join auth.users↔profiles↔redemptions↔codes↔disclaimer |
 | `admin_list_access_codes()` | `is_admin()` | list codes |
 | `admin_create_user(email,pw,tier,is_admin,is_owner,p_trial_expires_at,p_is_blocked)` | `is_admin()` | bcrypt insert auth.users + profile |
@@ -87,7 +90,7 @@
 
 ---
 
-## 📜 Migrasi (30, timestamp order)
+## 📜 Migrasi (36, timestamp order)
 
 | # | File | Bikin / Creates |
 |---|---|---|
@@ -114,7 +117,14 @@
 | 27 | `20260702000001_asset_discovery.sql` | `journal_assets.source` + discovery cols on `journal_settings` |
 | 28 | `20260702000002_journal_periodic_summary.sql` | weekly/monthly summary cols |
 | 29 | `20260713093413_user_testimonials.sql` | private submissions + public featured snapshots, constraints, RLS/grants, moderation/snapshot triggers, 2 admin RPCs |
-| 30 | `20260722025846_public_journal_success_rates.sql` | partial covering index + public aggregate-only success-rate RPC |
+| 30 | `20260714000000_remove_persona_add_verified_purchase.sql` | verified-purchase testimonial fields + trigger updates |
+| 31 | `20260722025846_public_journal_success_rates.sql` | partial covering index + public aggregate-only success-rate RPC |
+| 37 | `20260830095557_exclude_breakeven_from_public_win_rate.sql` | sinkronkan denominator RPC publik dengan win-rate jurnal: impas bukan win/loss |
+| 32 | `20260727042144_journal_active_period.sql` | active-period journal settings + guarded admin RPC |
+| 33 | `20260727045554_journal_period_months.sql` | configurable journal month window |
+| 34 | `20260728125625_backfill_journal_asset_names.sql` | backfill blank journal asset names |
+| 35 | `20260822000001_engine_hardening.sql` | engine provenance constraints + atomic cron slot claim |
+| 36 | `20260829100120_progressive_exit_v4.sql` | exact `exit_reason` + progressive-stop adoption for open trades |
 
 > Cron wiring (bukan migrasi): `schedule-auto-journal.sql`, `schedule-daily-summary.sql`, `schedule-asset-discovery.sql` — jalankan terakhir setelah function di-deploy.
 

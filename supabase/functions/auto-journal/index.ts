@@ -23,7 +23,7 @@ import {
   buildEngineContexts,
   runAutoJournal,
   buildAutoJournalAlerts,
-  formatAlertsForDiscord,
+  formatAlertBatchesForDiscord,
 } from "./_engine.mjs";
 
 const RANGE = "60d";
@@ -213,21 +213,6 @@ Deno.serve(async (req: Request) => {
     .eq("status", "open");
   if (openErr) return jsonResponse({ error: openErr.message }, 500);
 
-  // Recently-closed trades — feed the re-entry cooldown so a just-stopped
-  // symbol+direction isn't re-taken immediately. Window must cover the core's
-  // REENTRY_COOLDOWN_MS (6h, see auto-journal-core).
-  const cooldownCutoff = new Date(
-    Date.now() - 6 * 60 * 60 * 1000,
-  ).toISOString();
-  const { data: recentClosed, error: recentClosedError } = await db
-    .from("journal_trades")
-    .select("symbol,signal,closed_at")
-    .neq("status", "open")
-    .gte("closed_at", cooldownCutoff);
-  if (recentClosedError) {
-    return jsonResponse({ error: recentClosedError.message }, 500);
-  }
-
   // Universe is DATA-DRIVEN for crypto/US/ID stocks: the active rows in
   // journal_assets (managed via the in-app admin UI) — adding/removing a symbol
   // needs NO redeploy. Commodity & forex are CONSTANT-driven (not the DB
@@ -314,31 +299,11 @@ Deno.serve(async (req: Request) => {
   const { inserts, closures, progressUpdates } = runAutoJournal(
     assets,
     openRows ?? [],
-    {
-      recentClosed: recentClosed ?? [],
-      contexts,
-    },
+    { contexts },
   );
 
-  // Apply EMITs one row at a time so a unique conflict does not make the whole
-  // batch look emitted. The candidate count is small; correctness beats a
-  // bulk write here.
-  let emitted = 0;
   let emitError: string | null = null;
-  const inserted = [] as typeof inserts;
-  if (inserts.length > 0) {
-    for (const item of inserts) {
-      const { error } = await db.from("journal_trades").insert(item);
-      if (!error) {
-        inserted.push(item);
-        emitted++;
-      } else if (error.code !== "23505" && !emitError) {
-        emitError = error.message;
-      }
-    }
-  }
-
-  // Persist ratchet milestones even while a trade remains open. The conditional
+  // Persist TP milestones even while a trade remains open. The conditional
   // update keeps progress monotonic across concurrent/retried runs.
   let progressed = 0;
   for (const update of progressUpdates) {
@@ -365,6 +330,7 @@ Deno.serve(async (req: Request) => {
         close_price: c.close_price,
         closed_at: c.closed_at,
         highest_tp_reached: c.highest_tp_reached,
+        exit_reason: c.exit_reason,
         reversed: c.reversed ?? false,
       })
       .eq("id", c.id)
@@ -379,17 +345,36 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Apply EMITs only after closures. This releases the partial unique index on
+  // (symbol,timeframe), allowing the signal currently shown by the screener to
+  // start its next journal journey in the same scan.
+  let emitted = 0;
+  const inserted = [] as typeof inserts;
+  for (const item of inserts) {
+    const { error } = await db.from("journal_trades").insert(item);
+    if (!error) {
+      inserted.push(item);
+      emitted++;
+    } else if (error.code !== "23505" && !emitError) {
+      emitError = error.message;
+    }
+  }
+
   // Broadcast alerts to Discord (GoTrade-style: new signal / TP / SL). Best
   // effort — a webhook failure must NEVER fail the journal run, and an unset
   // DISCORD_WEBHOOK_URL simply means alerts are off (no-op).
   let alerted = 0;
+  let alertsTotal = 0;
   try {
     const alerts = buildAutoJournalAlerts({
       inserts: inserted,
       closures: appliedClosures,
     });
-    const message = formatAlertsForDiscord(alerts);
-    if (message && (await sendDiscord(message))) alerted = alerts.length;
+    alertsTotal = alerts.length;
+    for (const batch of formatAlertBatchesForDiscord(alerts)) {
+      if (!(await sendDiscord(batch.content))) break;
+      alerted += batch.alertCount;
+    }
   } catch {
     // swallow — alerts are non-critical
   }
@@ -403,6 +388,7 @@ Deno.serve(async (req: Request) => {
     emitted,
     progressed,
     closed,
+    alerts_total: alertsTotal,
     alerted,
     ...(emitError ? { emitError } : {}),
   });
@@ -413,17 +399,38 @@ Deno.serve(async (req: Request) => {
 async function sendDiscord(content: string): Promise<boolean> {
   const webhook = Deno.env.get("DISCORD_WEBHOOK_URL");
   if (!webhook) return false;
-  try {
-    const res = await fetch(webhook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    return res.ok;
-  } catch {
-    return false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (res.ok) return true;
+      if (res.status !== 429 || attempt > 0) return false;
+
+      const header = res.headers.get("Retry-After");
+      const body = (await res.json().catch(() => null)) as {
+        retry_after?: unknown;
+      } | null;
+      const headerSeconds = header == null ? NaN : Number(header);
+      const bodySeconds = Number(body?.retry_after);
+      const retrySeconds = Number.isFinite(headerSeconds)
+        ? headerSeconds
+        : bodySeconds;
+      const retryMs = Math.ceil(retrySeconds * 1000);
+      // Never retry early; skip a long retry so this scan stays inside its own
+      // HTTP timeout budget.
+      if (!Number.isFinite(retryMs) || retryMs < 0 || retryMs > FETCH_TIMEOUT_MS) {
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryMs));
+    } catch {
+      return false;
+    }
   }
+  return false;
 }
 
 function jsonResponse(body: unknown, status = 200) {

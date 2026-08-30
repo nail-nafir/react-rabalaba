@@ -83,7 +83,7 @@
 | **Smart money** | Posisi derivatives crypto (OI × price, funding, L/S ratio) dari Binance. *Crypto derivatives positioning.* | |
 | **Accumulation** | Aliran A/D equity (CMF/MFI/up-down volume) — analog "bandarmology" ID. *Equity A/D flow.* | |
 | **Followed trade** | Trade yang di-snapshot & diikuti TP/SL-nya (dulu manual, sekarang cron). *A snapshotted trade tracked to TP/SL.* | |
-| **Emission gate** | Filter cron: sinyal counter-trend vs context di-blok kecuali strength pasca-de-rate ≥ 60. *Cron filter blocking counter-trend signals unless post-derate strength ≥ 60.* | |
+| **Journal parity** | Setiap sinyal LONG/SHORT fresh yang tampil dan punya trading plan dicatat pada snapshot cron; context tetap de-rate strength/tier tanpa menyembunyikan sinyal. *Every fresh actionable screen signal is captured by the cron snapshot.* | |
 | **Calibration** | Win-rate historis per tier+regime dari backtest (sample ≥ 30). *Historical hit-rate per tier+regime.* | |
 | **Universe** | Daftar aset yang dianalisis: free = konstanta `DEFAULT_*`, premium = `journal_assets` DB (single-source dengan cron). *Analyzed asset list.* | |
 | **Edge engine** | Engine pure di `src/core/engine/`, `src/core/automation/`, dan `src/core/trade/` yang di-bundle juga ke Deno cron (single-source). *Pure engine bundled to both browser & cron.* | |

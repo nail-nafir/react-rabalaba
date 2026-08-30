@@ -7,6 +7,8 @@ import {
   type FollowSignal,
   type FollowStatus,
   type LifecycleStatus,
+  type ExitReason,
+  type PnlFilter,
 } from "@/constants/taxonomy/status";
 import { ENGINE_VERSION } from "@/constants/signals";
 import type { MarketRegime, TrendDirection } from "@/types/market";
@@ -19,6 +21,7 @@ export {
   type FollowSignal,
   type FollowStatus,
   type LifecycleStatus,
+  type ExitReason,
 };
 
 export interface FollowedTrade {
@@ -45,9 +48,10 @@ export interface FollowedTrade {
   /** Monotonic milestone progress: 0 = none, 1..3 = highest TP touched. */
   highestTpReached: number;
   status: FollowStatus;
-  /** Closed by a SIGNAL REVERSAL rather than a price TP/SL hit. A reversal can
-   *  secure a TP (status tp{n}) or none (status manual); this flag is what lets
-   *  the UI mark a reversal-after-TP apart from a stop-after-TP. */
+  /** Exact terminal event. Undefined on open and pre-v4 historical rows. */
+  exitReason?: ExitReason;
+  /** Legacy audit flag retained for historical rows and DB compatibility. New
+   *  v4 reversals also persist `exitReason: "reversal"`. */
   reversed?: boolean;
   closePrice?: number;
   closedAt?: number;
@@ -65,6 +69,71 @@ export function computePnl(
     pct: entryPrice > 0 ? (move / entryPrice) * 100 : 0,
     r: risk > 0 ? move / risk : 0,
   };
+}
+
+/** Number of ordered TP levels at or beyond `price`, mirrored for shorts. */
+export function countTakeProfitsAtPrice(
+  trade: Pick<FollowedTrade, "signal" | "takeProfits">,
+  price: number | undefined,
+): number {
+  if (price == null || !Number.isFinite(price)) return 0;
+  let reached = 0;
+  for (let i = 0; i < trade.takeProfits.length; i++) {
+    const hit =
+      trade.signal === "long"
+        ? price >= trade.takeProfits[i]
+        : price <= trade.takeProfits[i];
+    if (!hit) break;
+    reached = i + 1;
+  }
+  return reached;
+}
+
+/** Resolve old rows into the explicit v4 outcome contract without rewriting
+ *  closed history. New rows always carry `exitReason`; the rest is fallback. */
+export function resolveExitReason(
+  trade: Pick<
+    FollowedTrade,
+    | "status"
+    | "exitReason"
+    | "reversed"
+    | "engineVersion"
+    | "highestTpReached"
+    | "takeProfits"
+  >,
+): ExitReason | undefined {
+  if (trade.exitReason) return trade.exitReason;
+  if (trade.reversed || trade.status === "reversed") return "reversal";
+  if (trade.status === "sl") return "initial_stop";
+
+  const tp = /^tp([123])$/.exec(trade.status);
+  if (!tp) return undefined;
+  if (
+    trade.engineVersion === "engine-v3" &&
+    Number(tp[1]) < trade.takeProfits.length
+  ) {
+    return "progressive_stop";
+  }
+  return "final_take_profit";
+}
+
+export type TradeOutcomeBucket = Exclude<PnlFilter, "all">;
+
+/** Single bucketing rule shared by the journal table and outcome chart. */
+export function tradeOutcomeBucket(
+  trade: FollowedTrade,
+): TradeOutcomeBucket {
+  const reason = resolveExitReason(trade);
+  const { r } = computePnl(trade, trade.closePrice ?? trade.entryPrice);
+  if (r === 0) return "breakeven";
+  if (reason === "final_take_profit") return "tp";
+  if (reason === "breakeven_stop" || reason === "progressive_stop") {
+    return r > 0 ? "tp" : "sl";
+  }
+  if (reason === "reversal") {
+    return r > 0 ? "reversal_profit" : "reversal_loss";
+  }
+  return "sl";
 }
 
 export interface TradeWinrateSnapshot {
@@ -112,9 +181,12 @@ export function buildTradeWinrateSnapshots(
     let total = 0;
 
     for (const trade of ordered) {
-      total += 1;
-      if (computePnl(trade, trade.closePrice ?? trade.entryPrice).r > 0) {
+      const { r } = computePnl(trade, trade.closePrice ?? trade.entryPrice);
+      if (r > 0) {
         wins += 1;
+        total += 1;
+      } else if (r < 0) {
+        total += 1;
       }
       const snapshot = { wins, total };
       snapshots[trade.id] = snapshot;
@@ -140,6 +212,7 @@ export function buildTradeWinrateSnapshots(
 export interface FollowEvaluation {
   status: FollowStatus;
   highestTpReached: number;
+  exitReason?: ExitReason;
   closePrice?: number;
   closed: boolean;
   /** When the closing level was actually hit (ms). Derived from candle history
@@ -162,16 +235,19 @@ export interface FollowCandle {
  * price), REPLAYED IN ORDER so the outcome respects sequence:
  * - within each bar the stop is checked first — OHLC cannot prove intrabar
  *   ordering, so the engine takes the conservative outcome;
- * - each reached TP becomes the full-position stop; a later gap fills at its
- *   open rather than assuming a perfect target fill;
- * - the trade closes on the first terminal event — final TP or active stop;
+ * - TP1 moves the stop to entry; TP2 moves it to TP1 (one rung behind);
+ * - a newly raised stop starts on the NEXT step, never retroactively in the bar
+ *   that reached the TP;
+ * - the trade closes on the first active-stop or final-TP event;
+ * - a gap through the active stop fills at its open rather than assuming a
+ *   perfect fill;
  * - otherwise it stays open with the milestone the candles actually show.
  *
  * Why ordered: aggregate highs/lows can't tell whether the stop or a target came
- * first, which produces phantom "secured TP" closes. When candles are supplied
- * they are the authoritative ordered record since follow, so the milestone is
- * replayed from scratch and `closedAt` is the real hit time; without candles it
- * degrades to a single live-price check that preserves the stored milestone.
+ * first, which produces phantom outcomes. When candles are supplied they are
+ * the authoritative ordered record since follow and `closedAt` is the real hit
+ * time. The stored milestone remains a monotonic floor in case the available
+ * market-data window no longer reaches all the way back to entry.
  */
 export function evaluateFollow(
   trade: FollowedTrade,
@@ -179,23 +255,19 @@ export function evaluateFollow(
   candles?: FollowCandle[],
 ): FollowEvaluation {
   const { signal, stopLoss, takeProfits } = trade;
-  const isLong = signal === "long";
   const finalIndex = takeProfits.length;
   const hasCandles = !!candles && candles.length > 0;
-
-  const activeStopFor = (milestone: number) =>
-    milestone > 0 ? (takeProfits[milestone - 1] ?? stopLoss) : stopLoss;
-  const tpCountBy = (probe: number) => {
-    let n = 0;
-    for (let i = 0; i < takeProfits.length; i++) {
-      if (isLong ? probe >= takeProfits[i] : probe <= takeProfits[i]) n = i + 1;
-      else break;
-    }
-    return n;
+  const activeStopFor = (milestone: number) => {
+    if (milestone <= 0) return stopLoss;
+    if (milestone === 1) return trade.entryPrice;
+    return takeProfits[milestone - 2] ?? trade.entryPrice;
   };
+  const isLong = signal === "long";
 
-  // With candles, replay from scratch (they're the ordered truth). Live-only,
-  // keep the stored monotonic milestone.
+  // A timestamped range is replayed from scratch so a persisted milestone does
+  // not activate its raised stop before the TP was actually reached.
+  // ponytail: the Edge source replays 60d; persist milestone timestamps if
+  // positions are ever intentionally allowed to outlive that source window.
   let highestTpReached = hasCandles ? 0 : trade.highestTpReached;
 
   // Steps in chronological order: each candle (favorable extreme for TP, adverse
@@ -216,7 +288,12 @@ export function evaluateFollow(
       });
     }
   }
-  steps.push({ tpProbe: price, slProbe: price });
+  const lastClose = candles?.[candles.length - 1]?.close;
+  // The cron passes the latest candle close as `price`; do not replay that same
+  // observation as a fake next step after raising the stop inside the candle.
+  if (!hasCandles || lastClose == null || lastClose !== price) {
+    steps.push({ tpProbe: price, slProbe: price });
+  }
 
   for (const step of steps) {
     const activeStop = activeStopFor(highestTpReached);
@@ -230,32 +307,29 @@ export function evaluateFollow(
     // Stop first: an OHLC bar cannot tell whether its high or low happened
     // first, so same-bar TP+SL is treated as the safer stop outcome.
     if (stopHit) {
-      const closePrice = gapThroughStop ? step.open : activeStop;
-      if (highestTpReached === 0) {
-        return {
-          status: "sl",
-          highestTpReached: 0,
-          closePrice,
-          closed: true,
-          closedAt: step.at,
-        };
-      }
       return {
-        status: `tp${highestTpReached}` as FollowStatus,
+        status: "sl",
         highestTpReached,
-        closePrice,
+        exitReason:
+          highestTpReached === 0
+            ? "initial_stop"
+            : highestTpReached === 1
+              ? "breakeven_stop"
+              : "progressive_stop",
+        closePrice: gapThroughStop ? step.open : activeStop,
         closed: true,
         closedAt: step.at,
       };
     }
 
     // Targets are evaluated only when the stop was not touched.
-    const reachedNow = tpCountBy(step.tpProbe);
+    const reachedNow = countTakeProfitsAtPrice(trade, step.tpProbe);
     if (reachedNow > highestTpReached) highestTpReached = reachedNow;
     if (finalIndex > 0 && highestTpReached >= finalIndex) {
       return {
         status: `tp${finalIndex}` as FollowStatus,
         highestTpReached: finalIndex,
+        exitReason: "final_take_profit",
         closePrice: takeProfits[finalIndex - 1],
         closed: true,
         closedAt: step.at,
@@ -263,29 +337,34 @@ export function evaluateFollow(
     }
   }
 
-  return { status: "open", highestTpReached, closed: false };
+  return {
+    status: "open",
+    highestTpReached: Math.max(trade.highestTpReached, highestTpReached),
+    closed: false,
+  };
 }
 
 /** Display-facing split of a followed trade: LIFECYCLE vs OUTCOME. */
 export interface FollowProgress {
   /** Position state — open vs done. Always the server's source of truth. */
   lifecycle: LifecycleStatus;
-  /** TP levels touched (0..tpTotal); live-ratcheted for running trades. */
+  /** TP levels touched (0..tpTotal); live-tracked for running trades. */
   tpReached: number;
+  /** TP levels still secured by the realized close price. */
+  tpSecured: number;
   tpTotal: number;
-  /** Closed via stop-loss (no TP ever secured). */
+  /** Closed via a price stop (initial, entry, or progressive). */
   slHit: boolean;
-  /** Closed by a signal reversal (vs a price TP/SL hit). Display-only marker. */
-  reversed: boolean;
+  /** Authoritative v4 reason, or a legacy fallback derived from old fields. */
+  exitReason?: ExitReason;
 }
 
 /**
  * Split a trade into the two independent things the UI shows: its LIFECYCLE
  * (open/closed) and its OUTCOME (TP milestone + SL). Lifecycle is the stored
  * status (server truth). The milestone is recomputed LIVE for running trades and
- * ratcheted up from the stored floor — the cron only persists `highestTpReached`
- * on close (see core/automation/auto-journal-core.ts), so an open row's stored milestone is
- * stale (0). `rawCandles` are Yahoo-normalized (timestamp in SECONDS); they're
+ * kept above the stored floor. The cron also persists that floor while a trade
+ * remains open. `rawCandles` are Yahoo-normalized (timestamp in SECONDS); they're
  * filtered to since-follow and ms-stamped here, mirroring the cron's prep.
  */
 export function deriveFollowProgress(
@@ -301,12 +380,28 @@ export function deriveFollowProgress(
 ): FollowProgress {
   const tpTotal = trade.takeProfits.length;
   if (trade.status !== "open") {
+    const closedTp = /^tp([123])$/.exec(trade.status);
+    const exitReason = resolveExitReason(trade);
+    const fallbackSecured =
+      exitReason === "final_take_profit"
+        ? Number(closedTp?.[1] ?? trade.highestTpReached)
+        : exitReason === "progressive_stop"
+          ? Math.max(0, trade.highestTpReached - 1)
+          : 0;
+    const tpSecured =
+      typeof trade.closePrice === "number" && Number.isFinite(trade.closePrice)
+        ? countTakeProfitsAtPrice(trade, trade.closePrice)
+        : fallbackSecured;
     return {
       lifecycle: "closed",
       tpReached: trade.highestTpReached,
+      tpSecured,
       tpTotal,
-      slHit: trade.status === "sl",
-      reversed: trade.reversed ?? false,
+      slHit:
+        exitReason === "initial_stop" ||
+        exitReason === "breakeven_stop" ||
+        exitReason === "progressive_stop",
+      exitReason,
     };
   }
   const since = rawCandles
@@ -322,9 +417,10 @@ export function deriveFollowProgress(
   return {
     lifecycle: "open",
     tpReached: Math.max(trade.highestTpReached, live.highestTpReached),
+    tpSecured: 0,
     tpTotal,
     slHit: false,
-    reversed: false,
+    exitReason: undefined,
   };
 }
 
@@ -358,6 +454,7 @@ export function applyPriceSync(
         ...trade,
         status: ev.status,
         highestTpReached: ev.highestTpReached,
+        exitReason: ev.exitReason,
         closePrice: ev.closePrice,
         closedAt: ev.closedAt ?? Date.now(),
       });
@@ -433,8 +530,8 @@ export interface TrackerStats {
   /** Realized R summed per asset type (crypto / stock / forex …). */
   byAssetType: { assetType: string; r: number }[];
   longVsShort: { signal: FollowSignal; count: number; r: number }[];
-  /** Closed-trade outcome tally: profitable vs losing trades. */
-  winLoss: { wins: number; losses: number };
+  /** Closed-trade outcome tally. Breakeven is excluded from win rate. */
+  winLoss: { wins: number; losses: number; breakevens: number };
   /** Avg R per signal grade (A/B/C) — validates the engine's tiering. */
   byGrade: { grade: SignalTier; count: number; avgR: number }[];
 }
@@ -453,7 +550,6 @@ export function buildTrackerStats(
     const d = new Date(ms);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
-  const statusCounts = new Map<FollowStatus, number>();
   const perAssetMap = new Map<string, number>();
   const assetTypeMap = new Map<string, number>();
   const dirMap = new Map<FollowSignal, { count: number; r: number }>();
@@ -463,6 +559,7 @@ export function buildTrackerStats(
   let totalR = 0;
   let wins = 0;
   let losses = 0;
+  let breakevens = 0;
   let cumR = 0;
 
   ordered.forEach((t, i) => {
@@ -471,6 +568,7 @@ export function buildTrackerStats(
     cumR += r;
     if (r > 0) wins++;
     else if (r < 0) losses++;
+    else breakevens++;
     equitySeries.push({
       index: i + 1,
       date: t.closedAt ?? t.followedAt,
@@ -478,7 +576,6 @@ export function buildTrackerStats(
       cumR,
       symbol: t.symbol,
     });
-    statusCounts.set(t.status, (statusCounts.get(t.status) ?? 0) + 1);
     perAssetMap.set(t.symbol, (perAssetMap.get(t.symbol) ?? 0) + r);
     assetTypeMap.set(t.assetType, (assetTypeMap.get(t.assetType) ?? 0) + r);
     const d = dirMap.get(t.signal) ?? { count: 0, r: 0 };
@@ -522,7 +619,7 @@ export function buildTrackerStats(
     totalFollowed: closed + openCount,
     open: openCount,
     closed,
-    winRate: closed > 0 ? (wins / closed) * 100 : 0,
+    winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
     avgR: closed > 0 ? totalR / closed : 0,
     totalR,
     equitySeries,
@@ -545,7 +642,7 @@ export function buildTrackerStats(
       const v = dirMap.get(signal) ?? { count: 0, r: 0 };
       return { signal, count: v.count, r: v.r };
     }),
-    winLoss: { wins, losses },
+    winLoss: { wins, losses, breakevens },
     byGrade: SIGNAL_TIERS.filter((g) => gradeMap.has(g)).map((g) => {
       const v = gradeMap.get(g)!;
       return {

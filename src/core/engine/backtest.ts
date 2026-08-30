@@ -15,15 +15,26 @@ import {
   type TimeframePresetKey,
 } from "@/constants/timeframes";
 import { BACKTEST_COSTS } from "@/constants/signals";
+import type { ExitReason } from "@/core/trade/follow-trade-model";
 
 /**
  * Exit model:
- * - "secured" (default): hold one position and ratchet the full-position stop
- *   to every reached TP until the final target exits.
+ * - "progressive" (default): TP1 moves stop to entry; each later partial TP
+ *   moves it one target behind until the final target exits.
+ * - "terminal": partial targets are progress; stop stays at its original level.
+ * - "secured": research comparison that ratchets the full-position stop to
+ *   every reached TP until the final target exits.
  * - "scaleOut": legacy partial-fill model, retained for comparison only.
  * - "tp1": legacy single full exit at TP1. Kept for comparison.
  */
-export type ExitMode = "secured" | "tp1" | "scaleOut";
+export type ExitMode =
+  | "progressive"
+  | "terminal"
+  | "secured"
+  | "tp1"
+  | "scaleOut";
+
+export type BacktestExitReason = ExitReason | "end_of_data";
 
 const SCALE_OUT_LEGS: { tpIndex: number; fraction: number }[] = [
   { tpIndex: 0, fraction: 0.5 },
@@ -42,7 +53,7 @@ export interface BacktestTrade {
   exitTimestamp: number;
   /** Blended average exit price across partial fills. */
   exitPrice: number;
-  exitReason: "take_profit" | "stop_loss" | "opposite_signal" | "end_of_data";
+  exitReason: BacktestExitReason;
   /** Realized reward-to-risk multiple before fees + slippage. */
   grossR: number;
   /** Realized reward-to-risk multiple, NET of fees + slippage. */
@@ -84,7 +95,7 @@ interface OpenTrade {
   entryIndex: number;
   entryTimestamp: number;
   entryPrice: number;
-  /** Current stop — ratchets to the latest reached target in secured mode. */
+  /** Current full-position stop. */
   stop: number;
   legs: TradeLeg[];
   nextLeg: number;
@@ -169,7 +180,7 @@ function stepBar(
   trade: OpenTrade,
   bar: NormalizedYahooCandle,
   exitMode: ExitMode,
-): "take_profit" | "stop_loss" | null {
+): Exclude<ExitReason, "reversal"> | null {
   const gapThroughStop =
     trade.direction === "long"
       ? bar.open <= trade.stop
@@ -181,10 +192,17 @@ function stepBar(
       : bar.high >= trade.stop);
   if (stopHit) {
     closeRemaining(trade, gapThroughStop ? bar.open : trade.stop);
-    return "stop_loss";
+    if (exitMode === "terminal" || trade.nextLeg === 0) return "initial_stop";
+    return trade.stop === trade.entryPrice
+      ? "breakeven_stop"
+      : "progressive_stop";
   }
 
-  if (exitMode === "secured") {
+  if (
+    exitMode === "progressive" ||
+    exitMode === "terminal" ||
+    exitMode === "secured"
+  ) {
     while (trade.nextLeg < trade.legs.length) {
       const target = trade.legs[trade.nextLeg].price;
       const tpHit =
@@ -193,9 +211,15 @@ function stepBar(
       trade.nextLeg += 1;
       if (trade.nextLeg === trade.legs.length) {
         closeRemaining(trade, target);
-        return "take_profit";
+        return "final_take_profit";
       }
-      trade.stop = target;
+      if (exitMode === "secured") trade.stop = target;
+      if (exitMode === "progressive") {
+        trade.stop =
+          trade.nextLeg === 1
+            ? trade.entryPrice
+            : trade.legs[trade.nextLeg - 2].price;
+      }
     }
     return null;
   }
@@ -228,7 +252,7 @@ function stepBar(
 
     if (trade.remaining <= 1e-9) {
       trade.remaining = 0;
-      return "take_profit";
+      return "final_take_profit";
     }
   }
 
@@ -287,7 +311,7 @@ export function runBacktest(
   const {
     assetType,
     timeframe = "swing",
-    exitMode = "secured",
+    exitMode = "progressive",
     costMultiplier = 1,
     entryFilter,
   } = options;
@@ -324,7 +348,7 @@ export function runBacktest(
     ) {
       closeRemaining(open, nextBar.open);
       trades.push(
-        finalize(open, "opposite_signal", nextIndex, nextBar.timestamp),
+        finalize(open, "reversal", nextIndex, nextBar.timestamp),
       );
       open = null;
     }
