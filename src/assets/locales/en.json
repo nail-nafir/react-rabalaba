@@ -55,7 +55,9 @@
     "retry": "Retry",
     "back_to_home": "Back to Home",
     "favorite": "Favorites",
+    "calculator": "Calculator",
     "calendar": "Calendar",
+    "learn": "Learn",
     "subscription": "Subscription",
     "view_plans": "View Tiers",
     "contact_team": "Contact Team",
@@ -1295,5 +1297,1297 @@
     "action": "Reload Now",
     "show_details": "Check details",
     "hide_details": "Hide details"
+  },
+
+  "learn": {
+    "badge": "Trading Academy & Technical Mastery",
+    "title": "Trading Education",
+    "subtitle": "Explore candles, chart patterns, indicators, Smart Money Concepts for sharper trades.",
+    "common": {
+      "explore_masterclass": "Open Guide",
+      "win_rate": "Win Rate",
+      "rating_aria": "{{count}} of 5 stars",
+      "bias": {
+        "bullish": "Bullish / Up",
+        "bearish": "Bearish / Down",
+        "neutral": "Neutral",
+        "bilateral": "Bilateral"
+      },
+      "difficulty": {
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "advanced": "Advanced"
+      },
+      "pattern_categories": {
+        "candlestick-single": "Single Candle",
+        "candlestick-dual": "Dual Candle",
+        "candlestick-multi": "Multi Candle",
+        "chart-reversal": "Chart Reversal",
+        "chart-continuation": "Chart Continuation"
+      },
+      "strategy_categories": {
+        "indicators": "Technical Indicators",
+        "smc": "Smart Money Concepts",
+        "market-structure": "Risk Management",
+        "multi-timeframe": "Multi-Timeframe"
+      }
+    },
+    "overview": {
+      "summary_title": "Curriculum Summary",
+      "tabs": {
+        "patterns": "Candle Chart Patterns",
+        "strategies": "Indicators Smart Money Concepts",
+        "quiz": "Simulation Quiz"
+      },
+      "pattern_filters": {
+        "all": "All Patterns",
+        "candlestick": "Japanese Candlesticks",
+        "chart": "Classical Chart Patterns"
+      },
+      "view_modes": {
+        "cards": "Cards",
+        "table": "Cheat Sheet"
+      },
+      "stats": {
+        "candlestick": "Candle Patterns",
+        "chart": "Chart Formations",
+        "strategies": "Smart Money Concepts Quant Models",
+        "objective": "Objective Edge"
+      },
+      "catalog": {
+        "title": "Candlestick Formations Chart Patterns Catalog",
+        "candlestick": "Japanese Candlestick Catalog",
+        "chart": "Classical Chart Patterns Catalog",
+        "all": "All Candlestick Chart Patterns",
+        "description": "Click any card to access in-depth trading rules, volume invalidation bounds, and real trade setups."
+      }
+    },
+    "pattern_dialog": {
+      "schematic": "ANATOMY AND TECHNICAL TARGET SCHEMATIC",
+      "psychology": "Market Psychology and Smart Money Concepts",
+      "validation": "Validation Rules and Checklist",
+      "entry_trigger": "Entry Trigger",
+      "stop_loss": "Stop Loss Placement",
+      "volume_rule": "Volume Rule",
+      "target_projection": "Target Projection",
+      "false_breakout": "False Breakout Trap Warning",
+      "pro_tip": "Masterclass Pro-Tip:"
+    },
+    "strategies_ui": {
+      "title": "Indicators Smart Money Concepts Catalog",
+      "description": "Institutional trading methodologies for reading order flow, liquidity traps, and high-conviction mathematical setups.",
+      "schematic": "TECHNICAL STRATEGY SCHEMATIC",
+      "principles": "Core Principles and Mechanism",
+      "formula": "Setup Formula & Trigger Rule:",
+      "checklist": "Step-by-Step Execution Checklist",
+      "pro_tip": "Masterclass Pro-Tip:"
+    },
+    "cheatsheet": {
+      "title": "Trading Pattern Cheat Sheet",
+      "patterns_found": "{{count}} Patterns",
+      "search_placeholder": "Search trading patterns, description...",
+      "filters": {
+        "all": "All Biases",
+        "bullish": "Bullish / Up",
+        "bearish": "Bearish / Down",
+        "bilateral": "Neutral"
+      },
+      "columns": {
+        "name": "Pattern Name",
+        "category": "Category",
+        "bias": "Bias",
+        "difficulty": "Difficulty",
+        "entry_trigger": "Entry Trigger",
+        "stop_loss": "Stop Loss",
+        "timeframe": "Ideal Timeframe",
+        "rr": "Expected R:R",
+        "rating": "Rating Level"
+      },
+      "empty": "No trading patterns matched your search."
+    },
+    "quiz_ui": {
+      "title": "Trading Simulation Quiz Catalog",
+      "ranks": {
+        "apprentice": "Apprentice Trader",
+        "proficient": "Skilled Analyst",
+        "master": "Pro Master Trader"
+      },
+      "completed": "Quiz Completed",
+      "grade_badge": "Grade {{grade}} ({{score}}%)",
+      "scorecard": "Trading Skill Scorecard",
+      "completed_description": "All market scenarios and risk challenges cleared successfully.",
+      "retake": "Retake Quiz",
+      "retake_random": "Retake Quiz (5 Questions)",
+      "progress": "Scenario {{current}} of {{total}}",
+      "accuracy": "Total Accuracy",
+      "total_score": "Total Score",
+      "status": "Evaluation Status",
+      "passed": "Passed Evaluation",
+      "needs_study": "Practice Recommended",
+      "execution_speed": "Average Speed",
+      "speed_desc": "{{time}} seconds per scenario",
+      "review_title": "Scenario Audit Breakdown",
+      "review_desc": "Performance breakdown and key technical insights tested.",
+      "correct_action": "Correct Choice (+1)",
+      "incorrect_action": "Missed Call (0)",
+      "categories": {
+        "candlestick": "Candlestick",
+        "chart-pattern": "Chart Pattern",
+        "indicator": "Indicators",
+        "risk": "Risk Sizing",
+        "smc": "Smart Money Concepts"
+      },
+      "instruction": "Select optimal trading decision based on objective market signals.",
+      "chart_setup": "REAL MARKET CHART SETUP",
+      "correct": "Spot On Call!",
+      "incorrect": "Suboptimal Decision",
+      "takeaway": "Pro Key: ",
+      "current_score": "Current score {{score}} points",
+      "percent_completed": "{{percent}}% Completed",
+      "correct_scenarios_count": "{{score}} / {{total}} Correct Scenarios",
+      "accumulated_points": "Accumulated Points",
+      "competency_standard": "Competency Standard",
+      "scenario_number": "Scenario #{{number}}",
+      "view_results": "View Final Results",
+      "next": "Next Scenario",
+      "timer_label": "Time Left",
+      "your_choice": "Selected Choice: ",
+      "seconds_unit": "Seconds",
+      "seconds_value": "{{count}} Seconds"
+    },
+    "simulator_dialog": {
+      "modes": {
+        "candlestick": "Candlestick Anatomy",
+        "chart": "Chart Pattern Geometry"
+      },
+      "trigger": "Simulator Lab",
+      "trigger_short": "Simulator",
+      "title": "Trading Simulator Laboratory",
+      "description": "Interactive sandbox for candle anatomy, OHLC parameter changes, and classical measured moves."
+    },
+    "candlestick_simulator": {
+      "presets": {
+        "hammer": "Bullish Hammer",
+        "shooting-star": "Shooting Star",
+        "dragonfly": "Dragonfly Doji",
+        "bull-marubozu": "Bullish Marubozu",
+        "bear-marubozu": "Bearish Marubozu",
+        "spinning-top": "Spinning Top"
+      },
+      "detected": {
+        "bullish": "Bullish Candle",
+        "bearish": "Bearish Candle",
+        "neutral_doji": "Neutral Doji",
+        "dragonfly": "Dragonfly Doji (Strong Bullish Rejection)",
+        "gravestone": "Gravestone Doji (Strong Bearish Rejection)",
+        "long_legged": "Long-Legged Doji (High Volatility Indecision)",
+        "bullish_hammer": "Bullish Hammer (High Reversal Edge)",
+        "bearish_hammer": "Hanging Man / Bearish Hammer",
+        "shooting_star": "Shooting Star / Inverted Hammer (Top Rejection)",
+        "bullish_marubozu": "Bullish Marubozu (Total Bull Dominance)",
+        "bearish_marubozu": "Bearish Marubozu (Total Bear Dominance)",
+        "spinning_top": "Spinning Top (Equilibrium & Loss of Trend Momentum)"
+      },
+      "psychology": {
+        "dragonfly": "Extreme selling pressure was completely absorbed by aggressive buyers.",
+        "gravestone": "Bulls tried to rally but got violently rejected back to the opening price.",
+        "long_legged": "Massive battle on both sides ending in complete stalemate.",
+        "hammer": "Strong buying absorption at session lows rejected further downside.",
+        "shooting_star": "Sellers overwhelmed the upward drive and forced the close near the lows.",
+        "marubozu": "Unrelenting institutional momentum from open to close with zero hesitation.",
+        "spinning_top": "Neither side has directional conviction; prepare for consolidation or potential reversal.",
+        "bullish": "Bulls won the session and pushed the close higher than open.",
+        "bearish": "Bears controlled the session and pushed the close below open."
+      },
+      "select_preset": "Select Candle Formation Preset:",
+      "metrics": {
+        "body": "Real Body",
+        "spread": "{{count}} pts spread",
+        "upper_wick": "Upper Wick",
+        "selling_rejection": "Selling Rejection",
+        "lower_wick": "Lower Wick",
+        "buying_support": "Buying Support",
+        "total_range": "Total Range"
+      },
+      "controls": "OHLC Parameter Controls",
+      "controls_hint": "Drag to test shapes",
+      "open": "OPEN",
+      "close": "CLOSE",
+      "high": "HIGH",
+      "low": "LOW",
+      "golden_rule": "The Golden Rule of Candlesticks:",
+      "golden_rule_description": "The body size represents dominant momentum conviction, while wick length reveals liquidity rejection and the intensity of the struggle between buyers and sellers.",
+      "title": "Interactive Candlestick Lab",
+      "description": "Adjust the OHLC sliders or select presets to view real-time candle anatomy, wick-to-body ratios, and market sentiment interpretations."
+    },
+    "chart_simulator": {
+      "presets": {
+        "head-and-shoulders": {
+          "name": "Head & Shoulders",
+          "description": "Bears break the critical neckline support after buyers exhaust at the central head peak.",
+          "pro_tip": "Measure the target from the Head peak to the Neckline, then project it downward from the breakdown."
+        },
+        "inverse-head-and-shoulders": {
+          "name": "Inverse Head & Shoulders",
+          "description": "Buyers overcome neckline resistance following final seller capitulation at the inverse head trough.",
+          "pro_tip": "Waiting for a 4H/Daily close above the neckline and a valid retest offers the best Risk:Reward."
+        },
+        "double-top": {
+          "name": "Double Top (\"M\")",
+          "description": "Two failed attempts to break upper resistance trigger swift liquidation down to measured targets.",
+          "pro_tip": "If Peak 2 has lower volume than Peak 1, the success probability can reach 80%."
+        },
+        "double-bottom": {
+          "name": "Double Bottom (\"W\")",
+          "description": "Sellers fail twice to print lower lows, creating strong floor support before an explosive rally.",
+          "pro_tip": "A neckline breakout with a volume spike confirms valid institutional accumulation."
+        },
+        "bull-flag": {
+          "name": "Bull Flag",
+          "description": "High-momentum impulse pole followed by orderly consolidation channel before upward continuation.",
+          "pro_tip": "Project a target equal to 100% of the flagpole height from the upper-channel breakout."
+        },
+        "ascending-triangle": {
+          "name": "Ascending Triangle",
+          "description": "Buyers continuously buy at higher lows while pressing against horizontal ceiling resistance.",
+          "pro_tip": "Volatility compression near the triangle apex can produce a strong breakout squeeze."
+        }
+      },
+      "volume_quality": {
+        "strong": "Strong Institutional Volume",
+        "weak": "⚠️ High Fakeout Trap Risk (Low Volume)",
+        "moderate": "⚡ Moderate Volume (Wait Confirmation)"
+      },
+      "select_preset": "Select Chart Pattern Preset:",
+      "target": "Target Move (TP)",
+      "from_breakout": "from breakout",
+      "pattern_height": "Pattern Height (H)",
+      "formation_depth": "Formation depth",
+      "stop_loss": "Stop Loss (SL)",
+      "risk_distance": "risk distance",
+      "risk_reward": "Risk:Reward (R:R)",
+      "ratio_good": "✓ Good Edge",
+      "ratio_low": "⚠ Low Ratio",
+      "controls": "Geometry & Execution Controls",
+      "controls_hint": "Adjust height & entry",
+      "height_control": "Pattern Height (H)",
+      "neckline_control": "Neckline Price ($)",
+      "entry_mode": "Execution Entry Strategy:",
+      "retest": "🛡️ Retest (Safe)",
+      "breakout": "⚡ Direct Breakout",
+      "volume_control": "Breakout Volume Surge:",
+      "volume_options": {
+        "low": "0.8x Low",
+        "normal": "1.5x Norm",
+        "surge": "2.5x Surge"
+      },
+      "golden_rule": "Measured Move Golden Rule:",
+      "title": "Breakout Geometry & Measured Move Simulator",
+      "description": "Simulate measured move 1:1 price targets, neckline invalidation, Risk:Reward ratios, and volume breakout quality in real-time."
+    },
+    "visual": {
+      "entry": "ENTRY",
+      "stop_loss": "STOP LOSS",
+      "sell_entry": "SELL ENTRY",
+      "confirm": "CONFIRM",
+      "standard": "STANDARD",
+      "dragonfly": "DRAGONFLY",
+      "gravestone": "GRAVESTONE",
+      "dragonfly_bull": "DRAGONFLY (BULL)",
+      "gravestone_bear": "GRAVESTONE (BEAR)",
+      "bullish": "BULLISH",
+      "bearish": "BEARISH",
+      "bullish_marubozu": "BULLISH MARUBOZU",
+      "bearish_marubozu": "BEARISH MARUBOZU",
+      "close_high": "CLOSE = HIGH",
+      "close_low": "CLOSE = LOW",
+      "bullish_label": "(BULLISH)",
+      "bearish_label": "(BEARISH)",
+      "neutral_label": "(NEUTRAL)",
+      "penetration": ">50% PENETRATION",
+      "stop": "STOP",
+      "trend": "TREND",
+      "equal_lows": "EQUAL LOWS",
+      "midpoint": ">50% MIDPOINT",
+      "neckline": "NECKLINE",
+      "neckline_price": "NECKLINE (${{price}})",
+      "left_shoulder": "LS",
+      "head": "HEAD",
+      "right_shoulder": "RS",
+      "target": "TARGET",
+      "target_price": "TP (${{price}})",
+      "trigger": "TRIGGER",
+      "top_1": "TOP 1",
+      "top_2": "TOP 2",
+      "peak_1": "PEAK 1",
+      "peak_2": "PEAK 2",
+      "breakout": "BREAKOUT",
+      "bottom_1": "BOTTOM 1",
+      "bottom_2": "BOTTOM 2",
+      "rim": "RIM",
+      "cup": "CUP (ACCUMULATION)",
+      "handle": "HANDLE",
+      "pole": "POLE",
+      "pole_height": "POLE (H)",
+      "breakdown": "BREAKDOWN",
+      "flat_resistance": "FLAT RESISTANCE",
+      "higher_lows": "HIGHER LOWS",
+      "flat_support": "FLAT SUPPORT",
+      "lower_highs": "LOWER HIGHS",
+      "resistance_price": "RESISTANCE (${{price}})",
+      "higher_high_price": "HIGHER HIGH (PRICE)",
+      "lower_high_rsi": "LOWER HIGH (RSI DIVERGENCE)",
+      "bos_long": "BOS (BREAK OF STRUCTURE)",
+      "entry_price_100": "ENTRY PRICE ($100)",
+      "stop_loss_95": "STOP LOSS ($95) [-1.5X ATR]",
+      "target_110": "TARGET TP ($110) [2:1 R:R]",
+      "risk_1r": "1R RISK",
+      "gain_2r": "2R GAIN",
+      "squeeze": "THE SQUEEZE",
+      "expansion": "EXPANSION",
+      "daily": "1. DAILY",
+      "macro_bias": "MACRO BIAS",
+      "bullish_flow": "BULLISH FLOW",
+      "four_hour": "2. 4-HOUR",
+      "structure": "STRUCTURE",
+      "pullback": "PULLBACK",
+      "key_support": "KEY SUPPORT",
+      "fifteen_minute": "3. 15-MIN",
+      "sniper_entry": "SNIPER ENTRY",
+      "choch_pattern": "CHOCH / PAT.",
+      "high_value": "HIGH ({{value}})",
+      "open_value": "OPEN ({{value}})",
+      "close_value": "CLOSE ({{value}})",
+      "low_value": "LOW ({{value}})",
+      "upper_wick_value": "UPPER WICK ({{value}})",
+      "lower_wick_value": "LOWER WICK ({{value}})"
+    },
+    "patterns": {
+      "candlestick": {
+        "hammer": {
+          "name": "Hammer",
+          "description": "A bullish reversal pattern appearing at the bottom of a downtrend with a long lower shadow and a small body near the high.",
+          "psychology": "Sellers aggressively pushed prices to new lows, but strong institutional buying stepped in, rejecting lower prices and driving the close near the session high.",
+          "rules": [
+            "Appears after a defined downtrend or pullback to key support.",
+            "Lower shadow must be at least 2x the height of the real body.",
+            "Little to no upper shadow.",
+            "Color of the body can be green (stronger) or red."
+          ],
+          "volume_rule": "High or above-average volume on the hammer candle confirms institutional absorption.",
+          "entry_trigger": "Buy on the break of the hammer candle high, or on a 50% wick retest.",
+          "stop_loss": "1-2 ticks below the lowest point of the lower shadow.",
+          "pro_tip": "A green body hammer that forms right at a 200 EMA or daily support zone offers the highest probability setup."
+        },
+        "shooting-star": {
+          "name": "Shooting Star",
+          "description": "A bearish reversal pattern that forms after an uptrend, characterized by a long upper shadow and a small real body near the bottom.",
+          "psychology": "Buyers drove price to new highs with optimism, but aggressive profit taking and institutional sellers absorbed the rally, closing near the open.",
+          "rules": [
+            "Forms after a clear advance or at a major resistance ceiling.",
+            "Upper shadow must be at least 2x the height of the real body.",
+            "Little to no lower shadow.",
+            "Red body indicates stronger bearish dominance than green."
+          ],
+          "volume_rule": "Volume spike at the top confirms exhaustion of retail buyers and smart money distribution.",
+          "entry_trigger": "Sell / Short upon breaking below the shooting star low.",
+          "stop_loss": "1-2 ticks above the highest point of the upper shadow.",
+          "pro_tip": "Look for shooting stars coinciding with RSI overbought (>70) or bearish divergence for high-confidence shorts."
+        },
+        "inverted-hammer": {
+          "name": "Inverted Hammer",
+          "description": "Bullish reversal pattern appearing at the bottom of a downtrend with a long upper wick, showing early buyer interest.",
+          "psychology": "Bulls tested higher prices during the session. Although bears pushed it back down, bears were unable to make a new low, signaling shifting momentum.",
+          "rules": [
+            "Appears at the end of a downtrend.",
+            "Upper wick is at least 2x the body length.",
+            "Small body near the session low.",
+            "Requires a strong bullish confirmation candle on the next session."
+          ],
+          "volume_rule": "Higher volume signals accumulating interest from larger participants.",
+          "entry_trigger": "Enter long only after the next candle closes ABOVE the Inverted Hammer high.",
+          "stop_loss": "Below the low of the Inverted Hammer candle.",
+          "pro_tip": "Never enter an inverted hammer without waiting for the next candle confirmation close."
+        },
+        "doji": {
+          "name": "Doji (Standard, Dragonfly & Gravestone)",
+          "description": "A candle where the open and close are virtually equal, representing complete balance and indecision between bulls and bears.",
+          "psychology": "Neither buyers nor sellers could establish control by the session close. At key support or resistance, it signals a potential trend pause or reversal.",
+          "rules": [
+            "Open and Close prices must be identical or extremely close (<0.1% difference).",
+            "Dragonfly Doji: Long lower shadow, no upper shadow (Bullish lean).",
+            "Gravestone Doji: Long upper shadow, no lower shadow (Bearish lean).",
+            "Long-legged Doji: Long shadows on both ends (High volatility indecision)."
+          ],
+          "volume_rule": "Extreme volume on a Doji signifies a massive battle of liquidity before a major expansion.",
+          "entry_trigger": "Trade the breakout direction of the Doji high or low confirmed by subsequent candle close.",
+          "stop_loss": "Opposite end of the Doji shadow.",
+          "pro_tip": "Dojis are warning signs, not standalone buy/sell triggers. Always check the preceding trend and support/resistance context."
+        },
+        "marubozu": {
+          "name": "Marubozu (Bullish & Bearish)",
+          "description": "A long candle with no shadows (or microscopic wicks), indicating total dominance from open to close.",
+          "psychology": "One side of the market controlled the action from the opening bell to the final tick with relentless momentum.",
+          "rules": [
+            "No upper or lower wicks (or < 5% of total candle range).",
+            "Bullish Marubozu: Open = Low, Close = High (Solid Green).",
+            "Bearish Marubozu: Open = High, Close = Low (Solid Red).",
+            "Acts as strong continuation or key breakout confirmation."
+          ],
+          "volume_rule": "Heavy volume expands the validity of the momentum.",
+          "entry_trigger": "Enter on the close of the Marubozu or on a shallow 25-38.2% Fibonacci retracement.",
+          "stop_loss": "Beyond the midpoint (50%) or opposite boundary of the Marubozu body.",
+          "pro_tip": "The 50% midpoint of a Marubozu body often acts as strong dynamic support/resistance on future retests."
+        },
+        "bullish-engulfing": {
+          "name": "Bullish Engulfing",
+          "description": "A strong two-candle reversal pattern where a large green candle completely engulfs the entire body of the previous small red candle.",
+          "psychology": "Bears opened price lower, but bulls overwhelmed supply with explosive buying volume, engulfing the entire previous day range.",
+          "rules": [
+            "Must occur after a clear downtrend or at major horizontal support.",
+            "First candle is bearish (red).",
+            "Second candle is bullish (green) and its body completely covers the previous body.",
+            "Second candle open is equal to or lower than the first candle close."
+          ],
+          "volume_rule": "Volume on the green engulfing candle should ideally exceed the volume of the preceding candle.",
+          "entry_trigger": "Enter long on the close of the engulfing candle or on the breakout of its high.",
+          "stop_loss": "Below the lowest low of the two-candle formation.",
+          "pro_tip": "When an engulfing candle wraps around 2 or 3 previous candles, the reversal conviction is exponentially higher."
+        },
+        "bearish-engulfing": {
+          "name": "Bearish Engulfing",
+          "description": "A premier two-candle bearish reversal pattern where a large red candle engulfs the preceding green candle at the top of an uptrend.",
+          "psychology": "Buyers opened high with optimism, but aggressive institutional sellers hit the bids, driving price down and erasing days of gains in one session.",
+          "rules": [
+            "Must occur after a defined uptrend or at major resistance/supply zone.",
+            "First candle is bullish (green).",
+            "Second candle is bearish (red) and completely engulfs the prior body.",
+            "Close of the red candle is well below the open of the prior green candle."
+          ],
+          "volume_rule": "High volume on the red candle confirms institutional dumping/distribution.",
+          "entry_trigger": "Short upon close of the bearish engulfing candle.",
+          "stop_loss": "Above the highest high of the engulfing pair.",
+          "pro_tip": "Look for bearish engulfing candles reacting off a multi-week resistance or overbought RSI for optimal risk-reward trades."
+        },
+        "tweezer-bottom-top": {
+          "name": "Tweezer Top & Bottom",
+          "description": "Two consecutive candles with identical highs (Tweezer Top) or identical lows (Tweezer Bottom), indicating price rejection at the exact same level.",
+          "psychology": "The market tested a critical support/resistance level twice on consecutive bars and was violently rejected each time.",
+          "rules": [
+            "Tweezer Bottom: Two candles with identical lows at key support (Bullish).",
+            "Tweezer Top: Two candles with identical highs at key resistance (Bearish).",
+            "First candle aligns with current trend, second candle reverses direction.",
+            "Shadows touch the exact same price tier."
+          ],
+          "volume_rule": "Volume on the rejection candle should be substantial.",
+          "entry_trigger": "Enter on the break of the second candle extreme in the direction of the reversal.",
+          "stop_loss": "Beyond the matching tweezer wick levels.",
+          "pro_tip": "Tweezer levels create pinpoint, tight stop loss locations with exceptional risk-to-reward ratios."
+        },
+        "piercing-line": {
+          "name": "Piercing Line & Dark Cloud Cover",
+          "description": "Piercing line (bullish): opens below prior low and closes >50% into prior red body. Dark Cloud (bearish): opens above prior high and closes >50% into prior green body.",
+          "psychology": "Traps breakout traders by gapping beyond previous extreme, then fiercely reversing to reclaim more than half of the previous momentum bar.",
+          "rules": [
+            "Piercing Line: Occurs in downtrend, second green candle closes ABOVE the 50% midpoint of the first red candle.",
+            "Dark Cloud Cover: Occurs in uptrend, second red candle closes BELOW the 50% midpoint of the first green candle.",
+            "The deeper the penetration into the prior body (>60-70%), the more powerful the reversal."
+          ],
+          "volume_rule": "Higher volume on the second piercing candle demonstrates real institutional accumulation/distribution.",
+          "entry_trigger": "Enter on the close of the piercing candle or on the breakout of its high/low.",
+          "stop_loss": "Below the lowest low of the piercing pattern (for Piercing Line).",
+          "pro_tip": "If the second candle fails to close past the 50% midpoint, the pattern is considered weak and prone to trend continuation."
+        },
+        "morning-star": {
+          "name": "Morning Star & Evening Star",
+          "description": "Gold-standard 3-candle reversal pattern: 1) strong trend candle, 2) small-bodied star showing exhaustion, 3) strong opposing candle confirming reversal.",
+          "psychology": "Day 1: Dominant trend continues. Day 2: Indecision and loss of momentum. Day 3: The opposite force explodes, overpowering the prior trend.",
+          "rules": [
+            "Morning Star (Bullish): Long red candle -> Small body gap down -> Long green candle closing >50% into candle 1.",
+            "Evening Star (Bearish): Long green candle -> Small body gap up -> Long red candle closing >50% into candle 1.",
+            "The middle star candle can be green, red, or a doji (Morning Doji Star)."
+          ],
+          "volume_rule": "Volume pattern: High on Candle 1 -> Low on Candle 2 (star) -> Surging volume on Candle 3.",
+          "entry_trigger": "Enter long (Morning Star) or short (Evening Star) on the close of the third candle.",
+          "stop_loss": "Below the low of the middle star candle.",
+          "pro_tip": "The Morning Star is one of the highest statistical edge patterns in classical technical analysis, especially on 4H and Daily timeframes."
+        },
+        "three-white-soldiers": {
+          "name": "Three White Soldiers & Three Black Crows",
+          "description": "Three consecutive long-bodied candles closing progressively higher (White Soldiers) or lower (Black Crows) with small wicks, demonstrating sustained directional conviction.",
+          "psychology": "Sustained, continuous buying/selling pressure over three full sessions without meaningful pullbacks, proving that smart money has stepped in.",
+          "rules": [
+            "Three consecutive bullish (green) or bearish (red) candles.",
+            "Each candle opens within or near the body of the previous candle.",
+            "Each candle closes at or near its high (soldiers) or low (crows).",
+            "Wicks must be relatively small."
+          ],
+          "volume_rule": "Volume should expand or remain elevated across all three consecutive candles.",
+          "entry_trigger": "Enter on the close of the 3rd soldier/crow or on the first subsequent minor pullback.",
+          "stop_loss": "Below the open/low of the first soldier candle.",
+          "pro_tip": "Beware of entering soldiers if the 3rd candle has an unusually giant body and RSI is already >80 (risk of exhaustion pullback)."
+        },
+        "rising-falling-three": {
+          "name": "Rising & Falling Three Methods",
+          "description": "Elite continuation pattern: a long momentum candle followed by 3 small counter-trend consolidation candles kept within its range, completed by another massive trend candle.",
+          "psychology": "After a big trend move, minor profit-taking occurs on low volume. The counter-trend forces are too weak to break the original range before the dominant trend resumes.",
+          "rules": [
+            "Day 1: Strong long body in direction of trend.",
+            "Days 2-4: Three small counter-trend bodies that stay ENTIRELY within the high-low range of Day 1.",
+            "Day 5: Strong candle in original trend direction closing beyond Day 1 close."
+          ],
+          "volume_rule": "High volume on Day 1, drying up during days 2-4 consolidation, then exploding on Day 5.",
+          "entry_trigger": "Enter on the breakout close of the 5th candle.",
+          "stop_loss": "Below the low of the 3-day consolidation range.",
+          "pro_tip": "This is the classic \"bull flag\" translated into pure Japanese candlestick mechanics."
+        }
+      },
+      "chart": {
+        "head-and-shoulders": {
+          "name": "Head & Shoulders",
+          "description": "The most reliable classical bearish reversal pattern, featuring a higher peak (head) between two lower peaks (shoulders) and a critical neckline support.",
+          "psychology": "Left shoulder forms as part of a normal uptrend. The head makes a new high, but with diminishing momentum. The right shoulder fails to make a higher high, signaling buyer exhaustion before neckline collapse.",
+          "structure_rules": [
+            "Preceded by an extended, mature uptrend.",
+            "Head must be noticeably higher than both the Left and Right Shoulders.",
+            "Left and Right Shoulders should be relatively symmetrical in height and time.",
+            "Neckline connects the swing lows between the shoulders."
+          ],
+          "neckline_rule": "A decisive daily/4H candle close BELOW the neckline triggers the pattern activation.",
+          "target_calculation": "Target = Neckline Breakout Price - Vertical Height (Distance from Head Peak to Neckline).",
+          "stop_loss_placement": "Aggressive: Above the Right Shoulder high. Conservative: Just above the broken neckline (if retested).",
+          "false_breakout_warning": "Avoid shorting before the candle closes below the neckline; retail traders often get trapped by wick-only bounces.",
+          "pro_tip": "Right shoulders that take significantly longer to form than the left shoulder usually lead to deeper, faster selloffs."
+        },
+        "inverse-head-and-shoulders": {
+          "name": "Inverse Head & Shoulders",
+          "description": "Premier bullish reversal pattern formed at the bottom of a downtrend with a central trough (head) lower than the two surrounding troughs (shoulders).",
+          "psychology": "Sellers make a final desperate attempt at the head, but fail to maintain downward momentum. The higher low on the right shoulder proves buyers have accumulated sufficient inventory to break resistance.",
+          "structure_rules": [
+            "Appears after a protracted downtrend.",
+            "Head is the lowest point of the entire structure.",
+            "Right shoulder forms a higher low relative to the head.",
+            "Neckline acts as major resistance barrier."
+          ],
+          "neckline_rule": "Confirmed on candle close ABOVE the neckline resistance.",
+          "target_calculation": "Target = Breakout Price + Vertical Height (Distance from Head Lowest Low to Neckline).",
+          "stop_loss_placement": "Below the Right Shoulder low, or below the breakout candle low.",
+          "false_breakout_warning": "Wait for volume expansion on the neckline breakout to avoid getting trapped in sideways consolidation.",
+          "pro_tip": "Waiting for a retest of the broken neckline as new support improves win rate and tightens risk substantially."
+        },
+        "double-top": {
+          "name": "Double Top (\"M\" Pattern)",
+          "description": "Bearish reversal pattern consisting of two consecutive price peaks at nearly the same resistance level separated by a moderate trough.",
+          "psychology": "Bulls push aggressively to the second peak but meet an overwhelming wall of institutional limit sell orders, failing to create a higher high.",
+          "structure_rules": [
+            "Two peaks separated by at least 10-20 candles.",
+            "Peak 2 should not exceed Peak 1 by more than 1-2%.",
+            "The valley between peaks forms the baseline support (Neckline)."
+          ],
+          "neckline_rule": "Triggers when price closes below the central valley low.",
+          "target_calculation": "Target = Neckline Price - Height of the Double Top.",
+          "stop_loss_placement": "Above the highest peak, or above the midpoint of the right drop.",
+          "false_breakout_warning": "Do not short at peak 2 prematurely before the neckline actually breaks.",
+          "pro_tip": "If Peak 2 creates a bearish RSI divergence, the probability of a major collapse exceeds 80%."
+        },
+        "double-bottom": {
+          "name": "Double Bottom (\"W\" Pattern)",
+          "description": "Bullish reversal pattern resembling a \"W\", featuring two distinct swing lows at a shared support level followed by a breakout above the intermediate peak.",
+          "psychology": "Bears attempt to break support a second time but find massive limit bids. The market rejects lower prices, creating a strong foundation for a trend reversal.",
+          "structure_rules": [
+            "Two troughs formed at the same horizontal price zone.",
+            "Second trough often forms a slightly higher low or a liquidity sweep wick.",
+            "Central peak defines the breakout trigger level."
+          ],
+          "neckline_rule": "Confirmed on a close above the intermediate swing high resistance.",
+          "target_calculation": "Target = Breakout Price + Height from lowest trough to peak.",
+          "stop_loss_placement": "Below the second trough low.",
+          "false_breakout_warning": "Ensure the central peak is cleared with solid candle body close.",
+          "pro_tip": "Look for the second bottom to form a bullish candlestick pattern like a Hammer or Engulfing for early low-risk positioning."
+        },
+        "cup-and-handle": {
+          "name": "Cup & Handle",
+          "description": "A powerful bullish continuation pattern shaped like a teacup: a rounded bottom consolidation (cup) followed by a shallow downward drift (handle).",
+          "psychology": "The rounded cup represents steady institutional accumulation without panic. The handle represents mild, orderly profit-taking that shakes out weak hands before the explosive breakout.",
+          "structure_rules": [
+            "Cup should have a smooth \"U\" shape, not a sharp \"V\".",
+            "Depth of the cup should typically be between 30% and 50% retracement of prior move.",
+            "Handle should retrace no more than 1/3 of the cup depth and slope downwards.",
+            "Breakout above the cup rim resistance confirms the trade."
+          ],
+          "neckline_rule": "Entry triggers on candle close above the horizontal cup rim resistance line.",
+          "target_calculation": "Target = Breakout Price + Vertical depth from cup rim to lowest point of the cup.",
+          "stop_loss_placement": "Below the lowest point of the handle consolidation.",
+          "false_breakout_warning": "Handles that drop deeper than 50% of the cup depth have a high probability of pattern failure.",
+          "pro_tip": "Created by William O'Neil, this pattern is the cornerstone of leading growth stock and crypto mega-bull runs."
+        },
+        "bull-flag": {
+          "name": "Bull Flag & Pennant",
+          "description": "A sharp, almost vertical upward impulse (flagpole) followed by a tight, downward-sloping consolidation channel (flag) or converging triangle (pennant).",
+          "psychology": "Aggressive buyers catapulted price upwards. Instead of dumping, the market consolidates tightly with minimal selling pressure as smart money refuses to let price drop.",
+          "structure_rules": [
+            "Preceded by a steep, rapid pole with heavy volume.",
+            "Flag body slopes counter-trend (downwards) between two parallel channel lines.",
+            "Retracement in the flag should not exceed 38.2% to 50% of the flagpole.",
+            "Lasts usually between 5 to 20 bars."
+          ],
+          "neckline_rule": "Triggers immediately when price breaks above the upper boundary trendline of the flag.",
+          "target_calculation": "Target = Breakout Price + Height of the Flagpole (Measured Move).",
+          "stop_loss_placement": "Below the lowest swing low of the flag channel.",
+          "false_breakout_warning": "Do not chase if price breaks out with low/declining volume.",
+          "pro_tip": "The tighter and shallower the flag consolidation, the more explosive the subsequent breakout rally."
+        },
+        "bear-flag": {
+          "name": "Bear Flag",
+          "description": "A sharp, rapid downward sell-off (flagpole) followed by a sluggish, upward-sloping consolidation channel (flag) before downward continuation.",
+          "psychology": "Heavy selling hits the market. The weak bounce lacks institutional participation and volume, forming a liquidity pool for smart money to load short positions before the next drop.",
+          "structure_rules": [
+            "Preceded by a steep plunge on heavy volume.",
+            "Flag channel slopes upwards against the dominant downtrend.",
+            "Consolidation does not retrace more than 50% of the drop."
+          ],
+          "neckline_rule": "Confirmed upon breaking below the lower trendline of the flag channel.",
+          "target_calculation": "Target = Breakdown Price - Length of the initial Flagpole.",
+          "stop_loss_placement": "Above the highest swing high of the flag consolidation.",
+          "false_breakout_warning": "Ensure the flag does not break above 50% Fibonacci retracement of the pole.",
+          "pro_tip": "Bear flags in a high-volatility market often reach their measured move target much faster than bull flags."
+        },
+        "ascending-triangle": {
+          "name": "Ascending Triangle",
+          "description": "A bullish pattern characterized by a horizontal upper resistance line and an ascending lower support trendline forming higher lows.",
+          "psychology": "Sellers are stubborn at a fixed price ceiling, but buyers are increasingly aggressive, willing to buy at ever-higher prices until the resistance wall is completely depleted.",
+          "structure_rules": [
+            "Flat horizontal resistance with at least 2 distinct touches.",
+            "Ascending trendline with at least 2 higher swing lows.",
+            "Price gets squeezed towards the apex before the breakout."
+          ],
+          "neckline_rule": "Triggers on a candle close above the horizontal resistance ceiling.",
+          "target_calculation": "Target = Breakout Price + Widest vertical height of the triangle base.",
+          "stop_loss_placement": "Below the most recent swing low within the triangle.",
+          "false_breakout_warning": "Wick-only penetrations above resistance without body close are common fakeout traps.",
+          "pro_tip": "Breakouts that occur between 60% and 75% of the distance to the apex have the lowest failure rates."
+        },
+        "descending-triangle": {
+          "name": "Descending Triangle",
+          "description": "A bearish pattern featuring a horizontal support floor and a descending upper trendline forming lower highs, applying increasing downward pressure.",
+          "psychology": "Buyers defend a fixed price floor, but each rally is weaker than the last (Lower Highs). Eventually, buyers are exhausted and the floor collapses.",
+          "structure_rules": [
+            "Flat horizontal support tested multiple times.",
+            "Descending upper trendline showing selling pressure on rallies.",
+            "Pattern typically resolves with a downward breakdown."
+          ],
+          "neckline_rule": "Triggers on candle close below the horizontal support floor.",
+          "target_calculation": "Target = Breakdown Price - Widest vertical height of the triangle.",
+          "stop_loss_placement": "Above the most recent lower high.",
+          "false_breakout_warning": "Check overall macro trend to ensure this is not an exhaustion bottom spring.",
+          "pro_tip": "Beware of descending triangles at the bottom of long bear markets; they can occasionally act as powerful double/triple bottom reversal springboards."
+        },
+        "falling-wedge": {
+          "name": "Falling Wedge",
+          "description": "A bullish pattern where price is bounded by two downward-sloping, converging trendlines, signaling losing bearish momentum.",
+          "psychology": "Prices are making lower lows and lower highs, but the slope of the lows is flattening faster than the highs. Bears are losing grip, paving the way for a sharp upside squeeze.",
+          "structure_rules": [
+            "Both upper and lower trendlines must slope downward.",
+            "The trendlines must converge towards an apex.",
+            "Can act as a bullish reversal (in a downtrend) or bullish continuation (in an uptrend)."
+          ],
+          "neckline_rule": "Triggers on breakout and close above the upper descending trendline.",
+          "target_calculation": "Target = Breakout point + Height of the widest part of the wedge base.",
+          "stop_loss_placement": "Below the lowest point of the wedge structure.",
+          "false_breakout_warning": "Wait for candle close above the upper trendline rather than entering during intraday wicks.",
+          "pro_tip": "Falling wedges accompanied by bullish RSI divergence have among the highest statistical edge in swing trading."
+        }
+      }
+    },
+    "strategies": {
+      "items": {
+        "moving-average-cross": {
+          "title": "EMA 20 / 50 / 200 Trend Alignment & Golden Cross",
+          "summary": "The foundational trend-following framework used by hedge funds: trade only in the direction of the EMA 20 > EMA 50 > EMA 200 stack.",
+          "key_principles": [
+            "EMA 20 represents short-term momentum; EMA 50 represents intermediate trend; EMA 200 represents institutional macro regime.",
+            "Golden Cross: EMA 50 crosses above EMA 200 (Long-term Bull Market trigger).",
+            "Death Cross: EMA 50 crosses below EMA 200 (Long-term Bear Market trigger).",
+            "Dynamic Support: During strong trends, price respects the EMA 20/50 band as a pullback bounce zone."
+          ],
+          "formula_or_setup": "Bullish Alignment: Price > EMA 20 > EMA 50 > EMA 200. Entry on pullbacks to EMA 20/50 with confirmation candle.",
+          "action_checklist": [
+            "Verify EMA slope is pointing upward at >30 degrees.",
+            "Wait for price to pull back to the dynamic zone between EMA 20 and EMA 50.",
+            "Look for a bullish candlestick pattern (e.g., Hammer or Engulfing) at the EMA.",
+            "Place Stop Loss below the EMA 50 or recent swing low.",
+            "Target at least 2:1 Risk-to-Reward ratio or ride the trend until price closes below EMA 50."
+          ],
+          "pro_tip": "Never counter-trend trade against the EMA 200. The statistical win rate of long setups above the EMA 200 is over 35% higher than below it."
+        },
+        "rsi-divergence-mastery": {
+          "title": "RSI Divergence: Regular Reversal & Hidden Continuation",
+          "summary": "Detecting discrepancies between price action and momentum oscillator to anticipate impending reversals or powerful trend continuations.",
+          "key_principles": [
+            "Regular Bullish Divergence: Price makes Lower Lows, but RSI makes Higher Lows (Signals major upside reversal).",
+            "Regular Bearish Divergence: Price makes Higher Highs, but RSI makes Lower Highs (Signals buyer exhaustion and downside reversal).",
+            "Hidden Bullish Divergence: Price makes Higher Lows, but RSI makes Lower Lows (Signals explosive trend continuation UP).",
+            "Hidden Bearish Divergence: Price makes Lower Highs, but RSI makes Higher Highs (Signals explosive trend continuation DOWN)."
+          ],
+          "formula_or_setup": "Divergence occurs when price slope and RSI oscillator slope disagree across at least 2 distinct swing points.",
+          "action_checklist": [
+            "Identify two distinct price swings (Highs or Lows).",
+            "Check RSI values at the corresponding timestamps.",
+            "Confirm divergence angle (diverging or converging).",
+            "Wait for price action trigger: trendline break or candlestick confirmation.",
+            "Set invalidation Stop Loss just beyond the recent swing extreme."
+          ],
+          "pro_tip": "Hidden divergence in the direction of the daily trend is one of the most profitable setups in technical analysis because you trade with institutional flow."
+        },
+        "bollinger-squeeze-breakout": {
+          "title": "Bollinger Bands Squeeze & Volatility Expansion",
+          "summary": "Trading the cyclical transition from low volatility contraction (The Squeeze) to explosive directional expansion.",
+          "key_principles": [
+            "Markets oscillate between periods of low volatility (range contraction) and high volatility (range expansion).",
+            "The Squeeze: When upper and lower bands narrow to their tightest range in 20+ periods, a massive breakout is imminent.",
+            "Walking the Bands: In strong trends, price can hug the upper/lower band for extended periods.",
+            "%B Indicator: Measures relative price location between upper (1.0) and lower (0.0) bands."
+          ],
+          "formula_or_setup": "Bandwidth = (Upper Band - Lower Band) / Middle Band. When Bandwidth hits a 6-month low, prepare for directional breakout.",
+          "action_checklist": [
+            "Locate a prolonged Bollinger Squeeze where price is tightly coiling.",
+            "Check volume: low volume inside the squeeze is mandatory.",
+            "Wait for the first candle to close entirely OUTSIDE the upper (buy) or lower (sell) band with volume spike.",
+            "Enter on the breakout candle close.",
+            "Trailing Stop: Use the 20-period middle SMA line as your trailing exit."
+          ],
+          "pro_tip": "Beware of the \"Head Fake\": a brief false breakout in one direction quickly followed by the real monster rally in the opposite direction."
+        },
+        "smc-market-structure": {
+          "title": "Smart Money Concepts: Market Structure, BOS & CHoCH",
+          "summary": "Read the market like institutional algorithms: identify Break of Structure (BOS), Change of Character (CHoCH), Order Blocks, and Liquidity Pools.",
+          "key_principles": [
+            "Market Structure: Uptrend = Higher Highs (HH) + Higher Lows (HL). Downtrend = Lower Highs (LH) + Lower Lows (LL).",
+            "BOS (Break of Structure): Price breaks and closes beyond the previous swing high/low in the direction of the dominant trend (Trend Continuation).",
+            "CHoCH (Change of Character): Price breaks the most recent swing low in an uptrend (or swing high in a downtrend), signaling the first early warning of a structural trend flip.",
+            "Order Block (OB): The last opposing candle before an aggressive impulse move that created a market imbalance/gap.",
+            "Liquidity Sweeps: Smart money pushes price past retail stop loss clusters (equal highs/lows) to fill their massive positions before reversing."
+          ],
+          "formula_or_setup": "Trade Setup: 1) Identify HTF Trend & Liquidity Sweep -> 2) Wait for LTF CHoCH -> 3) Place Limit Order at the unmitigated Order Block / FVG.",
+          "action_checklist": [
+            "Map the swing highs and swing lows on the 4-Hour / Daily timeframe.",
+            "Mark the key liquidity pools (Equal Highs, Equal Lows, Trendline Liquidity).",
+            "Wait for liquidity to be swept with a long wick rejection.",
+            "Drop to the 15-Minute or 5-Minute timeframe to witness a clean CHoCH (body close).",
+            "Enter on the retest of the freshly created Order Block / Fair Value Gap.",
+            "Stop Loss placed tightly behind the Order Block invalidation point (yielding 1:3 to 1:10 R:R)."
+          ],
+          "pro_tip": "Do not trade every Order Block you see on the chart. An Order Block is only valid if it caused a clear Break of Structure (BOS) and left a Fair Value Gap (FVG)."
+        },
+        "atr-dynamic-risk": {
+          "title": "ATR Dynamic Stop Loss & Volatility Risk Management",
+          "summary": "The exact mathematical risk framework used inside RabaLaba Terminal: adaptive stop loss sizing calibrated to real-time market volatility.",
+          "key_principles": [
+            "Fixed percentage stops (e.g. always 2% or $1) fail because market volatility changes constantly across different market regimes.",
+            "Average True Range (ATR, 14-period) measures the true market noise and average candle expansion.",
+            "Optimal Stop Loss distance = 1.5x to 2.0x ATR below the entry or structural support, giving the trade room to breathe without getting stopped out by random market noise.",
+            "Position Sizing Formula: Position Size = (Account Capital * Risk %) / (Entry Price - Stop Loss Price)."
+          ],
+          "formula_or_setup": "Stop Loss = Entry Price - (ATR × 1.5). Position Units = (Account $ × Risk %) / (ATR × 1.5).",
+          "action_checklist": [
+            "Read the current 14-period ATR value on your trading timeframe.",
+            "Calculate Stop Loss buffer = Current Price - (1.5 * ATR) for long positions.",
+            "Determine max acceptable dollar risk (e.g. 1% of a $10,000 account = $100).",
+            "Divide max dollar risk by the stop loss dollar distance to calculate exact position size.",
+            "Never increase position size if market volatility spikes; reduce size to maintain constant risk."
+          ],
+          "pro_tip": "Professional traders do not focus on how much they can make; they focus exclusively on position sizing and managing downside risk."
+        },
+        "multi-timeframe-framework": {
+          "title": "Top-Down Multi-Timeframe Analysis (HTF -> MTF -> LTF)",
+          "summary": "The 3-tier timeframe alignment process: use High Timeframe for bias, Medium Timeframe for key levels, and Low Timeframe for sniper entry execution.",
+          "key_principles": [
+            "Rule of 4-6x: The higher timeframe should be 4x to 6x larger than the lower timeframe (e.g. Daily -> 4H -> 1H or 4H -> 1H -> 15m).",
+            "HTF (Daily/Weekly): Establishes the macro narrative, key support/resistance zones, and institutional bias.",
+            "MTF (4-Hour/1-Hour): Identifies the market structure, swing highs/lows, and valid chart patterns.",
+            "LTF (15-Minute/5-Minute): Pinpoints precision entry triggers, candlestick confirmations, and minimizes stop-loss distance."
+          ],
+          "formula_or_setup": "HTF Trend: Bullish -> MTF Pullback to Support -> LTF Reversal Pattern (Hammer/Engulfing/CHoCH) = High-Probability Trade.",
+          "action_checklist": [
+            "Step 1: Check Daily chart. Is price above EMA 200? Are we making Higher Highs?",
+            "Step 2: Check 4-Hour chart. Wait for price to pull back into a key Daily support level or EMA 50.",
+            "Step 3: Drop to 15-Minute chart. Look for a bullish candlestick pattern or break of structure.",
+            "Step 4: Execute on the 15-Minute candle close with Stop Loss below the local 15-Minute low.",
+            "Step 5: Target the Daily swing high for a massive 1:4+ Risk-to-Reward outcome."
+          ],
+          "pro_tip": "Never execute a trade on the lower timeframe that contradicts the dominant trend of the higher timeframe."
+        }
+      }
+    },
+    "quiz": {
+      "questions": {
+        "quiz-1": {
+          "title": "Candlestick Identification at Major Support",
+          "question": "Price drops 8 sessions in a row into historical support. A small real body forms at top with lower shadow 3x body height and surging volume. What is the pattern and optimal action?",
+          "options": {
+            "q1-a": {
+              "text": "Shooting Star. Open aggressive short position immediately.",
+              "explanation": "Incorrect. Shooting stars form at tops with upper shadow, not at support with long lower wick."
+            },
+            "q1-b": {
+              "text": "Bullish Hammer. Open Long above the high with Stop Loss below the low.",
+              "explanation": "Correct! Small body at top with long lower wick signals selling absorption at support."
+            },
+            "q1-c": {
+              "text": "Bearish Marubozu. Prepare for deeper downtrend continuation.",
+              "explanation": "Incorrect. Marubozu has full solid body with virtually no wicks."
+            },
+            "q1-d": {
+              "text": "Gravestone Doji. Close all positions and hold cash.",
+              "explanation": "Incorrect. Gravestone Doji features a long upper wick, whereas this candle has lower wick."
+            }
+          },
+          "pro_tip": "Hammer candles with heavy volume at support hold historical win rates above 68%."
+        },
+        "quiz-2": {
+          "title": "Chart Pattern Neckline Breakout Confirmation",
+          "question": "Daily chart forms left peak at $100, middle peak at $115, and right peak at $101. Neckline connects troughs at $88. Candle closes at $85 on heavy volume. What is the pattern and target?",
+          "options": {
+            "q2-a": {
+              "text": "Triple Top with projected downside target at $75.",
+              "explanation": "Incorrect. Middle peak is significantly higher than both outer peaks."
+            },
+            "q2-b": {
+              "text": "Head and Shoulders with measured move target at $61.",
+              "explanation": "Correct! Measured move equals neckline breakdown $88 minus head height $27 to reach $61."
+            },
+            "q2-c": {
+              "text": "Cup and Handle with upside target at $130.",
+              "explanation": "Incorrect. Cup and Handle is a bullish continuation, not a bearish topping pattern."
+            },
+            "q2-d": {
+              "text": "Double Top with downside target at $80.",
+              "explanation": "Incorrect. Double Top only features two peaks of equal height."
+            }
+          },
+          "pro_tip": "Neckline retest at $88 provides optimal short entry with minimal risk exposure."
+        },
+        "quiz-3": {
+          "title": "RSI Momentum and Divergence Detection",
+          "question": "Bitcoin 1D chart prints new high at $98,000 above prior $92,000 peak. However RSI prints 64 versus prior peak reading of 79. What signal is shown on chart?",
+          "options": {
+            "q3-a": {
+              "text": "Bullish Continuation because buying momentum is accelerating.",
+              "explanation": "Incorrect. Price Higher High with RSI Lower High indicates decelerating momentum."
+            },
+            "q3-b": {
+              "text": "Regular Bearish Divergence signaling buyer exhaustion and potential sharp correction.",
+              "explanation": "Correct! Higher high in price with lower high in RSI is textbook Regular Bearish Divergence."
+            },
+            "q3-c": {
+              "text": "Hidden Bullish Divergence projecting straight rally to $120,000.",
+              "explanation": "Incorrect. Hidden Bullish requires price Higher Low and RSI Lower Low."
+            },
+            "q3-d": {
+              "text": "Neutral market condition with no technical indication.",
+              "explanation": "Incorrect. Momentum divergence is a premier leading reversal indicator."
+            }
+          },
+          "pro_tip": "Pair Daily Bearish Divergence with lower timeframe structure shift for high conviction entries."
+        },
+        "quiz-4": {
+          "title": "Position Sizing and Risk Calculation",
+          "question": "Capital is $10,000 with strict 1% risk limit per trade. Plan to buy ETH at $3,000 with Stop Loss at $2,850. What is the safe position size?",
+          "options": {
+            "q4-a": {
+              "text": "3.33 ETH totaling $10,000 capital value.",
+              "explanation": "Incorrect. 3.33 ETH risks $500 or 5% of account, violating 1% risk cap."
+            },
+            "q4-b": {
+              "text": "0.67 ETH with maximum dollar risk of $100.",
+              "explanation": "Correct! Max risk 1% of $10,000 is $100. Stop distance is $150. Sizing is $100 divided by $150 = 0.67 ETH."
+            },
+            "q4-c": {
+              "text": "1.00 ETH with total dollar risk of $150.",
+              "explanation": "Incorrect. 1 ETH risks $150 or 1.5% of account, breaching risk rules."
+            },
+            "q4-d": {
+              "text": "10.0 ETH using 5x maximum leverage.",
+              "explanation": "Fatal mistake. Excessive position size creates immediate liquidation risk."
+            }
+          },
+          "pro_tip": "Calculating lot size from stop loss distance is key to long term capital survival."
+        },
+        "quiz-5": {
+          "title": "Smart Money Concepts: Liquidity Sweep vs BOS",
+          "question": "Price spikes above Equal Highs resistance but 4H candle closes back below with long upper wick. On 15M chart price instantly breaks previous swing low. What happened?",
+          "options": {
+            "q5-a": {
+              "text": "Clean Break of Structure confirming uptrend continuation.",
+              "explanation": "Incorrect. Valid BOS requires full body candle closure above level, not wick rejection."
+            },
+            "q5-b": {
+              "text": "Buy Side Liquidity Sweep followed by bearish Change of Character.",
+              "explanation": "Correct! Retail stop liquidity above equal highs was swept into institutional short fills."
+            },
+            "q5-c": {
+              "text": "Healthy pullback in bull trend to buy immediately on market.",
+              "explanation": "Incorrect. Buying right after liquidity sweep and structure shift is a retail trap."
+            },
+            "q5-d": {
+              "text": "Ascending triangle pattern continuation signal.",
+              "explanation": "Incorrect. No ascending triangle geometry exists in this scenario."
+            }
+          },
+          "pro_tip": "After HTF liquidity sweeps, seek short entries at unmitigated Order Blocks on LTF."
+        },
+        "quiz-6": {
+          "title": "Shooting Star at Major Resistance Level",
+          "question": "Asset rallies 5 straight sessions into multi month resistance. On day 6 candle prints upper shadow 3x body size and near zero lower wick. What is the best action?",
+          "options": {
+            "q6-a": {
+              "text": "Buy aggressively because upper wick shows new price highs.",
+              "explanation": "Incorrect. Long upper shadow indicates severe selling rejection at peak."
+            },
+            "q6-b": {
+              "text": "Anticipate Shooting Star reversal and protect downside with tight stop loss.",
+              "explanation": "Correct! Shooting Star at key resistance shows strong seller dominance and exhaustion."
+            },
+            "q6-c": {
+              "text": "Open maximum leverage long without stop loss.",
+              "explanation": "Fatal mistake. Entering longs at resistance following shooting star risks wipeout."
+            },
+            "q6-d": {
+              "text": "Ignore daily candle as formations carry zero meaning.",
+              "explanation": "Incorrect. Daily candlesticks are primary reference points for institutional market participants."
+            }
+          },
+          "pro_tip": "Shooting stars at key resistance with heavy volume carry reversal win rates above 65%."
+        },
+        "quiz-7": {
+          "title": "Bullish Engulfing Confirmation at Support",
+          "question": "Following sharp selloff, small red candle is fully engulfed by large green candle closing above prior high with volume surge. What pattern is this?",
+          "options": {
+            "q7-a": {
+              "text": "Bearish Harami downside continuation pattern.",
+              "explanation": "Incorrect. Large green candle engulfing smaller prior red candle is Bullish Engulfing."
+            },
+            "q7-b": {
+              "text": "Bullish Engulfing indicating buyer dominance and strong upward reversal.",
+              "explanation": "Correct! Bullish Engulfing at support backed by heavy volume is a high probability reversal trigger."
+            },
+            "q7-c": {
+              "text": "Neutral Doji candle showing market hesitation.",
+              "explanation": "Incorrect. Wide range green candle demonstrates decisive directional momentum."
+            },
+            "q7-d": {
+              "text": "Head and Shoulders bearish breakdown pattern.",
+              "explanation": "Incorrect. This two bar support trigger is an engulfing reversal formation."
+            }
+          },
+          "pro_tip": "Bullish Engulfing candles that engulf multiple previous bars carry superior continuation odds."
+        },
+        "quiz-8": {
+          "title": "Double Bottom Reversal Validation",
+          "question": "Daily chart prints two symmetrical troughs at $50 separated by peak at $65. When is optimal buy execution according to classical rules?",
+          "options": {
+            "q8-a": {
+              "text": "Buy on initial touch of $50 on first bottom without confirmation.",
+              "explanation": "Suboptimal. Catching falling knives on first bottom fights active downtrend."
+            },
+            "q8-b": {
+              "text": "Buy once price breaks and closes above $65 neckline.",
+              "explanation": "Correct! Double Bottom pattern is officially confirmed only upon neckline breakout."
+            },
+            "q8-c": {
+              "text": "Short below $50 while price is rising toward $65.",
+              "explanation": "Incorrect. Shorting into developing base formation fights accumulating momentum."
+            },
+            "q8-d": {
+              "text": "Wait for price to hit $30 without technical justification.",
+              "explanation": "Incorrect. No technical grounds exist to expect $30 in this formation."
+            }
+          },
+          "pro_tip": "Measured move target is vertical distance from trough $50 to neckline $65 projecting $80."
+        },
+        "quiz-9": {
+          "title": "Bull Flag Continuation Following Impulse Move",
+          "question": "Price surges 40% creating pole then consolidates downward within tight channel on drying volume. What pattern is this?",
+          "options": {
+            "q9-a": {
+              "text": "Bull Flag continuation with measured move target matching pole height.",
+              "explanation": "Correct! Impulsive pole followed by low volume downward channel is textbook Bull Flag."
+            },
+            "q9-b": {
+              "text": "Double Top long term trend reversal pattern.",
+              "explanation": "Incorrect. No twin peaks exist in pole and flag formation."
+            },
+            "q9-c": {
+              "text": "Descending Triangle breakdown pattern.",
+              "explanation": "Incorrect. Parallel channel after impulse is flag structure, not triangle."
+            },
+            "q9-d": {
+              "text": "Death Cross trend breakdown signal.",
+              "explanation": "Incorrect. Death cross relates to moving average crossovers."
+            }
+          },
+          "pro_tip": "Declining volume during flag phase confirms healthy consolidation rather than distribution."
+        },
+        "quiz-10": {
+          "title": "Geometric Ascending Triangle Dynamics",
+          "question": "Chart shows flat resistance at $100 while swing lows print Higher Lows at $80, $88, and $94. What does this convey?",
+          "options": {
+            "q10-a": {
+              "text": "Sellers dominate and price will drop below support.",
+              "explanation": "Incorrect. Higher Lows prove buyers absorb supply at progressively higher prices."
+            },
+            "q10-b": {
+              "text": "Buying pressure is squeezing resistance at $100 with high upside breakout odds.",
+              "explanation": "Correct! Flat top with ascending lows forms classic bullish Ascending Triangle."
+            },
+            "q10-c": {
+              "text": "Directionless chop with zero tradeable clarity.",
+              "explanation": "Incorrect. Consistent Higher Lows show systematic structural accumulation."
+            },
+            "q10-d": {
+              "text": "Bearish Head and Shoulders formation.",
+              "explanation": "Incorrect. Ascending triangle structure is completely distinct from topping pattern."
+            }
+          },
+          "pro_tip": "Ascending Triangles breaking upward carry average historical win rates over 70%."
+        },
+        "quiz-11": {
+          "title": "Bollinger Bands Squeeze Volatility Strategy",
+          "question": "Bollinger Bands squeeze to 3 month low bandwidth then price closes above Upper Band on surge volume. What is expected next?",
+          "options": {
+            "q11-a": {
+              "text": "Price must mean revert to middle band immediately due to overbought levels.",
+              "explanation": "Incorrect. On squeeze breakout, walking upper band denotes powerful new trend impulse."
+            },
+            "q11-b": {
+              "text": "Major volatility expansion and beginning of strong bullish trend.",
+              "explanation": "Correct! Squeezes represent compression; upper breakout triggers major trend expansion."
+            },
+            "q11-c": {
+              "text": "Asset will stagnate without movement for months.",
+              "explanation": "Incorrect. Volatility squeeze consistently resolves into decisive expansion."
+            },
+            "q11-d": {
+              "text": "Signal to open short positions without stop loss.",
+              "explanation": "Fatal mistake. Fighting post squeeze momentum expansion destroys account capital."
+            }
+          },
+          "pro_tip": "Breakout direction backed by surge volume after squeeze provides high momentum trigger."
+        },
+        "quiz-12": {
+          "title": "Multi-Timeframe Analysis Confluence",
+          "question": "Daily trend is bullish above EMA 200. 4H chart pulls back into buyer Order Block. 15M chart prints bullish CHoCH. What is best execution?",
+          "options": {
+            "q12-a": {
+              "text": "Enter Long on 15M with Stop Loss below swing low for high R:R aligned with Daily trend.",
+              "explanation": "Correct! Ideal MTF confluence: Macro Trend 1D plus Value Zone 4H plus Micro Entry 15M."
+            },
+            "q12-b": {
+              "text": "Short aggressively because 4H chart is moving downward.",
+              "explanation": "Incorrect. Shorting pullbacks within macro uptrends fights dominant order flow."
+            },
+            "q12-c": {
+              "text": "Wait for Weekly candle to close before taking action.",
+              "explanation": "Suboptimal. Waiting for weekly close misses superior Risk to Reward entry window."
+            },
+            "q12-d": {
+              "text": "Ignore lower timeframes as useless noise.",
+              "explanation": "Incorrect. Lower timeframes enable sniper entries and tighter risk bounds."
+            }
+          },
+          "pro_tip": "Top down framework from Daily trend to 4H location and 15M entry is pro standard."
+        },
+        "quiz-13": {
+          "title": "Morning Star Three-Candle Reversal Pattern",
+          "question": "In downtrend, large red candle appears on day 1, small body candle at base on day 2, and large green candle penetrating over 50% on day 3. What pattern is this?",
+          "options": {
+            "q13-a": {
+              "text": "Evening Star bearish topping signal.",
+              "explanation": "Incorrect. Evening star occurs at peak of uptrend, not at support base."
+            },
+            "q13-b": {
+              "text": "Morning Star high probability three candle bullish reversal formation.",
+              "explanation": "Correct! Three candle reversal at support with deep green penetration is classic Morning Star."
+            },
+            "q13-c": {
+              "text": "Three Black Crows extreme selloff signal.",
+              "explanation": "Incorrect. Three Black Crows consists of three consecutive red candles."
+            },
+            "q13-d": {
+              "text": "Neutral Doji candle without directional bias.",
+              "explanation": "Incorrect. This three bar sequence displays decisive reversal dynamics."
+            }
+          },
+          "pro_tip": "Third candle penetration above 50% of first candle body confirms decisive buyer victory."
+        },
+        "quiz-14": {
+          "title": "Classical Cup and Handle Continuation Pattern",
+          "question": "Chart forms rounded bottom base (Cup) followed by shallow downward drift (Handle) below $120 resistance. What pattern is this?",
+          "options": {
+            "q14-a": {
+              "text": "Double Top sharp bearish reversal.",
+              "explanation": "Incorrect. Rounded base accumulation differs fundamentally from double top peaks."
+            },
+            "q14-b": {
+              "text": "Head and Shoulders downtrend continuation.",
+              "explanation": "Incorrect. Rounded bowl with shallow handle is a premier bullish continuation setup."
+            },
+            "q14-c": {
+              "text": "Cup and Handle bullish continuation with measured target matching cup depth.",
+              "explanation": "Correct! Rounded accumulation followed by shallow handle forms classic Cup and Handle."
+            },
+            "q14-d": {
+              "text": "Directionless range without upside expansion.",
+              "explanation": "Incorrect. This structure is among the most reliable continuation setups in technical analysis."
+            }
+          },
+          "pro_tip": "Handle retracements holding above 38.2% Fibonacci of cup depth denote immense underlying buying power."
+        },
+        "quiz-15": {
+          "title": "Moving Average Trend Alignment Strategy",
+          "question": "Price trades above ascending EMA 20, EMA 50, and EMA 200. Price pulls back into dynamic zone between EMA 20 and 50 then bounces. What setup is this?",
+          "options": {
+            "q15-a": {
+              "text": "Trend Following Pullback Buy with Stop Loss below EMA 50.",
+              "explanation": "Correct! Stacked rising moving averages with pullbacks to dynamic value zone form premier trend entries."
+            },
+            "q15-b": {
+              "text": "Open short position because price pulled back.",
+              "explanation": "Incorrect. Shorting into stacked bullish moving averages fights dominant macro momentum."
+            },
+            "q15-c": {
+              "text": "Close all trading positions as trend is over.",
+              "explanation": "Incorrect. Dynamic EMA pullbacks are standard healthy behavior in ongoing trends."
+            },
+            "q15-d": {
+              "text": "Target sell orders below EMA 200 baseline.",
+              "explanation": "Incorrect. EMA 200 acts as major institutional regime baseline."
+            }
+          },
+          "pro_tip": "Long win rates are substantially higher when price remains aligned above EMA 200 baseline."
+        },
+        "quiz-16": {
+          "title": "Falling Wedge Bullish Reversal Formation",
+          "question": "Price trends downward within two converging downward sloping trendlines with shallowing lower lows. What does this structure signify?",
+          "options": {
+            "q16-a": {
+              "text": "Sellers gain power and price will collapse indefinitely.",
+              "explanation": "Incorrect. Converging wedge lines show seller momentum is gradually exhausting."
+            },
+            "q16-b": {
+              "text": "Falling Wedge bullish reversal indicating diminishing downward momentum.",
+              "explanation": "Correct! Converging downward slope indicates accumulating demand ready for upside breakout."
+            },
+            "q16-c": {
+              "text": "Bear flag continuation channel setup.",
+              "explanation": "Incorrect. Converging boundaries define wedge structures rather than parallel flags."
+            },
+            "q16-d": {
+              "text": "Neutral chop with zero future trajectory.",
+              "explanation": "Incorrect. Falling wedges possess strong statistical upside breakout probability."
+            }
+          },
+          "pro_tip": "Candle close breaking above upper falling trendline serves as optimal confirmation trigger."
+        },
+        "quiz-17": {
+          "title": "Tweezer Bottom Support Reversal Pattern",
+          "question": "At critical $45 support, red candle on day 1 and green candle on day 2 share exact identical low at $45.00 with lower wick rejection. What pattern is this?",
+          "options": {
+            "q17-a": {
+              "text": "Tweezer Top bearish topping pattern.",
+              "explanation": "Incorrect. Tweezer tops occur at peaks, not at support floors in downtrends."
+            },
+            "q17-b": {
+              "text": "Bearish Engulfing downtrend continuation.",
+              "explanation": "Incorrect. Matching lows with green second candle is not bearish engulfing."
+            },
+            "q17-c": {
+              "text": "Tweezer Bottom bullish reversal showing support defended twice.",
+              "explanation": "Correct! Consecutive identical lows at support confirm solid buyer defense."
+            },
+            "q17-d": {
+              "text": "Neutral candle without technical significance.",
+              "explanation": "Incorrect. Rejection at identical support price levels validates structural base."
+            }
+          },
+          "pro_tip": "Tweezer bottoms coinciding with major Fibonacci or horizontal levels provide high probability reversal confirmation."
+        },
+        "quiz-18": {
+          "title": "Smart Money Concepts: Order Block Retest Entry",
+          "question": "Institutional buying triggers upward Break of Structure leaving Demand Order Block behind. Price drifts down into Order Block. What is optimal action?",
+          "options": {
+            "q18-a": {
+              "text": "Place Buy Limit in Order Block zone with Stop Loss below OB box.",
+              "explanation": "Correct! Order Blocks triggering BOS represent institutional demand zones defending retests."
+            },
+            "q18-b": {
+              "text": "Open immediate short position into the incoming Order Block.",
+              "explanation": "Incorrect. Shorting into unmitigated institutional demand risks severe bounce."
+            },
+            "q18-c": {
+              "text": "Ignore OB zone because smart money never revisits old levels.",
+              "explanation": "Incorrect. Institutions regularly mitigate unfilled resting orders at Order Blocks."
+            },
+            "q18-d": {
+              "text": "Close chart and avoid trading this setup.",
+              "explanation": "Incorrect. Retest into valid Order Blocks offers premier asymmetrical Risk to Reward ratios."
+            }
+          },
+          "pro_tip": "Unmitigated Order Blocks hold the highest statistical probability of responsive price reaction."
+        }
+      }
+    }
+  },
+
+  "calculator": {
+    "title": "Position Risk Calculator",
+    "subtitle": "Calculate optimal lot sizing and Risk to Reward ratio before order entry.",
+    "currency_usd": "USD ($)",
+    "currency_idr": "IDR (Rp)",
+    "capital_card_title": "Capital and Risk Tolerance",
+    "price_card_title": "Order Price Levels",
+    "panel_title": "Position Sizing and RR Terminal",
+    "panel_description": "Calculate modal allocation and accurate pro standard Risk to Reward.",
+    "account_capital": "Account Capital",
+    "risk_per_trade": "Risk Tolerance (%)",
+    "max_risk_amount": "Max Dollar Risk",
+    "entry_price": "Entry Price",
+    "stop_loss_price": "Stop Loss Price (SL)",
+    "target_price": "Take Profit Target (TP)",
+    "direction_long": "LONG",
+    "direction_short": "SHORT",
+    "direction_setup": "Set Setup",
+    "presets_title": "Market Case Templates",
+    "presets_subtitle": "Select a market scenario below to automatically fill calculator parameters.",
+    "quick_capital": "Quick Nominal Presets:",
+    "quick_risk": "Quick Risk Presets:",
+    "calculator_title": "Position Risk Calculation",
+    "scenario_presets": "Real World Presets:",
+    "scenarios": {
+      "stock": "Stock (1:3 RR)",
+      "crypto": "Crypto (1:3 RR)",
+      "gold": "Gold (1:3 RR)"
+    },
+    "reset": "Reset Setup",
+    "results": "Calculated Position Sizing",
+    "risk_levels": {
+      "safe": "Low Risk",
+      "moderate": "Moderate Risk",
+      "danger": "High Risk"
+    },
+    "position_units": "Recommended Position Size",
+    "unit_suffix": "Units / Lots",
+    "total": "Total Position Value:",
+    "max_risk": "Maximum Risk (1R)",
+    "sl_distance": "SL distance",
+    "potential_gain": "Potential Target Gain",
+    "tp_distance": "TP distance",
+    "risk_reward": "Risk : Reward Ratio",
+    "risk_1r": "Risk (1R)",
+    "rr_good": "Ideal Risk Reward",
+    "rr_low": "Low Risk Reward",
+    "position_leverage": "Capital Sizing Ratio",
+    "drawdown_title": "The Mathematics of Drawdown:",
+    "drawdown_description": "Risking 1% per trade takes 100 straight losses to go bust. Risking 10% per trade drops capital 41% in just 5 straight losses and demands +70% profit return just to break even."
   }
 }

@@ -1,5 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { Monitor, CalendarDays, CreditCard } from "lucide-react";
+import {
+  Monitor,
+  Calculator,
+  CalendarDays,
+  CreditCard,
+  GraduationCap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { buttonVariants } from "../ui/button";
@@ -11,6 +17,8 @@ export function MobileNav() {
   const NAV_ITEMS = [
     { to: "/terminal", label: t("common.terminal"), icon: Monitor },
     { to: "/calendar", label: t("common.calendar"), icon: CalendarDays },
+    { to: "/calculator", label: t("common.calculator"), icon: Calculator },
+    { to: "/learn", label: t("common.learn"), icon: GraduationCap },
     { to: "/subscription", label: t("common.subscription"), icon: CreditCard },
   ];
 

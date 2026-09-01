@@ -1,10 +1,10 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { Suspense, type ReactNode } from 'react';
-import { RootLayout } from '@/app/layouts/root-layout';
-import { AuthLayout } from '@/app/layouts/auth-layout';
-import { AdminLayout } from '@/app/layouts/admin-layout';
-import { ErrorBoundary } from '@/components/shared/error-boundary';
-import { PageLoader } from '@/components/shared/page-loader';
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { Suspense, type ReactNode } from "react";
+import { RootLayout } from "@/app/layouts/root-layout";
+import { AuthLayout } from "@/app/layouts/auth-layout";
+import { AdminLayout } from "@/app/layouts/admin-layout";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { PageLoader } from "@/components/shared/page-loader";
 import {
   AdminAssetsPage,
   AdminCodesPage,
@@ -17,15 +17,17 @@ import {
   AdminTestimonialsPage,
   AdminUsersPage,
   AuthCallbackPage,
+  CalculatorPage,
   CalendarPage,
   InvitePage,
   LandingPage,
+  LearnPage,
   LoginPage,
   NotFoundPage,
   RegisterPage,
   SubscriptionPage,
   TerminalPage,
-} from '@/app/router/lazy-pages';
+} from "@/app/router/lazy-pages";
 
 function lazyRoute(page: ReactNode) {
   return (
@@ -44,33 +46,41 @@ export const router = createBrowserRouter([
         element: lazyRoute(<LandingPage />),
       },
       {
-        path: '/terminal',
+        path: "/terminal",
         element: lazyRoute(<TerminalPage />),
       },
       {
-        path: '/terminal/market',
+        path: "/terminal/market",
         element: lazyRoute(<TerminalPage />),
       },
       {
-        path: '/terminal/journal',
+        path: "/terminal/journal",
         element: lazyRoute(<TerminalPage />),
       },
       {
-        path: '/calendar',
+        path: "/calculator",
+        element: lazyRoute(<CalculatorPage />),
+      },
+      {
+        path: "/calendar",
         element: lazyRoute(<CalendarPage />),
       },
       {
-        path: '/subscription',
+        path: "/learn",
+        element: lazyRoute(<LearnPage />),
+      },
+      {
+        path: "/subscription",
         element: lazyRoute(<SubscriptionPage />),
       },
       {
-        path: '/invite/:code',
+        path: "/invite/:code",
         element: lazyRoute(<InvitePage />),
       },
     ],
   },
   {
-    path: '/admin',
+    path: "/admin",
     element: (
       <ErrorBoundary>
         <AdminLayout />
@@ -82,43 +92,43 @@ export const router = createBrowserRouter([
         element: lazyRoute(<AdminPage />),
       },
       {
-        path: 'assets',
+        path: "assets",
         element: lazyRoute(<AdminAssetsPage />),
       },
       {
-        path: 'users',
+        path: "users",
         element: lazyRoute(<AdminUsersPage />),
       },
       {
-        path: 'codes',
+        path: "codes",
         element: lazyRoute(<AdminCodesPage />),
       },
       {
-        path: 'billing',
+        path: "billing",
         element: <Navigate to="/admin/codes" replace />,
       },
       {
-        path: 'plans',
+        path: "plans",
         element: lazyRoute(<AdminPlansPage />),
       },
       {
-        path: 'payments',
+        path: "payments",
         element: lazyRoute(<AdminPaymentsPage />),
       },
       {
-        path: 'disclaimer',
+        path: "disclaimer",
         element: lazyRoute(<AdminDisclaimerPage />),
       },
       {
-        path: 'invitations',
+        path: "invitations",
         element: lazyRoute(<AdminInvitationsPage />),
       },
       {
-        path: 'testimonials',
+        path: "testimonials",
         element: lazyRoute(<AdminTestimonialsPage />),
       },
       {
-        path: 'statistics',
+        path: "statistics",
         element: lazyRoute(<AdminSystemPage />),
       },
     ],
@@ -127,22 +137,22 @@ export const router = createBrowserRouter([
     element: <AuthLayout />,
     children: [
       {
-        path: '/login',
+        path: "/login",
         element: lazyRoute(<LoginPage />),
       },
       {
-        path: '/register',
+        path: "/register",
         element: lazyRoute(<RegisterPage />),
       },
     ],
   },
   {
     // OAuth landing — standalone, no layout (it's just a full-screen loader).
-    path: '/auth/callback',
+    path: "/auth/callback",
     element: lazyRoute(<AuthCallbackPage />),
   },
   {
-    path: '*',
+    path: "*",
     element: lazyRoute(<NotFoundPage />),
   },
 ]);

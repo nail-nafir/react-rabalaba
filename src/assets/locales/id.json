@@ -55,7 +55,9 @@
     "retry": "Coba lagi",
     "back_to_home": "Kembali ke Beranda",
     "favorite": "Favorit",
+    "calculator": "Kalkulator",
     "calendar": "Kalender",
+    "learn": "Edukasi",
     "subscription": "Langganan",
     "view_plans": "Cek Kasta",
     "contact_team": "Hubungi Tim",
@@ -1187,6 +1189,7 @@
       "page_desc": "Kelola harga paket, benefit, dan penawaran langganan."
     },
     "testimonials": {
+      "badge": "Suara Komunitas",
       "page_title": "Ulasan Pengguna",
       "page_desc": "Kelola ulasan pengguna dan atur posisi kutipan terbaik di halaman utama.",
       "list_subtitle": "Daftar Ulasan Pengguna",
@@ -1294,5 +1297,1297 @@
     "action": "Muat Ulang",
     "show_details": "Lihat detail",
     "hide_details": "Tutup detail"
+  },
+
+  "learn": {
+    "badge": "Akademi Trading & Riset Teknikal",
+    "title": "Edukasi Trading",
+    "subtitle": "Bedah candle, pola chart, indikator, Smart Money Concepts biar trading makin tajam.",
+    "common": {
+      "explore_masterclass": "Buka Panduan",
+      "win_rate": "Akurasi",
+      "rating_aria": "{{count}} dari 5 bintang",
+      "bias": {
+        "bullish": "Bullish / Naik",
+        "bearish": "Bearish / Turun",
+        "neutral": "Netral",
+        "bilateral": "Dua Arah"
+      },
+      "difficulty": {
+        "beginner": "Pemula",
+        "intermediate": "Menengah",
+        "advanced": "Tingkat Lanjut"
+      },
+      "pattern_categories": {
+        "candlestick-single": "Candle Single",
+        "candlestick-dual": "Candle Dual",
+        "candlestick-multi": "Candle Multi",
+        "chart-reversal": "Chart Reversal",
+        "chart-continuation": "Chart Continuation"
+      },
+      "strategy_categories": {
+        "indicators": "Indikator Teknikal",
+        "smc": "Smart Money Concepts",
+        "market-structure": "Manajemen Risiko",
+        "multi-timeframe": "Multi-Timeframe"
+      }
+    },
+    "overview": {
+      "summary_title": "Ringkasan Materi",
+      "tabs": {
+        "patterns": "Pola Candle Chart",
+        "strategies": "Indikator Smart Money Concepts",
+        "quiz": "Ujian Simulasi"
+      },
+      "pattern_filters": {
+        "all": "Semua Pola",
+        "candlestick": "Candlestick Jepang",
+        "chart": "Pola Chart Klasik"
+      },
+      "view_modes": {
+        "cards": "Kartu Visual",
+        "table": "Tabel Sontekan"
+      },
+      "stats": {
+        "candlestick": "Formasi Candlestick",
+        "chart": "Pola Chart Klasik",
+        "strategies": "Strategi Smart Money Concepts",
+        "objective": "Berbasis Probabilitas"
+      },
+      "catalog": {
+        "title": "Katalog Formasi Candlestick Pola Chart",
+        "candlestick": "Katalog Formasi Candlestick Jepang",
+        "chart": "Katalog Pola Chart Geometris",
+        "all": "Seluruh Formasi Candlestick Pola Chart",
+        "description": "Klik kartu untuk membuka masterclass detail, aturan volume, titik invalidasi stop loss, dan studi kasus."
+      }
+    },
+    "pattern_dialog": {
+      "schematic": "DIAGRAM ANATOMI DAN TARGET TEKNIKAL",
+      "psychology": "Psikologi Pasar dan Konsep Smart Money",
+      "validation": "Syarat dan Kriteria Validasi Pola",
+      "entry_trigger": "Pemicu Entry",
+      "stop_loss": "Penempatan Stop Loss",
+      "volume_rule": "Konfirmasi Volume",
+      "target_projection": "Kalkulasi Target",
+      "false_breakout": "Peringatan Jebakan Fakeout / False Breakout",
+      "pro_tip": "Tips Masterclass:"
+    },
+    "strategies_ui": {
+      "title": "Katalog Indikator Smart Money Concepts",
+      "description": "Metodologi trading institusional untuk membaca order flow, likuiditas, manipulasi pasar, dan sinyal probabilitas tinggi.",
+      "schematic": "DIAGRAM STRATEGI TEKNIKAL",
+      "principles": "Prinsip dan Mekanisme Kunci",
+      "formula": "Rumus Setup / Formula Eksekusi:",
+      "checklist": "Checklist Langkah Eksekusi Trader Profesional",
+      "pro_tip": "Tips Masterclass:"
+    },
+    "cheatsheet": {
+      "title": "Lembar Sontekan Trading (Cheat Sheet)",
+      "patterns_found": "{{count}} Pola",
+      "search_placeholder": "Cari pola trading, nama lokal, atau strategi...",
+      "filters": {
+        "all": "Semua Bias",
+        "bullish": "Bullish / Naik",
+        "bearish": "Bearish / Turun",
+        "bilateral": "Netral"
+      },
+      "columns": {
+        "name": "Nama Pola",
+        "category": "Kategori",
+        "bias": "Arah Bias",
+        "difficulty": "Tingkat Kesulitan",
+        "entry_trigger": "Pemicu Entry",
+        "stop_loss": "Titik Stop Loss",
+        "timeframe": "Timeframe Ideal",
+        "rr": "Ekspektasi R:R",
+        "rating": "Tingkat Rating"
+      },
+      "empty": "Tidak ada pola yang cocok dengan pencarian Anda."
+    },
+    "quiz_ui": {
+      "title": "Katalog Ujian Simulasi Trading",
+      "ranks": {
+        "apprentice": "Trader Magang",
+        "proficient": "Analis Jago",
+        "master": "Master Trader Pro"
+      },
+      "completed": "Ujian Selesai",
+      "grade_badge": "Tingkat {{grade}} ({{score}}%)",
+      "scorecard": "Hasil Evaluasi Skill Trading",
+      "completed_description": "Semua skenario chart dan manajemen risiko kelar dibabat habis.",
+      "retake": "Ulang Ujian",
+      "retake_random": "Ulang Ujian (5 Soal)",
+      "progress": "Skenario {{current}} dari {{total}}",
+      "accuracy": "Akurasi Total",
+      "total_score": "Total Skor",
+      "status": "Status Evaluasi",
+      "passed": "Lolos Uji Mantap",
+      "needs_study": "Perlu Asah Lagi",
+      "execution_speed": "Rata-rata Waktu",
+      "speed_desc": "{{time}} detik per skenario",
+      "review_title": "Audit Detail Skenario Trading",
+      "review_desc": "Tinjauan performa eksekusi dan rangkuman prinsip teknikal kunci yang diuji.",
+      "correct_action": "Eksekusi Tepat (+1)",
+      "incorrect_action": "Salah Analisis (0)",
+      "categories": {
+        "candlestick": "Candlestick",
+        "chart-pattern": "Pola Chart",
+        "indicator": "Indikator",
+        "risk": "Risiko",
+        "smc": "Smart Money Concepts"
+      },
+      "instruction": "Pilih keputusan trading paling rasional berbasis data objektif.",
+      "chart_setup": "SETUP GRAFIK PASAR NYATA",
+      "correct": "Jawaban Tepat Mantap!",
+      "incorrect": "Masih Kurang Tepat",
+      "takeaway": "Kunci Pro: ",
+      "current_score": "Skor saat ini {{score}} poin",
+      "percent_completed": "{{percent}}% Selesai",
+      "correct_scenarios_count": "{{score}} / {{total}} Skenario Tepat",
+      "accumulated_points": "Poin Terakumulasi",
+      "competency_standard": "Standar Kompetensi",
+      "scenario_number": "Skenario #{{number}}",
+      "view_results": "Lihat Hasil Akhir",
+      "next": "Skenario Berikutnya",
+      "timer_label": "Sisa Waktu",
+      "your_choice": "Pilihan Terpilih: ",
+      "seconds_unit": "Detik",
+      "seconds_value": "{{count}} Detik"
+    },
+    "simulator_dialog": {
+      "modes": {
+        "candlestick": "Anatomi Candlestick",
+        "chart": "Geometri Pola Chart"
+      },
+      "trigger": "Laboratorium Simulator",
+      "trigger_short": "Simulator",
+      "title": "Laboratorium Simulator Trading",
+      "description": "Eksplorasi kalkulasi matematis, proyeksi target measured move, dan anatomi pergerakan harga secara real-time."
+    },
+    "candlestick_simulator": {
+      "presets": {
+        "hammer": "Hammer",
+        "shooting-star": "Shooting Star",
+        "dragonfly": "Dragonfly Doji",
+        "bull-marubozu": "Bull Marubozu",
+        "bear-marubozu": "Bear Marubozu",
+        "spinning-top": "Spinning Top"
+      },
+      "detected": {
+        "bullish": "Candle Bullish Standar",
+        "bearish": "Candle Bearish Standar",
+        "neutral_doji": "Doji Netral",
+        "dragonfly": "Doji Capung (Penolakan Bullish Kuat)",
+        "gravestone": "Doji Batu Nisan (Penolakan Bearish Kuat)",
+        "long_legged": "Doji Kaki Panjang (Kebimbangan & Volatilitas Tinggi)",
+        "bullish_hammer": "Palu Bullish (Peluang Reversal Tinggi)",
+        "bearish_hammer": "Hanging Man (Peringatan Reversal Bearish)",
+        "shooting_star": "Shooting Star / Inverted Hammer (Penolakan di Puncak)",
+        "bullish_marubozu": "Marubozu Bullish (Dominasi Mutlak Pembeli)",
+        "bearish_marubozu": "Marubozu Bearish (Dominasi Mutlak Penjual)",
+        "spinning_top": "Gasingan / Spinning Top (Keseimbangan & Momentum Melemah)"
+      },
+      "psychology": {
+        "dragonfly": "Tekanan jual yang sempat menjatuhkan harga berhasil diserap habis oleh pembeli.",
+        "gravestone": "Pembeli mencoba reli namun dipukul mundur kembali ke titik pembukaan oleh aksi jual deras.",
+        "long_legged": "Pertempuran dahsyat di kedua arah yang berakhir dengan hasil seri seimbang.",
+        "hammer": "Penyerapan beli yang kuat di titik terendah menolak penurunan harga lebih lanjut.",
+        "shooting_star": "Penjual membanjiri pasar dan memaksa harga ditutup mendekati level terendah.",
+        "marubozu": "Momentum institusi tanpa henti sejak awal hingga akhir sesi tanpa perlawanan berarti.",
+        "spinning_top": "Kedua belah pihak kehilangan tenaga pendorong; bersiap untuk fase konsolidasi atau pembalikan.",
+        "bullish": "Pembeli memenangkan sesi ini dan menutup harga lebih tinggi dari pembukaan.",
+        "bearish": "Penjual memegang kendali dan menutup harga lebih rendah dari pembukaan."
+      },
+      "select_preset": "Pilih Contoh Formasi Candle:",
+      "metrics": {
+        "body": "Badan (Body)",
+        "spread": "{{count}} poin rentang",
+        "upper_wick": "Sumbu Atas",
+        "selling_rejection": "Tekanan Jual",
+        "lower_wick": "Sumbu Bawah",
+        "buying_support": "Penyerapan Beli",
+        "total_range": "Total Rentang"
+      },
+      "controls": "Kontrol Parameter OHLC",
+      "controls_hint": "Geser untuk menguji formasi",
+      "open": "OPEN (Buka)",
+      "close": "CLOSE (Tutup)",
+      "high": "HIGH (Tertinggi)",
+      "low": "LOW (Terendah)",
+      "golden_rule": "Hukum Utama Analisis Candlestick:",
+      "golden_rule_description": "Ukuran body mencerminkan dominasi momentum pemenang, sedangkan panjang sumbu (wick) menunjukkan intensitas penolakan harga dan perang likuiditas antara buyer & seller.",
+      "title": "Laboratorium Candlestick Interaktif",
+      "description": "Geser slider harga (OHLC) atau pilih preset untuk melihat perubahan anatomi, rasio sumbu/body, dan interpretasi psikologi pasar secara real-time."
+    },
+    "chart_simulator": {
+      "presets": {
+        "head-and-shoulders": {
+          "name": "Head & Shoulders (Bearish Reversal)",
+          "description": "Penjual menjebol garis neckline kunci setelah pembeli kehabisan amunisi di puncak kepala (Head).",
+          "pro_tip": "Target measured move dihitung dari puncak Head ke Neckline, lalu diproyeksikan ke bawah dari titik breakdown."
+        },
+        "inverse-head-and-shoulders": {
+          "name": "Inverse Head & Shoulders (Bullish Reversal)",
+          "description": "Pembeli menembus resistance neckline setelah penjual kapitulasi di lembah terdalam (Head).",
+          "pro_tip": "Menunggu candle 4H/Daily close di atas neckline dan retest valid memberikan rasio Risk:Reward tertinggi."
+        },
+        "double-top": {
+          "name": "Double Top / Pola \"M\" (Bearish Reversal)",
+          "description": "Dua kali kegagalan menembus resistance atas memicu likuidasi cepat ke target measured move.",
+          "pro_tip": "Jika puncak kedua (Peak 2) memiliki volume lebih rendah dari Peak 1, probabilitas keberhasilan mencapai 80%."
+        },
+        "double-bottom": {
+          "name": "Double Bottom / Pola \"W\" (Bullish Reversal)",
+          "description": "Penjual dua kali gagal mencetak harga lebih rendah, membentuk lantai support kokoh sebelum reli.",
+          "pro_tip": "Breakout neckline dengan volume spike mengonfirmasi terbentuknya akumulasi institusional yang valid."
+        },
+        "bull-flag": {
+          "name": "Bull Flag (Bullish Continuation)",
+          "description": "Tiang impuls momentum tinggi diikuti kanal konsolidasi rapi sebelum melanjutkan tren naik.",
+          "pro_tip": "Target dihitung 100% setinggi tiang bendera (Flagpole) dari titik breakout kanal atas."
+        },
+        "ascending-triangle": {
+          "name": "Ascending Triangle (Bullish Breakout)",
+          "description": "Pembeli terus menekan dengan higher lows hingga menjebol plafon resistance horizontal.",
+          "pro_tip": "Volatilitas yang memadat di ujung segitiga menghasilkan letupan harga (breakout squeeze) yang kuat."
+        }
+      },
+      "volume_quality": {
+        "strong": "Konfirmasi Institusi Kuat",
+        "weak": "⚠️ Risiko Fakeout / Jebakan (Volume Lemah)",
+        "moderate": "⚡ Volume Sedang (Perlu Konfirmasi Candle)"
+      },
+      "select_preset": "Pilih Contoh Pola Chart:",
+      "target": "Target Measured Move",
+      "from_breakout": "dari breakout",
+      "pattern_height": "Tinggi Pola (H)",
+      "formation_depth": "Kedalaman formasi",
+      "stop_loss": "Stop Loss (Invalidasi)",
+      "risk_distance": "jarak risiko",
+      "risk_reward": "Rasio Risk:Reward",
+      "ratio_good": "✓ Rasio Sehat",
+      "ratio_low": "⚠ Kurang Ideal",
+      "controls": "Kontrol Geometri & Eksekusi",
+      "controls_hint": "Sesuaikan tinggi & strategi",
+      "height_control": "Tinggi Pola (H / Kedalaman)",
+      "neckline_control": "Harga Neckline / Resistance ($)",
+      "entry_mode": "Gaya Eksekusi Order:",
+      "retest": "🛡️ Retest (Konservatif)",
+      "breakout": "⚡ Breakout (Agresif)",
+      "volume_control": "Simulasi Volume Breakout:",
+      "volume_options": {
+        "low": "0.8x (Tipis)",
+        "normal": "1.5x (Rata2)",
+        "surge": "2.5x (Spike)"
+      },
+      "golden_rule": "Aturan Emas Measured Move:",
+      "title": "Simulator Geometri Breakout & Measured Move",
+      "description": "Simulasikan proyeksi target harga 1:1, batas garis neckline, rasio Risk:Reward, dan validitas volume secara matematis."
+    },
+    "visual": {
+      "entry": "ENTRY",
+      "stop_loss": "STOP LOSS",
+      "sell_entry": "ENTRY JUAL",
+      "confirm": "KONFIRMASI",
+      "standard": "STANDAR",
+      "dragonfly": "DRAGONFLY",
+      "gravestone": "GRAVESTONE",
+      "dragonfly_bull": "DRAGONFLY (BULLISH)",
+      "gravestone_bear": "GRAVESTONE (BEARISH)",
+      "bullish": "BULLISH",
+      "bearish": "BEARISH",
+      "bullish_marubozu": "MARUBOZU BULLISH",
+      "bearish_marubozu": "MARUBOZU BEARISH",
+      "close_high": "CLOSE = HIGH",
+      "close_low": "CLOSE = LOW",
+      "bullish_label": "(BULLISH)",
+      "bearish_label": "(BEARISH)",
+      "neutral_label": "(NETRAL)",
+      "penetration": ">50% PENETRASI",
+      "stop": "STOP",
+      "trend": "TREN",
+      "equal_lows": "LOW SETARA",
+      "midpoint": ">50% TITIK TENGAH",
+      "neckline": "NECKLINE",
+      "neckline_price": "NECKLINE (${{price}})",
+      "left_shoulder": "BAHU KIRI",
+      "head": "KEPALA",
+      "right_shoulder": "BAHU KANAN",
+      "target": "TARGET",
+      "target_price": "TP (${{price}})",
+      "trigger": "PEMICU",
+      "top_1": "PUNCAK 1",
+      "top_2": "PUNCAK 2",
+      "peak_1": "PUNCAK 1",
+      "peak_2": "PUNCAK 2",
+      "breakout": "BREAKOUT",
+      "bottom_1": "DASAR 1",
+      "bottom_2": "DASAR 2",
+      "rim": "BIBIR",
+      "cup": "CUP (AKUMULASI)",
+      "handle": "HANDLE",
+      "pole": "TIANG",
+      "pole_height": "TIANG (H)",
+      "breakdown": "BREAKDOWN",
+      "flat_resistance": "RESISTANCE DATAR",
+      "higher_lows": "HIGHER LOWS",
+      "flat_support": "SUPPORT DATAR",
+      "lower_highs": "LOWER HIGHS",
+      "resistance_price": "RESISTANCE (${{price}})",
+      "higher_high_price": "HIGHER HIGH (HARGA)",
+      "lower_high_rsi": "LOWER HIGH (DIVERGENSI RSI)",
+      "bos_long": "BOS (BREAK OF STRUCTURE)",
+      "entry_price_100": "HARGA ENTRY ($100)",
+      "stop_loss_95": "STOP LOSS ($95) [-1.5X ATR]",
+      "target_110": "TARGET TP ($110) [2:1 R:R]",
+      "risk_1r": "RISIKO 1R",
+      "gain_2r": "GAIN 2R",
+      "squeeze": "FASE SQUEEZE",
+      "expansion": "EKSPANSI",
+      "daily": "1. HARIAN",
+      "macro_bias": "BIAS MAKRO",
+      "bullish_flow": "ALUR BULLISH",
+      "four_hour": "2. 4-JAM",
+      "structure": "STRUKTUR",
+      "pullback": "PULLBACK",
+      "key_support": "SUPPORT KUNCI",
+      "fifteen_minute": "3. 15-MENIT",
+      "sniper_entry": "ENTRY PRESISI",
+      "choch_pattern": "CHOCH / POLA",
+      "high_value": "HIGH ({{value}})",
+      "open_value": "OPEN ({{value}})",
+      "close_value": "CLOSE ({{value}})",
+      "low_value": "LOW ({{value}})",
+      "upper_wick_value": "SUMBU ATAS ({{value}})",
+      "lower_wick_value": "SUMBU BAWAH ({{value}})"
+    },
+    "patterns": {
+      "candlestick": {
+        "hammer": {
+          "name": "Hammer",
+          "description": "Pola pembalikan arah bullish di dasar tren turun dengan sumbu bawah panjang minimal 2x ukuran body dan body kecil di dekat puncak harga.",
+          "psychology": "Penjual sempat menekan harga ke level terendah baru, tapi pembeli agresif masuk menyerap likuiditas dan mendorong harga kembali naik mendekati level pembukaan/tertinggi.",
+          "rules": [
+            "Muncul setelah tren turun yang jelas atau retest area support kunci.",
+            "Panjang sumbu (ekor) bawah minimal 2x lipat tinggi body candle.",
+            "Sumbu atas sangat pendek atau bahkan tidak ada sama sekali.",
+            "Warna body bisa hijau (lebih kuat) atau merah (masih valid)."
+          ],
+          "volume_rule": "Volume tinggi atau di atas rata-rata 20 periode mengonfirmasi penyerapan likuiditas oleh institusi.",
+          "entry_trigger": "Beli saat harga menembus titik tertinggi (High) candle hammer, atau tunggu retest 50% sumbu bawah.",
+          "stop_loss": "1-2 tick di bawah titik terendah (Low) ekor palu.",
+          "pro_tip": "Hammer dengan body hijau yang terbentuk persis di atas EMA 200 atau Support harian memiliki probabilitas sukses paling tinggi."
+        },
+        "shooting-star": {
+          "name": "Shooting Star",
+          "description": "Pola pembalikan arah bearish setelah tren naik, ditandai dengan ekor atas yang panjang dan body kecil di bagian bawah rentang harga.",
+          "psychology": "Pembeli mencoba mendorong harga ke level tertinggi baru, namun dihadang oleh aksi ambil untung masif dan penjual institusi yang menolak kenaikan harga.",
+          "rules": [
+            "Terbentuk setelah tren naik yang panjang atau di area resistance kunci.",
+            "Panjang ekor atas minimal 2x lipat tinggi body candle.",
+            "Sumbu bawah sangat minim atau nyaris tidak ada.",
+            "Body merah menandakan dominasi penjual yang jauh lebih mutlak dibanding body hijau."
+          ],
+          "volume_rule": "Lonjakan volume di puncak mengonfirmasi kelelahan pembeli retail dan aksi distribusi smart money.",
+          "entry_trigger": "Buka posisi Sell / Short begitu harga menembus ke bawah titik terendah (Low) shooting star.",
+          "stop_loss": "1-2 tick di atas titik tertinggi (High) ekor atas.",
+          "pro_tip": "Cari shooting star yang bertepatan dengan kondisi RSI overbought (>70) atau bearish divergence untuk sinyal short dengan konviksi tinggi."
+        },
+        "inverted-hammer": {
+          "name": "Inverted Hammer",
+          "description": "Pola pembalikan bullish di dasar tren turun dengan ekor atas panjang, menandakan adanya tes kekuatan beli pertama dari buyer.",
+          "psychology": "Pembeli mulai melakukan perlawanan dan mencoba menaikkan harga. Meski sempat ditekan balik, penjual gagal mencetak titik terendah baru.",
+          "rules": [
+            "Muncul di ujung tren turun.",
+            "Ekor atas minimal 2x panjang body.",
+            "Body kecil di dekat level terendah sesi.",
+            "Wajib menunggu konfirmasi candle hijau kuat di sesi berikutnya."
+          ],
+          "volume_rule": "Volume di atas rata-rata menandakan minat akumulasi dari partisipan institusi.",
+          "entry_trigger": "Masuk posisi Long hanya setelah candle berikutnya ditutup DI ATAS High Inverted Hammer.",
+          "stop_loss": "Di bawah level terendah (Low) candle Inverted Hammer.",
+          "pro_tip": "Jangan pernah masuk di Inverted Hammer tanpa menunggu candle konfirmasi berikutnya terkonfirmasi close."
+        },
+        "doji": {
+          "name": "Doji (Standard, Dragonfly & Gravestone)",
+          "description": "Candle di mana harga pembukaan dan penutupan hampir sama persis, mencerminkan kebimbangan dan pertempuran seimbang antara buyer dan seller.",
+          "psychology": "Baik buyer maupun seller tidak mampu mendominasi hingga penutupan pasar. Di level S/R kunci, ini pertanda tren mulai kehilangan tenaga.",
+          "rules": [
+            "Harga Open dan Close hampir identik (selisih tipis <0.1%).",
+            "Dragonfly Doji: Ekor bawah panjang tanpa ekor atas (Cenderung Bullish).",
+            "Gravestone Doji: Ekor atas panjang tanpa ekor bawah (Cenderung Bearish).",
+            "Long-legged Doji: Ekor panjang di kedua sisi (Volatilitas tinggi & bingung arah)."
+          ],
+          "volume_rule": "Volume ekstrem pada Doji menandakan perang likuiditas besar sebelum ledakan harga berikutnya.",
+          "entry_trigger": "Ambil posisi searah dengan penembusan (breakout) High atau Low Doji setelah terkonfirmasi close candle.",
+          "stop_loss": "Di ujung bayangan Doji yang berlawanan arah entry.",
+          "pro_tip": "Doji adalah sinyal peringatan, bukan pemicu order mandiri. Selalu perhatikan tren sebelumnya dan level S/R terdekat."
+        },
+        "marubozu": {
+          "name": "Marubozu (Bullish & Bearish)",
+          "description": "Candle panjang dengan body penuh nyaris tanpa sumbu/ekor sama sekali, menandakan kontrol mutlak satu pihak dari awal hingga akhir sesi.",
+          "psychology": "Satu pihak mengendalikan pasar tanpa perlawanan sama sekali sejak pembukaan hingga penutupan sesi.",
+          "rules": [
+            "Nyaris tidak memiliki sumbu atas maupun bawah (<5% dari total rentang).",
+            "Bullish Marubozu: Open = Low, Close = High (Hijau Solid).",
+            "Bearish Marubozu: Open = High, Close = Low (Merah Solid).",
+            "Berfungsi sebagai sinyal kelanjutan tren atau konfirmasi breakout level kunci."
+          ],
+          "volume_rule": "Volume tebal memperkuat keabsahan momentum pergerakan.",
+          "entry_trigger": "Masuk pada penutupan Marubozu atau saat pullback tipis di Fibonacci retracement 25-38.2%.",
+          "stop_loss": "Di bawah level tengah (50%) atau ujung berlawanan dari body Marubozu.",
+          "pro_tip": "Level 50% tengah dari body Marubozu sering bertindak sebagai support/resistance dinamis kuat saat retest."
+        },
+        "bullish-engulfing": {
+          "name": "Bullish Engulfing",
+          "description": "Pola pembalikan dua candle yang sangat kuat di mana candle hijau besar menelan seluruh body candle merah kecil sebelumnya.",
+          "psychology": "Penjual sempat membuka harga lebih rendah, namun pembeli membanjiri pasar dengan volume besar dan menelan habis tekanan jual hari sebelumnya.",
+          "rules": [
+            "Wajib terjadi setelah tren turun yang jelas atau di area support horizontal.",
+            "Candle pertama adalah candle bearish (merah).",
+            "Candle kedua adalah candle bullish (hijau) dengan body menutupi penuh body candle merah sebelumnya.",
+            "Open candle kedua sama atau lebih rendah dari close candle pertama."
+          ],
+          "volume_rule": "Volume pada candle engulfing hijau idealnya melampaui volume candle merah sebelumnya.",
+          "entry_trigger": "Masuk posisi Long pada saat candle engulfing ditutup atau saat High-nya tertembus.",
+          "stop_loss": "Di bawah titik terendah (Low) dari formasi dua candle tersebut.",
+          "pro_tip": "Jika sebuah candle hijau mampu menelan 2 atau 3 candle merah sebelumnya sekaligus, kekuatan pembalikannya berlipat ganda."
+        },
+        "bearish-engulfing": {
+          "name": "Bearish Engulfing",
+          "description": "Pola pembalikan bearish utama dua candle di mana candle merah besar menelan habis body candle hijau sebelumnya di puncak tren naik.",
+          "psychology": "Pembeli sempat optimis di awal sesi, namun penjual institusi menghajar pasar dengan pesanan jual masif yang menghapus gain beberapa hari dalam satu candle.",
+          "rules": [
+            "Wajib terjadi setelah tren naik atau di area resistance/supply zone penting.",
+            "Candle pertama adalah candle bullish (hijau).",
+            "Candle kedua adalah candle bearish (merah) yang menelan seluruh body hijau.",
+            "Penutupan candle merah berada jauh di bawah pembukaan candle hijau sebelumnya."
+          ],
+          "volume_rule": "Volume tinggi pada candle merah membuktikan adanya aksi distribusi dari pemain besar.",
+          "entry_trigger": "Buka posisi Short begitu candle bearish engulfing resmi close.",
+          "stop_loss": "Di atas titik tertinggi (High) dari pasangan candle engulfing.",
+          "pro_tip": "Kombinasikan bearish engulfing dengan rejection resistance multi-minggu atau RSI overbought untuk rasio Risk:Reward terbaik."
+        },
+        "tweezer-bottom-top": {
+          "name": "Tweezer Top & Bottom",
+          "description": "Dua candle berturut-turut yang memiliki titik High yang sama persis (Tweezer Top) atau Low yang sama persis (Tweezer Bottom), membuktikan adanya penolakan harga berulang.",
+          "psychology": "Pasar menguji level harga ekstrem yang sama dua kali berturut-turut dan gagal menembusnya dua kali, menunjukkan benteng pertahanan yang solid.",
+          "rules": [
+            "Tweezer Bottom: Dua candle dengan level Low kembar di support (Bullish).",
+            "Tweezer Top: Dua candle dengan level High kembar di resistance (Bearish).",
+            "Candle pertama searah tren, candle kedua berlawanan arah.",
+            "Ujung sumbu/shadow menyentuh level harga yang presisi sama."
+          ],
+          "volume_rule": "Volume pada candle kedua yang memantul harus cukup signifikan.",
+          "entry_trigger": "Masuk saat harga menembus batas candle kedua searah dengan pembalikan tren.",
+          "stop_loss": "Sedikit di luar level sumbu kembar tweezer.",
+          "pro_tip": "Pola tweezer memberikan titik Stop Loss yang sangat presisi dan ketat, menghasilkan rasio R:R yang sangat menguntungkan."
+        },
+        "piercing-line": {
+          "name": "Piercing Line & Dark Cloud Cover",
+          "description": "Piercing line (bullish): buka di bawah low kemarin dan tutup menembus >50% body merah. Dark Cloud (bearish): buka di atas high kemarin dan tutup menusuk >50% body hijau.",
+          "psychology": "Menjebak trader breakout dengan membuat gap melampaui level kemarin, lalu berbalik secara agresif merebut kembali lebih dari 50% rentang candle sebelumnya.",
+          "rules": [
+            "Piercing Line: Terjadi di tren turun, candle hijau kedua tutup DI ATAS 50% titik tengah body merah pertama.",
+            "Dark Cloud Cover: Terjadi di tren naik, candle merah kedua tutup DI BAWAH 50% titik tengah body hijau pertama.",
+            "Semakin dalam penetrasi ke dalam body sebelumnya (>60-70%), semakin kuat potensi reversalnya."
+          ],
+          "volume_rule": "Volume lebih tinggi pada candle kedua membuktikan akumulasi/distribusi nyata dari pelaku pasar besar.",
+          "entry_trigger": "Masuk pada penutupan candle penusuk atau saat penembusan level ekstremnya.",
+          "stop_loss": "Di bawah titik terendah dari pola Piercing Line.",
+          "pro_tip": "Jika candle kedua gagal menembus titik tengah 50% dari candle pertama, polanya dianggap lemah dan rentan gagal."
+        },
+        "morning-star": {
+          "name": "Morning Star & Evening Star",
+          "description": "Pola pembalikan 3-candle standar emas: 1) candle tren kuat, 2) candle bintang kecil penanda kejenuhan, 3) candle lawan arah kuat penegas reversal.",
+          "psychology": "Hari 1: Tren lama masih dominan. Hari 2: Momentum habis dan pasar ragu-ragu. Hari 3: Kekuatan baru meledak dan mengambil alih kendali penuh.",
+          "rules": [
+            "Morning Star (Bullish): Candle merah panjang -> Candle kecil di bawah -> Candle hijau panjang tutup >50% body pertama.",
+            "Evening Star (Bearish): Candle hijau panjang -> Candle kecil di atas -> Candle merah panjang tutup >50% body pertama.",
+            "Candle bintang di tengah bisa berwarna hijau, merah, atau berupa Doji (Morning Doji Star)."
+          ],
+          "volume_rule": "Pola volume ideal: Tinggi di Candle 1 -> Menyusut di Candle 2 (star) -> Meledak tinggi di Candle 3.",
+          "entry_trigger": "Buka posisi pada penutupan (close) candle ketiga yang mengonfirmasi pola.",
+          "stop_loss": "Di bawah titik terendah (Low) dari candle bintang di tengah.",
+          "pro_tip": "Morning Star adalah salah satu pola dengan win rate tertinggi dalam analisis teknikal, terutama di timeframe 4 Jam dan Harian."
+        },
+        "three-white-soldiers": {
+          "name": "Three White Soldiers & Three Black Crows",
+          "description": "Tiga candle panjang berturut-turut yang ditutup terus mencetak level baru (White Soldiers naik, Black Crows turun) dengan sumbu pendek, membuktikan dorongan tren yang perkasa.",
+          "psychology": "Tekanan beli/jual berkelanjutan selama 3 sesi beruntun tanpa ada koreksi berarti, membuktikan komitmen mutlak para pelaku pasar besar.",
+          "rules": [
+            "Tiga candle hijau (soldiers) atau merah (crows) berturut-turut.",
+            "Setiap candle dibuka di dalam atau di dekat body candle sebelumnya.",
+            "Setiap candle ditutup di dekat titik tertinggi (soldiers) atau terendah (crows).",
+            "Sumbu atas/bawah relatif pendek."
+          ],
+          "volume_rule": "Volume transaksi idealnya meningkat atau tetap tinggi di ketiga candle tersebut.",
+          "entry_trigger": "Masuk pada penutupan candle ketiga atau tunggu pullback tipis pertama untuk entry yang lebih aman.",
+          "stop_loss": "Di bawah titik Open/Low dari candle soldier pertama.",
+          "pro_tip": "Waspada masuk jika candle ke-3 terlalu raksasa dan RSI sudah >80 karena berpotensi mengalami koreksi teknikal sesaat (pullback)."
+        },
+        "rising-falling-three": {
+          "name": "Rising & Falling Three Methods",
+          "description": "Pola kelanjutan tren tingkat tinggi: candle momentum panjang diikuti 3 candle konsolidasi kecil yang tertahan di dalam rentangnya, diakhiri ledakan candle momentum baru.",
+          "psychology": "Setelah pergerakan tren besar, terjadi aksi ambil untung kecil dengan volume rendah. Tekanan lawan terlalu lemah sebelum tren utama kembali melaju kencang.",
+          "rules": [
+            "Hari 1: Candle panjang kuat searah tren utama.",
+            "Hari 2-4: Tiga candle kecil berlawanan arah yang berada SEPENUHNYA di dalam rentang High-Low Hari 1.",
+            "Hari 5: Candle besar baru searah tren utama yang ditutup melampaui Close Hari 1."
+          ],
+          "volume_rule": "Volume tinggi di Hari 1, menyusut drastis selama konsolidasi Hari 2-4, lalu meledak kembali di Hari 5.",
+          "entry_trigger": "Masuk begitu candle ke-5 terkonfirmasi ditutup menembus batas Hari 1.",
+          "stop_loss": "Di bawah titik terendah dari rentang konsolidasi 3 hari tersebut.",
+          "pro_tip": "Pola ini adalah versi murni candlestick Jepang dari pola klasik Bull Flag / Bear Flag."
+        }
+      },
+      "chart": {
+        "head-and-shoulders": {
+          "name": "Head & Shoulders",
+          "description": "Pola pembalikan arah bearish klasik paling kredibel di dunia trading, terdiri dari puncak tertinggi (Head) di antara dua puncak lebih rendah (Shoulders) dengan garis leher (Neckline) sebagai support kunci.",
+          "psychology": "Bahu kiri terbentuk dalam tren naik normal. Kepala (Head) mencetak level tertinggi baru tapi momentum mulai melemah. Bahu kanan gagal mencetak rekor baru, menandakan pembeli kehabisan amunisi sebelum support leher jebol.",
+          "structure_rules": [
+            "Didahului oleh tren naik (uptrend) yang sudah matang.",
+            "Head (Kepala) harus lebih tinggi secara signifikan dibanding kedua bahu.",
+            "Bahu kiri dan kanan memiliki tinggi dan durasi waktu yang relatif simetris.",
+            "Neckline menghubungkan titik terendah (swing low) di antara bahu dan kepala."
+          ],
+          "neckline_rule": "Penutupan candle harian/4 jam DI BAWAH neckline menjadi konfirmasi aktivasi pola.",
+          "target_calculation": "Target Harga = Titik Tembus Neckline - Jarak Vertikal (Puncak Head ke Neckline).",
+          "stop_loss_placement": "Agresif: Di atas puncak Bahu Kanan. Konservatif: Sedikit di atas Neckline setelah retest.",
+          "false_breakout_warning": "Jangan entry sebelum candle benar-benar close di bawah neckline; sering terjadi fakeout di mana sumbu hanya menjilat neckline lalu memantul.",
+          "pro_tip": "Bahu kanan yang memakan waktu lebih lama untuk terbentuk dibanding bahu kiri biasanya memicu aksi jual yang lebih dalam dan cepat."
+        },
+        "inverse-head-and-shoulders": {
+          "name": "Inverse Head & Shoulders",
+          "description": "Pola pembalikan bullish utama di dasar tren turun dengan lembah tengah (Head) yang lebih rendah dari kedua lembah di sampingnya (Shoulders).",
+          "psychology": "Penjual mencoba menekan harga habis-habisan di Head, namun gagal mempertahankan tren turun. Low yang lebih tinggi di bahu kanan membuktikan pembeli telah mengumpulkan cukup amunisi untuk menembus resistance.",
+          "structure_rules": [
+            "Terbentuk setelah tren turun yang berkepanjangan.",
+            "Head adalah titik terendah mutlak dari keseluruhan struktur.",
+            "Bahu kanan membentuk titik Low yang lebih tinggi dibanding Head.",
+            "Neckline bertindak sebagai batas resistance utama."
+          ],
+          "neckline_rule": "Terkonfirmasi saat candle ditutup DI ATAS garis resistance neckline.",
+          "target_calculation": "Target Harga = Titik Breakout + Jarak Vertikal (Titik Terendah Head ke Neckline).",
+          "stop_loss_placement": "Di bawah titik Low Bahu Kanan, atau di bawah Low candle breakout.",
+          "false_breakout_warning": "Tunggu lonjakan volume saat breakout neckline agar tidak terjebak dalam sideways palsu.",
+          "pro_tip": "Menunggu retest garis neckline sebagai support baru akan meningkatkan win rate dan meminimalkan risiko stop loss secara drastis."
+        },
+        "double-top": {
+          "name": "Double Top (\"M\" Pattern)",
+          "description": "Pola pembalikan bearish yang terdiri dari dua puncak harga berturut-turut pada level resistance yang hampir sama, dipisahkan oleh satu lembah tengah.",
+          "psychology": "Pembeli mencoba menembus level puncak untuk kedua kalinya namun langsung dibenturkan pada pesanan jual institusi yang masif, gagal mencetak Higher High.",
+          "structure_rules": [
+            "Dua puncak terpisah minimal 10-20 candle.",
+            "Puncak kedua tidak boleh melebihi puncak pertama lebih dari 1-2%.",
+            "Lembah di antara kedua puncak menjadi garis support dasar (Neckline)."
+          ],
+          "neckline_rule": "Terpicu aktif saat harga ditutup di bawah titik terendah lembah tengah.",
+          "target_calculation": "Target Harga = Harga Neckline - Tinggi Pola Double Top.",
+          "stop_loss_placement": "Di atas puncak tertinggi, atau di atas titik tengah penurunan kedua.",
+          "false_breakout_warning": "Jangan langsung sell di puncak 2 sebelum garis neckline benar-benar tertembus ke bawah.",
+          "pro_tip": "Jika Puncak ke-2 disertai Bearish Divergence pada RSI, probabilitas terjadinya penurunan tajam melampaui 80%."
+        },
+        "double-bottom": {
+          "name": "Double Bottom (\"W\" Pattern)",
+          "description": "Pola pembalikan bullish menyerupai huruf \"W\", ditandai dengan dua lembah pada level support yang sama, diikuti penembusan ke atas puncak tengah.",
+          "psychology": "Penjual mencoba menjebol support untuk kedua kalinya namun diserap habis oleh order beli institusi. Pasar menolak harga murah dan membentuk pondasi reli baru.",
+          "structure_rules": [
+            "Dua lembah terbentuk di zona harga horizontal yang sama.",
+            "Lembah kedua kerap membentuk Low yang sedikit lebih tinggi atau sapuan likuiditas (sweep wick).",
+            "Puncak di antara kedua lembah menjadi level pemicu breakout."
+          ],
+          "neckline_rule": "Terkonfirmasi saat candle ditutup di atas resistance puncak tengah.",
+          "target_calculation": "Target Harga = Harga Breakout + Tinggi dari lembah terendah ke puncak tengah.",
+          "stop_loss_placement": "Di bawah titik terendah lembah kedua.",
+          "false_breakout_warning": "Pastikan puncak tengah ditembus dengan penutupan body candle yang solid.",
+          "pro_tip": "Cari pola candlestick Hammer atau Engulfing pada lembah kedua untuk entry awal dengan risiko minimal."
+        },
+        "cup-and-handle": {
+          "name": "Cup & Handle",
+          "description": "Pola kelanjutan bullish yang sangat kuat berbentuk cangkir teh: konsolidasi dasar melengkung (Cup) diikuti koreksi miring tipis (Handle).",
+          "psychology": "Lengkungan mangkuk mencerminkan akumulasi tenang dari institusi. Tangkai (handle) adalah aksi ambil untung ringan yang mengocok trader ritel sebelum ledakan tren baru.",
+          "structure_rules": [
+            "Cup harus berbentuk \"U\" yang mulus, bukan bentuk \"V\" yang tajam.",
+            "Kedalaman cup umumnya berada di antara 30% hingga 50% dari reli sebelumnya.",
+            "Handle tidak boleh terkoreksi lebih dari sepertiga kedalaman cup dan miring ke bawah.",
+            "Breakout di atas garis bibir cup (Rim Resistance) mengonfirmasi transaksi."
+          ],
+          "neckline_rule": "Sinyal beli aktif saat candle ditutup di atas garis resistance bibir cup.",
+          "target_calculation": "Target Harga = Titik Breakout + Kedalaman vertikal dari bibir cup ke titik terendah dasar cup.",
+          "stop_loss_placement": "Di bawah titik terendah dari koreksi handle.",
+          "false_breakout_warning": "Handle yang anjlok lebih dalam dari 50% kedalaman mangkuk memiliki risiko kegagalan yang tinggi.",
+          "pro_tip": "Dipopulerkan oleh William O'Neil, pola ini adalah pondasi dari reli saham-saham multibagger dan aset kripto terkuat di dunia."
+        },
+        "bull-flag": {
+          "name": "Bull Flag & Pennant",
+          "description": "Kenaikan impulsif yang sangat tajam dan cepat (tiang bendera), diikuti konsolidasi kanal miring ke bawah yang rapat (bendera) atau segitiga menyempit (pennant).",
+          "psychology": "Pembeli agresif melesatkan harga ke atas. Alih-alih anjlok, pasar hanya bergerak tipis ke bawah karena pemilik barang enggan melepas asetnya di harga murah.",
+          "structure_rules": [
+            "Didahului oleh tiang reli vertikal yang cepat dengan volume masif.",
+            "Badan bendera miring ke bawah di antara dua garis tren paralel.",
+            "Koreksi bendera tidak boleh melebihi 38.2% - 50% dari panjang tiang.",
+            "Umumnya berlangsung singkat antara 5 hingga 20 candle."
+          ],
+          "neckline_rule": "Terpicu seketika saat harga menembus ke atas garis tren atas bendera.",
+          "target_calculation": "Target Harga = Titik Breakout + Panjang Tiang Bendera (Measured Move).",
+          "stop_loss_placement": "Di bawah titik terendah dari kanal bendera.",
+          "false_breakout_warning": "Jangan kejar harga jika breakout terjadi dengan volume sepi atau menurun.",
+          "pro_tip": "Semakin rapat dan dangkal koreksi bendera, semakin eksplosif ledakan reli setelah breakout."
+        },
+        "bear-flag": {
+          "name": "Bear Flag",
+          "description": "Aksi jual tajam dan cepat ke bawah (tiang), diikuti konsolidasi lemah yang merangkak naik perlahan (bendera) sebelum tren turun berlanjut dahsyat.",
+          "psychology": "Aksi jual besar mengguncang pasar. Pantulan naik berlangsung loyo tanpa partisipasi institusi, dimanfaatkan smart money untuk menambah posisi short di harga atas.",
+          "structure_rules": [
+            "Didahului oleh anjloknya harga secara vertikal dengan volume tebal.",
+            "Kanal bendera miring ke atas berlawanan arah dengan tren turun utama.",
+            "Koreksi naik tidak boleh melampaui 50% dari kedalaman tiang."
+          ],
+          "neckline_rule": "Terkonfirmasi saat harga jebol ke bawah garis tren bawah bendera.",
+          "target_calculation": "Target Harga = Titik Breakdown - Panjang Tiang Penurunan Awal.",
+          "stop_loss_placement": "Di atas titik tertinggi dari kanal konsolidasi bendera.",
+          "false_breakout_warning": "Pastikan bendera tidak naik menembus 50% Fibonacci retracement dari tiang.",
+          "pro_tip": "Bear flag di pasar yang volatil sering kali mencapai target measured move jauh lebih cepat daripada bull flag."
+        },
+        "ascending-triangle": {
+          "name": "Ascending Triangle",
+          "description": "Pola bullish yang ditandai dengan garis resistance horizontal datar di atas dan garis support miring ke atas yang membentuk Higher Lows.",
+          "psychology": "Penjual bertahan di batas harga tetap, namun pembeli semakin berani membeli di harga yang semakin tinggi (Higher Lows) hingga tembok resistance habis terkikis.",
+          "structure_rules": [
+            "Resistance horizontal datar dengan minimal 2 kali pantulan.",
+            "Support miring naik dengan minimal 2 titik Higher Low.",
+            "Harga semakin terjepit ke arah ujung segitiga (Apex) sebelum meledak."
+          ],
+          "neckline_rule": "Terpicu aktif saat candle ditutup di atas atap resistance horizontal.",
+          "target_calculation": "Target Harga = Titik Breakout + Tinggi vertikal terlebar dari basis segitiga.",
+          "stop_loss_placement": "Di bawah titik swing low terakhir di dalam segitiga.",
+          "false_breakout_warning": "Penetrasian sumbu ke atas resistance tanpa ada body yang close sering menjadi jebakan fakeout.",
+          "pro_tip": "Breakout yang terjadi pada jarak 60% hingga 75% menuju ujung apex memiliki tingkat kegagalan paling rendah."
+        },
+        "descending-triangle": {
+          "name": "Descending Triangle",
+          "description": "Pola bearish dengan lantai support horizontal datar dan garis tren atas yang menukik ke bawah membentuk Lower Highs, menekan harga terus ke bawah.",
+          "psychology": "Pembeli mempertahankan level harga lantai tertentu, namun setiap pantulan naik semakin melemah (Lower Highs). Akhirnya order beli habis dan support jebol ke bawah.",
+          "structure_rules": [
+            "Support horizontal datar yang diuji berkali-kali.",
+            "Garis tren atas menurun yang menunjukkan tekanan jual di setiap kenaikan.",
+            "Pola umumnya berujung pada penembusan (breakdown) ke bawah."
+          ],
+          "neckline_rule": "Terpicu saat candle ditutup di bawah lantai support horizontal.",
+          "target_calculation": "Target Harga = Titik Breakdown - Tinggi vertikal terlebar dari basis segitiga.",
+          "stop_loss_placement": "Di atas titik Lower High terakhir.",
+          "false_breakout_warning": "Periksa tren makro untuk memastikan ini bukan perangkap pembalikan arah dasar.",
+          "pro_tip": "Hati-hati pada descending triangle di akhir pasar bear panjang; sesekali bisa menjadi perangkap beruang (bear trap) dan berbalik naik tajam."
+        },
+        "falling-wedge": {
+          "name": "Falling Wedge",
+          "description": "Pola bullish di mana harga terkurung di antara dua garis tren yang sama-sama miring ke bawah namun saling menyempit, menandakan tenaga penjual yang mulai habis.",
+          "psychology": "Harga memang mencetak Lower Low, namun kedalaman penurunannya semakin mengecil dibanding sebelumnya. Tenaga penjual terkuras, membuka jalan bagi ledakan balik ke atas.",
+          "structure_rules": [
+            "Kedua garis tren atas dan bawah wajib miring ke bawah.",
+            "Kedua garis tren harus menyempit (konvergen) ke arah ujung.",
+            "Bisa berfungsi sebagai pembalikan bullish (dalam tren turun) maupun kelanjutan bullish (dalam tren naik)."
+          ],
+          "neckline_rule": "Terpicu saat terjadi breakout dan penutupan candle di atas garis tren atas.",
+          "target_calculation": "Target Harga = Titik Breakout + Tinggi bagian terlebar dari pangkal wedge.",
+          "stop_loss_placement": "Di bawah titik terendah dari struktur wedge.",
+          "false_breakout_warning": "Tunggu konfirmasi candle close di atas garis tren atas daripada masuk di sumbu intraday.",
+          "pro_tip": "Falling wedge yang disertai Bullish RSI Divergence memiliki probabilitas kemenangan tertinggi dalam strategi swing trading."
+        }
+      }
+    },
+    "strategies": {
+      "items": {
+        "moving-average-cross": {
+          "title": "Penjajaran Tren EMA 20/50/200 dan Golden Cross",
+          "summary": "Fondasi strategi mengikuti tren (trend-following) standar hedge fund: hanya buka posisi searah susunan EMA 20 > EMA 50 > EMA 200.",
+          "key_principles": [
+            "EMA 20 mewakili momentum jangka pendek; EMA 50 mewakili tren menengah; EMA 200 adalah batas rezim makro institusi.",
+            "Golden Cross: EMA 50 memotong ke atas EMA 200 (Sinyal Bull Market jangka panjang).",
+            "Death Cross: EMA 50 memotong ke bawah EMA 200 (Sinyal Bear Market jangka panjang).",
+            "Support Dinamis: Saat tren kuat, zona di antara EMA 20 dan EMA 50 berfungsi sebagai area pantulan pullback emas."
+          ],
+          "formula_or_setup": "Alignment Bullish: Harga > EMA 20 > EMA 50 > EMA 200. Masuk saat harga pullback menyentuh EMA 20/50 dan muncul candle konfirmasi.",
+          "action_checklist": [
+            "Pastikan kemiringan garis EMA menanjak ke atas (>30 derajat).",
+            "Tunggu harga terkoreksi (pullback) ke zona dinamis antara EMA 20 dan EMA 50.",
+            "Cari pola candle konfirmasi (seperti Hammer atau Bullish Engulfing) di area EMA.",
+            "Pasang Stop Loss di bawah EMA 50 atau swing low terakhir.",
+            "Targetkan minimal Risk-to-Reward 1:2 atau ikuti tren sampai harga ditutup di bawah EMA 50."
+          ],
+          "pro_tip": "Jangan pernah melawan arah EMA 200. Probabilitas kemenangan posisi Long saat harga di atas EMA 200 lebih tinggi 35% dibanding saat di bawahnya."
+        },
+        "rsi-divergence-mastery": {
+          "title": "Penguasaan RSI Divergence: Reversal Reguler dan Hidden Kontinuasi",
+          "summary": "Mendeteksi ketidaksesuaian antara pergerakan harga dan osilator momentum untuk mengantisipasi pembalikan arah atau kelanjutan tren yang kuat.",
+          "key_principles": [
+            "Regular Bullish Divergence: Harga mencetak Lower Low, tapi RSI mencetak Higher Low (Sinyal pembalikan naik kuat).",
+            "Regular Bearish Divergence: Harga mencetak Higher High, tapi RSI mencetak Lower High (Sinyal kelelahan pembeli dan pembalikan turun).",
+            "Hidden Bullish Divergence: Harga mencetak Higher Low, tapi RSI mencetak Lower Low (Sinyal kelanjutan tren naik super kuat).",
+            "Hidden Bearish Divergence: Harga mencetak Lower High, tapi RSI mencetak Higher High (Sinyal kelanjutan tren turun super kuat)."
+          ],
+          "formula_or_setup": "Divergensi terjadi saat kemiringan garis harga berlawanan arah dengan kemiringan garis indikator RSI pada minimal 2 titik swing.",
+          "action_checklist": [
+            "Identifikasi dua titik swing harga yang jelas (Puncak atau Lembah).",
+            "Bandingkan nilai RSI pada waktu yang bersesuaian.",
+            "Pastikan sudut garis harga dan RSI benar-benar bertolak belakang.",
+            "Tunggu pemicu price action: penembusan garis tren kecil atau candle konfirmasi.",
+            "Pasang Stop Loss tepat di luar titik swing ekstrem terakhir."
+          ],
+          "pro_tip": "Hidden Divergence yang searah dengan tren harian adalah salah satu setup paling konsisten karena Anda menunggangi arus likuiditas institusi."
+        },
+        "bollinger-squeeze-breakout": {
+          "title": "Bollinger Bands Squeeze dan Ledakan Volatilitas",
+          "summary": "Memanfaatkan siklus pasar dari fase kompresi volatilitas rendah (Squeeze) menuju ledakan ekspansi harga terarah.",
+          "key_principles": [
+            "Pasar bergerak dalam siklus: dari masa tenang volatilitas rendah (kontraksi) menuju masa ledakan tren (ekspansi).",
+            "The Squeeze: Saat pita atas dan bawah menyempit ke titik terapatnya dalam 20+ periode, ledakan tren besar segera terjadi.",
+            "Walking the Bands: Dalam tren super kuat, harga akan terus menempel di pita luar tanpa kembali ke pita tengah.",
+            "%B Indicator: Mengukur posisi harga relatif di antara pita atas (1.0) dan pita bawah (0.0)."
+          ],
+          "formula_or_setup": "Bandwidth = (Upper Band - Lower Band) / Middle Band. Saat Bandwidth mencapai level terendah dalam beberapa bulan, bersiaplah untuk entry breakout.",
+          "action_checklist": [
+            "Temukan fase Bollinger Squeeze yang rapat di mana candle bergerak sempit mendatar.",
+            "Periksa volume transaksi: volume harus kering selama masa konsolidasi.",
+            "Tunggu candle pertama yang ditutup DI LUAR pita atas (Beli) atau pita bawah (Jual) disertai lonjakan volume.",
+            "Masuk pada penutupan candle breakout tersebut.",
+            "Trailing Stop: Gunakan garis tengah SMA 20 sebagai pengaman profit dinamis."
+          ],
+          "pro_tip": "Waspada jebakan \"Head Fake\": harga sering pura-pura menembus ke satu arah sebentar untuk menyapu stop loss sebelum melesat ke arah berlawanan yang sebenarnya."
+        },
+        "smc-market-structure": {
+          "title": "Smart Money Concepts: Struktur Pasar, BOS dan CHoCH",
+          "summary": "Membaca pasar seperti algoritma institusi besar: mengenali Break of Structure (BOS), Change of Character (CHoCH), Order Block, dan Sapuan Likuiditas.",
+          "key_principles": [
+            "Struktur Pasar: Uptrend = Higher Highs (HH) + Higher Lows (HL). Downtrend = Lower Highs (LH) + Lower Lows (LL).",
+            "BOS (Break of Structure): Harga menembus swing extreme sebelumnya SEARAH tren utama (Konfirmasi Lanjut Tren).",
+            "CHoCH (Change of Character): Harga menjebol swing low terakhir dalam tren naik (atau swing high dalam tren turun), menandakan pergantian tren awal.",
+            "Order Block (OB): Candle berlawanan terakhir sebelum terjadi dorongan harga impulsif yang meninggalkan Fair Value Gap (FVG).",
+            "Liquidity Sweeps: Institusi sengaja mendorong harga menyapu stop loss ritel (Double Top/Bottom palsu) untuk menyerap likuiditas sebelum berbalik arah."
+          ],
+          "formula_or_setup": "Alur Setup: 1) Identifikasi Tren HTF dan Sapuan Likuiditas -> 2) Tunggu CHoCH di Timeframe Rendah -> 3) Pasang Limit Order di Order Block / FVG yang belum tersentuh.",
+          "action_checklist": [
+            "Petakan swing high dan swing low pada timeframe 4 Jam atau Harian.",
+            "Tandai kolam likuiditas penting (Equal Highs, Equal Lows, Likuiditas Garis Tren).",
+            "Tunggu likuiditas disapu dengan penolakan sumbu panjang (Wick Sweep).",
+            "Turun ke timeframe 15 Menit / 5 Menit untuk melihat konfirmasi CHoCH yang jelas.",
+            "Masuk saat harga retest ke area Order Block / Fair Value Gap yang baru terbentuk.",
+            "Pasang Stop Loss ketat di belakang Order Block (menghasilkan rasio Risk:Reward 1:3 hingga 1:10)."
+          ],
+          "pro_tip": "Jangan entry di sembarang Order Block. Order Block hanya valid jika berhasil memicu Break of Structure (BOS) dan meninggalkan ketidakseimbangan harga (Fair Value Gap)."
+        },
+        "atr-dynamic-risk": {
+          "title": "Stop Loss Dinamis Berbasis ATR dan Manajemen Risiko Volatilitas",
+          "summary": "Kerangka kerja matematis manajemen risiko yang digunakan dalam RabaLaba Terminal: penentuan stop loss adaptif mengikuti volatilitas pasar.",
+          "key_principles": [
+            "Stop loss persentase kaku (misal selalu 2% atau $1) sering gagal karena tingkat volatilitas setiap aset dan waktu selalu berubah.",
+            "Average True Range (ATR 14) mengukur tingkat kebisingan (noise) dan rentang pergerakan rata-rata candle secara objektif.",
+            "Jarak Stop Loss Optimal = 1.5x hingga 2.0x ATR di bawah entry/support, memberi ruang nafas pada transaksi agar tidak tersapu noise acak pasar.",
+            "Rumus Ukuran Posisi: Ukuran Posisi = (Modal Akun * % Risiko) / (Harga Entry - Harga Stop Loss)."
+          ],
+          "formula_or_setup": "Stop Loss = Harga Entry - (ATR × 1.5). Jumlah Unit Posisi = (Modal $ × % Risiko) / (ATR × 1.5).",
+          "action_checklist": [
+            "Cek nilai ATR 14 periode pada timeframe trading Anda saat ini.",
+            "Hitung jarak Stop Loss = Harga Saat Ini - (1.5 * ATR) untuk posisi Long.",
+            "Tentukan batas maksimal kerugian modal (misal 1% dari modal $10,000 = $100).",
+            "Bagi nominal risiko tersebut dengan jarak Stop Loss untuk mendapatkan lot/unit yang presisi.",
+            "Jika volatilitas pasar melonjak tinggi, kecilkan ukuran posisi agar risiko uang tetap stabil."
+          ],
+          "pro_tip": "Trader profesional tidak berfokus pada seberapa banyak uang yang bisa didapat, melainkan fokus penuh pada pengendalian risiko dan ukuran posisi (position sizing)."
+        },
+        "multi-timeframe-framework": {
+          "title": "Kerangka Analisis Multi-Timeframe Top-Down (HTF -> MTF -> LTF)",
+          "summary": "Proses sinkronisasi 3 lapisan timeframe: Timeframe Tinggi untuk arah tren, Timeframe Menengah untuk level kunci, dan Timeframe Rendah untuk eksekusi entry presisi.",
+          "key_principles": [
+            "Aturan Rasio 4-6x: Timeframe yang lebih tinggi idealnya 4x sampai 6x lebih besar dibanding timeframe bawahnya (misal Daily -> 4H -> 1H atau 4H -> 1H -> 15m).",
+            "HTF (Harian/Mingguan): Menentukan arah tren makro, zona S/R utama, dan bias institusi.",
+            "MTF (4 Jam/1 Jam): Mengidentifikasi struktur pasar, swing high/low, dan pola chart yang valid.",
+            "LTF (15 Menit/5 Menit): Mencari pemicu entry presisi dengan candle konfirmasi untuk mempersempit jarak Stop Loss."
+          ],
+          "formula_or_setup": "Tren HTF: Bullish -> Pullback MTF ke Support -> Pola Reversal LTF (Hammer/Engulfing/CHoCH) = Sinyal Probabilitas Tertinggi.",
+          "action_checklist": [
+            "Langkah 1: Cek grafik Harian (Daily). Apakah harga di atas EMA 200? Apakah tren membentuk Higher Highs?",
+            "Langkah 2: Cek grafik 4 Jam. Tunggu harga terkoreksi (pullback) ke area support Harian atau EMA 50.",
+            "Langkah 3: Turun ke grafik 15 Menit. Cari pola candle bullish atau Break of Structure.",
+            "Langkah 4: Eksekusi transaksi saat candle 15 Menit close dengan Stop Loss di bawah swing low 15 Menit.",
+            "Langkah 5: Targetkan puncak swing high Harian untuk mendapatkan rasio R:R raksasa 1:4 ke atas."
+          ],
+          "pro_tip": "Jangan pernah mengeksekusi order di timeframe kecil yang berlawanan dengan arah tren utama di timeframe besarnya."
+        }
+      }
+    },
+    "quiz": {
+      "questions": {
+        "quiz-1": {
+          "title": "Identifikasi Candlestick di Support Utama",
+          "question": "Harga turun 8 hari beruntun mendekati area support historis. Muncul candle body mungil di atas dengan ekor bawah panjang 3 kali body disertai volume tebal. Pola apa ini dan langkah eksekusi terbaik?",
+          "options": {
+            "q1-a": {
+              "text": "Shooting Star. Buka posisi Sell sekarang juga.",
+              "explanation": "Kurang tepat. Shooting Star muncul di puncak tren naik, bukan di dasar support."
+            },
+            "q1-b": {
+              "text": "Bullish Hammer. Buka posisi Long saat tembus High dengan Stop Loss di bawah Low.",
+              "explanation": "Tepat sekali! Body kecil di atas dengan sumbu bawah panjang menandakan tekanan jual terserap tuntas."
+            },
+            "q1-c": {
+              "text": "Bearish Marubozu. Siap untuk kelanjutan tren turun lebih dalam.",
+              "explanation": "Salah. Marubozu memiliki body solid panjang nyaris tanpa sumbu."
+            },
+            "q1-d": {
+              "text": "Gravestone Doji. Tutup semua posisi dan simpan kas.",
+              "explanation": "Kurang tepat. Gravestone Doji memiliki sumbu atas dominan."
+            }
+          },
+          "pro_tip": "Hammer dengan volume tebal di area support punya akurasi historis tinggi di atas 68%."
+        },
+        "quiz-2": {
+          "title": "Konfirmasi Breakout Neckline Pola Chart",
+          "question": "Grafik harian membentuk puncak kiri di $100, puncak tengah di $115, dan puncak kanan di $101. Garis leher menghubungkan lembah di $88. Candle ditutup di $85 dengan volume tebal. Pola apa ini dan target penurunannya?",
+          "options": {
+            "q2-a": {
+              "text": "Triple Top dengan target penurunan ke $75.",
+              "explanation": "Kurang tepat. Puncak tengah jauh lebih tinggi dari kedua puncak samping."
+            },
+            "q2-b": {
+              "text": "Head and Shoulders dengan target penurunan ke $61.",
+              "explanation": "Tepat sekali! Target penurunan measured move adalah titik tembus $88 dikurangi tinggi kepala $27 sama dengan $61."
+            },
+            "q2-c": {
+              "text": "Cup and Handle dengan target kenaikan ke $130.",
+              "explanation": "Salah. Cup and Handle adalah formasi kelanjutan naik, bukan pembalikan arah turun."
+            },
+            "q2-d": {
+              "text": "Double Top dengan target penurunan ke $80.",
+              "explanation": "Salah. Double Top hanya memiliki dua puncak setara."
+            }
+          },
+          "pro_tip": "Retest ke garis leher $88 memberi titik masuk short paling optimal dengan rasio risiko minim."
+        },
+        "quiz-3": {
+          "title": "Deteksi Momentum dan Divergensi Indikator RSI",
+          "question": "Grafik 1 Hari Bitcoin mencetak puncak baru di $98,000 melampaui puncak lama $92,000. Namun indikator RSI hanya mencatat angka 64 dibanding puncak lama 79. Sinyal apa yang muncul di chart?",
+          "options": {
+            "q3-a": {
+              "text": "Kontinuasi Bullish karena momentum beli semakin kencang.",
+              "explanation": "Salah. Harga cetak Higher High tapi RSI cetak Lower High artinya momentum melemah."
+            },
+            "q3-b": {
+              "text": "Regular Bearish Divergence menandakan pembeli kelelahan dan potensi koreksi tajam terbuka lebar.",
+              "explanation": "Tepat sekali! Puncak harga naik berlawanan dengan puncak RSI turun adalah definisi baku Regular Bearish Divergence."
+            },
+            "q3-c": {
+              "text": "Hidden Bullish Divergence pembawa harga terbang langsung ke $120,000.",
+              "explanation": "Kurang tepat. Hidden Bullish terjadi saat harga cetak Higher Low dan RSI cetak Lower Low."
+            },
+            "q3-d": {
+              "text": "Kondisi netral tanpa informasi teknikal yang valid.",
+              "explanation": "Salah. Divergensi momentum adalah salah satu sinyal pembalikan arah paling kredibel."
+            }
+          },
+          "pro_tip": "Padukan Bearish Divergence harian dengan konfirmasi pembalikan di timeframe rendah untuk eksekusi presisi."
+        },
+        "quiz-4": {
+          "title": "Kalkulasi Ukuran Posisi dan Manajemen Risiko",
+          "question": "Saldo modal $10,000 dengan batas risiko ketat 1% per transaksi. Rencana beli ETH di harga $3,000 dengan Stop Loss di $2,850. Berapa ukuran lot posisi yang aman?",
+          "options": {
+            "q4-a": {
+              "text": "3.33 ETH senilai total $10,000 modal.",
+              "explanation": "Salah. Membeli 3.33 ETH mempertaruhkan $500 atau 5% modal, melanggar batas risiko 1%."
+            },
+            "q4-b": {
+              "text": "0.67 ETH dengan batas toleransi risiko $100.",
+              "explanation": "Tepat sekali! Risiko maksimal 1% dari $10,000 adalah $100. Jarak Stop Loss $150. Ukuran posisi $100 dibagi $150 adalah 0.67 ETH."
+            },
+            "q4-c": {
+              "text": "1.00 ETH dengan total risiko $150.",
+              "explanation": "Salah. Membeli 1 ETH mempertaruhkan $150 atau 1.5% modal, melampaui aturan 1%."
+            },
+            "q4-d": {
+              "text": "10.0 ETH memakai leverage maksimal 5x.",
+              "explanation": "Salah fatal. Cara ini berisiko memicu margin call dalam hitungan menit."
+            }
+          },
+          "pro_tip": "Menghitung lot dari jarak stop loss adalah kunci utama trader bertahan hidup jangka panjang."
+        },
+        "quiz-5": {
+          "title": "Smart Money Concepts: Sapuan Likuiditas vs Break of Structure",
+          "question": "Harga melesat menembus resistance Equal Highs tetapi candle 4 Jam ditutup kembali di bawah resistance dengan sumbu panjang atas. Di grafik 15 menit harga langsung menjebol swing low terakhir. Kondisi pasar apa ini?",
+          "options": {
+            "q5-a": {
+              "text": "Break of Structure bersih pengonfirmasi lanjut tren naik.",
+              "explanation": "Salah. BOS valid butuh penutupan body candle tebal di atas level, bukan sumbu penolakan."
+            },
+            "q5-b": {
+              "text": "Sapuan Likuiditas Beli diikuti pergeseran struktur bearish.",
+              "explanation": "Tepat sekali! Likuiditas ritel di atas Equal Highs disapu untuk eksekusi jual besar institusi."
+            },
+            "q5-c": {
+              "text": "Pullback wajar dalam tren naik yang wajib langsung dibeli.",
+              "explanation": "Salah. Beli setelah sapuan likuiditas dan patah struktur adalah perangkap ritel."
+            },
+            "q5-d": {
+              "text": "Sinyal kelanjutan pola ascending triangle.",
+              "explanation": "Salah. Tidak ada pola segitiga pada formasi ini."
+            }
+          },
+          "pro_tip": "Setelah sapuan likuiditas di timeframe tinggi, cari peluang short pada Order Block di timeframe rendah."
+        },
+        "quiz-6": {
+          "title": "Formasi Shooting Star di Area Resistance Utama",
+          "question": "Aset menguat 5 hari beruntun mendekati batas resistance tahunan. Pada hari ke 6 terbentuk candle sumbu atas panjang 3 kali body mungil dan sumbu bawah nyaris nihil. Tindakan apa paling bijak?",
+          "options": {
+            "q6-a": {
+              "text": "Beli agresif karena sumbu atas menunjukkan rekor harga baru.",
+              "explanation": "Salah. Sumbu atas panjang menunjukkan penolakan keras dari pihak penjual di puncak."
+            },
+            "q6-b": {
+              "text": "Antisipasi pembalikan turun pola Shooting Star dengan pasang proteksi stop loss ketat.",
+              "explanation": "Tepat sekali! Shooting Star di resistance utama adalah sinyal penolakan kuat dari pihak penjual."
+            },
+            "q6-c": {
+              "text": "Buka posisi beli leverage maksimal tanpa batas risiko.",
+              "explanation": "Salah fatal. Masuk posisi beli di puncak resistance saat muncul shooting star berisiko likuidasi."
+            },
+            "q6-d": {
+              "text": "Abaikan candle karena grafik harian tidak bermakna.",
+              "explanation": "Salah. Candlestick harian adalah salah satu acuan analisis paling dihormati pasar."
+            }
+          },
+          "pro_tip": "Shooting star di resistance kunci dengan volume penolakan besar memiliki akurasi pembalikan tinggi."
+        },
+        "quiz-7": {
+          "title": "Konfirmasi Bullish Engulfing di Area Support",
+          "question": "Pasca penurunan tajam, candle merah kecil ditelan penuh oleh candle hijau besar dengan penutupan di atas titik tertinggi sebelumnya disertai lonjakan volume. Pola apakah ini?",
+          "options": {
+            "q7-a": {
+              "text": "Bearish Harami kelanjutan turun.",
+              "explanation": "Salah. Candle hijau besar yang menelan candle merah kecil adalah karakteristik Bullish Engulfing."
+            },
+            "q7-b": {
+              "text": "Bullish Engulfing pembawa pembalikan tren naik bertenaga besar.",
+              "explanation": "Tepat sekali! Bullish Engulfing di area support dengan konfirmasi volume tebal adalah sinyal reversal valid."
+            },
+            "q7-c": {
+              "text": "Doji Netral penanda kebimbangan arah.",
+              "explanation": "Salah. Body hijau tebal dan panjang menandakan kepastian arah dominan."
+            },
+            "q7-d": {
+              "text": "Head and Shoulders pembalikan arah turun.",
+              "explanation": "Salah. Formasi dua candle di dasar support ini adalah pola engulfing."
+            }
+          },
+          "pro_tip": "Bullish Engulfing yang menelan lebih dari satu candle sebelumnya memiliki probabilitas reli lebih tinggi."
+        },
+        "quiz-8": {
+          "title": "Validasi Pola Reversal Double Bottom",
+          "question": "Grafik harian membentuk dua lembah setara di $50 yang dipisahkan puncak di $65. Kapan waktu eksekusi beli paling aman menurut kaidah klasik?",
+          "options": {
+            "q8-a": {
+              "text": "Beli saat harga pertama kali menyentuh $50 di lembah awal tanpa konfirmasi.",
+              "explanation": "Kurang tepat. Menangkap pisau jatuh di lembah awal berisiko tinggi karena tren turun masih aktif."
+            },
+            "q8-b": {
+              "text": "Beli saat harga berhasil menembus garis leher $65 dengan candle ditutup di atasnya.",
+              "explanation": "Tepat sekali! Pola Double Bottom baru terkonfirmasi secara sah setelah garis leher berhasil ditembus."
+            },
+            "q8-c": {
+              "text": "Buka posisi short di bawah $50 saat harga sedang naik ke $65.",
+              "explanation": "Salah. Shorting saat struktur dasar W sedang terbangun melawan momentum akumulasi."
+            },
+            "q8-d": {
+              "text": "Tunggu harga turun ke $30 tanpa dasar analisis teknis.",
+              "explanation": "Salah. Tidak ada dasar analisis teknikal untuk menunggu harga ke $30 dalam formasi ini."
+            }
+          },
+          "pro_tip": "Jarak target minimum Double Bottom adalah jarak lembah $50 ke puncak neckline $65 memproyeksikan target ke $80."
+        },
+        "quiz-9": {
+          "title": "Pola Kontinuasi Bull Flag Pasca Lonjakan Impulsif",
+          "question": "Harga melesat naik 40% membentuk tiang lalu konsolidasi miring ke bawah dalam kanal sempit dengan volume menyusut. Pola apakah ini?",
+          "options": {
+            "q9-a": {
+              "text": "Bull Flag pola kelanjutan tren naik dengan target setinggi tiang awal.",
+              "explanation": "Tepat sekali! Tiang impulsif diikuti konsolidasi sempit bervolume rendah adalah pola Bull Flag klasik."
+            },
+            "q9-b": {
+              "text": "Double Top pembalikan arah turun jangka panjang.",
+              "explanation": "Salah. Tidak ada dua puncak setara dalam formasi tiang dan bendera miring."
+            },
+            "q9-c": {
+              "text": "Descending Triangle penanda jebolnya lantai support.",
+              "explanation": "Salah. Kanal sempit miring ke bawah setelah impuls naik adalah bendera bukan segitiga."
+            },
+            "q9-d": {
+              "text": "Death Cross sinyal pelemahan tren.",
+              "explanation": "Salah. Death cross mengacu pada perpotongan garis rata-rata bergerak."
+            }
+          },
+          "pro_tip": "Penyusutan volume selama fase bendera membuktikan fase istirahat sehat bukan aksi distribusi besar."
+        },
+        "quiz-10": {
+          "title": "Pola Geometris Ascending Triangle",
+          "question": "Grafik menampilkan batas resistance horizontal datar di $100 sementara titik lembah terus naik Higher Lows $80 ke $88 ke $94. Makna dinamika ini adalah:",
+          "options": {
+            "q10-a": {
+              "text": "Penjual semakin dominan dan harga akan jatuh menembus support.",
+              "explanation": "Salah. Terbentuknya Higher Lows membuktikan pembeli rela membeli di harga semakin mahal."
+            },
+            "q10-b": {
+              "text": "Tekanan beli semakin mendesak penjual di $100 dan peluang breakout naik sangat besar.",
+              "explanation": "Tepat sekali! Garis atas datar dengan garis bawah naik membentuk Ascending Triangle condong bullish."
+            },
+            "q10-c": {
+              "text": "Kondisi pasar mendatar acak tanpa arah tren jelas.",
+              "explanation": "Salah. Higher Lows yang konsisten menunjukkan akumulasi struktural terarah."
+            },
+            "q10-d": {
+              "text": "Head and Shoulders pembalikan tren turun.",
+              "explanation": "Salah. Segitiga menanjak berbeda total dengan pola kepala dan bahu."
+            }
+          },
+          "pro_tip": "Ascending Triangle yang ditembus ke atas memiliki rata-rata akurasi teknikal di atas 70%."
+        },
+        "quiz-11": {
+          "title": "Strategi Volatilitas Bollinger Bands Squeeze",
+          "question": "Pita Bollinger Bands menyempit ke titik terendah dalam 3 bulan terakhir lalu harga menembus Upper Band dengan lonjakan volume tebal. Prospek harga berikutnya adalah:",
+          "options": {
+            "q11-a": {
+              "text": "Harga pasti langsung berbalik ke pita tengah akibat jenuh beli.",
+              "explanation": "Salah. Breakout dari squeeze pada pita atas adalah tanda tren baru dimulai bukan sinyal jual."
+            },
+            "q11-b": {
+              "text": "Terjadi ekspansi volatilitas besar dan awal tren naik baru bertenaga kencang.",
+              "explanation": "Tepat sekali! Squeeze menandai kompresi volatilitas dan tembusan pita atas memicu ekspansi tren baru."
+            },
+            "q11-c": {
+              "text": "Pasar akan membeku tanpa pergerakan selama berbulan-bulan.",
+              "explanation": "Salah. Squeeze selalu berujung pada ledakan volatilitas terarah."
+            },
+            "q11-d": {
+              "text": "Sinyal buka posisi short tanpa pengaman modal.",
+              "explanation": "Salah fatal. Melawan arah ekspansi volatilitas pasca squeeze merusak saldo akun."
+            }
+          },
+          "pro_tip": "Arah breakout pasca squeeze yang didukung volume tebal adalah pemicu entry momentum tinggi."
+        },
+        "quiz-12": {
+          "title": "Konfluensi Analisis Multi-Timeframe",
+          "question": "Grafik harian bergerak bullish di atas EMA 200. Di grafik 4 Jam harga pullback ke Order Block pembeli. Di grafik 15 Menit muncul pembalikan arah ke atas. Langkah eksekusi terbaik adalah:",
+          "options": {
+            "q12-a": {
+              "text": "Masuk posisi Long di grafik 15 Menit dengan Stop Loss di bawah swing low untuk rasio R:R tinggi searah tren harian.",
+              "explanation": "Tepat sekali! Ini konfluensi multi timeframe ideal: Tren Makro Harian plus Area Nilai 4 Jam plus Konfirmasi Mikro 15 Menit."
+            },
+            "q12-b": {
+              "text": "Buka posisi Short agresif karena grafik 4 Jam sedang terkoreksi turun.",
+              "explanation": "Salah. Menjual saat pullback di atas tren harian bullish adalah transaksi melawan arus utama."
+            },
+            "q12-c": {
+              "text": "Menunggu grafik mingguan tutup sebelum mengambil keputusan.",
+              "explanation": "Kurang tepat. Menunggu penutupan mingguan melewatkan titik rasio risiko reward terbaik."
+            },
+            "q12-d": {
+              "text": "Abaikan timeframe rendah karena hanya berisi noise.",
+              "explanation": "Salah. Timeframe rendah sangat krusial untuk mempersempit jarak stop loss dan mendongkrak rasio R:R."
+            }
+          },
+          "pro_tip": "Pendekatan top-down dari tren Daily ke lokasi 4H lalu entry di 15M adalah standar emas trader institusi."
+        },
+        "quiz-13": {
+          "title": "Pola Reversal Tiga Candle Morning Star",
+          "question": "Dalam tren turun, muncul candle merah besar hari pertama, candle kecil berbodi mini di dasar hari kedua, dan candle hijau besar menembus 50% body hari pertama di hari ketiga. Pola apakah ini?",
+          "options": {
+            "q13-a": {
+              "text": "Evening Star sinyal pembalikan tren turun.",
+              "explanation": "Salah. Evening star muncul di puncak tren naik, bukan di dasar tren turun."
+            },
+            "q13-b": {
+              "text": "Morning Star formasi pembalikan arah naik tiga candle dengan probabilitas tinggi.",
+              "explanation": "Tepat sekali! Tiga candle pembalikan di dasar support dengan penetrasi hijau tebal di atas 50% adalah Morning Star klasik."
+            },
+            "q13-c": {
+              "text": "Three Black Crows tanda tekanan jual ekstrem.",
+              "explanation": "Salah. Three black crows terdiri dari tiga candle merah berturut-turut."
+            },
+            "q13-d": {
+              "text": "Pola Doji biasa tanpa indikasi pembalikan arah.",
+              "explanation": "Salah. Formasi tiga candle ini memiliki struktur pembalikan arah yang jelas."
+            }
+          },
+          "pro_tip": "Penetrasi candle ketiga yang melampaui 50% body candle pertama mengonfirmasi kemenangan telak pihak pembeli."
+        },
+        "quiz-14": {
+          "title": "Pola Kontinuasi Klasik Cup and Handle",
+          "question": "Grafik membentuk cekungan bulat mangkuk diikuti koreksi miring ke bawah dangkal di dekat garis resistance $120. Pola apakah ini dan arah kelanjutannya?",
+          "options": {
+            "q14-a": {
+              "text": "Double Top pembalikan arah turun tajam.",
+              "explanation": "Salah. Dasar cekungan bulat bertahap berbeda dari dua puncak tajam double top."
+            },
+            "q14-b": {
+              "text": "Head and Shoulders kelanjutan tren turun.",
+              "explanation": "Salah. Cekungan mangkuk dengan gagang adalah pola kelanjutan bullish."
+            },
+            "q14-c": {
+              "text": "Cup and Handle pola kelanjutan bullish dengan target breakout setinggi dasar mangkuk.",
+              "explanation": "Tepat sekali! Akumulasi bulat mangkuk diikuti konsolidasi gagang dangkal adalah formasi Cup and Handle klasik."
+            },
+            "q14-d": {
+              "text": "Kondisi sideways tanpa potensi kenaikan harga.",
+              "explanation": "Salah. Pola ini merupakan salah satu pola kontinuasi tren naik paling andal dalam analisis teknikal."
+            }
+          },
+          "pro_tip": "Gagang handle yang tidak terkoreksi lebih dari 38.2% kedalaman mangkuk menandakan tenaga akumulasi super kuat."
+        },
+        "quiz-15": {
+          "title": "Strategi Penjajaran Tren Moving Average",
+          "question": "Harga bergerak di atas EMA 20, EMA 50, dan EMA 200 yang tersusun menanjak rapi. Harga terkoreksi menyentuh area dinamis antara EMA 20 dan EMA 50 lalu memantul. Setup apa ini?",
+          "options": {
+            "q15-a": {
+              "text": "Trend Following Pullback Buy dengan Stop Loss di bawah EMA 50.",
+              "explanation": "Tepat sekali! Susunan EMA menanjak rapi dengan harga pullback ke area nilai adalah setup beli tren paling konsisten."
+            },
+            "q15-b": {
+              "text": "Buka posisi short karena harga baru saja terkoreksi turun.",
+              "explanation": "Salah. Membuka posisi short di atas susunan EMA bullish adalah trading melawan tren makro."
+            },
+            "q15-c": {
+              "text": "Tutup semua akun karena tren sudah selesai.",
+              "explanation": "Salah. Pullback ke EMA dinamis adalah karakteristik sehat dari tren yang sedang berlangsung."
+            },
+            "q15-d": {
+              "text": "Pasang target jual di bawah EMA 200.",
+              "explanation": "Salah. EMA 200 berfungsi sebagai benteng pertahanan tren makro jangka panjang."
+            }
+          },
+          "pro_tip": "Peluang menang posisi beli saat harga berada di atas EMA 200 jauh lebih tinggi dibanding saat harga di bawahnya."
+        },
+        "quiz-16": {
+          "title": "Pola Pembalikan Bullish Falling Wedge",
+          "question": "Harga bergerak turun di dalam dua garis tren miring ke bawah yang saling menyempit konvergen. Kedalaman penurunan harga semakin mengecil dibanding sebelumnya. Makna struktur ini adalah:",
+          "options": {
+            "q16-a": {
+              "text": "Penjual semakin kuat dan harga akan anjlok bebas tanpa batas.",
+              "explanation": "Salah. Garis yang menyempit menandakan momentum penjual mulai terkuras habis."
+            },
+            "q16-b": {
+              "text": "Falling Wedge pola pembalikan arah naik karena tenaga dorong penjual melemah.",
+              "explanation": "Tepat sekali! Wedge menurun yang menyempit adalah sinyal akumulasi pembeli bersiap melakukan breakout ke atas."
+            },
+            "q16-c": {
+              "text": "Pola bendera bearish kelanjutan tren turun.",
+              "explanation": "Salah. Garis yang menyempit konvergen adalah wedge bukan saluran paralel flag."
+            },
+            "q16-d": {
+              "text": "Kondisi konsolidasi netral tanpa arah masa depan.",
+              "explanation": "Salah. Falling wedge memiliki bias probabilitas breakout ke atas yang sangat kuat."
+            }
+          },
+          "pro_tip": "Breakout candle yang ditutup di atas garis tren atas wedge adalah pemicu entri beli paling aman."
+        },
+        "quiz-17": {
+          "title": "Pola Reversal Dasar Support Tweezer Bottom",
+          "question": "Pada level support kritis $45, candle merah hari pertama dan candle hijau hari kedua mencatat harga terendah Low yang sama persis di $45.00 dengan penolakan sumbu bawah. Pola candlestick apakah ini?",
+          "options": {
+            "q17-a": {
+              "text": "Tweezer Top sinyal pembalikan tren turun di puncak.",
+              "explanation": "Salah. Tweezer top terjadi di puncak tren naik, bukan di lantai support tren turun."
+            },
+            "q17-b": {
+              "text": "Bearish Engulfing kelanjutan tren turun.",
+              "explanation": "Salah. Low yang sama persis dengan candle kedua hijau bukanlah engulfing bearish."
+            },
+            "q17-c": {
+              "text": "Tweezer Bottom sinyal pembalikan arah naik karena lantai support teruji kuat dua kali.",
+              "explanation": "Tepat sekali! Dua candle berurutan dengan titik terendah identik di support menandakan pertahanan pembeli yang solid."
+            },
+            "q17-d": {
+              "text": "Pola netral tanpa arti teknis.",
+              "explanation": "Salah. Penolakan harga di level identik adalah konfirmasi lantai support valid."
+            }
+          },
+          "pro_tip": "Tweezer Bottom yang muncul bertepatan dengan level support kunci atau Fibonacci memberi konfirmasi reversal kuat."
+        },
+        "quiz-18": {
+          "title": "Smart Money Concepts: Retest Order Block",
+          "question": "Dorongan beli institusi memicu Break of Structure ke atas dan meninggalkan kotak Order Block pembeli di bawah. Harga kini perlahan bergerak turun kembali ke area Order Block tersebut. Tindakan eksekusi optimal adalah:",
+          "options": {
+            "q18-a": {
+              "text": "Pasang Limit Order Beli di area Order Block dengan Stop Loss tepat di bawah kotak OB.",
+              "explanation": "Tepat sekali! Order Block yang memicu BOS adalah zona permintaan institusi yang siap mempertahankan harga saat retest."
+            },
+            "q18-b": {
+              "text": "Langsung buka posisi short karena harga sedang bergerak turun menuju OB.",
+              "explanation": "Salah. Melakukan shorting langsung ke dalam area order block pembeli berisiko tinggi terpantul naik."
+            },
+            "q18-c": {
+              "text": "Abaikan zona OB karena institusi tidak pernah kembali ke harga lama.",
+              "explanation": "Salah. Institusi sering memitigasi sisa order terbuka pada area Order Block."
+            },
+            "q18-d": {
+              "text": "Tutup grafik dan hindari trading sama sekali.",
+              "explanation": "Salah. Retest ke Order Block valid adalah salah satu setup dengan rasio Risk to Reward terbaik."
+            }
+          },
+          "pro_tip": "Order Block yang belum pernah tersentuh memiliki probabilitas reaksi pantulan harga paling tinggi."
+        }
+      }
+    }
+  },
+
+  "calculator": {
+    "title": "Kalkulator Risiko Posisi",
+    "subtitle": "Hitung ukuran lot optimal dan rasio Risk to Reward sebelum eksekusi order.",
+    "currency_usd": "USD ($)",
+    "currency_idr": "IDR (Rp)",
+    "capital_card_title": "Modal dan Toleransi Risiko",
+    "price_card_title": "Level Harga Order",
+    "panel_title": "Kalkulator Ukuran Posisi Rasio RR",
+    "panel_description": "Kalkulasi alokasi modal dan rasio Risk to Reward akurat standar pro.",
+    "account_capital": "Modal Akun (Capital)",
+    "risk_per_trade": "Toleransi Risiko (%)",
+    "max_risk_amount": "Maksimal Kerugian (Risk)",
+    "entry_price": "Harga Entry",
+    "stop_loss_price": "Harga Stop Loss (SL)",
+    "target_price": "Target Profit (TP)",
+    "direction_long": "LONG",
+    "direction_short": "SHORT",
+    "direction_setup": "Atur Setup",
+    "presets_title": "Template Kasus Pasar",
+    "presets_subtitle": "Pilih salah satu skenario untuk mengisi parameter kalkulator secara otomatis.",
+    "quick_capital": "Pilihan Cepat Nominal:",
+    "quick_risk": "Pilihan Cepat Risiko:",
+    "calculator_title": "Perhitungan Risiko Posisi",
+    "scenario_presets": "Template Kasus Nyata:",
+    "scenarios": {
+      "stock": "Saham (1:3 RR)",
+      "crypto": "Kripto (1:3 RR)",
+      "gold": "Emas (1:3 RR)"
+    },
+    "reset": "Atur Ulang",
+    "results": "Hasil Kalkulasi Posisi",
+    "risk_levels": {
+      "safe": "Risiko Rendah",
+      "moderate": "Risiko Sedang",
+      "danger": "Risiko Tinggi"
+    },
+    "position_units": "Ukuran Posisi Rekomendasi",
+    "unit_suffix": "Unit / Lot",
+    "total": "Total Nilai Posisi:",
+    "max_risk": "Maksimal Risiko (1R)",
+    "sl_distance": "jarak SL",
+    "potential_gain": "Potensi Keuntungan",
+    "tp_distance": "jarak TP",
+    "risk_reward": "Rasio Risk : Reward",
+    "risk_1r": "Risiko (1R)",
+    "rr_good": "Risk Reward Ideal",
+    "rr_low": "Risk Reward Rendah",
+    "position_leverage": "Rasio Ukuran Modal",
+    "drawdown_title": "Hukum Matematika Risk of Ruin:",
+    "drawdown_description": "Merisikokan 1% per transaksi butuh 100 kekalahan beruntun untuk bangkrut. Merisikokan 10% per transaksi bikin modal anjlok 41% cuma dalam 5 kekalahan beruntun dan butuh profit +70% cuma buat balik modal."
   }
 }

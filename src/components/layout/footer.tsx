@@ -135,6 +135,28 @@ export function Footer() {
             </li>
             <li>
               <Link
+                to="/calculator"
+                className={cn(
+                  buttonVariants({ variant: "link" }),
+                  "p-0 h-auto font-normal text-muted-foreground hover:text-primary transition-colors",
+                )}
+              >
+                {t("common.calculator")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/learn"
+                className={cn(
+                  buttonVariants({ variant: "link" }),
+                  "p-0 h-auto font-normal text-muted-foreground hover:text-primary transition-colors",
+                )}
+              >
+                {t("common.learn")}
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/subscription"
                 className={cn(
                   buttonVariants({ variant: "link" }),

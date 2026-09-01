@@ -1,5 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Radio, BarChart3, Calendar, CreditCard } from "lucide-react";
+import {
+  Radio,
+  BarChart3,
+  Calculator,
+  Calendar,
+  CreditCard,
+  GraduationCap,
+} from "lucide-react";
 import { LicenseBadge } from "./license-badge";
 import { UserMenu } from "./user-menu";
 import { cn } from "@/lib/utils";
@@ -9,6 +16,8 @@ import { buttonVariants } from "../ui/button";
 const NAV_ITEMS = [
   { to: "/terminal", icon: BarChart3 },
   { to: "/calendar", icon: Calendar },
+  { to: "/calculator", icon: Calculator },
+  { to: "/learn", icon: GraduationCap },
   { to: "/subscription", icon: CreditCard },
 ] as const;
 
