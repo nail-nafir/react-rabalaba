@@ -22,7 +22,16 @@ import {
   rowToFollowedTrade,
 } from "@/core/trade/journal-mapper";
 import type { JournalTradeRow, JournalTradeInsert } from "@/types/journal";
-import { canonicalTimeframe } from "@/constants/timeframes";
+import type {
+  JournalSignalStateRow,
+  JournalSignalStateUpsert,
+} from "@/types/journal";
+import {
+  activateSignalEpisode,
+  closeSignalEpisode,
+  observeSignalEpisode,
+  signalEpisodeKey,
+} from "@/core/automation/signal-episode";
 
 /** A terminal-level hit → fields to UPDATE on the existing open row. */
 export interface JournalClosure {
@@ -56,6 +65,7 @@ export interface AutoJournalPlan {
   inserts: JournalTradeInsert[];
   closures: JournalClosure[];
   progressUpdates: JournalProgressUpdate[];
+  signalStateUpdates: JournalSignalStateUpsert[];
 }
 
 export interface JournalProgressUpdate {
@@ -70,12 +80,15 @@ export interface RunAutoJournalOptions {
    *  gets the same index-aware de-rate shown by the screener. Context changes
    *  strength/tier, never whether an actionable screen signal is journaled. */
   contexts?: EngineContexts;
+  /** Persisted one-trade-per-signal-episode state. */
+  signalStates?: JournalSignalStateRow[];
 }
 
 /** A quote older than this is STALE — a hours-old cached/forward-filled snapshot,
  *  not a live tick. The cron must skip it so it never journals/syncs off stale
  *  prices (wrong direction, wrong entry, or a phantom TP/SL). ~1.5× the 1h candle. */
 const QUOTE_MAX_AGE_MS = 90 * 60 * 1000;
+const ENTRY_MAX_AGE_MS = 15 * 60 * 1000;
 
 /** Stale-quote guard for ALL asset types (not just crypto): a stale price in any
  *  market can manufacture a phantom TP/SL on sync or a wrong-direction emit. When a
@@ -93,6 +106,23 @@ function isStaleQuote(asset: UnifiedAsset, now: number): boolean {
   return age > QUOTE_MAX_AGE_MS || age < -5 * 60 * 1000;
 }
 
+function hasFreshDecision(asset: UnifiedAsset, now: number): boolean {
+  const closedAt = asset.decisionCandleClosedAt;
+  const executionAt = asset.executionCandleOpenAt;
+  if (
+    typeof closedAt !== "number" ||
+    !Number.isFinite(closedAt) ||
+    typeof executionAt !== "number" ||
+    !Number.isFinite(executionAt) ||
+    executionAt < closedAt ||
+    executionAt > now + 5 * 60 * 1000
+  ) {
+    return false;
+  }
+  const age = now - closedAt;
+  return age >= 0 && age <= ENTRY_MAX_AGE_MS;
+}
+
 export function runAutoJournal(
   assets: UnifiedAsset[],
   openRows: JournalTradeRow[],
@@ -100,6 +130,48 @@ export function runAutoJournal(
 ): AutoJournalPlan {
   const now = options.now ?? Date.now();
   const assetBySymbol = new Map(assets.map((a) => [a.symbol, a]));
+  const stateByKey = new Map(
+    (options.signalStates ?? []).map((state) => [
+      signalEpisodeKey(state.symbol, state.timeframe),
+      state as JournalSignalStateUpsert,
+    ]),
+  );
+
+  // Open journal rows are the recoverable source of truth if a previous state
+  // upsert failed after the trade insert.
+  for (const row of openRows) {
+    const key = signalEpisodeKey(row.symbol, row.timeframe);
+    const state = stateByKey.get(key);
+    stateByKey.set(key, {
+      symbol: row.symbol,
+      timeframe: row.timeframe,
+      active_signal: row.signal,
+      blocked_signal: state?.blocked_signal ?? null,
+      last_raw_signal: state?.last_raw_signal ?? row.signal,
+      decision_candle_open_at:
+        state?.decision_candle_open_at ?? row.decision_candle_open_at ?? null,
+      decision_candle_closed_at:
+        state?.decision_candle_closed_at ??
+        row.decision_candle_closed_at ??
+        null,
+      entry_price: row.entry_price,
+      stop_loss: row.stop_loss,
+      take_profits: row.take_profits,
+      risk_reward_ratio: row.risk_reward_ratio,
+      updated_at: new Date(now).toISOString(),
+    });
+  }
+
+  // Heal the inverse partial-write case: the episode upsert succeeded but its
+  // trade insert did not. Keep the old direction blocked until raw goes neutral.
+  const openRowKeys = new Set(
+    openRows.map((row) => signalEpisodeKey(row.symbol, row.timeframe)),
+  );
+  for (const [key, state] of stateByKey) {
+    if (state.active_signal && !openRowKeys.has(key)) {
+      stateByKey.set(key, closeSignalEpisode(state, state.active_signal));
+    }
+  }
 
   // SYNC: replay candles since entry for each open trade; close on TP/SL.
   const openTrades = openRows.map(rowToFollowedTrade);
@@ -131,6 +203,9 @@ export function runAutoJournal(
       low: c.low,
       close: c.close,
       timestamp: c.timestamp * 1000,
+      isClosed:
+        typeof asset.decisionCandleOpenAt === "number" &&
+        c.timestamp * 1000 <= asset.decisionCandleOpenAt,
     }));
   }
 
@@ -147,7 +222,7 @@ export function runAutoJournal(
     close_price: t.closePrice ?? null,
     closed_at: t.closedAt
       ? new Date(t.closedAt).toISOString()
-      : new Date().toISOString(),
+      : new Date(now).toISOString(),
     highest_tp_reached: t.highestTpReached,
     exit_reason:
       t.exitReason ??
@@ -202,32 +277,65 @@ export function runAutoJournal(
     });
   }
 
-  // EMIT after closure planning so a TP/SL/reversal can be replaced by the
-  // signal currently shown in the screener during this SAME scan. Rows that
-  // remain open still dedupe by canonical symbol+timeframe.
+  for (const closure of closures) {
+    const key = signalEpisodeKey(
+      closure.symbol,
+      openRows.find((row) => row.id === closure.id)?.timeframe,
+    );
+    const state = stateByKey.get(key);
+    if (state && closure.signal) {
+      stateByKey.set(key, closeSignalEpisode(state, closure.signal));
+    }
+  }
+
+  // Observe raw signals after closes: neutral re-arms the old direction;
+  // same-direction raw signals remain blocked; opposites start a new episode.
+  for (const asset of assets) {
+    const key = signalEpisodeKey(asset.symbol, asset.timeframe);
+    stateByKey.set(key, observeSignalEpisode(stateByKey.get(key), asset, now));
+  }
+
+  // EMIT after closure planning. A same-direction close stays blocked until a
+  // neutral raw signal re-arms it; an opposite signal may start immediately.
   const closingIds = new Set(closures.map((c) => c.id));
   const openKeys = new Set(
     openRows
       .filter((row) => !closingIds.has(row.id))
       .map((row) =>
-        `${row.symbol}|${canonicalTimeframe(row.timeframe)}`,
+        signalEpisodeKey(row.symbol, row.timeframe),
       ),
   );
   const inserts: JournalTradeInsert[] = [];
   for (const asset of assets) {
-    const key = `${asset.symbol}|${canonicalTimeframe(asset.timeframe)}`;
-    if (openKeys.has(key) || isStaleQuote(asset, now)) continue;
+    const key = signalEpisodeKey(asset.symbol, asset.timeframe);
+    const state = stateByKey.get(key);
+    const rawSignal = asset.outlook?.signal;
+    if (
+      openKeys.has(key) ||
+      state?.active_signal != null ||
+      state?.blocked_signal === rawSignal ||
+      isStaleQuote(asset, now) ||
+      !hasFreshDecision(asset, now)
+    ) {
+      continue;
+    }
 
     // Keep the journal's recorded strength/tier identical to the screener's
     // top-down de-rate, but do not hide a signal the screener exposes.
     const enriched = options.contexts
       ? enrichAsset(asset, options.contexts, { applyOptionalOverlays: false })
       : asset;
-    const trade = buildFollowedTrade(enriched);
+    const trade = buildFollowedTrade(enriched, now);
     if (!trade) continue;
     inserts.push(followedTradeToInsert(trade));
     openKeys.add(key);
+    stateByKey.set(key, activateSignalEpisode(state!, trade.signal));
   }
 
-  return { inserts, closures, progressUpdates };
+  return {
+    inserts,
+    closures,
+    progressUpdates,
+    signalStateUpdates: [...stateByKey.values()],
+  };
 }

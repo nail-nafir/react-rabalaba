@@ -81,7 +81,7 @@ File: `src/core/trade/follow-trade-model.ts:396` (`buildTrackerStats`).
 | Fungsi / Function | Output |
 |---|---|
 | `computePnl(trade, price)` (`:166`) | `{pct, r}` direction-aware |
-| `evaluateFollow(trade, price, candles)` | replay candle stop-first; TP1→stop entry, TP2→stop TP1; stop baru aktif langkah berikutnya; gap fill di open aktual |
+| `evaluateFollow(trade, price, candles)` | replay candle stop-first; TP1→stop entry, TP2→stop TP1; final close bisa mengonfirmasi stop yang baru naik; gap fill di open aktual |
 | `applyPriceSync(openTrades, prices, candlesBySymbol)` | partisi open/closed + milestone yang harus dipersist |
 | `deriveFollowProgress` | milestone tertinggi + TP yang benar-benar diamankan dari close aktual + alasan exit exact/fallback historis |
 | `buildTrackerStats(history, openCount)` (`:396`) | equity/daily series, status distribution, per-asset, asset-type, long-vs-short, win/loss/impas, by-grade; impas keluar dari denominator win-rate |

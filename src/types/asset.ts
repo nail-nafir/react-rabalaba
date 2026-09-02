@@ -148,8 +148,12 @@ export interface UnifiedAsset {
   /** Epoch ms of the latest quote (Yahoo meta.regularMarketTime). Drives the
    *  auto-journal freshness guard — a stale snapshot must NOT be journaled. */
   quoteTime?: number;
-  /** Epoch ms of the last fully-closed candle used to make this signal. */
-  decisionCandleTime?: number;
+  /** Epoch ms when the decision candle opened. */
+  decisionCandleOpenAt?: number;
+  /** Epoch ms when the decision candle was actually complete. */
+  decisionCandleClosedAt?: number;
+  /** Epoch ms when the first executable candle after the decision opened. */
+  executionCandleOpenAt?: number;
   quoteIndicators?: YahooQuoteIndicators;
   timestamps?: number[];
   isNotFound?: boolean;

@@ -16,11 +16,7 @@ import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 
 type TerminalView = "market" | "journal";
 
-function JournalAccessState({
-  resolving,
-}: {
-  resolving: boolean;
-}) {
+function JournalAccessState({ resolving }: { resolving: boolean }) {
   const { t } = useTranslation();
 
   if (resolving) {
@@ -90,6 +86,27 @@ export default function TerminalPage() {
     navigate(pathname, { preventScrollReset: true });
   };
 
+  if (disclaimerResolving && !disclaimerLoadError) {
+    return (
+      <div className="w-full bg-background py-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6">
+          <div className="flex flex-col gap-4" aria-busy="true">
+            <Skeleton className="h-28 w-full rounded-xl" />
+            <Skeleton className="h-64 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsAgreement || disclaimerLoadError) {
+    return (
+      <div className="w-full min-h-[calc(100vh-8rem)] flex items-center justify-center bg-background px-4 py-8">
+        <RiskDisclaimerDialog />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-background py-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6">
@@ -112,21 +129,12 @@ export default function TerminalPage() {
 
         <Separator />
 
-        {disclaimerResolving && !disclaimerLoadError ? (
-          <div className="flex flex-col gap-4" aria-busy="true">
-            <Skeleton className="h-28 w-full rounded-xl" />
-            <Skeleton className="h-64 w-full rounded-xl" />
-          </div>
-        ) : needsAgreement || disclaimerLoadError ? (
-          <RiskDisclaimerDialog />
-        ) : activeView === "market" ? (
+        {activeView === "market" ? (
           <MarketTerminalContent />
         ) : journalAccessReady ? (
           <JournalTerminalContent />
         ) : (
-          <JournalAccessState
-            resolving={journalGateResolving}
-          />
+          <JournalAccessState resolving={journalGateResolving} />
         )}
       </div>
     </div>

@@ -108,9 +108,9 @@ where user_id = (select id from auth.users where email = 'nf.nailulfirdaus@gmail
 🇺🇸 `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY` are **auto-injected on deploy** — do NOT set them via `supabase secrets set`. `CRON_SECRET` and optional `DISCORD_WEBHOOK_URL` are separate function secrets.
 
 ```bash
-npm run deploy:edge        # = build:edge (bundle _engine.mjs) + deploy auto-journal
-npm run deploy:summary     # deploy daily-summary
-npm run deploy:discovery   # deploy asset-discovery (auto universe curation)
+npm run deploy:auto-journal     # = build:edge (bundle _engine.mjs) + deploy auto-journal
+npm run deploy:daily-summary    # = build:edge + deploy daily-summary
+npm run deploy:asset-discovery  # = build:edge + deploy asset-discovery (auto universe curation)
 ```
 
 ### Step 5 — Jadwalkan cron / Schedule the crons (MANUAL)
@@ -148,8 +148,8 @@ select * from public.featured_testimonials order by slot;               -- 🇮�
 
 ## 3. Operasi harian / Day-to-day ops
 
-🇮🇩 **Ubah engine / logika cron** → edit `src/core/edge-engine.ts`, lalu `npm run deploy:edge` (re-bundle `_engine.mjs` + deploy). Jangan edit `_engine.mjs` tangan — itu artefak build.
-🇺🇸 **Change engine / cron logic** → edit `src/core/edge-engine.ts`, then `npm run deploy:edge` (re-bundles `_engine.mjs` + deploys). Never hand-edit `_engine.mjs` — it's a build artifact.
+🇮🇩 **Ubah engine / logika cron** → edit `src/core/edge-engine.ts`, lalu `npm run deploy:auto-journal` (re-bundle `_engine.mjs` + deploy). Jangan edit `_engine.mjs` tangan — itu artefak build.
+🇺🇸 **Change engine / cron logic** → edit `src/core/edge-engine.ts`, then `npm run deploy:auto-journal` (re-bundles `_engine.mjs` + deploys). Never hand-edit `_engine.mjs` — it's a build artifact.
 
 🇮🇩 **Ubah universe / jadwal** → lewat **admin UI** di `/admin` (data-driven; tabel `journal_assets` & `journal_settings`). Gak perlu rebuild/redeploy.
 🇺🇸 **Change universe / schedule** → via the **admin UI** at `/admin` (data-driven; `journal_assets` & `journal_settings` tables). No rebuild/redeploy needed.

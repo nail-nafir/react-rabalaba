@@ -56,13 +56,12 @@
 ```
 edit src/ (logic)
   → edge-engine.ts (re-export the bits the cron needs)
-    → npm run build:edge  (esbuild bundles → _engine.mjs)
+    → npm run deploy:auto-journal  (builds _engine.mjs + ships to Supabase)
       → index.ts:  import { runAutoJournal, ... } from "./_engine.mjs"
-        → npm run deploy:edge  (build + ship to Supabase)
 ```
 
-> ⚠️ 🇮🇩 **Jangan pernah edit `_engine.mjs` tangan** — bakal ketimpa pas build berikutnya. Edit `src/` + `edge-engine.ts`, terus `deploy:edge`.
-> ⚠️ 🇺🇸 **Never hand-edit `_engine.mjs`** — it's overwritten on the next build. Edit `src/` + `edge-engine.ts`, then `deploy:edge`.
+> ⚠️ 🇮🇩 **Jangan pernah edit `_engine.mjs` tangan** — bakal ketimpa pas build berikutnya. Edit `src/` + `edge-engine.ts`, terus `deploy:auto-journal`.
+> ⚠️ 🇺🇸 **Never hand-edit `_engine.mjs`** — it's overwritten on the next build. Edit `src/` + `edge-engine.ts`, then `deploy:auto-journal`.
 
 ---
 
@@ -82,8 +81,8 @@ edit src/ (logic)
 | 6 | ✍️ Badan UPDATE SOL dulu, lalu INSERT sinyal aktif ke `journal_trades` | ✍️ Body UPDATEs SOL first, then INSERTs the current signal into `journal_trades` | `index.ts` + 📒 |
 | 7 | 🏁 Stamp `last_run_at`, balikin ringkasan JSON, robot tidur | 🏁 Stamp `last_run_at`, return a JSON summary, robot sleeps | `index.ts` + 📒 |
 
-🇮🇩 Di Step 5, otak skip data basi (`isStaleQuote`) dan dedup trade yang masih open. Kalau TP/SL/reversal menutup trade, sinyal yang masih tampil boleh langsung memulai perjalanan baru pada scan yang sama.
-🇺🇸 In Step 5, the brain skips stale data and trades that remain open. When TP/SL/reversal closes one, the signal still on-screen may start its next journey in the same scan.
+🇮🇩 Di Step 5, otak skip data basi (`isStaleQuote`) dan dedup trade yang masih open. Setelah TP/SL, arah lama diblokir sampai sinyal mentah sempat netral; reversal boleh langsung membuka arah lawan.
+🇺🇸 In Step 5, the brain skips stale data and trades that remain open. After TP/SL, the old direction stays blocked until the raw signal turns neutral; a reversal may immediately open the opposite direction.
 
 ---
 
@@ -110,13 +109,13 @@ edit src/ (logic)
 🇮🇩
 1. Mau ubah **logika keputusan** → edit `auto-journal-core.ts` (atau `follow-trade-model.ts`).
 2. Mau ubah **I/O / jadwal** (fetch, tulis DB) → edit `index.ts`.
-3. Habis ubah engine → **`npm run deploy:edge`** (build ulang `_engine.mjs` + deploy). Jangan sentuh `_engine.mjs`.
+3. Habis ubah engine → **`npm run deploy:auto-journal`** (build ulang `_engine.mjs` + deploy). Jangan sentuh `_engine.mjs`.
 4. Universe (crypto/saham) diatur di **`/admin`** (DB), bukan ngoding. Commodity/forex = konstanta.
 
 🇺🇸
 1. Change **decision logic** → edit `auto-journal-core.ts` (or `follow-trade-model.ts`).
 2. Change **I/O / schedule** (fetch, DB writes) → edit `index.ts`.
-3. After an engine change → **`npm run deploy:edge`** (rebuilds `_engine.mjs` + deploys). Don't touch `_engine.mjs`.
+3. After an engine change → **`npm run deploy:auto-journal`** (rebuilds `_engine.mjs` + deploys). Don't touch `_engine.mjs`.
 4. The universe (crypto/stocks) is managed in **`/admin`** (DB), not in code. Commodity/forex = constants.
 
 ---

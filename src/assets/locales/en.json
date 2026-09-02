@@ -678,7 +678,7 @@
   },
   "disclaimer": {
     "confirm": "Read and understood the risk disclosure",
-    "agree": "Understand & Proceed",
+    "agree": "Continue Access",
     "load_error_title": "Risk disclaimer could not be loaded",
     "load_error_description": "There was a problem loading the disclaimer. Try again before continuing."
   },
@@ -702,6 +702,7 @@
     "lifecycle_closed": "Closed",
     "portfolio_stats": "Journal Statistics",
     "chart_equity_benchmark": "Performance Benchmark",
+    "chart_equity_methodology": "Journal Performance adds the direction-aware percentage return of every closed signal. It is not a capital-weighted portfolio return. Evaluate the engine with R, expectancy, profit factor, and drawdown.",
     "benchmark_btc": "Benchmark (Bitcoin)",
     "benchmark_gold": "Benchmark (Gold)",
     "cumulative": "Journal Performance",

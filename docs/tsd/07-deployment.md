@@ -36,9 +36,9 @@ npm run build:edge
 ## 🚀 Deploy Edge Functions
 
 ```bash
-npm run deploy:edge       # build:edge + supabase functions deploy auto-journal --project-ref nravncsodgcxwkdaeqcw
-npm run deploy:summary    # build:edge + deploy daily-summary
-npm run deploy:discovery  # build:edge + deploy asset-discovery
+npm run deploy:auto-journal     # build:edge + supabase functions deploy auto-journal --project-ref nravncsodgcxwkdaeqcw
+npm run deploy:daily-summary    # build:edge + deploy daily-summary
+npm run deploy:asset-discovery  # build:edge + deploy asset-discovery
 ```
 
 Project ref: `nravncsodgcxwkdaeqcw`. Tiap function `deno.json` cuma map `@supabase/supabase-js`. Service-role key auto-inject (`SUPABASE_SERVICE_ROLE_KEY`).
@@ -111,7 +111,7 @@ Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempo
 | Ubah apa / Change what | Langkah / Steps |
 |---|---|
 | UI/component | `npm run build` → deploy Pages |
-| Engine (`src/core/engine/`, `src/core/automation/`, `src/core/trade/`) | `npm run build:edge` → `npm run deploy:edge` (+ summary/discovery kalau perlu) |
+| Engine (`src/core/engine/`, `src/core/automation/`, `src/core/trade/`) | `npm run deploy:auto-journal` (+ `deploy:daily-summary` / `deploy:asset-discovery` kalau perlu) |
 | Cron schedule | SQL Editor `cron.alter_job` (gak perlu redeploy function) |
 | Cron config (interval/pause/discovery) | Admin UI `/admin/assets` (`journal_settings`) — gak perlu redeploy |
 | DB schema | Tambah migrasi `supabase/migrations/` → replay SQL Editor |

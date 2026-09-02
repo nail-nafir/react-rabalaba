@@ -34,9 +34,9 @@ npm run lint           # eslint
 | `npm run lint` | eslint |
 | `npm test` | `node --test tests/*.test.mjs` |
 | `npm run build:edge` | esbuild bundle `src/core/edge-engine.ts` → 3 `_engine.mjs` (cron) |
-| `npm run deploy:edge` | build:edge + deploy `auto-journal` |
-| `npm run deploy:summary` | build:edge + deploy `daily-summary` |
-| `npm run deploy:discovery` | build:edge + deploy `asset-discovery` |
+| `npm run deploy:auto-journal` | build:edge + deploy `auto-journal` |
+| `npm run deploy:daily-summary` | build:edge + deploy `daily-summary` |
+| `npm run deploy:asset-discovery` | build:edge + deploy `asset-discovery` |
 | `npm run gate:compare` | riset filter entry hipotetis; jurnal production tetap parity dengan screener |
 
 > Deploy lengkap: [`docs/tsd/07-deployment.md`](docs/tsd/07-deployment.md).

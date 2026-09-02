@@ -74,10 +74,12 @@ const BENCHMARKS = [
 
 function ChartCard({
   title,
+  methodology,
   children,
   className,
 }: {
   title?: string;
+  methodology?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -87,7 +89,10 @@ function ChartCard({
     >
       <CardContent className="flex flex-1 flex-col gap-3 h-full">
         {title && (
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+          <p
+            title={methodology}
+            className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
+          >
             {title}
           </p>
         )}
@@ -495,7 +500,10 @@ export function JournalDashboard({
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <ChartCard title={t("journal.chart_equity_benchmark")}>
+          <ChartCard
+            title={t("journal.chart_equity_benchmark")}
+            methodology={t("journal.chart_equity_methodology")}
+          >
             <div className="flex min-h-72 flex-1 items-center justify-center mt-2">
               <div className="h-full w-full flex flex-col items-center justify-center">
                 <div className="h-48 w-full relative">

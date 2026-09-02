@@ -397,6 +397,94 @@ test("a newly raised stop never closes retroactively inside the TP candle", asyn
   assert.equal(ev.highestTpReached, 1);
 });
 
+test("finalized LONG candle reaching TP2 and closing at TP1 locks TP1", async () => {
+  const { evaluateFollow } = await loadModule(SRC);
+  const ev = evaluateFollow(
+    longTrade({ takeProfits: [110, 120, 130] }),
+    110,
+    [
+      {
+        open: 100,
+        high: 120,
+        low: 100,
+        close: 110,
+        timestamp: 1000,
+        isClosed: true,
+      },
+    ],
+  );
+
+  assert.equal(ev.closed, true);
+  assert.equal(ev.highestTpReached, 2);
+  assert.equal(ev.closePrice, 110);
+  assert.equal(ev.exitReason, "progressive_stop");
+});
+
+test("still-forming candle cannot close at a newly raised stop", async () => {
+  const { evaluateFollow } = await loadModule(SRC);
+  const ev = evaluateFollow(
+    longTrade({ takeProfits: [110, 120, 130] }),
+    110,
+    [
+      {
+        open: 100,
+        high: 120,
+        low: 100,
+        close: 110,
+        timestamp: 1000,
+        isClosed: false,
+      },
+    ],
+  );
+
+  assert.equal(ev.closed, false);
+  assert.equal(ev.highestTpReached, 2);
+});
+
+test("TP2 wick through TP1 stays open when the finalized close recovers", async () => {
+  const { evaluateFollow } = await loadModule(SRC);
+  const ev = evaluateFollow(
+    longTrade({ takeProfits: [110, 120, 130] }),
+    115,
+    [
+      {
+        open: 100,
+        high: 120,
+        low: 100,
+        close: 115,
+        timestamp: 1000,
+        isClosed: true,
+      },
+    ],
+  );
+
+  assert.equal(ev.closed, false);
+  assert.equal(ev.highestTpReached, 2);
+});
+
+test("finalized SHORT candle mirrors TP2 close-confirmed protection", async () => {
+  const { evaluateFollow } = await loadModule(SRC);
+  const ev = evaluateFollow(
+    shortTrade({ takeProfits: [90, 80, 70] }),
+    90,
+    [
+      {
+        open: 100,
+        high: 100,
+        low: 80,
+        close: 90,
+        timestamp: 1000,
+        isClosed: true,
+      },
+    ],
+  );
+
+  assert.equal(ev.closed, true);
+  assert.equal(ev.highestTpReached, 2);
+  assert.equal(ev.closePrice, 90);
+  assert.equal(ev.exitReason, "progressive_stop");
+});
+
 test("evaluateFollow falls back to the snapshot price when no range is given", async () => {
   const { evaluateFollow } = await loadModule(SRC);
   // short, price 75 (above tp3 50), no range -> only tp1 reached, stays open

@@ -39,14 +39,14 @@ File: `src/core/automation/auto-journal-core.ts:100` (`runAutoJournal`). Pure, u
 ### Emit (trade baru)
 - Skip quote stale > 90 menit (`QUOTE_MAX_AGE_MS`).
 - Enrich aset dengan context own-index agar strength/tier sama dengan screener; context tidak menyembunyikan sinyal.
-- `buildFollowedTrade` snapshot.
+- Entry memakai open candle eksekusi pertama setelah candle keputusan selesai; spot live tetap hanya untuk display.
 - Setiap LONG/SHORT fresh + trading plan yang tampil masuk jurnal selama tidak ada trade yang tetap open pada symbol/timeframe yang sama.
-- Closure direncanakan dulu, sehingga TP/SL/reversal bisa langsung membuka perjalanan sinyal aktif dalam scan yang sama.
-- Snapshot menyimpan `engine_version` (`engine-v4`), `decision_candle_at`, regime, HTF trend, dan direction score untuk audit cohort.
+- Setelah TP/SL, arah yang sama diblokir sampai raw signal melewati netral; reversal boleh langsung flip ke arah lawan.
+- Snapshot menyimpan `engine_version`, `decision_candle_open_at`, `decision_candle_closed_at`, regime, HTF trend, dan direction score untuk audit cohort.
 
 ### Close (trade open)
 Replay candle sejak entry per trade:
-- **Close 1** — progressive stop: TP1 memindahkan stop aktif ke entry; TP2 memindahkannya ke TP1; TP final menutup posisi. Stop baru aktif pada candle/evaluasi berikutnya dan gap mengisi di open aktual.
+- **Close 1** — progressive stop: TP1 memindahkan stop aktif ke entry; TP2 memindahkannya ke TP1; TP final menutup posisi. Pada candle selesai yang mencapai TP baru, final close yang kembali melewati stop baru menutup di level stop; wick saja tidak. Gap pada stop yang sudah aktif tetap mengisi di open aktual.
 - **Close 2** — signal **REVERSAL** (long↔short) exit di close candle terkoroborasi; gak ada perfect-fill sintetis.
 
 Trade lama `engine-v3` yang sudah ditutup di ratchet non-final tidak ditulis ulang. Migration v4 hanya memindahkan trade yang masih `open` ke kontrak progressive dan menambah `exit_reason` (`initial_stop`, `breakeven_stop`, `progressive_stop`, `final_take_profit`, `reversal`) untuk audit.

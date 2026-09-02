@@ -10,7 +10,9 @@ import {
 import { computeTradingPlan } from "@/core/engine/trading-plan";
 import {
   buildSignalSeriesFromCandles,
+  candleClosedAt,
   closedCandlesForSignal,
+  intervalSeconds,
   normalizeYahooCandles,
   resampleCandles,
   deriveCandleTrendState,
@@ -57,6 +59,23 @@ export function adaptYahooChart(
     interval: meta.dataGranularity,
     regularSessionEnd: meta.currentTradingPeriod?.regular?.end,
   });
+  const decisionCandle = signalCandles[signalCandles.length - 1];
+  const decisionCandleClosedAt = decisionCandle
+    ? candleClosedAt(decisionCandle, {
+        interval: meta.dataGranularity,
+        regularSessionEnd: meta.currentTradingPeriod?.regular?.end,
+      })
+    : null;
+  const candleSeconds = intervalSeconds(meta.dataGranularity);
+  const executionCandle =
+    decisionCandleClosedAt == null || !decisionCandle
+      ? undefined
+      : candles.find(
+          (candle) =>
+            candle.timestamp >= decisionCandleClosedAt &&
+            (candleSeconds == null ||
+              candle.timestamp >= decisionCandle.timestamp + candleSeconds),
+        );
 
   // Daily change baseline is CONVENTION-DEPENDENT per market:
   //  - equities/forex/commodities: vs the previous SESSION close (Yahoo's
@@ -125,8 +144,8 @@ export function adaptYahooChart(
       higherTimeframeReady: higherTimeframe.ready,
     });
 
-    if (outlook.signal !== "neutral") {
-      tradingPlan = computeTradingPlan(outlook, currentPrice, assetType);
+    if (outlook.signal !== "neutral" && executionCandle) {
+      tradingPlan = computeTradingPlan(outlook, executionCandle.open, assetType);
     }
   }
 
@@ -172,9 +191,13 @@ export function adaptYahooChart(
       typeof meta.regularMarketTime === "number"
         ? meta.regularMarketTime * 1000
         : undefined,
-    decisionCandleTime:
-      signalCandles.length > 0
-        ? signalCandles[signalCandles.length - 1].timestamp * 1000
+    decisionCandleOpenAt:
+      decisionCandle != null ? decisionCandle.timestamp * 1000 : undefined,
+    decisionCandleClosedAt:
+      decisionCandleClosedAt != null
+        ? decisionCandleClosedAt * 1000
         : undefined,
+    executionCandleOpenAt:
+      executionCandle != null ? executionCandle.timestamp * 1000 : undefined,
   };
 }

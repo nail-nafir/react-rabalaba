@@ -182,3 +182,97 @@ test("crypto change ignores a garbage near-zero Yahoo baseline (the +1,000,000% 
     "short candle span falls back to meta previousClose",
   );
 });
+
+test("Yahoo adapter uses the real next candle open and ignores its pseudo candle", async () => {
+  const { adaptYahooChart } = await loadModule(
+    "/src/services/adapters/yahoo-adapter.ts",
+  );
+  const nowSec = Math.floor(Date.now() / 1000);
+  const executionOpen = Math.floor(nowSec / 3600) * 3600;
+  const timestamps = Array.from(
+    { length: 130 },
+    (_, index) => executionOpen - (130 - index) * 3600,
+  );
+  timestamps.push(executionOpen, Math.max(executionOpen + 1, nowSec));
+  const closed = Array.from({ length: 130 }, (_, index) => 100 + index);
+  const opens = closed.map((value) => value - 0.5);
+  const highs = closed.map((value) => value + 1);
+  const lows = closed.map((value) => value - 1);
+  const closes = [...closed];
+  opens.push(250, 251);
+  highs.push(252, 253);
+  lows.push(249, 250);
+  closes.push(251, 252);
+  const asset = adaptYahooChart({
+    meta: {
+      symbol: "BTC-USD",
+      regularMarketPrice: 260,
+      regularMarketTime: nowSec,
+      regularMarketVolume: 1000,
+      previousClose: 250,
+      range: "1mo",
+      dataGranularity: "1h",
+      instrumentType: "CRYPTOCURRENCY",
+    },
+    timestamp: timestamps,
+    indicators: {
+      quote: [
+        {
+          open: opens,
+          high: highs,
+          low: lows,
+          close: closes,
+          volume: closes.map(() => 1000),
+        },
+      ],
+    },
+  });
+
+  assert.equal(asset.price, 260, "display price stays live");
+  assert.equal(asset.executionCandleOpenAt, executionOpen * 1000);
+  assert.equal(asset.tradingPlan.entry, 250);
+});
+
+test("Yahoo adapter does not treat the equity session-close pseudo candle as a fill", async () => {
+  const { adaptYahooChart } = await loadModule(
+    "/src/services/adapters/yahoo-adapter.ts",
+  );
+  const finalOpen = Math.floor(Date.now() / 1000) - 2 * 3600;
+  const sessionEnd = finalOpen + 30 * 60;
+  const timestamps = Array.from(
+    { length: 130 },
+    (_, index) => finalOpen - (129 - index) * 3600,
+  );
+  timestamps.push(sessionEnd);
+  const close = Array.from({ length: 130 }, (_, index) => 100 + index);
+  close.push(close[close.length - 1]);
+  const asset = adaptYahooChart({
+    meta: {
+      symbol: "AAPL",
+      regularMarketPrice: close[close.length - 1],
+      regularMarketTime: sessionEnd,
+      regularMarketVolume: 1000,
+      previousClose: close[close.length - 2],
+      range: "1mo",
+      dataGranularity: "1h",
+      instrumentType: "EQUITY",
+      currentTradingPeriod: { regular: { end: sessionEnd } },
+    },
+    timestamp: timestamps,
+    indicators: {
+      quote: [
+        {
+          open: close.map((value) => value - 0.5),
+          high: close.map((value) => value + 1),
+          low: close.map((value) => value - 1),
+          close,
+          volume: close.map(() => 1000),
+        },
+      ],
+    },
+  });
+
+  assert.equal(asset.outlook.signal, "long");
+  assert.equal(asset.executionCandleOpenAt, undefined);
+  assert.equal(asset.tradingPlan, null);
+});

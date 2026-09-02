@@ -75,6 +75,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { useScreenerUniverse } from "@/features/market/hooks/use-screener-universe";
+import {
+  SIGNAL_EPISODE_STATES_QUERY_KEY,
+  useSignalEpisodeStates,
+} from "@/features/market/hooks/use-signal-episode-states";
+import {
+  applySignalEpisode,
+  signalEpisodeKey,
+} from "@/core/automation/signal-episode";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
 import { SignalAssetDialog } from "./signal-asset-dialog";
@@ -129,6 +137,10 @@ export function AssetSignalTable() {
   // (single source with the cron), DEFAULT_* for free — the hook handles the
   // premium gate + fallback. commodity & forex stay on constants (below).
   const universe = useScreenerUniverse();
+  const {
+    byKey: signalStates,
+    isLoading: signalStatesLoading,
+  } = useSignalEpisodeStates();
   const { data: cryptoAssets, isLoading: cryptoLoading } = useMarketData(
     universe.crypto,
   );
@@ -173,6 +185,9 @@ export function AssetSignalTable() {
       queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
       queryClient.invalidateQueries({
         queryKey: PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
       }),
     ]);
   };
@@ -246,15 +261,19 @@ export function AssetSignalTable() {
   // display-only. computeSignal stays pure and this layer never mutates cache.
   const enrichedAssets = useMemo<UnifiedAsset[]>(() => {
     if (allAssets.length === 0) return allAssets;
-    return allAssets.map((asset) =>
-      enrichAsset(asset, {
+    return allAssets.map((asset) => {
+      const enriched = enrichAsset(asset, {
         cryptoContext: cryptoContext ?? undefined,
         idxContext: idxContext ?? undefined,
         usContext: usContext ?? undefined,
         smartMoney: smartMoney[asset.symbol],
-      }),
-    );
-  }, [allAssets, cryptoContext, idxContext, usContext, smartMoney]);
+      });
+      return applySignalEpisode(
+        enriched,
+        signalStates.get(signalEpisodeKey(asset.symbol, asset.timeframe)),
+      );
+    });
+  }, [allAssets, cryptoContext, idxContext, usContext, smartMoney, signalStates]);
 
   // Tahan SATU skeleton sampai SEMUA sumber screener selesai initial load:
   // base assets (semua kategori) + market context BTC + smart-money crypto —
@@ -276,6 +295,7 @@ export function AssetSignalTable() {
     cryptoContextLoading ||
     idxContextLoading ||
     usContextLoading ||
+    signalStatesLoading ||
     smartMoneyGating;
 
   const displayFavCount = useMemo(() => {
@@ -831,6 +851,12 @@ export function AssetSignalTable() {
                 <AssetDetailDialog
                   key={row.id}
                   symbol={row.original.symbol}
+                  signalState={signalStates.get(
+                    signalEpisodeKey(
+                      row.original.symbol,
+                      row.original.timeframe,
+                    ),
+                  )}
                   trigger={
                     <TableRow
                       className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

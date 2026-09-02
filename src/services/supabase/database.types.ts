@@ -4,11 +4,21 @@
  * no browser/Vite deps (the taxonomy imports below are type-only, erased) — so
  * BOTH the Vite app and the Cron Worker can import it.
  */
-import type { JournalTradeInsert, JournalTradeRow } from "@/types/journal";
+import type {
+  JournalSignalStateRow,
+  JournalSignalStateUpsert,
+  JournalTradeInsert,
+  JournalTradeRow,
+} from "@/types/journal";
 // Type-only (erased) — keeps this module runtime-pure for the Cron Worker.
 import type { Localized } from "@/lib/localized";
 
-export type { JournalTradeInsert, JournalTradeRow } from "@/types/journal";
+export type {
+  JournalSignalStateRow,
+  JournalSignalStateUpsert,
+  JournalTradeInsert,
+  JournalTradeRow,
+} from "@/types/journal";
 export type JournalStatus = JournalTradeRow["status"];
 
 export type JournalTradeUpdate = Partial<JournalTradeRow>;
@@ -346,6 +356,12 @@ export interface Database {
         Row: DbRecord<JournalTradeRow>;
         Insert: DbRecord<JournalTradeInsert>;
         Update: DbRecord<JournalTradeUpdate>;
+        Relationships: [];
+      };
+      journal_signal_states: {
+        Row: DbRecord<JournalSignalStateRow>;
+        Insert: DbRecord<JournalSignalStateUpsert>;
+        Update: DbRecord<Partial<JournalSignalStateRow>>;
         Relationships: [];
       };
       profiles: {

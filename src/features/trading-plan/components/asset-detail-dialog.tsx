@@ -14,6 +14,7 @@ import {
   supportsAccumulation,
 } from "@/core/engine/accumulation";
 import { enrichAsset } from "@/core/engine/enrichment";
+import { applySignalEpisode } from "@/core/automation/signal-episode";
 import { resolveAnalysisText } from "@/lib/analysis-text";
 import { normalizeYahooCandles } from "@/core/market/candles";
 import { TradeSetupChart, TradeSetupChartSettings } from "./trade-setup-chart";
@@ -76,6 +77,7 @@ import {
   ArrowDown,
   CloudOff,
 } from "lucide-react";
+import type { JournalSignalStateRow } from "@/types/journal";
 
 const getSmartMoneyLabelKey = (label: string): string => {
   switch (label) {
@@ -149,21 +151,27 @@ function AssetDetailErrorContent({ onRetry }: { onRetry: () => void }) {
 
 interface AssetDetailDialogProps {
   symbol: string;
+  signalState?: JournalSignalStateRow;
   trigger: ReactElement;
 }
 
-export function AssetDetailDialog({ symbol, trigger }: AssetDetailDialogProps) {
+export function AssetDetailDialog({
+  symbol,
+  signalState,
+  trigger,
+}: AssetDetailDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <AssetDetailDialogContent symbol={symbol} />
+      <AssetDetailDialogContent symbol={symbol} signalState={signalState} />
     </Dialog>
   );
 }
 
 function AssetDetailDialogContent({
   symbol,
-}: Pick<AssetDetailDialogProps, "symbol">) {
+  signalState,
+}: Pick<AssetDetailDialogProps, "symbol" | "signalState">) {
   const { t } = useTranslation();
   const { hasAccess } = usePremiumAccess();
 
@@ -215,21 +223,32 @@ function AssetDetailDialogContent({
   const enriched = useMemo(
     () =>
       asset
-        ? enrichAsset(asset, {
-            cryptoContext: marketContext ?? undefined,
-            idxContext: idxContext ?? undefined,
-            usContext: usContext ?? undefined,
-            smartMoney,
-            fundamentals: fundamentals ?? undefined,
-          })
+        ? applySignalEpisode(
+            enrichAsset(asset, {
+              cryptoContext: marketContext ?? undefined,
+              idxContext: idxContext ?? undefined,
+              usContext: usContext ?? undefined,
+              smartMoney,
+              fundamentals: fundamentals ?? undefined,
+            }),
+            signalState,
+          )
         : undefined,
-    [asset, marketContext, idxContext, usContext, smartMoney, fundamentals],
+    [
+      asset,
+      marketContext,
+      idxContext,
+      usContext,
+      smartMoney,
+      fundamentals,
+      signalState,
+    ],
   );
   const outlook = enriched?.outlook ?? undefined;
   const accumulation = enriched?.accumulation;
   const relativeStrength = enriched?.relativeStrength;
   const assetFundamentals = enriched?.fundamentals;
-  const tradingPlan = asset?.tradingPlan;
+  const tradingPlan = enriched?.tradingPlan;
 
   // Normalized OHLC candles (shared by the chart, backtest and share card).
   const candles = useMemo(

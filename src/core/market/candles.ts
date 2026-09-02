@@ -107,10 +107,28 @@ export function intervalSeconds(interval?: string): number | null {
   return amount > 0 ? amount * multiplier : null;
 }
 
+/** Epoch-second close time for a candle. The final exchange bar may be shorter
+ * than the requested interval when the regular session ends first. */
+export function candleClosedAt(
+  candle: Pick<NormalizedYahooCandle, "timestamp">,
+  options: { interval?: string; regularSessionEnd?: number } = {},
+): number | null {
+  const seconds = intervalSeconds(options.interval);
+  if (seconds == null) return null;
+  const intervalEnd = candle.timestamp + seconds;
+  const sessionEnd = options.regularSessionEnd;
+  return typeof sessionEnd === "number" &&
+    sessionEnd > candle.timestamp &&
+    sessionEnd < intervalEnd
+    ? sessionEnd
+    : intervalEnd;
+}
+
 /**
- * Keep only candles whose full interval has elapsed. Every candle followed by a
- * newer candle is necessarily complete; only the trailing bar needs a clock
- * check. A regular-session end can shorten the final intraday bar.
+ * Keep only candles whose full interval has elapsed. Yahoo can append an
+ * irregular pseudo-candle at regularMarketTime, followed by the real hourly
+ * candle that is also still open. Remove both instead of assuming that any bar
+ * with a newer neighbour is complete.
  */
 export function closedCandlesForSignal(
   candles: NormalizedYahooCandle[],
@@ -119,17 +137,20 @@ export function closedCandlesForSignal(
   if (candles.length === 0) return candles;
   const seconds = intervalSeconds(options.interval);
   if (seconds == null) return candles.slice(0, -1);
-
-  const last = candles[candles.length - 1];
-  let closesAt = last.timestamp + seconds;
-  if (
-    typeof options.regularSessionEnd === "number" &&
-    options.regularSessionEnd > last.timestamp
-  ) {
-    closesAt = Math.min(closesAt, options.regularSessionEnd);
-  }
   const now = options.nowSeconds ?? Date.now() / 1000;
-  return now >= closesAt ? candles : candles.slice(0, -1);
+  let end = candles.length;
+
+  while (end > 0) {
+    const candle = candles[end - 1];
+    const previous = candles[end - 2];
+    const isYahooPseudoCandle =
+      previous != null && candle.timestamp < previous.timestamp + seconds;
+    const closesAt = candleClosedAt(candle, options);
+    if (!isYahooPseudoCandle && closesAt != null && now >= closesAt) break;
+    end -= 1;
+  }
+
+  return end === candles.length ? candles : candles.slice(0, end);
 }
 
 /**

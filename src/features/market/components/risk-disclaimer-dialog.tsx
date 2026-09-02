@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -154,9 +154,11 @@ export function RiskDisclaimerDialog() {
           onClick={handleAgree}
           className="text-xs font-bold cursor-pointer shrink-0 w-full"
         >
-          <Check data-icon="inline-start" className="h-3.5 w-3.5" />
-          {(pickLocale(clauses?.agree_label, lang) as string) ??
-            t("disclaimer.agree")}
+          <ArrowRight data-icon="inline-start" className="h-3.5 w-3.5" />
+          <span>
+            {(pickLocale(clauses?.agree_label, lang) as string) ??
+              t("disclaimer.agree")}
+          </span>
         </Button>
       </CardFooter>
     </Card>

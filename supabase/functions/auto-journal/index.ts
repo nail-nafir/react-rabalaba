@@ -22,6 +22,7 @@ import {
   adaptYahooChart,
   buildEngineContexts,
   runAutoJournal,
+  signalEpisodeKey,
   buildAutoJournalAlerts,
   formatAlertBatchesForDiscord,
 } from "./_engine.mjs";
@@ -212,6 +213,12 @@ Deno.serve(async (req: Request) => {
     .select("*")
     .eq("status", "open");
   if (openErr) return jsonResponse({ error: openErr.message }, 500);
+  const { data: signalStates, error: stateReadError } = await db
+    .from("journal_signal_states")
+    .select("*");
+  if (stateReadError) {
+    return jsonResponse({ error: stateReadError.message }, 500);
+  }
 
   // Universe is DATA-DRIVEN for crypto/US/ID stocks: the active rows in
   // journal_assets (managed via the in-app admin UI) — adding/removing a symbol
@@ -296,10 +303,10 @@ Deno.serve(async (req: Request) => {
   }
 
   // Pure decision core (unit-tested): what to INSERT and what to CLOSE.
-  const { inserts, closures, progressUpdates } = runAutoJournal(
+  const { inserts, closures, progressUpdates, signalStateUpdates } = runAutoJournal(
     assets,
     openRows ?? [],
-    { contexts },
+    { contexts, signalStates: signalStates ?? [] },
   );
 
   let emitError: string | null = null;
@@ -322,6 +329,7 @@ Deno.serve(async (req: Request) => {
   // Apply CLOSEs.
   let closed = 0;
   const appliedClosures = [] as typeof closures;
+  const stateConflictKeys = new Set<string>();
   for (const c of closures) {
     const { data, error } = await db
       .from("journal_trades")
@@ -342,12 +350,14 @@ Deno.serve(async (req: Request) => {
       appliedClosures.push(c);
     } else if (error && !emitError) {
       emitError = error.message;
+    } else if (!data) {
+      const row = (openRows ?? []).find((item) => item.id === c.id);
+      stateConflictKeys.add(signalEpisodeKey(c.symbol, row?.timeframe));
     }
   }
 
-  // Apply EMITs only after closures. This releases the partial unique index on
-  // (symbol,timeframe), allowing the signal currently shown by the screener to
-  // start its next journal journey in the same scan.
+  // Apply EMITs after closures so an opposite episode can flip immediately;
+  // same-direction repeats were already blocked by the shared episode state.
   let emitted = 0;
   const inserted = [] as typeof inserts;
   for (const item of inserts) {
@@ -355,9 +365,62 @@ Deno.serve(async (req: Request) => {
     if (!error) {
       inserted.push(item);
       emitted++;
-    } else if (error.code !== "23505" && !emitError) {
+    } else if (error.code === "23505") {
+      stateConflictKeys.add(signalEpisodeKey(item.symbol, item.timeframe));
+    } else if (!emitError) {
       emitError = error.message;
     }
+  }
+
+  // State follows only journal writes that actually succeeded. This keeps a
+  // retry able to emit when an insert failed, while still reconciling from any
+  // pre-existing open row.
+  const closedIds = new Set(appliedClosures.map((closure) => closure.id));
+  const activeByKey = new Map(
+    [
+      ...(openRows ?? []).filter((row) => !closedIds.has(row.id)),
+      ...inserted,
+    ].map((row) => [signalEpisodeKey(row.symbol, row.timeframe), row]),
+  );
+  const previousStateByKey = new Map(
+    (signalStates ?? []).map((state) => [
+      signalEpisodeKey(state.symbol, state.timeframe),
+      state,
+    ]),
+  );
+  const reconciledStates = signalStateUpdates
+    .filter(
+      (state) =>
+        !stateConflictKeys.has(signalEpisodeKey(state.symbol, state.timeframe)),
+    )
+    .map((state) => {
+      const key = signalEpisodeKey(state.symbol, state.timeframe);
+      const active = activeByKey.get(key);
+      const previous = previousStateByKey.get(key);
+      return {
+        ...state,
+        active_signal: active?.signal ?? null,
+        blocked_signal:
+          active && state.blocked_signal === active.signal
+            ? previous?.blocked_signal ?? null
+            : state.blocked_signal,
+        decision_candle_open_at:
+          active?.decision_candle_open_at ?? state.decision_candle_open_at,
+        decision_candle_closed_at:
+          active?.decision_candle_closed_at ??
+          state.decision_candle_closed_at,
+        entry_price: active?.entry_price ?? state.entry_price,
+        stop_loss: active?.stop_loss ?? state.stop_loss,
+        take_profits: active?.take_profits ?? state.take_profits,
+        risk_reward_ratio:
+          active?.risk_reward_ratio ?? state.risk_reward_ratio,
+      };
+    });
+  if (reconciledStates.length > 0) {
+    const { error } = await db
+      .from("journal_signal_states")
+      .upsert(reconciledStates, { onConflict: "symbol,timeframe" });
+    if (error && !emitError) emitError = error.message;
   }
 
   // Broadcast alerts to Discord (GoTrade-style: new signal / TP / SL). Best

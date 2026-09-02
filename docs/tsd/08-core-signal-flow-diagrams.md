@@ -155,7 +155,7 @@ flowchart TB
   subgraph ENGINE["Shared engine lane / Lane engine bersama"]
     SIGNAL["computeSignal\nindicator set → regime → weighted scores\nHTF confirmation + data-quality gate"]
     ACTION{"LONG/SHORT\nor neutral?"}
-    PLAN["computeTradingPlan\nonly for actionable signal"]
+    PLAN["computeTradingPlan\nfrom next executable candle open"]
     CONTEXT["enrichAsset\ncontext de-rate\noptional evidence display-only"]
     SIGNAL --> ACTION
     ACTION -- "neutral" --> NOEMIT["No new trade\nneutral never closes an open trade"]
@@ -182,7 +182,7 @@ flowchart TB
     REPLAY["Replay timestamped candles\nsince followedAt"]
     HITS["applyPriceSync\nTP/SL ordered evaluation"]
     RESULT{"Final TP / active stop /\nreversal hit?"}
-    SECURED["Stop-first within a candle\nTP1→entry; TP2→TP1 next step"]
+    SECURED["Stop-first for active stop\nTP1→entry; TP2→TP1\nnew stop uses finalized close"]
     CLOSE["UPDATE journal_trades\nstatus + exit_reason + price"]
     KEEP["Leave open\nno raw spot-only close"]
     OPENLOOP --> FRESH
@@ -217,11 +217,12 @@ flowchart TB
 
 ### Decision notes / Catatan keputusan
 
-- 🇮🇩 Data-quality, stale quote, missing candle, dan trade yang tetap open
-  menahan emission. Trade yang ditutup boleh diganti sinyal aktif dalam scan sama.
-- 🇺🇸 Data quality, stale quotes, missing candles, and still-open duplicates
-  suppress emission. A closed trade may be replaced by the current signal in
-  the same scan.
+- 🇮🇩 Data-quality, stale quote, missing execution candle, dan trade yang tetap
+  open menahan emission. Setelah close, arah sama menunggu raw signal netral;
+  arah berlawanan boleh langsung flip.
+- 🇺🇸 Data quality, stale quotes, missing execution candles, and still-open
+  duplicates suppress emission. After a close, the same direction waits for a
+  neutral raw signal; the opposite direction may flip immediately.
 - 🇮🇩 Trade terbuka disinkronkan dari candle bertimestamp sejak entry. Harga
   spot mentah tidak boleh sendirian menciptakan TP/SL phantom.
 - 🇺🇸 Open trades are synchronized from timestamped candles since entry. A raw
@@ -295,11 +296,11 @@ sequenceDiagram
     end
     opt Active stop, final TP, or opposite signal closes an existing trade
       A->>DB: UPDATE status + exit_reason + close price
-      Note over E,A: Milestones/closures persist before same-scan replacement
+      Note over E,A: Close blocks its old direction; an opposite may flip
     end
-    alt Fresh actionable LONG/SHORT and no surviving open symbol/timeframe
+    alt Fresh actionable LONG/SHORT + executable candle + eligible episode
       A->>DB: INSERT journal_trades
-    else Neutral / stale / still-open duplicate
+    else Neutral / stale / missing execution / open or blocked episode
       A->>A: Skip new emission
     end
 

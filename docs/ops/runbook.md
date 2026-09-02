@@ -87,7 +87,7 @@ curl -sI "https://rabalaba.pages.dev/api/coingecko/api/v3/search/trending" | gre
 ### Edge Function (Supabase)
 - Supabase **gak punya rollback native**. Kalau deploy baru break:
   1. `git revert` commit engine yang break.
-  2. `npm run deploy:edge` (re-bundle + deploy versi lama).
+  2. `npm run deploy:auto-journal` (re-bundle + deploy versi lama).
 - **Prevention**: sebelum deploy ke prod, test lokal `supabase functions serve` + jalankan `find-phantom-closes.mjs` diagnostic.
 
 ### DB migration

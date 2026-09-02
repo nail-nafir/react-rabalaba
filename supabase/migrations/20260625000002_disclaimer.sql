@@ -45,7 +45,7 @@ values
     '{"en":"The RabaLaba Research Terminal provides high octane intel, but please note these essential rules:","id":"RabaLaba Terminal Riset menyediakan data gacor, tapi tetep pahami beberapa poin ini:"}',
     '{"en":["Not financial advice, just pure data and research. Always do due diligence.","The pilot is in control, the terminal is the radar. All trading decisions and risks belong to the user alone.","Use cold capital only. Never trade with essential funds like rent or daily needs.","Market volatility is real. Stay disciplined and keep emotions in check.","This terminal is for perpetual derivative contracts, adjust if it does not fit your needs."],"id":["Bukan saran finansial, cuma data riset biar gak terjebak FOMO. Mandiri itu wajib.","Keputusan ada di tangan pengguna, risiko ditanggung sendiri. Kita cuma penyedia radar.","Gunakan uang dingin, jangan pake uang dapur apalagi hasil pinjaman online.","Market punya volatilitas tinggi, tetep disiplin dan jangan sampe kena mental.","Terminal ini prioritas buat kontrak derivatif perpetual, kalo gak cocok harap menyesuaikan."]}',
     '{"en":"I have read and understood the risk disclosure","id":"Saya telah membaca dan memahami risiko investasi"}',
-    '{"en":"Understand & Proceed","id":"Paham & Lanjutkan"}'
+    '{"en":"Continue Access","id":"Lanjut Akses"}'
   )
 on conflict (id) do nothing;
 

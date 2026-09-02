@@ -53,9 +53,9 @@
 | `npm test` | `node --test tests/*.test.mjs` (36 file/348 test) |
 | `npm run gate:compare` | `node scripts/gate-compare.mjs` — riset filter entry hipotetis, bukan gate jurnal production |
 | `npm run build:edge` | esbuild bundle `src/core/edge-engine.ts` → 3 `_engine.mjs` (auto-journal/daily-summary/asset-discovery) |
-| `npm run deploy:edge` | build:edge + `supabase functions deploy auto-journal` |
-| `npm run deploy:summary` | build:edge + deploy daily-summary |
-| `npm run deploy:discovery` | build:edge + deploy asset-discovery |
+| `npm run deploy:auto-journal` | build:edge + `supabase functions deploy auto-journal` |
+| `npm run deploy:daily-summary` | build:edge + deploy daily-summary |
+| `npm run deploy:asset-discovery` | build:edge + deploy asset-discovery |
 | `npm run preview` | vite preview |
 
 ---

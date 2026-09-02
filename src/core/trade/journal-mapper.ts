@@ -23,8 +23,11 @@ export function rowToFollowedTrade(r: JournalTradeRow): FollowedTrade {
     strengthAtEntry: r.strength_at_entry ?? 0,
     grade: (r.grade ?? undefined) as SignalTier | undefined,
     engineVersion: r.engine_version ?? undefined,
-    decisionCandleTime: r.decision_candle_at
-      ? Date.parse(r.decision_candle_at)
+    decisionCandleOpenAt: r.decision_candle_open_at
+      ? Date.parse(r.decision_candle_open_at)
+      : undefined,
+    decisionCandleClosedAt: r.decision_candle_closed_at
+      ? Date.parse(r.decision_candle_closed_at)
       : undefined,
     regime: r.regime ?? undefined,
     higherTimeframeTrend: r.higher_timeframe_trend ?? undefined,
@@ -53,8 +56,11 @@ export function followedTradeToInsert(t: FollowedTrade): JournalTradeInsert {
     strength_at_entry: t.strengthAtEntry,
     grade: t.grade ?? null,
     engine_version: t.engineVersion ?? null,
-    decision_candle_at: t.decisionCandleTime
-      ? new Date(t.decisionCandleTime).toISOString()
+    decision_candle_open_at: t.decisionCandleOpenAt
+      ? new Date(t.decisionCandleOpenAt).toISOString()
+      : null,
+    decision_candle_closed_at: t.decisionCandleClosedAt
+      ? new Date(t.decisionCandleClosedAt).toISOString()
       : null,
     regime: t.regime ?? null,
     higher_timeframe_trend: t.higherTimeframeTrend ?? null,

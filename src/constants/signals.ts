@@ -8,7 +8,7 @@ import type { CategoryKey } from "@/constants/taxonomy/category";
 import type { MarketRegime } from "@/constants/taxonomy/regime";
 
 /** Persisted with every new journal decision so behavior cohorts never mix silently. */
-export const ENGINE_VERSION = "engine-v4";
+export const ENGINE_VERSION = "engine-v5";
 
 /** Weighted scoring — each indicator contributes differently based on reliability */
 export const SIGNAL_WEIGHTS = {

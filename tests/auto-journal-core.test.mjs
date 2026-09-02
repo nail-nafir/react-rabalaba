@@ -30,7 +30,18 @@ const V4_MIGRATION =
   "supabase/migrations/20260829100120_progressive_exit_v4.sql";
 
 /** A signal-bearing asset the cron would emit (long/short + plan). */
-function makeAsset({ symbol, signal, price = 100, sl = 90, tps = [110, 120], quoteTime = Date.now(), assetType = "crypto" }) {
+function makeAsset({
+  symbol,
+  signal,
+  price = 100,
+  entry = price,
+  sl = 90,
+  tps = [110, 120],
+  quoteTime = Date.now(),
+  decisionCandleClosedAt = quoteTime,
+  executionCandleOpenAt = decisionCandleClosedAt,
+  assetType = "crypto",
+}) {
   const neutral = signal === "neutral";
   return {
     symbol,
@@ -39,7 +50,9 @@ function makeAsset({ symbol, signal, price = 100, sl = 90, tps = [110, 120], quo
     timeframe: "1mo",
     price,
     quoteTime,
-    decisionCandleTime: quoteTime - 60 * 60 * 1000,
+    decisionCandleOpenAt: quoteTime - 60 * 60 * 1000,
+    decisionCandleClosedAt,
+    executionCandleOpenAt,
     outlook: {
       signal,
       strength: neutral ? 10 : 70,
@@ -52,6 +65,7 @@ function makeAsset({ symbol, signal, price = 100, sl = 90, tps = [110, 120], quo
     tradingPlan: neutral
       ? null
       : {
+          entry,
           stopLoss: sl,
           takeProfit1: tps[0],
           takeProfit2: tps[1],
@@ -81,6 +95,8 @@ function makeRow({ symbol, signal = "long", entry = 100, stop = 90, tps = [110],
     highest_tp_reached: 0,
     exit_reason: null,
     engine_version: "engine-v4",
+    decision_candle_open_at: null,
+    decision_candle_closed_at: null,
     reversed: false,
     opened_at: iso,
     closed_at: null,
@@ -92,7 +108,7 @@ function makeRow({ symbol, signal = "long", entry = 100, stop = 90, tps = [110],
 
 /** An asset carrying daily candles since `openedAtMs` (for the sync path). */
 function makeCandleAsset({ symbol, price, openedAtMs, highs, lows, closes, signal = "long", quoteTime = Date.now(), assetType = "crypto" }) {
-  const baseSec = Math.floor(openedAtMs / 1000) + 3600; // first bar 1h after entry
+  const baseSec = Math.floor(openedAtMs / 1000);
   return {
     symbol,
     name: symbol,
@@ -100,6 +116,9 @@ function makeCandleAsset({ symbol, price, openedAtMs, highs, lows, closes, signa
     timeframe: "1mo",
     price,
     quoteTime,
+    decisionCandleOpenAt: quoteTime - 60 * 60 * 1000,
+    decisionCandleClosedAt: quoteTime,
+    executionCandleOpenAt: quoteTime,
     outlook: { signal, strength: 70, tier: "B" },
     tradingPlan: null, // already open → never re-emitted; keep emit out of it
     quoteIndicators: {
@@ -130,10 +149,54 @@ test("runAutoJournal: emits long/short with a plan, skips neutral", async () => 
   assert.equal(inserts.find((i) => i.symbol === "AAA").signal, "long");
   assert.equal(inserts.find((i) => i.symbol === "CCC").signal, "short");
   assert.equal(inserts[0].status, "open");
-  assert.equal(inserts[0].engine_version, "engine-v4");
+  assert.equal(inserts[0].engine_version, "engine-v5");
   assert.equal(inserts[0].regime, "trending");
-  assert.ok(inserts[0].decision_candle_at);
+  assert.ok(inserts[0].decision_candle_open_at);
+  assert.ok(inserts[0].decision_candle_closed_at);
   assert.equal(closures.length, 0);
+});
+
+test("runAutoJournal: entry and opened_at come from the execution candle, not spot or cron", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const { buildAutoJournalAlerts } = await loadModule(
+    "/src/core/automation/alerts.ts",
+  );
+  const { applySignalEpisode } = await loadModule(
+    "/src/core/automation/signal-episode.ts",
+  );
+  const now = Date.UTC(2024, 0, 2, 12, 5);
+  const executionCandleOpenAt = Date.UTC(2024, 0, 2, 12, 0);
+  const asset = makeAsset({
+    symbol: "AAA",
+    signal: "long",
+    price: 135,
+    entry: 100,
+    quoteTime: now,
+    decisionCandleClosedAt: executionCandleOpenAt,
+    executionCandleOpenAt,
+  });
+
+  const result = runAutoJournal([asset], [], { now });
+
+  assert.equal(result.inserts[0].entry_price, 100);
+  assert.equal(
+    result.inserts[0].opened_at,
+    new Date(executionCandleOpenAt).toISOString(),
+  );
+  assert.equal(result.signalStateUpdates[0].entry_price, 100);
+  assert.equal(buildAutoJournalAlerts(result)[0].entry, 100);
+  assert.equal(
+    applySignalEpisode(asset, result.signalStateUpdates[0]).tradingPlan.entry,
+    100,
+  );
+});
+
+test("runAutoJournal: no execution candle means no synthetic trade", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const asset = makeAsset({ symbol: "AAA", signal: "long" });
+  delete asset.executionCandleOpenAt;
+
+  assert.equal(runAutoJournal([asset], []).inserts.length, 0);
 });
 
 test("v4 migration adds exact exit reasons and moves only unresolved trades", async () => {
@@ -168,13 +231,14 @@ test("runAutoJournal: dedup — skips a symbol that already has an open trade", 
   assert.deepEqual(inserts.map((i) => i.symbol), ["BBB"], "AAA already open → not re-emitted");
 });
 
-test("runAutoJournal: closes a final TP and reopens the current signal in the same scan", async () => {
+test("runAutoJournal: closes a final TP and blocks same-direction re-entry", async () => {
   const { runAutoJournal } = await loadModule(CORE);
   const openedAtMs = Date.UTC(2024, 0, 1);
   const openRows = [makeRow({ symbol: "AAA", entry: 100, stop: 90, tps: [110], openedAtMs })];
   // High reaches 112 (>= TP 110) on the 2nd bar; lows stay above the 90 stop.
   const asset = makeCandleAsset({ symbol: "AAA", price: 112, openedAtMs, highs: [108, 112] });
   asset.tradingPlan = {
+    entry: 112,
     stopLoss: 100,
     takeProfit1: 124,
     takeProfit2: 136,
@@ -190,9 +254,7 @@ test("runAutoJournal: closes a final TP and reopens the current signal in the sa
   assert.equal(closures[0].highest_tp_reached, 1);
   assert.equal(closures[0].secured_tp_level, 1);
   assert.equal(closures[0].exit_reason, "final_take_profit");
-  assert.equal(inserts.length, 1, "current LONG starts its next journey immediately");
-  assert.equal(inserts[0].symbol, "AAA");
-  assert.equal(inserts[0].signal, "long");
+  assert.equal(inserts.length, 0, "the lingering LONG stays in the closed episode");
 });
 
 test("runAutoJournal: leaves an open trade open when no TP/SL is hit", async () => {
@@ -301,6 +363,7 @@ test("runAutoJournal: closes a long reversal and opens the current short in the 
     signal: "short",
   });
   asset.tradingPlan = {
+    entry: 105,
     stopLoss: 115,
     takeProfit1: 95,
     takeProfit2: 85,
@@ -376,6 +439,165 @@ test("runAutoJournal: SKIPS emit for a stale crypto quote (no journaling off dea
   const { inserts } = runAutoJournal([stale, fresh], [], { now });
 
   assert.deepEqual(inserts.map((i) => i.symbol), ["BBB"], "stale crypto skipped, fresh emitted");
+});
+
+test("runAutoJournal: accepts entries only during the 15-minute post-close window", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const now = Date.UTC(2024, 0, 2, 12, 30, 0);
+  const fresh = makeAsset({
+    symbol: "FRESH",
+    signal: "long",
+    quoteTime: now,
+    decisionCandleClosedAt: now - 15 * 60 * 1000,
+  });
+  const staleDecision = makeAsset({
+    symbol: "LATE",
+    signal: "long",
+    quoteTime: now,
+    decisionCandleClosedAt: now - 16 * 60 * 1000,
+  });
+
+  const { inserts } = runAutoJournal([fresh, staleDecision], [], { now });
+
+  assert.deepEqual(inserts.map((item) => item.symbol), ["FRESH"]);
+});
+
+test("signal episode: TP blocks retry, neutral re-arms, next long opens once", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const openedAtMs = Date.UTC(2024, 0, 1);
+  const openRows = [
+    makeRow({ symbol: "AAA", entry: 100, stop: 90, tps: [110], openedAtMs }),
+  ];
+  const hit = makeCandleAsset({
+    symbol: "AAA",
+    price: 112,
+    openedAtMs,
+    highs: [112],
+  });
+
+  const closed = runAutoJournal([hit], openRows);
+  const blocked = closed.signalStateUpdates.find((state) => state.symbol === "AAA");
+  assert.equal(blocked.active_signal, null);
+  assert.equal(blocked.blocked_signal, "long");
+
+  const retry = runAutoJournal([hit], [], { signalStates: [blocked] });
+  assert.equal(retry.inserts.length, 0, "same raw LONG retry is idempotent");
+
+  const neutral = makeAsset({ symbol: "AAA", signal: "neutral" });
+  const rearmed = runAutoJournal([neutral], [], { signalStates: [blocked] });
+  const neutralState = rearmed.signalStateUpdates.find(
+    (state) => state.symbol === "AAA",
+  );
+  assert.equal(neutralState.blocked_signal, null);
+
+  const next = makeAsset({ symbol: "AAA", signal: "long" });
+  const reopened = runAutoJournal([next], [], {
+    signalStates: [neutralState],
+  });
+  assert.equal(reopened.inserts.length, 1);
+  assert.equal(reopened.signalStateUpdates[0].active_signal, "long");
+});
+
+test("signal episode self-heals an active state with no open trade", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const asset = makeAsset({ symbol: "AAA", signal: "long" });
+  const staleState = {
+    symbol: "AAA",
+    timeframe: "swing",
+    active_signal: "long",
+    blocked_signal: null,
+    last_raw_signal: "long",
+    decision_candle_open_at: null,
+    decision_candle_closed_at: null,
+    entry_price: 100,
+    stop_loss: 90,
+    take_profits: [110, 120],
+    risk_reward_ratio: 2,
+    updated_at: new Date().toISOString(),
+  };
+
+  const healed = runAutoJournal([asset], [], { signalStates: [staleState] });
+
+  assert.equal(healed.inserts.length, 0);
+  assert.equal(healed.signalStateUpdates[0].active_signal, null);
+  assert.equal(healed.signalStateUpdates[0].blocked_signal, "long");
+});
+
+test("runAutoJournal: entry candle can close at a TP2-raised stop", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const openedAtMs = Math.floor(Date.now() / 1000) * 1000;
+  const row = makeRow({
+    symbol: "AAA",
+    entry: 100,
+    stop: 80,
+    tps: [110, 120, 130],
+    openedAtMs,
+  });
+  const asset = makeCandleAsset({
+    symbol: "AAA",
+    price: 110,
+    openedAtMs,
+    highs: [120],
+    lows: [100],
+    closes: [110],
+  });
+  asset.decisionCandleOpenAt = openedAtMs;
+
+  const result = runAutoJournal([asset], [row]);
+
+  assert.equal(result.closures[0].exit_reason, "progressive_stop");
+  assert.equal(result.closures[0].close_price, 110);
+  assert.equal(result.closures[0].highest_tp_reached, 2);
+  assert.equal(result.inserts.length, 0);
+});
+
+test("Terminal projection keeps active episode and suppresses a blocked raw signal", async () => {
+  const { applySignalEpisode } = await loadModule(
+    "/src/core/automation/signal-episode.ts",
+  );
+  const rawNeutral = makeAsset({ symbol: "AAA", signal: "neutral", price: 180 });
+  const active = applySignalEpisode(rawNeutral, {
+    symbol: "AAA",
+    timeframe: "swing",
+    active_signal: "long",
+    blocked_signal: null,
+    last_raw_signal: "neutral",
+    decision_candle_open_at: null,
+    decision_candle_closed_at: null,
+    entry_price: 100,
+    stop_loss: 80,
+    take_profits: [210, 220, 230],
+    risk_reward_ratio: 5.5,
+    updated_at: new Date().toISOString(),
+  });
+  assert.equal(active.outlook.signal, "long");
+  assert.equal(active.price, 180, "market price stays live");
+  assert.deepEqual(active.tradingPlan, {
+    entry: 100,
+    stopLoss: 80,
+    takeProfit1: 210,
+    takeProfit2: 220,
+    takeProfit3: 230,
+    riskRewardRatio: 5.5,
+  });
+
+  const rawLong = makeAsset({ symbol: "BBB", signal: "long" });
+  const blocked = applySignalEpisode(rawLong, {
+    symbol: "BBB",
+    timeframe: "swing",
+    active_signal: null,
+    blocked_signal: "long",
+    last_raw_signal: "long",
+    decision_candle_open_at: null,
+    decision_candle_closed_at: null,
+    entry_price: 100,
+    stop_loss: 90,
+    take_profits: [110, 120],
+    risk_reward_ratio: 2,
+    updated_at: new Date().toISOString(),
+  });
+  assert.equal(blocked.outlook.signal, "neutral");
+  assert.equal(blocked.tradingPlan, null);
 });
 
 test("runAutoJournal: a STALE quote does not sync/close an open trade", async () => {

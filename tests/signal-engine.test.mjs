@@ -171,6 +171,57 @@ test("signal candles exclude the still-forming bar and HTF drops a trailing part
   assert.equal(deriveCandleTrendState(candles).ready, false);
 });
 
+test("signal candles drop Yahoo's pseudo bar and the hourly bar still behind it", async () => {
+  const { closedCandlesForSignal } = await loadModule(
+    "/src/core/market/candles.ts",
+  );
+  const hourly = [0, 3600, 7200, 10_740].map((timestamp) => ({
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100,
+    volume: 1,
+    timestamp,
+  }));
+
+  assert.deepEqual(
+    closedCandlesForSignal(hourly, {
+      interval: "1h",
+      nowSeconds: 10_740,
+    }).map((candle) => candle.timestamp),
+    [0, 3600],
+  );
+});
+
+test("an equity hourly candle starting at :30 closes validly at the next :30", async () => {
+  const { closedCandlesForSignal } = await loadModule(
+    "/src/core/market/candles.ts",
+  );
+  const candle = {
+    open: 100,
+    high: 101,
+    low: 99,
+    close: 100,
+    volume: 1,
+    timestamp: 9 * 3600 + 30 * 60,
+  };
+
+  assert.equal(
+    closedCandlesForSignal([candle], {
+      interval: "1h",
+      nowSeconds: 10 * 3600 + 29 * 60 + 59,
+    }).length,
+    0,
+  );
+  assert.equal(
+    closedCandlesForSignal([candle], {
+      interval: "1h",
+      nowSeconds: 10 * 3600 + 30 * 60,
+    }).length,
+    1,
+  );
+});
+
 test("RSI stays neutral in a flat market and DMI exposes ADX direction", async () => {
   const { calculateRSI, calculateDMI } = await loadModule(
     "/src/core/engine/indicators.ts",
@@ -519,3 +570,137 @@ test("backtest fills a stop gap at the next bar open", async () => {
   assert.equal(after[0].exitPrice, 1);
   assert.equal(after[0].exitReason, "initial_stop");
 });
+
+test("decision series is built once and replays exactly like runBacktest", async () => {
+  const { buildDecisionSeries, replayDecisionSeries, runBacktest } =
+    await loadModule("/src/core/engine/backtest.ts");
+  const candles = makeTrendCandles({ count: 300, step: 2 });
+  const options = { assetType: "us-stock", timeframe: "swing" };
+  const decisions = buildDecisionSeries(candles, options);
+
+  assert.deepEqual(
+    replayDecisionSeries(candles, decisions, options),
+    runBacktest(candles, options),
+  );
+});
+
+test("backtest signal episodes require neutral before same-direction re-entry", async () => {
+  const { replayDecisionSeries } = await loadModule(
+    "/src/core/engine/backtest.ts",
+  );
+  const candles = Array.from({ length: 5 }, (_, index) => ({
+    open: 100,
+    high: 102,
+    low: 99,
+    close: 101,
+    volume: 100,
+    timestamp: index * 3600,
+  }));
+  const outlook = (signal) => ({
+    signal,
+    strength: signal === "neutral" ? 0 : 70,
+    tier: "B",
+    regime: "trending",
+    indicators: {
+      atr: 1,
+      support: 0,
+      resistance: 0,
+      adx: 20,
+      recentSwingHigh: 0,
+      recentSwingLow: 0,
+    },
+  });
+  const decisions = [
+    { barIndex: 0, timestamp: 0, outlook: outlook("long"), previousSignal: "neutral" },
+    { barIndex: 1, timestamp: 3600, outlook: outlook("long"), previousSignal: "long" },
+    { barIndex: 2, timestamp: 7200, outlook: outlook("neutral"), previousSignal: "long" },
+    { barIndex: 3, timestamp: 10_800, outlook: outlook("long"), previousSignal: "neutral" },
+  ];
+
+  const v5 = replayDecisionSeries(candles, decisions, {
+    assetType: "us-stock",
+    exitMode: "tp1-1r",
+  });
+  const repeat = replayDecisionSeries(candles, decisions, {
+    assetType: "us-stock",
+    exitMode: "tp1-1r",
+    signalEpisodes: false,
+  });
+
+  assert.equal(v5.trades.length, 2);
+  assert.equal(repeat.trades.length, 3);
+});
+
+test("production and backtest agree on a TP2 close-confirmed progressive stop", async () => {
+  const { replayDecisionSeries } = await loadModule(
+    "/src/core/engine/backtest.ts",
+  );
+  const { computeTradingPlan } = await loadModule(
+    "/src/core/engine/trading-plan.ts",
+  );
+  const { evaluateFollow } = await loadModule(
+    "/src/core/trade/follow-trade-model.ts",
+  );
+  const outlook = {
+    signal: "long",
+    strength: 70,
+    tier: "B",
+    regime: "trending",
+    indicators: {
+      atr: 2,
+      support: 0,
+      resistance: 0,
+      adx: 20,
+      recentSwingHigh: 0,
+      recentSwingLow: 0,
+    },
+  };
+  const candles = [
+    { open: 99, high: 101, low: 98, close: 100, volume: 100, timestamp: 0 },
+    {
+      open: 100,
+      high: 108,
+      low: 98,
+      close: 104.5,
+      volume: 100,
+      timestamp: 3600,
+    },
+  ];
+  const result = replayDecisionSeries(
+    candles,
+    [{ barIndex: 0, timestamp: 0, outlook, previousSignal: "neutral" }],
+    { assetType: "us-stock" },
+  );
+  const plan = computeTradingPlan(outlook, candles[1].open, "us-stock");
+  const production = evaluateFollow(
+    {
+      ...longTradeFixture(plan),
+    },
+    candles[1].close,
+    [{ ...candles[1], timestamp: candles[1].timestamp * 1000, isClosed: true }],
+  );
+
+  assert.equal(result.trades[0].entryPrice, plan.entry);
+  assert.equal(result.trades[0].exitPrice, production.closePrice);
+  assert.equal(result.trades[0].exitReason, production.exitReason);
+  assert.equal(result.trades[0].exitReason, "progressive_stop");
+});
+
+function longTradeFixture(plan) {
+  return {
+    id: "parity",
+    symbol: "AAA",
+    name: "AAA",
+    assetType: "us-stock",
+    signal: "long",
+    timeframe: "swing",
+    entryPrice: plan.entry,
+    stopLoss: plan.stopLoss,
+    takeProfits: [plan.takeProfit1, plan.takeProfit2, plan.takeProfit3],
+    riskRewardRatio: plan.riskRewardRatio,
+    strengthAtEntry: 70,
+    followedAt: 3600 * 1000,
+    highestTpReached: 0,
+    status: "open",
+  };
+}

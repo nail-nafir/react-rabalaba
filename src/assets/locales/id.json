@@ -678,7 +678,7 @@
   },
   "disclaimer": {
     "confirm": "Sudah baca dan paham seluruh risiko investasi",
-    "agree": "Paham & Lanjutkan",
+    "agree": "Lanjut Akses",
     "load_error_title": "Penafian risiko belum dapat dimuat",
     "load_error_description": "Koneksi ke data penafian sedang bermasalah. Coba lagi sebelum melanjutkan."
   },
@@ -702,6 +702,7 @@
     "lifecycle_closed": "Ditutup",
     "portfolio_stats": "Statistik Jurnal",
     "chart_equity_benchmark": "Acuan Kinerja",
+    "chart_equity_methodology": "Kinerja Jurnal menjumlahkan persentase return setiap sinyal tertutup sesuai arahnya. Ini bukan return portofolio berbobot modal. Evaluasi engine memakai R, expectancy, Profit Factor, dan drawdown.",
     "benchmark_btc": "Acuan (Bitcoin)",
     "benchmark_gold": "Acuan (Gold)",
     "cumulative": "Kinerja Jurnal",

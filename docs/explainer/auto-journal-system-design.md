@@ -150,7 +150,7 @@ type-only and erased.
 
 > **Rule:** any change to engine/journal logic (`auto-journal-core`,
 > `follow-trade-model`, adapters, the universe) requires
-> `npm run build:edge && npm run deploy:edge` for the cron to pick it up.
+> `npm run deploy:auto-journal` for the cron to pick it up.
 > `npm run build` (the app) alone does **not** update the cron.
 
 ---
@@ -170,7 +170,7 @@ Migration `20260613000001_journal_trades.sql`.
 | `timeframe`, `entry_price`, `stop_loss` | |
 | `take_profits` double[] | `[tp1, tp2, tp3?]`, finite levels only |
 | `risk_reward_ratio`, `strength_at_entry`, `grade` | `grade` ∈ A/B/C |
-| `engine_version`, `decision_candle_at` | immutable decision provenance |
+| `engine_version`, `decision_candle_open_at`, `decision_candle_closed_at` | immutable decision provenance |
 | `regime`, `higher_timeframe_trend`, `direction_score` | entry-time engine state |
 | `status` | `open` \| `tp1` \| `tp2` \| `tp3` \| `sl` \| `reversed` |
 | `highest_tp_reached` int | monotonic milestone (0..3) |
@@ -258,8 +258,9 @@ in `20260614000001`).
    3. `adaptYahooChart` each result → `UnifiedAsset` (outlook + trading plan).
    4. `runAutoJournal` → `{ inserts, progressUpdates, closures }` (pure core).
    5. Apply monotonic TP milestones, terminal closures, then current-signal
-      inserts. This permits same-scan replacement after TP/SL/reversal. Writes use
-      the **service-role key** (bypasses RLS).
+      inserts. TP/SL blocks the same direction until a neutral raw signal;
+      reversal can flip in the same scan. Writes use the **service-role key**
+      (bypasses RLS).
    6. Return a JSON summary (`universe`, `fetched`, `emitted`, `closed`,
       `alerts_total`, `alerted`).
 
@@ -271,14 +272,16 @@ context but never journaled.
 
 `src/core/automation/auto-journal-core.ts`. No fetch, no DB — just data in, plan out.
 
-- **EMIT:** every long/short + plan + fresh quote with no surviving open
-  symbol/timeframe duplicate. Available benchmark context applies the same
+- **EMIT:** every long/short + plan + fresh decision and executable candle with
+  no surviving open/blocked symbol-timeframe episode. Entry is the executable
+  candle open, not the later spot quote. Available benchmark context applies the same
   strength/tier de-rate as the browser but never hides a displayed signal;
   missing context falls back to the raw screen decision.
 - **SYNC / Close 1 (TP/SL):** rebuild each open trade's candles since
-  `followedAt`, then run `applyPriceSync()`. TP1 raises the next-step stop to
-  entry; TP2 raises it to TP1; the final TP closes. A gap through the currently
-  active stop fills at its open.
+  `followedAt`, then run `applyPriceSync()`. TP1 raises the stop to entry and TP2
+  raises it to TP1. On a finalized candle that reaches a new TP, only its close
+  can confirm the newly raised stop; an ambiguous wick cannot. The final TP
+  closes, and a gap through an already-active stop fills at its open.
 - **Close 2 (signal reversal, long↔short only):** for trades still open after
   Close 1, if the engine's current signal is the opposite direction:
   - exit at the latest corroborated candle close (never a synthetic TP fill);
@@ -367,7 +370,7 @@ context but never journaled.
 
 1. **Apply migrations:** `npx supabase db push` (project is linked) or paste each
    file into the SQL Editor.
-2. **Deploy the function:** `npm run deploy:edge`
+2. **Deploy the function:** `npm run deploy:auto-journal`
    (= `build:edge` then `npx supabase functions deploy auto-journal`).
 3. **Schedule the cron (once):** run `supabase/schedule-auto-journal.sql` in the
    SQL Editor — enables `pg_cron` + `pg_net`, stores the function URL + private
@@ -385,7 +388,7 @@ context but never journaled.
 
 ### 8.2 Routine ops
 
-- **Ship an engine/journal change:** `npm run deploy:edge` (rebuilds
+- **Ship an engine/journal change:** `npm run deploy:auto-journal` (rebuilds
   `_engine.mjs` + redeploys). The app build alone won't update the cron.
 - **Wipe the journal:** `truncate table public.journal_trades;` (full) or
   `delete from public.journal_trades where status <> 'open';` (closed only).
@@ -460,7 +463,7 @@ npm run build               # tsc -b + vite build  (the REAL typecheck)
 
 # Edge function (cron engine)
 npm run build:edge          # bundle src → _engine.mjs
-npm run deploy:edge         # build:edge + deploy auto-journal
+npm run deploy:auto-journal # build:edge + deploy auto-journal
 
 # Supabase
 npx supabase db push        # apply migrations

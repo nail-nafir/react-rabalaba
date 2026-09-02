@@ -7,8 +7,10 @@ import {
   buildSignalSeriesFromCandles,
   deriveCandleTrendState,
   resampleCandles,
+  resampleCandlesToDaily,
 } from "@/core/market/candles";
 import type { NormalizedYahooCandle } from "@/core/market/candles";
+import { calculateEMASeries } from "./indicators";
 import {
   TIMEFRAME_PRESETS,
   HIGHER_TIMEFRAME_FACTOR,
@@ -31,6 +33,7 @@ export type ExitMode =
   | "progressive"
   | "terminal"
   | "secured"
+  | "tp1-1r"
   | "tp1"
   | "scaleOut";
 
@@ -81,6 +84,41 @@ export interface BacktestMetrics {
   perRegime: Record<MarketRegime, RegimeStat>;
   /** Per-tier stats — the basis for confidence calibration. */
   perTier: Record<SignalTier, RegimeStat>;
+}
+
+export interface SignalDecision {
+  barIndex: number;
+  timestamp: number;
+  outlook: Outlook;
+  previousSignal: SignalDirection;
+  research?: {
+    close: number;
+    ema2001h?: number;
+    ema2004h?: number;
+    ema50Daily?: number;
+  };
+}
+
+export interface BacktestEntryFilterArgs {
+  outlook: Outlook;
+  barIndex: number;
+  timestamp: number;
+  decision: SignalDecision;
+}
+
+export interface BacktestOptions {
+  assetType?: AssetType;
+  timeframe?: TimeframePresetKey;
+  exitMode?: ExitMode;
+  /** Stress fees + slippage without changing production constants. */
+  costMultiplier?: number;
+  /** Bound signal inputs to the same rolling history available in production. */
+  lookbackSeconds?: number;
+  /** Derive research-only 1H/4H/daily EMA fields from the same candle payload. */
+  includeResearchFeatures?: boolean;
+  /** v5 default: a closed direction cannot re-enter before neutral/opposite. */
+  signalEpisodes?: boolean;
+  entryFilter?: (args: BacktestEntryFilterArgs) => boolean;
 }
 
 interface TradeLeg {
@@ -203,6 +241,7 @@ function stepBar(
     exitMode === "terminal" ||
     exitMode === "secured"
   ) {
+    const previousLeg = trade.nextLeg;
     while (trade.nextLeg < trade.legs.length) {
       const target = trade.legs[trade.nextLeg].price;
       const tpHit =
@@ -220,6 +259,18 @@ function stepBar(
             ? trade.entryPrice
             : trade.legs[trade.nextLeg - 2].price;
       }
+    }
+    if (
+      exitMode === "progressive" &&
+      trade.nextLeg > previousLeg &&
+      (trade.direction === "long"
+        ? bar.close <= trade.stop
+        : bar.close >= trade.stop)
+    ) {
+      closeRemaining(trade, trade.stop);
+      return trade.stop === trade.entryPrice
+        ? "breakeven_stop"
+        : "progressive_stop";
     }
     return null;
   }
@@ -284,45 +335,60 @@ function finalize(
 }
 
 /**
- * Walk-forward backtest with NO lookahead: at each bar i the engine only sees
- * candles[0..i] and any entry is filled at candle[i+1].open. A single position
- * is held at a time. Exits use the selected mode, opposite signal at the next
- * open, or end-of-data at the final close. Fees + slippage are deducted from
- * every fill.
+ * Build each signal decision once with no lookahead. Research replays can then
+ * compare gates/exits without recomputing or subtly changing the signal path.
  */
-export function runBacktest(
+export function buildDecisionSeries(
   candles: NormalizedYahooCandle[],
-  options: {
-    assetType?: AssetType;
-    timeframe?: TimeframePresetKey;
-    exitMode?: ExitMode;
-    /** Stress fees + slippage without changing production constants. */
-    costMultiplier?: number;
-    /** Optional gate: return false to BLOCK an otherwise-valid entry. Lets a
-     *  harness model the journal's context emission-gate without touching the
-     *  exit model. Receives the entry signal + the decision bar. */
-    entryFilter?: (args: {
-      outlook: Outlook;
-      barIndex: number;
-      timestamp: number;
-    }) => boolean;
-  } = {},
-): { metrics: BacktestMetrics; trades: BacktestTrade[] } {
+  options: Pick<
+    BacktestOptions,
+    | "assetType"
+    | "timeframe"
+    | "lookbackSeconds"
+    | "includeResearchFeatures"
+  > = {},
+): SignalDecision[] {
   const {
     assetType,
     timeframe = "swing",
-    exitMode = "progressive",
-    costMultiplier = 1,
-    entryFilter,
+    lookbackSeconds,
+    includeResearchFeatures = false,
   } = options;
   const warmup = TIMEFRAME_PRESETS[timeframe].signalProfile.minCandles;
-  const costRate = costRateFor(assetType) * Math.max(0, costMultiplier);
-
-  const trades: BacktestTrade[] = [];
-  let open: OpenTrade | null = null;
+  const htfCandles = includeResearchFeatures
+    ? resampleCandles(candles, HIGHER_TIMEFRAME_FACTOR[timeframe], {
+        includeTrailingPartial: false,
+      })
+    : [];
+  const dailyCandles = includeResearchFeatures
+    ? resampleCandlesToDaily(candles)
+    : [];
+  const htfEma200 = calculateEMASeries(
+    htfCandles.map((candle) => candle.close),
+    200,
+  );
+  const dailyEma50 = calculateEMASeries(
+    dailyCandles.map((candle) => candle.close),
+    50,
+  );
+  let htfIndex = -1;
+  let dailyIndex = -1;
+  let windowStart = 0;
+  let previousSignal: SignalDirection = "neutral";
+  const decisions: SignalDecision[] = [];
 
   for (let i = warmup; i < candles.length - 1; i++) {
-    const decisionCandles = candles.slice(0, i + 1);
+    if (lookbackSeconds != null) {
+      const cutoff = candles[i].timestamp - lookbackSeconds;
+      while (
+        windowStart < i &&
+        candles[windowStart].timestamp < cutoff
+      ) {
+        windowStart += 1;
+      }
+    }
+    const decisionCandles = candles.slice(windowStart, i + 1);
+    if (decisionCandles.length < warmup) continue;
     const series = buildSignalSeriesFromCandles(decisionCandles);
     const higherTimeframe = deriveCandleTrendState(
       resampleCandles(decisionCandles, HIGHER_TIMEFRAME_FACTOR[timeframe], {
@@ -336,8 +402,74 @@ export function runBacktest(
       higherTimeframeTrend: higherTimeframe.trend,
       higherTimeframeReady: higherTimeframe.ready,
     });
+    const decision: SignalDecision = {
+      barIndex: i,
+      timestamp: candles[i].timestamp,
+      outlook,
+      previousSignal,
+    };
+    if (includeResearchFeatures) {
+      while (
+        htfIndex + 1 < htfCandles.length &&
+        htfCandles[htfIndex + 1].timestamp <= candles[i].timestamp
+      ) {
+        htfIndex += 1;
+      }
+      while (
+        dailyIndex + 1 < dailyCandles.length &&
+        dailyCandles[dailyIndex + 1].timestamp <= candles[i].timestamp
+      ) {
+        dailyIndex += 1;
+      }
+      decision.research = {
+        close: candles[i].close,
+        ema2001h:
+          decisionCandles.length >= 200
+            ? outlook.indicators.ema200
+            : undefined,
+        ema2004h: htfIndex >= 199 ? htfEma200[htfIndex] : undefined,
+        ema50Daily: dailyIndex >= 49 ? dailyEma50[dailyIndex] : undefined,
+      };
+    }
+    decisions.push(decision);
+    previousSignal = outlook.signal;
+  }
+
+  return decisions;
+}
+
+/** Replay production lifecycle against a precomputed decision series. */
+export function replayDecisionSeries(
+  candles: NormalizedYahooCandle[],
+  decisions: SignalDecision[],
+  options: Pick<
+    BacktestOptions,
+    | "assetType"
+    | "exitMode"
+    | "costMultiplier"
+    | "entryFilter"
+    | "signalEpisodes"
+  > = {},
+): { metrics: BacktestMetrics; trades: BacktestTrade[] } {
+  const {
+    assetType,
+    exitMode = "progressive",
+    costMultiplier = 1,
+    entryFilter,
+    signalEpisodes = true,
+  } = options;
+  const costRate = costRateFor(assetType) * Math.max(0, costMultiplier);
+
+  const trades: BacktestTrade[] = [];
+  let open: OpenTrade | null = null;
+  let blockedSignal: Exclude<SignalDirection, "neutral"> | null = null;
+
+  for (const decision of decisions) {
+    const { barIndex: i, outlook } = decision;
     const nextBar = candles[i + 1];
+    if (!nextBar) continue;
     const nextIndex = i + 1;
+    if (signalEpisodes && outlook.signal === "neutral") blockedSignal = null;
 
     // The new decision is known before the next open, so a reversal exits at
     // that open before any high/low from the new bar can affect the old trade.
@@ -350,6 +482,7 @@ export function runBacktest(
       trades.push(
         finalize(open, "reversal", nextIndex, nextBar.timestamp),
       );
+      if (signalEpisodes) blockedSignal = open.direction;
       open = null;
     }
 
@@ -358,11 +491,13 @@ export function runBacktest(
     if (
       !open &&
       outlook.signal !== "neutral" &&
+      (!signalEpisodes || blockedSignal !== outlook.signal) &&
       (!entryFilter ||
         entryFilter({
           outlook,
           barIndex: i,
           timestamp: candles[i].timestamp,
+          decision,
         }))
     ) {
       const plan = computeTradingPlan(
@@ -380,9 +515,18 @@ export function runBacktest(
         ].filter(
           (v): v is number => typeof v === "number" && Number.isFinite(v),
         );
-        const tps = exitMode === "tp1" ? allTps.slice(0, 1) : allTps;
+        const oneR: number =
+          outlook.signal === "long"
+            ? nextBar.open + risk
+            : nextBar.open - risk;
+        const tps: number[] =
+          exitMode === "tp1-1r"
+            ? [oneR]
+            : exitMode === "tp1"
+              ? allTps.slice(0, 1)
+              : allTps;
         if (tps.length === 0) continue;
-        const legPlan =
+        const legPlan: { tpIndex: number; fraction: number }[] =
           exitMode === "scaleOut"
             ? tps.length === 1
               ? [{ tpIndex: 0, fraction: 1 }]
@@ -392,7 +536,10 @@ export function runBacktest(
                     { tpIndex: 1, fraction: 0.5 },
                   ]
                 : SCALE_OUT_LEGS
-            : tps.map((_, tpIndex) => ({ tpIndex, fraction: 1 }));
+            : tps.map((_: number, tpIndex: number) => ({
+                tpIndex,
+                fraction: 1,
+              }));
         open = {
           direction: outlook.signal,
           decisionIndex: i,
@@ -401,7 +548,7 @@ export function runBacktest(
           entryTimestamp: nextBar.timestamp,
           entryPrice: nextBar.open,
           stop: plan.stopLoss,
-          legs: legPlan.map((l) => ({
+          legs: legPlan.map((l: { tpIndex: number; fraction: number }) => ({
             price: tps[l.tpIndex],
             fraction: l.fraction,
           })),
@@ -421,8 +568,14 @@ export function runBacktest(
     if (open) {
       const reason = stepBar(open, nextBar, exitMode);
       if (reason) {
+        const closedDirection: Exclude<SignalDirection, "neutral"> =
+          open.direction;
         trades.push(finalize(open, reason, nextIndex, nextBar.timestamp));
         open = null;
+        if (signalEpisodes) {
+          blockedSignal =
+            outlook.signal === "neutral" ? null : closedDirection;
+        }
       }
     }
   }
@@ -437,6 +590,15 @@ export function runBacktest(
   }
 
   return { metrics: summarize(trades), trades };
+}
+
+/** Convenience API used by the app; research runners build once and replay. */
+export function runBacktest(
+  candles: NormalizedYahooCandle[],
+  options: BacktestOptions = {},
+): { metrics: BacktestMetrics; trades: BacktestTrade[] } {
+  const decisions = buildDecisionSeries(candles, options);
+  return replayDecisionSeries(candles, decisions, options);
 }
 
 function statFrom(rs: number[]): RegimeStat {

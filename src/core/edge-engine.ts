@@ -26,6 +26,7 @@ export {
 export { resolveTimeframePreset } from "@/constants/timeframes";
 export { normalizeYahooCandles } from "@/core/market/candles";
 export { runAutoJournal } from "./automation/auto-journal-core";
+export { signalEpisodeKey } from "./automation/signal-episode";
 export type { AutoJournalPlan, JournalClosure } from "./automation/auto-journal-core";
 // Index-aware journaling: the cron derives the same top-down contexts the app
 // does, then runAutoJournal enriches + gates emissions with them.

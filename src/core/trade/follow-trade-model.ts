@@ -31,7 +31,7 @@ export interface FollowedTrade {
   assetType: AssetType;
   signal: FollowSignal;
   timeframe: string;
-  /** Reference price at the moment of following (market follow). */
+  /** Fill price at the first executable candle open after the decision close. */
   entryPrice: number;
   stopLoss: number;
   /** [tp1, tp2, tp3?] — only finite levels from the plan. */
@@ -40,7 +40,8 @@ export interface FollowedTrade {
   strengthAtEntry: number;
   grade?: SignalTier;
   engineVersion?: string;
-  decisionCandleTime?: number;
+  decisionCandleOpenAt?: number;
+  decisionCandleClosedAt?: number;
   regime?: MarketRegime;
   higherTimeframeTrend?: TrendDirection;
   directionScore?: number;
@@ -215,8 +216,7 @@ export interface FollowEvaluation {
   exitReason?: ExitReason;
   closePrice?: number;
   closed: boolean;
-  /** When the closing level was actually hit (ms). Derived from candle history
-   *  so a level touched in the past is stamped with its REAL time, not "now".
+  /** Timestamp of the candle containing the close (ms), rather than scan time.
    *  Undefined when closed off a live snapshot (caller falls back to Date.now). */
   closedAt?: number;
 }
@@ -228,6 +228,8 @@ export interface FollowCandle {
   low: number;
   close?: number;
   timestamp: number;
+  /** False only for Yahoo's still-forming/live candle. */
+  isClosed?: boolean;
 }
 
 /**
@@ -236,8 +238,8 @@ export interface FollowCandle {
  * - within each bar the stop is checked first — OHLC cannot prove intrabar
  *   ordering, so the engine takes the conservative outcome;
  * - TP1 moves the stop to entry; TP2 moves it to TP1 (one rung behind);
- * - a newly raised stop starts on the NEXT step, never retroactively in the bar
- *   that reached the TP;
+ * - a newly raised stop normally starts on the next step; a finalized candle
+ *   may close at that stop when its close confirms the retrace;
  * - the trade closes on the first active-stop or final-TP event;
  * - a gap through the active stop fills at its open rather than assuming a
  *   perfect fill;
@@ -245,9 +247,9 @@ export interface FollowCandle {
  *
  * Why ordered: aggregate highs/lows can't tell whether the stop or a target came
  * first, which produces phantom outcomes. When candles are supplied they are
- * the authoritative ordered record since follow and `closedAt` is the real hit
- * time. The stored milestone remains a monotonic floor in case the available
- * market-data window no longer reaches all the way back to entry.
+ * the authoritative ordered record since follow and `closedAt` identifies its
+ * containing candle. The stored milestone remains a monotonic floor if the
+ * available market-data window no longer reaches all the way back to entry.
  */
 export function evaluateFollow(
   trade: FollowedTrade,
@@ -276,6 +278,8 @@ export function evaluateFollow(
     tpProbe: number;
     slProbe: number;
     open?: number;
+    close?: number;
+    isClosed: boolean;
     at?: number;
   }[] = [];
   if (hasCandles) {
@@ -284,6 +288,8 @@ export function evaluateFollow(
         tpProbe: isLong ? c.high : c.low,
         slProbe: isLong ? c.low : c.high,
         open: c.open,
+        close: c.close,
+        isClosed: c.isClosed !== false,
         at: c.timestamp,
       });
     }
@@ -292,7 +298,7 @@ export function evaluateFollow(
   // The cron passes the latest candle close as `price`; do not replay that same
   // observation as a fake next step after raising the stop inside the candle.
   if (!hasCandles || lastClose == null || lastClose !== price) {
-    steps.push({ tpProbe: price, slProbe: price });
+    steps.push({ tpProbe: price, slProbe: price, isClosed: false });
   }
 
   for (const step of steps) {
@@ -323,6 +329,7 @@ export function evaluateFollow(
     }
 
     // Targets are evaluated only when the stop was not touched.
+    const previousMilestone = highestTpReached;
     const reachedNow = countTakeProfitsAtPrice(trade, step.tpProbe);
     if (reachedNow > highestTpReached) highestTpReached = reachedNow;
     if (finalIndex > 0 && highestTpReached >= finalIndex) {
@@ -334,6 +341,31 @@ export function evaluateFollow(
         closed: true,
         closedAt: step.at,
       };
+    }
+
+    if (
+      highestTpReached > previousMilestone &&
+      step.isClosed &&
+      typeof step.close === "number" &&
+      Number.isFinite(step.close)
+    ) {
+      const raisedStop = activeStopFor(highestTpReached);
+      const closeConfirmed = isLong
+        ? step.close <= raisedStop
+        : step.close >= raisedStop;
+      if (closeConfirmed) {
+        return {
+          status: "sl",
+          highestTpReached,
+          exitReason:
+            highestTpReached === 1
+              ? "breakeven_stop"
+              : "progressive_stop",
+          closePrice: raisedStop,
+          closed: true,
+          closedAt: step.at,
+        };
+      }
     }
   }
 
@@ -428,7 +460,7 @@ export function deriveFollowProgress(
  * Apply a price snapshot to all open trades, partitioning into open/closed.
  * `candlesBySymbol` (optional) carries each symbol's candles since the trade was
  * followed so TP/SL touches by an intraday wick are caught — and the close is
- * stamped with the REAL hit time, not "now".
+ * stamped with the containing candle rather than scan time.
  */
 export function applyPriceSync(
   openTrades: FollowedTrade[],
@@ -470,10 +502,19 @@ export function applyPriceSync(
 }
 
 /** Snapshot a followable asset into a FollowedTrade, or null if not followable. */
-export function buildFollowedTrade(asset: UnifiedAsset): FollowedTrade | null {
+export function buildFollowedTrade(
+  asset: UnifiedAsset,
+  now = Date.now(),
+): FollowedTrade | null {
   const { outlook, tradingPlan } = asset;
   if (!outlook || !tradingPlan) return null;
   if (outlook.signal !== "long" && outlook.signal !== "short") return null;
+  if (
+    typeof asset.executionCandleOpenAt !== "number" ||
+    !Number.isFinite(asset.executionCandleOpenAt)
+  ) {
+    return null;
+  }
 
   const takeProfits = [
     tradingPlan.takeProfit1,
@@ -481,7 +522,6 @@ export function buildFollowedTrade(asset: UnifiedAsset): FollowedTrade | null {
     tradingPlan.takeProfit3,
   ].filter((v): v is number => typeof v === "number" && Number.isFinite(v));
 
-  const now = Date.now();
   return {
     id: `${asset.symbol}-${now}`,
     symbol: asset.symbol,
@@ -489,20 +529,21 @@ export function buildFollowedTrade(asset: UnifiedAsset): FollowedTrade | null {
     assetType: asset.assetType,
     signal: outlook.signal,
     timeframe: asset.timeframe,
-    entryPrice: asset.price,
+    entryPrice: tradingPlan.entry,
     stopLoss: tradingPlan.stopLoss,
     takeProfits,
     riskRewardRatio: tradingPlan.riskRewardRatio,
     strengthAtEntry: outlook.strength,
     grade: outlook.tier,
     engineVersion: ENGINE_VERSION,
-    decisionCandleTime: asset.decisionCandleTime,
+    decisionCandleOpenAt: asset.decisionCandleOpenAt,
+    decisionCandleClosedAt: asset.decisionCandleClosedAt,
     regime: outlook.regime,
     higherTimeframeTrend: outlook.higherTimeframeReady
       ? outlook.higherTimeframeTrend
       : undefined,
     directionScore: outlook.directionScore,
-    followedAt: now,
+    followedAt: asset.executionCandleOpenAt,
     highestTpReached: 0,
     status: "open",
   };

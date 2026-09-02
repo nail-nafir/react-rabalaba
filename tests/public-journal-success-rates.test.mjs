@@ -84,6 +84,29 @@ test("engine-hardening migration defines wins from strict direction-aware PnL", 
   assert.match(sql, /decision_candle_at timestamptz/i);
 });
 
+test("engine-v5 migration stores close time and makes episode state service-write-only", () => {
+  const sql = readFileSync(
+    new URL(
+      "../supabase/migrations/20260901000001_engine_v5_signal_episodes.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(sql, /decision_candle_closed_at timestamptz/i);
+  assert.match(
+    sql,
+    /rename column decision_candle_at to decision_candle_open_at/i,
+  );
+  assert.match(sql, /create table if not exists public\.journal_signal_states/i);
+  assert.match(sql, /entry_price double precision/i);
+  assert.match(sql, /take_profits double precision\[\]/i);
+  assert.match(sql, /primary key \(symbol, timeframe\)/i);
+  assert.match(sql, /grant select[\s\S]*to anon, authenticated/i);
+  assert.match(sql, /grant all[\s\S]*to service_role/i);
+  assert.doesNotMatch(sql, /for (insert|update|delete)[\s\S]*to (anon|authenticated)/i);
+});
+
 test("latest success-rate migration excludes breakeven from the denominator", () => {
   const sql = readFileSync(
     new URL(

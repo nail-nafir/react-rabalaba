@@ -218,9 +218,9 @@ Petakan tier+regime live ke hit-rate historis trade sebanding. Return `null` win
 
 `runAutoJournal(assets, openRows, {contexts, now?}) → AutoJournalPlan {inserts, progressUpdates, closures}`.
 
-**Emit**: skip quote stale >90min; simpan provenance engine/candle/regime/HTF/score; context menyesuaikan strength/tier tetapi semua LONG/SHORT screener yang actionable tetap masuk. Closure direncanakan sebelum emit agar signal aktif bisa reopen pada scan yang sama.
+**Emit**: skip quote stale >90min; entry memakai open candle eksekusi setelah decision close; simpan provenance engine/candle/regime/HTF/score. Context menyesuaikan strength/tier tetapi semua LONG/SHORT screener yang actionable tetap masuk. Episode searah yang selesai diblokir sampai raw signal netral; reversal boleh langsung flip.
 
-**Close**: replay candle sejak entry dengan stop-first OHLC. TP1 mengaktifkan stop entry pada langkah berikutnya; TP2 mengaktifkan stop TP1; TP final atau reversal menutup posisi. Gap active-stop fill di open; reversal exit di close candle terkoroborasi. `exit_reason` menyimpan penyebab exact. Phantom guard: cuma candle timestamped yang mutusin. Trade tertutup engine-v3 tetap utuh; migration v4 hanya mengubah cohort yang masih open.
+**Close**: replay candle sejak entry dengan stop-first OHLC. TP1 mengaktifkan stop entry; TP2 mengaktifkan stop TP1. Candle selesai yang mencapai TP baru hanya memakai final close untuk mengonfirmasi stop baru; wick ambigu tidak menutup. TP final atau reversal menutup posisi. Gap active-stop fill di open; reversal exit di close candle terkoroborasi. `exit_reason` menyimpan penyebab exact. Phantom guard: cuma candle timestamped yang mutusin. Trade tertutup engine-v3 tetap utuh; migration v4 hanya mengubah cohort yang masih open.
 
 ---
 

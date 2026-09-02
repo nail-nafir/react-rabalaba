@@ -137,9 +137,8 @@ function LicenseAccessDialogContent({
     return (
       <DialogContent className="sm:max-w-md border border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
-            <Lock className="size-4 text-primary shrink-0" aria-hidden="true" />
-            <span>{t("license.login_required_title")}</span>
+          <DialogTitle className="text-base font-bold text-foreground">
+            {t("license.login_required_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
             {t("license.login_required_desc")}
@@ -215,7 +214,9 @@ function LicenseAccessDialogContent({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    {t("license.section_activate", { defaultValue: "Kode Akses / Aktivasi" })}
+                    {t("license.section_activate", {
+                      defaultValue: "Kode Akses / Aktivasi",
+                    })}
                   </label>
                   <div className="relative">
                     <Input
@@ -233,7 +234,9 @@ function LicenseAccessDialogContent({
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5 rounded"
                       tabIndex={-1}
                       title={
-                        showCode ? t("common.actions.hide") : t("common.actions.show")
+                        showCode
+                          ? t("common.actions.hide")
+                          : t("common.actions.show")
                       }
                     >
                       {showCode ? (
@@ -255,7 +258,11 @@ function LicenseAccessDialogContent({
           </FieldGroup>
 
           <div className="text-xs text-muted-foreground flex items-center justify-between gap-2 pt-1">
-            <span>{t("terminal.access_dialog_no_access", { defaultValue: "Belum punya kode lisensi?" })}</span>
+            <span>
+              {t("terminal.access_dialog_no_access", {
+                defaultValue: "Belum punya kode lisensi?",
+              })}
+            </span>
             <DialogClose asChild>
               <Link
                 to="/subscription"
@@ -264,7 +271,9 @@ function LicenseAccessDialogContent({
                   "h-auto p-0 text-primary font-semibold underline whitespace-nowrap text-xs",
                 )}
               >
-                {t("terminal.access_dialog_no_access_link", { defaultValue: "Beli Lisensi" })}
+                {t("terminal.access_dialog_no_access_link", {
+                  defaultValue: "Beli Lisensi",
+                })}
               </Link>
             </DialogClose>
           </div>
@@ -280,7 +289,11 @@ function LicenseAccessDialogContent({
               "w-full sm:w-auto font-bold transition-all text-xs cursor-pointer inline-flex items-center justify-center",
             )}
           >
-            <ActionButtonContent label={t("common.actions.upgrade", { defaultValue: "Tingkatkan" })} />
+            <ActionButtonContent
+              label={t("common.actions.upgrade", {
+                defaultValue: "Tingkatkan",
+              })}
+            />
           </Link>
         </DialogClose>
 
