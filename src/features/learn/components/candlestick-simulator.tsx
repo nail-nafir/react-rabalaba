@@ -8,11 +8,10 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import { Sliders, Sparkles, ShieldCheck } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface Preset {
   id: string;
@@ -31,7 +30,7 @@ const PRESETS: Preset[] = [
     close: 42,
   },
   {
-    id: "shooting-star",
+    id: "shooting_star",
     open: 20,
     high: 50,
     low: 18,
@@ -45,25 +44,53 @@ const PRESETS: Preset[] = [
     close: 45,
   },
   {
-    id: "bull-marubozu",
+    id: "bull_marubozu",
     open: 12,
     high: 48,
     low: 12,
     close: 48,
   },
   {
-    id: "bear-marubozu",
+    id: "bear_marubozu",
     open: 48,
     high: 48,
     low: 12,
     close: 12,
   },
   {
-    id: "spinning-top",
+    id: "spinning_top",
     open: 28,
     high: 46,
     low: 14,
     close: 32,
+  },
+  {
+    id: "hanging_man",
+    open: 38,
+    high: 41,
+    low: 8,
+    close: 34,
+  },
+  {
+    id: "inverted_hammer",
+    open: 28,
+    high: 50,
+    low: 25,
+    close: 30,
+  },
+  {
+    id: "gravestone",
+    open: 25,
+    high: 50,
+    low: 25,
+    close: 25,
+  },
+  {
+    id: "long_legged",
+    open: 30,
+    high: 50,
+    low: 10,
+    close: 30,
   },
 ];
 
@@ -230,31 +257,40 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
     : analysis.isBearish
       ? PALETTE.negative.fill
       : PALETTE.neutral.fill;
+  const muted = PALETTE.neutral.fill;
 
   const content = (
     <div className="space-y-6">
-      {isDialog && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20 p-3 rounded-xl border border-border">
-          <span className="text-xs font-semibold text-foreground">
-            {t("learn.candlestick_simulator.select_preset")}
-          </span>
-          <FilterGroup
-            value={selectedPresetId}
-            options={presetOptions}
-            onChange={handlePresetSelect}
-            variant="select"
-            className="w-full sm:w-64"
-          />
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Visual SVG Candle Renderer */}
-        <div className="lg:col-span-5 h-full flex flex-col justify-between items-center p-5 bg-card/60 border border-border/70 rounded-xl relative overflow-hidden">
-          {/* Background subtle grid */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-size-[16px_16px] pointer-events-none" />
+        <Card className="lg:col-span-5 h-full relative border border-border bg-muted/50 flex flex-col items-center justify-between p-4 overflow-hidden">
+          {/* Header with Preset Selector */}
+          {isDialog && (
+            <div className="relative z-10 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
+                {t("learn.candlestick_simulator.select_preset")}
+              </span>
+              <FilterGroup
+                value={selectedPresetId}
+                options={presetOptions}
+                onChange={handlePresetSelect}
+                variant="select"
+                className="w-full sm:w-48 shrink-0"
+              />
+            </div>
+          )}
 
-          <div className="flex-1 w-full flex items-center justify-center min-h-55 relative">
+          {/* Standard dashed technical grid lines */}
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
+          >
+            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+          </div>
+
+          <div className="relative z-10 flex-1 w-full flex items-center justify-center min-h-55">
             <svg viewBox="0 0 320 220" className="w-full h-full max-w-85">
               {/* Reference levels */}
               <line
@@ -262,14 +298,14 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 y1={yHigh}
                 x2="255"
                 y2={yHigh}
-                stroke="#ffffff"
+                stroke={muted}
                 strokeOpacity="0.1"
                 strokeDasharray="3 3"
               />
               <text
                 x="260"
                 y={yHigh + 3}
-                fill="#71717a"
+                fill={muted}
                 fontSize="8"
                 fontWeight="bold"
                 textAnchor="start"
@@ -282,14 +318,14 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 y1={yOpen}
                 x2="255"
                 y2={yOpen}
-                stroke="#ffffff"
+                stroke={muted}
                 strokeOpacity="0.1"
                 strokeDasharray="3 3"
               />
               <text
                 x="60"
                 y={yOpen + 3}
-                fill="#71717a"
+                fill={muted}
                 fontSize="8"
                 fontWeight="bold"
                 textAnchor="end"
@@ -302,7 +338,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 y1={yClose}
                 x2="255"
                 y2={yClose}
-                stroke="#ffffff"
+                stroke={muted}
                 strokeOpacity="0.1"
                 strokeDasharray="3 3"
               />
@@ -322,14 +358,14 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 y1={yLow}
                 x2="255"
                 y2={yLow}
-                stroke="#ffffff"
+                stroke={muted}
                 strokeOpacity="0.1"
                 strokeDasharray="3 3"
               />
               <text
                 x="260"
                 y={yLow + 3}
-                fill="#71717a"
+                fill={muted}
                 fontSize="8"
                 fontWeight="bold"
                 textAnchor="start"
@@ -365,7 +401,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 <text
                   x="172"
                   y={(yHigh + yBodyTop) / 2 + 3}
-                  fill="#a1a1aa"
+                  fill={muted}
                   fontSize="7"
                   fontStyle="italic"
                   textAnchor="start"
@@ -378,7 +414,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
               <text
                 x="160"
                 y={yBodyTop + bodyHeightPx / 2 + 3}
-                fill="#ffffff"
+                fill="currentColor"
                 fontSize="9"
                 fontWeight="black"
                 textAnchor="middle"
@@ -389,7 +425,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 <text
                   x="172"
                   y={(yLow + yBodyBottom) / 2 + 3}
-                  fill="#a1a1aa"
+                  fill={muted}
                   fontSize="7"
                   fontStyle="italic"
                   textAnchor="start"
@@ -403,7 +439,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
           </div>
 
           {/* Pattern Badge banner */}
-          <div className="mt-3 flex flex-col items-center gap-1.5 w-full text-center">
+          <div className="relative z-10 mt-3 flex flex-col items-center gap-1.5 w-full text-center">
             {(() => {
               const colors =
                 analysis.bias === "positive"
@@ -416,7 +452,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 <Badge
                   variant="outline"
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-md",
+                    "text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-md whitespace-nowrap",
                     colors.bg,
                     colors.text,
                     colors.border,
@@ -428,7 +464,7 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                 </Badge>
               );
             })()}
-            <p className="text-[11px] text-muted-foreground max-w-xs italic">
+            <p className="text-[11px] text-muted-foreground max-w-xs italic min-h-9 sm:min-h-8 flex items-center justify-center text-center">
               "
               {t(
                 `learn.candlestick_simulator.psychology.${analysis.psychologyKey}`,
@@ -436,71 +472,80 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
               "
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Right Column: Sliders & Metrics Breakdown */}
         <div className="lg:col-span-7 space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <div className="text-[10px] uppercase font-bold text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.body")}
-              </div>
-              <div className="text-lg font-bold text-foreground mt-0.5">
-                {analysis.bodyPercent.toFixed(1)}%
-              </div>
-              <div className="text-[9px] text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.spread", {
-                  count: analysis.bodyHeight,
-                })}
-              </div>
-            </div>
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-1">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  {t("learn.candlestick_simulator.metrics.body")}
+                </CardTitle>
+                <div className="text-lg font-bold text-foreground">
+                  {analysis.bodyPercent.toFixed(1)}%
+                </div>
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {t("learn.candlestick_simulator.metrics.spread", {
+                    count: analysis.bodyHeight,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <div className="text-[10px] uppercase font-bold text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.upper_wick")}
-              </div>
-              <div className="text-lg font-bold text-foreground mt-0.5">
-                {analysis.upperWickPercent.toFixed(1)}%
-              </div>
-              <div className="text-[9px] text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.selling_rejection")}
-              </div>
-            </div>
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-1">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  {t("learn.candlestick_simulator.metrics.upper_wick")}
+                </CardTitle>
+                <div className="text-lg font-bold text-foreground">
+                  {analysis.upperWickPercent.toFixed(1)}%
+                </div>
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {t("learn.candlestick_simulator.metrics.selling_rejection")}
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <div className="text-[10px] uppercase font-bold text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.lower_wick")}
-              </div>
-              <div className="text-lg font-bold text-foreground mt-0.5">
-                {analysis.lowerWickPercent.toFixed(1)}%
-              </div>
-              <div className="text-[9px] text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.buying_support")}
-              </div>
-            </div>
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-1">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  {t("learn.candlestick_simulator.metrics.lower_wick")}
+                </CardTitle>
+                <div className="text-lg font-bold text-foreground">
+                  {analysis.lowerWickPercent.toFixed(1)}%
+                </div>
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {t("learn.candlestick_simulator.metrics.buying_support")}
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="p-3 rounded-lg border border-border bg-card">
-              <div className="text-[10px] uppercase font-bold text-muted-foreground">
-                {t("learn.candlestick_simulator.metrics.total_range")}
-              </div>
-              <div className="text-lg font-bold text-foreground mt-0.5">
-                {analysis.totalRange} pts
-              </div>
-              <div className="text-[9px] text-muted-foreground">
-                High ({high}) - Low ({low})
-              </div>
-            </div>
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-1">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  {t("learn.candlestick_simulator.metrics.total_range")}
+                </CardTitle>
+                <div className="text-lg font-bold text-foreground">
+                  {analysis.totalRange}{" "}
+                  {t("learn.candlestick_simulator.points_unit")}
+                </div>
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {t("learn.candlestick_simulator.metrics.range_calculation", {
+                    high,
+                    low,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <Separator />
-
           {/* Interactive Sliders */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-              <span className="flex items-center gap-1.5">
-                <Sliders className="h-3.5 w-3.5 text-primary" />
+          <Card className="p-4 border border-border bg-muted/50 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
                 {t("learn.candlestick_simulator.controls")}
-              </span>
+              </h3>
               <span className="text-[11px] text-muted-foreground">
                 {t("learn.candlestick_simulator.controls_hint")}
               </span>
@@ -508,12 +553,12 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Open Slider */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">
                     {t("learn.candlestick_simulator.open")}
                   </span>
-                  <span className="font-bold text-foreground">{open}</span>
+                  <span className="text-xs font-bold text-primary">{open}</span>
                 </div>
                 <input
                   type="range"
@@ -523,15 +568,21 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                   onChange={(e) => handleOpenChange(Number(e.target.value))}
                   className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                 />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>1</span>
+                  <span>50</span>
+                </div>
               </div>
 
               {/* Close Slider */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">
                     {t("learn.candlestick_simulator.close")}
                   </span>
-                  <span className="font-bold text-foreground">{close}</span>
+                  <span className="text-xs font-bold text-primary">
+                    {close}
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -541,15 +592,19 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                   onChange={(e) => handleCloseChange(Number(e.target.value))}
                   className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                 />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>1</span>
+                  <span>50</span>
+                </div>
               </div>
 
               {/* High Slider */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">
                     {t("learn.candlestick_simulator.high")}
                   </span>
-                  <span className="font-bold text-foreground">{high}</span>
+                  <span className="text-xs font-bold text-primary">{high}</span>
                 </div>
                 <input
                   type="range"
@@ -559,15 +614,19 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                   onChange={(e) => handleHighChange(Number(e.target.value))}
                   className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                 />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>1</span>
+                  <span>50</span>
+                </div>
               </div>
 
               {/* Low Slider */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">
+                  <span className="text-foreground font-semibold">
                     {t("learn.candlestick_simulator.low")}
                   </span>
-                  <span className="font-bold text-foreground">{low}</span>
+                  <span className="text-xs font-bold text-primary">{low}</span>
                 </div>
                 <input
                   type="range"
@@ -577,20 +636,25 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
                   onChange={(e) => handleLowChange(Number(e.target.value))}
                   className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                 />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>1</span>
+                  <span>50</span>
+                </div>
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Pro Tip Callout */}
-          <div className="flex items-start gap-3 p-3.5 rounded-lg border border-primary/20 bg-primary/5 text-xs text-foreground leading-relaxed">
-            <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-primary mr-1">
+          <Card className="border border-border bg-muted/50">
+            <CardContent className="space-y-1">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
                 {t("learn.candlestick_simulator.golden_rule")}
-              </span>
-              {t("learn.candlestick_simulator.golden_rule_description")}
-            </div>
-          </div>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground leading-relaxed min-h-10 flex items-center">
+                {t("learn.candlestick_simulator.golden_rule_description")}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

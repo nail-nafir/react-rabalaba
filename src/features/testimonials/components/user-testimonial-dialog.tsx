@@ -227,11 +227,38 @@ function UserTestimonialDialogContent({
       </DialogHeader>
 
       {isLoading ? (
-        <div className="flex flex-col gap-5" aria-hidden>
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-28 w-full" />
+        <div className="flex flex-col gap-5" aria-hidden="true">
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-10 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48 max-w-full" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-20" />
+            <div className="flex gap-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton
+                  key={index}
+                  className="size-11 rounded-md sm:size-8"
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-28 w-full rounded-md" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+
+          <div className="flex justify-end">
+            <Skeleton className="h-11 w-28 rounded-md" />
+          </div>
         </div>
       ) : isError ? (
         <Card size="sm">

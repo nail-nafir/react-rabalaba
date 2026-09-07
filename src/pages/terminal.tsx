@@ -21,10 +21,17 @@ function JournalAccessState({ resolving }: { resolving: boolean }) {
 
   if (resolving) {
     return (
-      <div className="flex flex-col gap-4" aria-busy="true">
-        <Skeleton className="h-28 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-      </div>
+      <Card className="border border-border" aria-busy="true" aria-hidden="true">
+        <CardContent className="flex min-h-72 flex-col items-center justify-center gap-5 p-6">
+          <Skeleton className="size-14 rounded-xl" />
+          <div className="flex w-full max-w-md flex-col items-center gap-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+          <Skeleton className="h-11 w-44 rounded-md" />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -90,10 +97,7 @@ export default function TerminalPage() {
     return (
       <div className="w-full bg-background py-10">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6">
-          <div className="flex flex-col gap-4" aria-busy="true">
-            <Skeleton className="h-28 w-full rounded-xl" />
-            <Skeleton className="h-64 w-full rounded-xl" />
-          </div>
+          <JournalAccessState resolving />
         </div>
       </div>
     );

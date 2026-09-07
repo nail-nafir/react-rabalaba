@@ -9,13 +9,11 @@ import { LearnSimulatorDialog } from "./learn-simulator-dialog";
 import { PatternCard } from "./pattern-card";
 import { StrategySection } from "./strategy-section";
 import { InteractiveQuiz } from "./interactive-quiz";
-import { CheatsheetTable } from "./cheatsheet-table";
 import { Search, X } from "lucide-react";
 
 export type LearnTab = "patterns" | "strategies" | "quiz";
 type PatternCategory = "all" | "candlestick" | "chart";
 type BiasFilter = "all" | "bullish" | "bearish" | "bilateral";
-type ViewMode = "cards" | "table";
 
 export const LearnContent: React.FC = () => {
   const { t } = useTranslation();
@@ -25,7 +23,6 @@ export const LearnContent: React.FC = () => {
     useState<PatternCategory>("all");
   const [biasFilter, setBiasFilter] = useState<BiasFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
 
   const tabOptions = [
     {
@@ -61,11 +58,6 @@ export const LearnContent: React.FC = () => {
     },
   ];
 
-  const viewModeOptions = [
-    { value: "cards" as const, label: t("learn.overview.view_modes.cards") },
-    { value: "table" as const, label: t("learn.overview.view_modes.table") },
-  ];
-
   // Unified Filtered Patterns based on category, bias, and search
   const filteredPatterns = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
@@ -88,7 +80,10 @@ export const LearnContent: React.FC = () => {
           "nativeName" in item ? item.nativeName : undefined,
         ].some((value) => value?.toLowerCase().includes(query));
 
-      const matchesBias = biasFilter === "all" || item.bias === biasFilter;
+      const matchesBias =
+        biasFilter === "all" ||
+        item.bias === biasFilter ||
+        (biasFilter === "bilateral" && item.bias === "neutral");
 
       return matchesSearch && matchesBias;
     });
@@ -152,15 +147,6 @@ export const LearnContent: React.FC = () => {
                   className="flex-1 sm:flex-none"
                 />
               </div>
-
-              {/* View Switcher */}
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <FilterGroup
-                  value={viewMode}
-                  options={viewModeOptions}
-                  onChange={(v) => setViewMode(v as ViewMode)}
-                />
-              </div>
             </div>
 
             {/* Row 2: Search Input and Actions Group (Terminal style) */}
@@ -197,21 +183,17 @@ export const LearnContent: React.FC = () => {
             </div>
           </div>
 
-          {/* View Mode Content */}
-          {viewMode === "cards" ? (
-            filteredPatterns.length === 0 ? (
-              <div className="rounded-md border p-12 text-center text-xs text-muted-foreground">
-                {t("learn.cheatsheet.empty")}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
-                {filteredPatterns.map((pattern) => (
-                  <PatternCard key={pattern.id} pattern={pattern} />
-                ))}
-              </div>
-            )
+          {/* Pattern Cards */}
+          {filteredPatterns.length === 0 ? (
+            <div className="rounded-md border p-12 text-center text-xs text-muted-foreground">
+              {t("learn.cheatsheet.empty")}
+            </div>
           ) : (
-            <CheatsheetTable patterns={filteredPatterns} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
+              {filteredPatterns.map((pattern) => (
+                <PatternCard key={pattern.id} pattern={pattern} />
+              ))}
+            </div>
           )}
         </section>
       )}

@@ -332,7 +332,7 @@ function AssetDetailDialogContent({
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
           {asset
-            ? `${asset.name} · ${t(`common.asset_types.${asset.assetType}`)}`
+            ? `${asset.name} · ${t(`common.asset_types.${asset.assetType.replaceAll("-", "_")}`)}`
             : t("dialog.market_loading_desc")}
         </DialogDescription>
 
@@ -340,7 +340,7 @@ function AssetDetailDialogContent({
         {chartLoading ? (
           <div className="space-y-2 mt-2">
             <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-15 w-full rounded" />
+            <Skeleton className="h-15 w-full rounded-xl" />
           </div>
         ) : (
           <div className="flex items-end justify-between gap-3 mt-2">
@@ -453,8 +453,8 @@ function AssetDetailDialogContent({
           </div>
         ) : (
           <div className="flex items-center gap-3 mt-3">
-            <Skeleton className="h-5 w-16 rounded" />
-            <Skeleton className="h-5 w-20 rounded" />
+            <Skeleton className="h-5 w-16 rounded-md" />
+            <Skeleton className="h-5 w-20 rounded-md" />
           </div>
         )}
         <Separator className="mt-4" />

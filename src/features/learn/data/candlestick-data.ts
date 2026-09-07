@@ -1,124 +1,28 @@
 import type { CandlestickPattern } from "../types/learn";
 
 export const CANDLESTICK_PATTERNS: CandlestickPattern[] = [
-  {
-    "id": "hammer",
-    "nativeName": "Kanazuchi (金槌)",
-    "category": "candlestick-single",
-    "bias": "bullish",
-    "difficulty": "beginner",
-    "winRate": 67,
-    "reliability": 4,
-    "svgType": "hammer"
-  },
-  {
-    "id": "shooting-star",
-    "nativeName": "Nagareboshi (流れ星)",
-    "category": "candlestick-single",
-    "bias": "bearish",
-    "difficulty": "beginner",
-    "winRate": 66,
-    "reliability": 4,
-    "svgType": "shooting-star"
-  },
-  {
-    "id": "inverted-hammer",
-    "nativeName": "Tohba (逆さ槌)",
-    "category": "candlestick-single",
-    "bias": "bullish",
-    "difficulty": "intermediate",
-    "winRate": 62,
-    "reliability": 3,
-    "svgType": "inverted-hammer"
-  },
-  {
-    "id": "doji",
-    "nativeName": "Dōji (同時)",
-    "category": "candlestick-single",
-    "bias": "neutral",
-    "difficulty": "beginner",
-    "winRate": 59,
-    "reliability": 3,
-    "svgType": "doji"
-  },
-  {
-    "id": "marubozu",
-    "nativeName": "Marubōzu (丸坊主)",
-    "category": "candlestick-single",
-    "bias": "bilateral",
-    "difficulty": "beginner",
-    "winRate": 71,
-    "reliability": 4,
-    "svgType": "marubozu"
-  },
-  {
-    "id": "bullish-engulfing",
-    "nativeName": "Tsutsumi (包み線)",
-    "category": "candlestick-dual",
-    "bias": "bullish",
-    "difficulty": "beginner",
-    "winRate": 74,
-    "reliability": 5,
-    "svgType": "bullish-engulfing"
-  },
-  {
-    "id": "bearish-engulfing",
-    "nativeName": "In no Tsutsumi (陰の包み)",
-    "category": "candlestick-dual",
-    "bias": "bearish",
-    "difficulty": "beginner",
-    "winRate": 73,
-    "reliability": 5,
-    "svgType": "bearish-engulfing"
-  },
-  {
-    "id": "tweezer-bottom-top",
-    "nativeName": "Kenuki (毛抜き)",
-    "category": "candlestick-dual",
-    "bias": "bilateral",
-    "difficulty": "intermediate",
-    "winRate": 65,
-    "reliability": 4,
-    "svgType": "tweezer"
-  },
-  {
-    "id": "piercing-line",
-    "nativeName": "Kirikomi / Kabuse (切り込み / 被せ)",
-    "category": "candlestick-dual",
-    "bias": "bilateral",
-    "difficulty": "intermediate",
-    "winRate": 68,
-    "reliability": 4,
-    "svgType": "piercing-line"
-  },
-  {
-    "id": "morning-star",
-    "nativeName": "Sansei (三星) / Akebono (明けの明星)",
-    "category": "candlestick-multi",
-    "bias": "bilateral",
-    "difficulty": "intermediate",
-    "winRate": 78,
-    "reliability": 5,
-    "svgType": "morning-star"
-  },
-  {
-    "id": "three-white-soldiers",
-    "nativeName": "Aka Sanpei / Kuro Sanpei (赤三兵 / 黒三兵)",
-    "category": "candlestick-multi",
-    "bias": "bilateral",
-    "difficulty": "intermediate",
-    "winRate": 76,
-    "reliability": 5,
-    "svgType": "three-soldiers"
-  },
-  {
-    "id": "rising-falling-three",
-    "nativeName": "Sanpō (三法)",
-    "category": "candlestick-multi",
-    "bias": "bilateral",
-    "difficulty": "advanced",
-    "winRate": 72,
-    "reliability": 4,
-    "svgType": "rising-three"
-  }
+  { id: "hammer", nativeName: "Kanazuchi (金槌)", category: "candlestick_single", bias: "bullish", difficulty: "beginner", winRate: 67, reliability: 4, svgType: "hammer" },
+  { id: "hanging_man", nativeName: "Hanging Man", category: "candlestick_single", bias: "bearish", difficulty: "intermediate", winRate: 63, reliability: 3, svgType: "hammer" },
+  { id: "shooting_star", nativeName: "Nagareboshi (流れ星)", category: "candlestick_single", bias: "bearish", difficulty: "beginner", winRate: 66, reliability: 4, svgType: "shooting_star" },
+  { id: "inverted_hammer", nativeName: "Tohba (逆さ槌)", category: "candlestick_single", bias: "bullish", difficulty: "intermediate", winRate: 62, reliability: 3, svgType: "inverted_hammer" },
+  { id: "doji", nativeName: "Dōji (同時)", category: "candlestick_single", bias: "neutral", difficulty: "beginner", winRate: 59, reliability: 3, svgType: "doji" },
+  { id: "dragonfly_doji", nativeName: "Dragonfly Doji", category: "candlestick_single", bias: "bullish", difficulty: "intermediate", winRate: 61, reliability: 3, svgType: "dragonfly_doji" },
+  { id: "gravestone_doji", nativeName: "Gravestone Doji", category: "candlestick_single", bias: "bearish", difficulty: "intermediate", winRate: 61, reliability: 3, svgType: "gravestone_doji" },
+  { id: "spinning_top", nativeName: "Spinning Top", category: "candlestick_single", bias: "neutral", difficulty: "beginner", winRate: 58, reliability: 3, svgType: "spinning_top" },
+  { id: "bullish_marubozu", nativeName: "Bullish Marubozu", category: "candlestick_single", bias: "bullish", difficulty: "beginner", winRate: 71, reliability: 4, svgType: "marubozu" },
+  { id: "bearish_marubozu", nativeName: "Bearish Marubozu", category: "candlestick_single", bias: "bearish", difficulty: "beginner", winRate: 71, reliability: 4, svgType: "marubozu" },
+  { id: "bullish_engulfing", nativeName: "Tsutsumi (包み線)", category: "candlestick_dual", bias: "bullish", difficulty: "beginner", winRate: 74, reliability: 5, svgType: "bullish_engulfing" },
+  { id: "bearish_engulfing", nativeName: "In no Tsutsumi (陰の包み)", category: "candlestick_dual", bias: "bearish", difficulty: "beginner", winRate: 73, reliability: 5, svgType: "bearish_engulfing" },
+  { id: "tweezer_bottom", nativeName: "Tweezer Bottom", category: "candlestick_dual", bias: "bullish", difficulty: "intermediate", winRate: 65, reliability: 4, svgType: "tweezer" },
+  { id: "tweezer_top", nativeName: "Tweezer Top", category: "candlestick_dual", bias: "bearish", difficulty: "intermediate", winRate: 65, reliability: 4, svgType: "tweezer" },
+  { id: "piercing_line", nativeName: "Kirikomi (切り込み)", category: "candlestick_dual", bias: "bullish", difficulty: "intermediate", winRate: 68, reliability: 4, svgType: "piercing_line" },
+  { id: "dark_cloud_cover", nativeName: "Kabuse (被せ)", category: "candlestick_dual", bias: "bearish", difficulty: "intermediate", winRate: 68, reliability: 4, svgType: "dark_cloud_cover" },
+  { id: "bullish_harami", nativeName: "Harami Bullish", category: "candlestick_dual", bias: "bullish", difficulty: "intermediate", winRate: 64, reliability: 3, svgType: "bullish_harami" },
+  { id: "bearish_harami", nativeName: "Harami Bearish", category: "candlestick_dual", bias: "bearish", difficulty: "intermediate", winRate: 64, reliability: 3, svgType: "bearish_harami" },
+  { id: "morning_star", nativeName: "Sansei (三星)", category: "candlestick_multi", bias: "bullish", difficulty: "intermediate", winRate: 78, reliability: 5, svgType: "morning_star" },
+  { id: "evening_star", nativeName: "Yoi no Myōjō (宵の明星)", category: "candlestick_multi", bias: "bearish", difficulty: "intermediate", winRate: 78, reliability: 5, svgType: "evening_star" },
+  { id: "three_white_soldiers", nativeName: "Aka Sanpei (赤三兵)", category: "candlestick_multi", bias: "bullish", difficulty: "intermediate", winRate: 76, reliability: 5, svgType: "three_soldiers" },
+  { id: "three_black_crows", nativeName: "Kuro Sanpei (黒三兵)", category: "candlestick_multi", bias: "bearish", difficulty: "intermediate", winRate: 76, reliability: 5, svgType: "three_crows" },
+  { id: "rising_three_methods", nativeName: "Rising Three Methods", category: "candlestick_multi", bias: "bullish", difficulty: "advanced", winRate: 72, reliability: 4, svgType: "rising_three" },
+  { id: "falling_three_methods", nativeName: "Falling Three Methods", category: "candlestick_multi", bias: "bearish", difficulty: "advanced", winRate: 72, reliability: 4, svgType: "falling_three" },
 ];

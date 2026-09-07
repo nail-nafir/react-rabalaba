@@ -7,7 +7,7 @@ import {
   CreditCard,
   GraduationCap,
 } from "lucide-react";
-import { LicenseBadge } from "./license-badge";
+import { LicenseStatus } from "./license-status";
 import { UserMenu } from "./user-menu";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -87,7 +87,7 @@ export function Header() {
         {/* Right: Actions */}
         <div className="flex flex-1 items-center justify-end gap-3">
           <div className="flex items-center gap-2">
-            <LicenseBadge />
+            <LicenseStatus />
             <UserMenu />
           </div>
         </div>

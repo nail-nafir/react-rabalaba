@@ -117,6 +117,7 @@ export function TestimonialSection() {
               <Card
                 key={index}
                 className="w-full max-w-md lg:max-w-sm flex-1 min-w-70"
+                aria-hidden="true"
               >
                 <CardHeader className="grid grid-cols-[auto_1fr] gap-3">
                   <Skeleton className="size-10 rounded-full" />
@@ -131,7 +132,11 @@ export function TestimonialSection() {
                   <Skeleton className="h-3 w-3/4" />
                 </CardContent>
                 <CardFooter>
-                  <Skeleton className="h-4 w-28" />
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, star) => (
+                      <Skeleton key={star} className="size-4 rounded-md" />
+                    ))}
+                  </div>
                 </CardFooter>
               </Card>
             ))}

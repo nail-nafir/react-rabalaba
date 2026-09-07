@@ -370,12 +370,12 @@ function TestimonialActions({
 
 function SkeletonRows() {
   return Array.from({ length: 5 }, (_, row) => (
-    <TableRow key={row} className="hover:bg-transparent">
+    <TableRow key={row} className="hover:bg-transparent" aria-hidden="true">
       <TableCell>
         <Skeleton className="h-4 w-28" />
       </TableCell>
       <TableCell>
-        <Skeleton className="h-9 w-36" />
+        <Skeleton className="h-4 w-36" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-12 w-72" />
@@ -384,13 +384,17 @@ function SkeletonRows() {
         <Skeleton className="h-4 w-14" />
       </TableCell>
       <TableCell>
-        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-20 rounded-md" />
       </TableCell>
       <TableCell>
-        <Skeleton className="h-5 w-12" />
+        <Skeleton className="h-5 w-12 rounded-md" />
       </TableCell>
       <TableCell>
-        <Skeleton className="ml-auto size-8" />
+        <div className="ml-auto flex items-center justify-end gap-1">
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+        </div>
       </TableCell>
     </TableRow>
   ));

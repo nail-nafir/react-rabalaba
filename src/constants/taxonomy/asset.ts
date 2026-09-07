@@ -26,8 +26,8 @@ export type AssetFilterType = (typeof ASSET_FILTER_TYPES)[number];
 export const ASSET_TYPE_LABEL_KEYS: Record<AssetFilterType, string> = {
   all: "common.asset_types.all",
   crypto: "common.asset_types.crypto",
-  "us-stock": "common.asset_types.us-stock",
-  "id-stock": "common.asset_types.id-stock",
+  "us-stock": "common.asset_types.us_stock",
+  "id-stock": "common.asset_types.id_stock",
   commodity: "common.asset_types.commodity",
   forex: "common.asset_types.forex",
   favorite: "common.asset_types.favorite",

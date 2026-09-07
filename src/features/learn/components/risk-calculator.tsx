@@ -1,14 +1,22 @@
 import React, { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { BarChart3, Calculator, RefreshCw, Target } from "lucide-react";
 
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
@@ -46,10 +54,13 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
       setStopLossPrice(95);
       setTargetPrice(115);
     }
-    setActivePreset(null);
+    setActivePreset("stock");
   };
 
   // Calculator form states
+  const [strategyTab, setStrategyTab] = useState<"template" | "custom">(
+    "template",
+  );
   const [accountBalance, setAccountBalance] = useState<number>(10000);
   const [riskPercent, setRiskPercent] = useState<number>(1.0);
   const [entryPrice, setEntryPrice] = useState<number>(100);
@@ -201,6 +212,8 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
     let riskLevel: "safe" | "moderate" | "danger" = "safe";
     if (riskPercent > 3.0) riskLevel = "danger";
     else if (riskPercent > 2.0) riskLevel = "moderate";
+    const breakevenWinrate =
+      riskRewardRatio > 0 ? (1 / (1 + riskRewardRatio)) * 100 : 50;
 
     return {
       isLong,
@@ -217,6 +230,7 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
       isValidSetup,
       capitalSizingRatio,
       riskLevel,
+      breakevenWinrate,
     };
   }, [accountBalance, riskPercent, entryPrice, stopLossPrice, targetPrice]);
 
@@ -286,14 +300,212 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
     }
   };
 
+  const handleSetTargetRR = (ratio: number) => {
+    if (entryPrice <= 0 || stopLossPrice <= 0 || entryPrice === stopLossPrice)
+      return;
+    const isLong = entryPrice > stopLossPrice;
+    const stopDist = Math.abs(entryPrice - stopLossPrice);
+    const targetDist = stopDist * ratio;
+    const nextTP = isLong ? entryPrice + targetDist : entryPrice - targetDist;
+    if (nextTP > 0) {
+      setTargetPrice(
+        isUSD ? Math.round(nextTP * 100) / 100 : Math.round(nextTP),
+      );
+      setActivePreset(null);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-8">
-      {/* Section 1: Template Kasus Pasar */}
-      <section className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
+      {/* SECTION 1: MODAL AKUN & TOLERANSI RISIKO */}
+      <section className="flex flex-col gap-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            {t("calculator.capital_card_title")}
+          </h2>
+
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            <FilterGroup
+              value={presetDirection}
+              options={[
+                { value: "long", label: t("calculator.direction_long") },
+                { value: "short", label: t("calculator.direction_short") },
+              ]}
+              onChange={handleSwitchDirection}
+            />
+
+            <FilterGroup
+              value={currency}
+              options={[
+                { value: "USD", label: t("calculator.currency_usd") },
+                { value: "IDR", label: t("calculator.currency_idr") },
+              ]}
+              onChange={handleCurrencySwitch}
+            />
+          </div>
+        </div>
+
+        {/* Card Modal & Toleransi Risiko Terpadu */}
+        <Card className="border border-border">
+          <CardContent className="px-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+              {/* Kolom Kiri: Modal Akun */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg font-bold tracking-tight uppercase text-foreground">
+                      <label
+                        htmlFor="account-capital"
+                        className="cursor-pointer"
+                      >
+                        {t("calculator.account_capital")}
+                      </label>
+                    </CardTitle>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        COMPACT_SIGNAL_BADGE_CLASSNAME,
+                        BADGE.neutral.bg,
+                        BADGE.neutral.text,
+                        BADGE.neutral.border,
+                      )}
+                    >
+                      {currency}
+                    </Badge>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {currPrefix}
+                  </span>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
+                    {currPrefix}
+                  </div>
+                  <Input
+                    id="account-capital"
+                    type="number"
+                    value={accountBalance || ""}
+                    onChange={(e) => {
+                      setAccountBalance(Math.max(0, Number(e.target.value)));
+                    }}
+                    className="pl-11 text-sm font-bold h-10"
+                    min={1}
+                  />
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+                  {quickCapitalValues.map((amt) => {
+                    const isSelected = accountBalance === amt;
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        className={cn(
+                          "w-full h-7 px-1 rounded-md border text-[11px] font-semibold flex items-center justify-center transition-all duration-150 cursor-pointer select-none",
+                          isSelected
+                            ? "border-primary bg-primary/15 text-primary font-bold ring-1 ring-primary/40 shadow-xs"
+                            : "border-border bg-card hover:border-primary/50 hover:bg-muted/40 hover:text-foreground text-muted-foreground",
+                        )}
+                        onClick={() => setAccountBalance(amt)}
+                      >
+                        {formatCurrency(amt, 0)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Kolom Kanan: Toleransi Risiko */}
+              <div className="space-y-2 lg:border-l lg:border-border/60 lg:pl-6">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg font-bold tracking-tight uppercase text-foreground">
+                      <label htmlFor="risk-percent" className="cursor-pointer">
+                        {t("calculator.risk_per_trade")}
+                      </label>
+                    </CardTitle>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        COMPACT_SIGNAL_BADGE_CLASSNAME,
+                        stats.riskLevel === "safe"
+                          ? cn(
+                              BADGE.positive.bg,
+                              BADGE.positive.text,
+                              BADGE.positive.border,
+                            )
+                          : stats.riskLevel === "moderate"
+                            ? cn(
+                                BADGE.warning.bg,
+                                BADGE.warning.text,
+                                BADGE.warning.border,
+                              )
+                            : cn(
+                                BADGE.negative.bg,
+                                BADGE.negative.text,
+                                BADGE.negative.border,
+                              ),
+                      )}
+                    >
+                      {t(`calculator.risk_levels.${stats.riskLevel}`)}
+                    </Badge>
+                  </div>
+                  <span className="text-xs font-bold text-primary">
+                    {riskPercent}% = {formatCurrency(stats.maxRiskDollar)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[0.5, 1.0, 2.0, 3.0].map((pct) => {
+                    const isSelected = riskPercent === pct;
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        className={cn(
+                          "w-full h-7 rounded-md border text-[11px] font-semibold flex items-center justify-center transition-all duration-150 cursor-pointer select-none",
+                          isSelected
+                            ? "border-primary bg-primary/15 text-primary font-bold ring-1 ring-primary/40 shadow-xs"
+                            : "border-border bg-card hover:border-primary/50 hover:bg-muted/40 hover:text-foreground text-muted-foreground",
+                        )}
+                        onClick={() => setRiskPercent(pct)}
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-1 space-y-1">
+                  <input
+                    id="risk-percent"
+                    type="range"
+                    min="0.1"
+                    max="5.0"
+                    step="0.1"
+                    value={riskPercent}
+                    onChange={(e) => setRiskPercent(Number(e.target.value))}
+                    className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>0.5% - 2.0% {t("calculator.risk_conservative")}</span>
+                    <span>2.5% - 5.0% {t("calculator.risk_aggressive")}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Separator />
+
+      {/* SECTION 2: PERHITUNGAN RISIKO POSISI (DENGAN TAB TEMPLATE ATAU CUSTOM) */}
+      <section className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              {t("calculator.presets_title")}
+              {t("calculator.calculator_title")}
             </h2>
             <Button
               variant="link"
@@ -307,593 +519,833 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Direction FilterGroup: LONG vs SHORT */}
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            {/* Tab Switcher: Template vs Custom */}
             <FilterGroup
-              value={presetDirection}
+              value={strategyTab}
               options={[
-                { value: "long", label: "LONG" },
-                { value: "short", label: "SHORT" },
+                { value: "template", label: t("calculator.tab_preset") },
+                { value: "custom", label: t("calculator.tab_custom") },
               ]}
-              onChange={handleSwitchDirection}
-            />
-
-            {/* Currency FilterGroup: USD vs IDR */}
-            <FilterGroup
-              value={currency}
-              options={[
-                { value: "USD", label: t("calculator.currency_usd") },
-                { value: "IDR", label: t("calculator.currency_idr") },
-              ]}
-              onChange={handleCurrencySwitch}
+              onChange={(val) => setStrategyTab(val as "template" | "custom")}
             />
           </div>
         </div>
 
-        {/* 3 Scenario Option Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {(["stock", "crypto", "gold"] as const).map((key) => {
-            const isSelected = activePreset === key;
-            const presetItem =
-              PRESETS[presetDirection][key][isUSD ? "usd" : "idr"];
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleApplyPreset(key)}
-                className={cn(
-                  "group w-full p-3.5 sm:p-4 rounded-xl border text-left transition-all duration-200 flex flex-col gap-1 cursor-pointer select-none",
-                  isSelected
-                    ? "border-primary bg-primary/15 text-foreground ring-1 ring-primary/40 shadow-xs"
-                    : "border-border bg-card hover:border-primary/50 hover:bg-muted/40 hover:-translate-y-0.5 hover:shadow-xs text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2 w-full">
-                  <span
+        {/* Tab Content */}
+        {strategyTab === "template" ? (
+          <div className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 w-full text-left items-stretch">
+              {(["stock", "crypto", "gold"] as const).map((key) => {
+                const isSelected = activePreset === key;
+                const presetItem =
+                  PRESETS[presetDirection][key][isUSD ? "usd" : "idr"];
+                const stopDist = Math.abs(presetItem.entry - presetItem.sl);
+                const tpDist = Math.abs(presetItem.tp - presetItem.entry);
+                const slPct =
+                  presetItem.entry > 0
+                    ? ((stopDist / presetItem.entry) * 100).toFixed(1)
+                    : "0.0";
+                const tpPct =
+                  presetItem.entry > 0
+                    ? ((tpDist / presetItem.entry) * 100).toFixed(1)
+                    : "0.0";
+
+                return (
+                  <Card
+                    key={key}
+                    onClick={() => handleApplyPreset(key)}
                     className={cn(
-                      "text-xs sm:text-sm leading-tight transition-colors",
+                      "group border border-border transition-all duration-200 cursor-pointer select-none",
                       isSelected
-                        ? "font-bold text-primary"
-                        : "font-semibold text-muted-foreground group-hover:text-foreground",
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-xs"
+                        : "hover:bg-muted/50 hover:border-primary",
                     )}
                   >
-                    {t(`calculator.scenarios.${key}`)}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      COMPACT_SIGNAL_BADGE_CLASSNAME,
-                      presetDirection === "long"
-                        ? cn(
-                            BADGE.positive.bg,
-                            BADGE.positive.text,
-                            BADGE.positive.border,
-                          )
-                        : cn(
-                            BADGE.negative.bg,
-                            BADGE.negative.text,
+                    <CardContent className="px-4 flex flex-col justify-between gap-3 h-full">
+                      <div className="flex items-center justify-between gap-2">
+                        <CardTitle
+                          className={cn(
+                            "text-lg font-bold tracking-tight uppercase transition-colors",
+                            isSelected
+                              ? "text-primary"
+                              : "text-foreground group-hover:text-primary",
+                          )}
+                        >
+                          {t(`calculator.scenarios.${key}`)}
+                        </CardTitle>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            COMPACT_SIGNAL_BADGE_CLASSNAME,
+                            presetDirection === "long"
+                              ? cn(
+                                  BADGE.positive.bg,
+                                  BADGE.positive.text,
+                                  BADGE.positive.border,
+                                )
+                              : cn(
+                                  BADGE.negative.bg,
+                                  BADGE.negative.text,
+                                  BADGE.negative.border,
+                                ),
+                          )}
+                        >
+                          {presetDirection.toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 rounded-lg border border-border bg-muted/50 space-y-0.5">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                            Entry
+                          </span>
+                          <span className="text-xs font-bold text-foreground truncate block">
+                            {formatCurrency(presetItem.entry, 0)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "p-2 rounded-lg border space-y-0.5",
                             BADGE.negative.border,
-                          ),
-                    )}
-                  >
-                    {presetDirection.toUpperCase()}
-                  </Badge>
-                </div>
-                <span
-                  className={cn(
-                    "text-[11px] transition-colors",
-                    isSelected
-                      ? "text-foreground/90 font-medium"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {presetItem.subtext}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                            BADGE.negative.bg,
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "text-[10px] uppercase font-bold tracking-wider block",
+                              PALETTE.negative.text,
+                            )}
+                          >
+                            SL (-{slPct}%)
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs font-bold truncate block",
+                              PALETTE.negative.text,
+                            )}
+                          >
+                            {formatCurrency(presetItem.sl, 0)}
+                          </span>
+                        </div>
+                        <div
+                          className={cn(
+                            "p-2 rounded-lg border space-y-0.5",
+                            BADGE.positive.border,
+                            BADGE.positive.bg,
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "text-[10px] uppercase font-bold tracking-wider block",
+                              PALETTE.positive.text,
+                            )}
+                          >
+                            TP (+{tpPct}%)
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs font-bold truncate block",
+                              PALETTE.positive.text,
+                            )}
+                          >
+                            {formatCurrency(presetItem.tp, 0)}
+                          </span>
+                        </div>
+                      </div>
 
-      <Separator />
+                      <Separator />
 
-      {/* Section 2: Perhitungan Risiko Posisi */}
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-          {t("calculator.calculator_title")}
-        </h2>
-
-        {/* 50% / 50% Equal-Width Responsive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-          {/* Left Column: Parameter Inputs Container */}
-          <Card className="border border-border bg-card shadow-xs overflow-hidden flex flex-col justify-between">
-            <CardHeader className="p-5 pb-4 border-b border-border/60">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-foreground">
-                  {t("calculator.account_capital")} &{" "}
-                  {t("calculator.risk_per_trade")}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
+                        <span>{t("calculator.rr_target_prefix")} 1 : 3.0</span>
+                        {isSelected ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              COMPACT_SIGNAL_BADGE_CLASSNAME,
+                              BADGE.accent.bg,
+                              BADGE.accent.text,
+                              BADGE.accent.border,
+                            )}
+                          >
+                            {t("calculator.active")}
+                          </Badge>
+                        ) : (
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              PALETTE.positive.text,
+                            )}
+                          >
+                            +{tpPct}%
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Tab Custom Setup */
+          <Card className="border border-border">
+            <CardContent className="px-4 flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-lg font-bold tracking-tight uppercase text-foreground">
+                  {t("calculator.price_card_title")}
                 </CardTitle>
                 <Badge
                   variant="outline"
                   className={cn(
                     COMPACT_SIGNAL_BADGE_CLASSNAME,
-                    stats.riskLevel === "safe"
+                    stats.isLong
                       ? cn(
                           BADGE.positive.bg,
                           BADGE.positive.text,
                           BADGE.positive.border,
                         )
-                      : stats.riskLevel === "moderate"
+                      : stats.isShort
                         ? cn(
-                            BADGE.warning.bg,
-                            BADGE.warning.text,
-                            BADGE.warning.border,
-                          )
-                        : cn(
                             BADGE.negative.bg,
                             BADGE.negative.text,
                             BADGE.negative.border,
+                          )
+                        : cn(
+                            BADGE.neutral.bg,
+                            BADGE.neutral.text,
+                            BADGE.neutral.border,
                           ),
                   )}
                 >
-                  {t(`calculator.risk_levels.${stats.riskLevel}`)}
+                  {stats.isLong
+                    ? t("calculator.direction_long")
+                    : stats.isShort
+                      ? t("calculator.direction_short")
+                      : t("calculator.direction_setup")}
                 </Badge>
               </div>
-            </CardHeader>
 
-            <CardContent className="p-5 space-y-5 flex-1 flex flex-col justify-between">
-              {/* Account Capital */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-                  <label htmlFor="account-capital">
-                    {t("calculator.account_capital")}
-                  </label>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    {currPrefix} Nominal Akun
-                  </span>
-                </div>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
-                    {currPrefix}
-                  </div>
-                  <Input
-                    id="account-capital"
-                    type="number"
-                    value={accountBalance || ""}
-                    onChange={(e) => {
-                      setAccountBalance(Math.max(0, Number(e.target.value)));
-                      setActivePreset(null);
-                    }}
-                    className="pl-11 text-sm font-bold h-10"
-                    min={1}
-                  />
-                </div>
-
-                {/* Quick Capital Selection Chips */}
-                <div className="space-y-1.5 pt-1">
-                  <span className="text-[11px] text-muted-foreground font-medium block">
-                    {t("calculator.quick_capital")}
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {quickCapitalValues.map((amt) => {
-                      const isSelected = accountBalance === amt;
-                      return (
-                        <button
-                          key={amt}
-                          type="button"
-                          className={cn(
-                            "w-full h-8 px-2 rounded-lg border text-xs font-semibold flex items-center justify-center transition-all duration-200 cursor-pointer select-none",
-                            isSelected
-                              ? "border-primary bg-primary/15 text-primary font-bold ring-1 ring-primary/40 shadow-xs"
-                              : "border-border bg-card hover:border-primary/50 hover:bg-muted/40 hover:text-foreground text-muted-foreground",
-                          )}
-                          onClick={() => {
-                            setAccountBalance(amt);
-                            setActivePreset(null);
-                          }}
-                        >
-                          {formatCurrency(amt, 0)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Risk Tolerance Percentage */}
-              <div className="space-y-2.5 pt-2 border-t border-border/40">
-                <div className="flex items-center justify-between text-xs font-semibold text-foreground">
-                  <label htmlFor="risk-percent">
-                    {t("calculator.risk_per_trade")}
-                  </label>
-                  <span className="text-xs font-bold text-primary">
-                    {riskPercent}% = {formatCurrency(stats.maxRiskDollar)}
-                  </span>
-                </div>
-
-                {/* Risk Pills */}
-                <div className="space-y-1.5 pt-1">
-                  <span className="text-[11px] text-muted-foreground font-medium block">
-                    {t("calculator.quick_risk")}
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[0.5, 1.0, 2.0, 3.0].map((pct) => {
-                      const isSelected = riskPercent === pct;
-                      return (
-                        <button
-                          key={pct}
-                          type="button"
-                          className={cn(
-                            "w-full h-8 rounded-lg border text-xs font-semibold flex items-center justify-center transition-all duration-200 cursor-pointer select-none",
-                            isSelected
-                              ? "border-primary bg-primary/15 text-primary font-bold ring-1 ring-primary/40 shadow-xs"
-                              : "border-border bg-card hover:border-primary/50 hover:bg-muted/40 hover:text-foreground text-muted-foreground",
-                          )}
-                          onClick={() => {
-                            setRiskPercent(pct);
-                            setActivePreset(null);
-                          }}
-                        >
-                          {pct}%
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Range Slider for Fine Control */}
-                <div className="pt-1">
-                  <input
-                    id="risk-percent"
-                    type="range"
-                    min="0.1"
-                    max="5.0"
-                    step="0.1"
-                    value={riskPercent}
-                    onChange={(e) => {
-                      setRiskPercent(Number(e.target.value));
-                      setActivePreset(null);
-                    }}
-                    className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                  />
-                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                    <span>0.1% (Konservatif)</span>
-                    <span>1.0% (Standar)</span>
-                    <span>5.0% (Agresif)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Execution Price Levels */}
-              <div className="space-y-2.5 pt-2 border-t border-border/40">
-                <span className="text-xs font-semibold uppercase tracking-wider text-foreground block">
-                  {t("calculator.price_card_title")}
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Entry Price */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="entry-price"
-                      className="text-xs font-semibold text-foreground flex items-center justify-between"
-                    >
-                      <span>{t("calculator.entry_price")}</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
-                        {currPrefix}
-                      </div>
-                      <Input
-                        id="entry-price"
-                        type="number"
-                        value={entryPrice || ""}
-                        onChange={(e) =>
-                          handlePriceChange(
-                            Math.max(0, Number(e.target.value)),
-                            stopLossPrice,
-                            targetPrice,
-                          )
-                        }
-                        className="pl-9 text-sm font-bold border-primary/40 focus-visible:border-primary h-10"
-                        step="any"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Stop Loss Price */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="stop-loss-price"
+              {/* 3 Price Inputs Grid: Entry, TP, SL */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* Entry */}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="entry-price"
+                    className="text-xs font-semibold text-foreground flex items-center justify-between"
+                  >
+                    <span>{t("calculator.entry_price")}</span>
+                    <Badge
+                      variant="outline"
                       className={cn(
-                        "text-xs font-semibold flex items-center justify-between",
-                        PALETTE.negative.text,
+                        COMPACT_SIGNAL_BADGE_CLASSNAME,
+                        BADGE.neutral.bg,
+                        BADGE.neutral.text,
+                        BADGE.neutral.border,
                       )}
                     >
-                      <span>{t("calculator.stop_loss_price")}</span>
-                    </label>
-                    <div className="relative">
-                      <div
+                      {t("calculator.entry_point")}
+                    </Badge>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
+                      {currPrefix}
+                    </div>
+                    <Input
+                      id="entry-price"
+                      type="number"
+                      value={entryPrice || ""}
+                      onChange={(e) =>
+                        handlePriceChange(
+                          Math.max(0, Number(e.target.value)),
+                          stopLossPrice,
+                          targetPrice,
+                        )
+                      }
+                      className="pl-9 text-sm font-bold border-primary/40 focus-visible:border-primary h-9"
+                      step="any"
+                    />
+                  </div>
+                </div>
+
+                {/* TP */}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="target-price"
+                    className={cn(
+                      "text-xs font-semibold flex items-center justify-between",
+                      PALETTE.positive.text,
+                    )}
+                  >
+                    <span>{t("calculator.target_price")}</span>
+                    {stats.targetPercentDistance > 0 && (
+                      <Badge
+                        variant="outline"
                         className={cn(
-                          "absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold select-none",
-                          PALETTE.negative.text,
+                          COMPACT_SIGNAL_BADGE_CLASSNAME,
+                          BADGE.positive.bg,
+                          BADGE.positive.text,
+                          BADGE.positive.border,
                         )}
                       >
-                        {currPrefix}
-                      </div>
-                      <Input
-                        id="stop-loss-price"
-                        type="number"
-                        value={stopLossPrice || ""}
-                        onChange={(e) =>
-                          handlePriceChange(
-                            entryPrice,
-                            Math.max(0, Number(e.target.value)),
-                            targetPrice,
-                          )
-                        }
-                        className={cn(
-                          "pl-9 text-sm font-bold h-10",
-                          PALETTE.negative.border,
-                          PALETTE.negative.text,
-                        )}
-                        step="any"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Take Profit Target Price */}
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="target-price"
+                        +{stats.targetPercentDistance.toFixed(1)}%
+                      </Badge>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <div
                       className={cn(
-                        "text-xs font-semibold flex items-center justify-between",
+                        "absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold select-none",
                         PALETTE.positive.text,
                       )}
                     >
-                      <span>{t("calculator.target_price")}</span>
-                    </label>
-                    <div className="relative">
-                      <div
+                      {currPrefix}
+                    </div>
+                    <Input
+                      id="target-price"
+                      type="number"
+                      value={targetPrice || ""}
+                      onChange={(e) =>
+                        handlePriceChange(
+                          entryPrice,
+                          stopLossPrice,
+                          Math.max(0, Number(e.target.value)),
+                        )
+                      }
+                      className={cn(
+                        "pl-9 text-sm font-bold h-9",
+                        PALETTE.positive.border,
+                        PALETTE.positive.text,
+                      )}
+                      step="any"
+                    />
+                  </div>
+                </div>
+
+                {/* SL */}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="stop-loss-price"
+                    className={cn(
+                      "text-xs font-semibold flex items-center justify-between",
+                      PALETTE.negative.text,
+                    )}
+                  >
+                    <span>{t("calculator.stop_loss_price")}</span>
+                    {stats.stopPercentDistance > 0 && (
+                      <Badge
+                        variant="outline"
                         className={cn(
-                          "absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold select-none",
-                          PALETTE.positive.text,
+                          COMPACT_SIGNAL_BADGE_CLASSNAME,
+                          BADGE.negative.bg,
+                          BADGE.negative.text,
+                          BADGE.negative.border,
                         )}
                       >
-                        {currPrefix}
-                      </div>
-                      <Input
-                        id="target-price"
-                        type="number"
-                        value={targetPrice || ""}
-                        onChange={(e) =>
-                          handlePriceChange(
-                            entryPrice,
-                            stopLossPrice,
-                            Math.max(0, Number(e.target.value)),
-                          )
-                        }
-                        className={cn(
-                          "pl-9 text-sm font-bold h-10",
-                          PALETTE.positive.border,
-                          PALETTE.positive.text,
-                        )}
-                        step="any"
-                      />
+                        -{stats.stopPercentDistance.toFixed(1)}%
+                      </Badge>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <div
+                      className={cn(
+                        "absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold select-none",
+                        PALETTE.negative.text,
+                      )}
+                    >
+                      {currPrefix}
                     </div>
+                    <Input
+                      id="stop-loss-price"
+                      type="number"
+                      value={stopLossPrice || ""}
+                      onChange={(e) =>
+                        handlePriceChange(
+                          entryPrice,
+                          Math.max(0, Number(e.target.value)),
+                          targetPrice,
+                        )
+                      }
+                      className={cn(
+                        "pl-9 text-sm font-bold h-9",
+                        PALETTE.negative.border,
+                        PALETTE.negative.text,
+                      )}
+                      step="any"
+                    />
                   </div>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Snap Target R:R */}
+              <Card className="border border-border px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <CardTitle className="text-lg font-bold tracking-tight uppercase text-foreground">
+                  {t("calculator.snap_target_rr", "Snap Target R:R")}
+                </CardTitle>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[1.5, 2.0, 3.0, 4.0].map((ratio) => {
+                    const isSelected =
+                      stats.isValidSetup &&
+                      Math.abs(stats.riskRewardRatio - ratio) < 0.08;
+                    return (
+                      <button
+                        key={ratio}
+                        type="button"
+                        onClick={() => handleSetTargetRR(ratio)}
+                        disabled={
+                          !entryPrice ||
+                          !stopLossPrice ||
+                          entryPrice === stopLossPrice
+                        }
+                        className={cn(
+                          "h-7 px-3 rounded-md border text-xs font-semibold flex items-center justify-center transition-all duration-150 cursor-pointer select-none disabled:opacity-40 disabled:pointer-events-none",
+                          isSelected
+                            ? "border-primary bg-primary/15 text-primary font-bold ring-1 ring-primary/40 shadow-xs"
+                            : "border-border bg-card hover:border-primary/50 hover:bg-muted/40 hover:text-foreground text-muted-foreground",
+                        )}
+                      >
+                        1:{ratio.toFixed(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              {!stats.isValidSetup && (
+                <p className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded-md border border-border/60">
+                  {t("calculator.calculate_invalid_hint")}
+                </p>
+              )}
             </CardContent>
           </Card>
+        )}
 
-          {/* Right Column: Calculated Results & Risk HUD Container */}
-          <Card className="border border-border bg-card shadow-xs overflow-hidden flex flex-col justify-between">
-            <CardHeader className="p-5 pb-4 border-b border-border/60">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-foreground">
-                  {t("calculator.results")}
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    COMPACT_SIGNAL_BADGE_CLASSNAME,
-                    stats.riskRewardRatio >= 2
+        <Card className="border border-border px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="text-lg font-bold tracking-tight uppercase text-foreground">
+                {stats.isValidSetup
+                  ? `R:R 1 : ${stats.riskRewardRatio.toFixed(2)} · ${t("calculator.max_risk")} = ${formatCurrency(stats.maxRiskDollar)}`
+                  : t("calculator.calculate_invalid_hint")}
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className={cn(
+                  COMPACT_SIGNAL_BADGE_CLASSNAME,
+                  stats.isValidSetup
+                    ? stats.isLong
                       ? cn(
                           BADGE.positive.bg,
                           BADGE.positive.text,
                           BADGE.positive.border,
                         )
                       : cn(
-                          BADGE.warning.bg,
-                          BADGE.warning.text,
-                          BADGE.warning.border,
-                        ),
-                  )}
-                >
-                  {stats.riskRewardRatio >= 2
-                    ? t("calculator.rr_good")
-                    : t("calculator.rr_low")}
-                </Badge>
-              </div>
-            </CardHeader>
+                          BADGE.negative.bg,
+                          BADGE.negative.text,
+                          BADGE.negative.border,
+                        )
+                    : cn(
+                        BADGE.neutral.bg,
+                        BADGE.neutral.text,
+                        BADGE.neutral.border,
+                      ),
+                )}
+              >
+                {stats.isValidSetup
+                  ? stats.isLong
+                    ? t("calculator.direction_long")
+                    : t("calculator.direction_short")
+                  : t("calculator.direction_setup")}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {stats.isValidSetup
+                ? t("calculator.calculate_hint")
+                : t("calculator.calculate_invalid_hint")}
+            </p>
+          </div>
 
-            <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
-              {/* Hero Sizing Display */}
-              <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-1">
-                <div className="flex items-center justify-between">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                size="lg"
+                disabled={!stats.isValidSetup}
+                className="w-full sm:w-auto font-bold transition-all text-xs cursor-pointer items-center justify-center gap-1.5 tracking-tight shrink-0"
+              >
+                <Calculator className="h-3.5 w-3.5" />
+                <span>{t("calculator.calculate_cta")}</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
+              {/* Header styled identically to education detail dialogs */}
+              <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground uppercase flex items-center gap-2 flex-wrap pr-6">
+                  <span>{t("calculator.results")}</span>
+                  {stats.isValidSetup && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        COMPACT_SIGNAL_BADGE_CLASSNAME,
+                        stats.isLong
+                          ? cn(
+                              BADGE.positive.bg,
+                              BADGE.positive.text,
+                              BADGE.positive.border,
+                            )
+                          : cn(
+                              BADGE.negative.bg,
+                              BADGE.negative.text,
+                              BADGE.negative.border,
+                            ),
+                      )}
+                    >
+                      {stats.isLong
+                        ? t("calculator.direction_long")
+                        : t("calculator.direction_short")}
+                    </Badge>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      COMPACT_SIGNAL_BADGE_CLASSNAME,
+                      stats.riskRewardRatio >= 2
+                        ? cn(
+                            BADGE.positive.bg,
+                            BADGE.positive.text,
+                            BADGE.positive.border,
+                          )
+                        : cn(
+                            BADGE.warning.bg,
+                            BADGE.warning.text,
+                            BADGE.warning.border,
+                          ),
+                    )}
+                  >
+                    {stats.riskRewardRatio >= 2
+                      ? t("calculator.rr_good")
+                      : t("calculator.rr_low")}
+                  </Badge>
+                </DialogTitle>
+
+                <div className="space-y-0.5 mt-1">
+                  <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                    {t("calculator.dialog_description")}
+                  </DialogDescription>
+                </div>
+
+                {/* Meta badges */}
+                <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      COMPACT_SIGNAL_BADGE_CLASSNAME,
+                      stats.riskLevel === "safe"
+                        ? cn(
+                            BADGE.positive.bg,
+                            BADGE.positive.text,
+                            BADGE.positive.border,
+                          )
+                        : stats.riskLevel === "moderate"
+                          ? cn(
+                              BADGE.warning.bg,
+                              BADGE.warning.text,
+                              BADGE.warning.border,
+                            )
+                          : cn(
+                              BADGE.negative.bg,
+                              BADGE.negative.text,
+                              BADGE.negative.border,
+                            ),
+                    )}
+                  >
+                    {t(`calculator.risk_levels.${stats.riskLevel}`)}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      COMPACT_SIGNAL_BADGE_CLASSNAME,
+                      BADGE.neutral.bg,
+                      BADGE.neutral.text,
+                      BADGE.neutral.border,
+                    )}
+                  >
+                    {currency} · {formatCurrency(accountBalance, 0)}
+                  </Badge>
+                </div>
+
+                <Separator className="mt-4" />
+              </DialogHeader>
+
+              {/* Scrollable Content Body */}
+              <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
+                {/* Section: Sizing Recommendation */}
+                <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold text-primary tracking-wider">
+                    <Calculator className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">
                       {t("calculator.position_units")}
-                    </span>
-                    {stats.isValidSetup && (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          COMPACT_SIGNAL_BADGE_CLASSNAME,
-                          stats.isLong
-                            ? cn(
-                                BADGE.positive.bg,
-                                BADGE.positive.text,
-                                BADGE.positive.border,
-                              )
-                            : cn(
-                                BADGE.negative.bg,
-                                BADGE.negative.text,
-                                BADGE.negative.border,
-                              ),
-                        )}
-                      >
-                        {stats.isLong
-                          ? t("calculator.direction_long")
-                          : t("calculator.direction_short")}
-                      </Badge>
-                    )}
+                    </h3>
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-semibold">
-                    {t("calculator.unit_suffix")}
-                  </span>
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                          {t("calculator.position_units")}
+                        </CardTitle>
+                        <span className="text-[10px] text-muted-foreground font-semibold">
+                          {t("calculator.unit_suffix")}
+                        </span>
+                      </div>
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
+                        {stats.positionUnits > 0
+                          ? stats.positionUnits.toLocaleString("en-US", {
+                              maximumFractionDigits: 2,
+                            })
+                          : "0.00"}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-medium pt-1.5 border-t border-border/60 flex items-center justify-between">
+                        <span>{t("calculator.total")}</span>
+                        <span className="font-bold text-foreground">
+                          {formatCurrency(stats.totalPositionValue)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
-                  {stats.positionUnits > 0
-                    ? stats.positionUnits.toLocaleString("en-US", {
-                        maximumFractionDigits: 2,
-                      })
-                    : "0.00"}
+
+                <Separator />
+
+                {/* Section: Risk & Reward Evaluation */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">
+                      {t("calculator.calculator_title")}
+                    </h3>
+                  </div>
+
+                  {/* 2-Card Grid: Max Risk & Potential Gain */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Max Risk (1R) */}
+                    <Card
+                      className={cn(
+                        "border",
+                        BADGE.negative.border,
+                        BADGE.negative.bg,
+                      )}
+                    >
+                      <CardContent className="space-y-1">
+                        <CardTitle
+                          className={cn(
+                            "text-xs font-bold uppercase tracking-wider",
+                            PALETTE.negative.text,
+                          )}
+                        >
+                          {t("calculator.max_risk")}
+                        </CardTitle>
+                        <div
+                          className={cn(
+                            "text-xl sm:text-2xl font-black",
+                            PALETTE.negative.text,
+                          )}
+                        >
+                          -{formatCurrency(stats.maxRiskDollar)}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          -{stats.stopPercentDistance.toFixed(2)}%{" "}
+                          {t("calculator.sl_distance")}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Potential Gain */}
+                    <Card
+                      className={cn(
+                        "border",
+                        BADGE.positive.border,
+                        BADGE.positive.bg,
+                      )}
+                    >
+                      <CardContent className="space-y-1">
+                        <CardTitle
+                          className={cn(
+                            "text-xs font-bold uppercase tracking-wider",
+                            PALETTE.positive.text,
+                          )}
+                        >
+                          {t("calculator.potential_gain")}
+                        </CardTitle>
+                        <div
+                          className={cn(
+                            "text-xl sm:text-2xl font-black",
+                            PALETTE.positive.text,
+                          )}
+                        >
+                          +{formatCurrency(stats.potentialRewardDollar)}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          +{stats.targetPercentDistance.toFixed(2)}%{" "}
+                          {t("calculator.tp_distance")}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Risk to Reward Visualizer Card */}
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                          {t("calculator.risk_reward")}
+                        </CardTitle>
+                        <span className="text-sm font-black text-foreground">
+                          1 :{" "}
+                          {stats.riskRewardRatio > 0
+                            ? stats.riskRewardRatio.toFixed(2)
+                            : "0.00"}
+                        </span>
+                      </div>
+
+                      {/* Progress ratio split bar */}
+                      <div className="w-full h-2 rounded-full bg-muted overflow-hidden flex border border-border/50">
+                        <div
+                          className="h-full transition-all duration-300"
+                          style={{
+                            width: `${Math.min(50, stats.riskRewardRatio > 0 ? 100 / (1 + stats.riskRewardRatio) : 50)}%`,
+                            backgroundColor: PALETTE.negative.fill,
+                          }}
+                        />
+                        <div
+                          className="h-full flex-1 transition-all duration-300"
+                          style={{
+                            backgroundColor: PALETTE.positive.fill,
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-0.5">
+                        <span
+                          className={cn("font-semibold", PALETTE.negative.text)}
+                        >
+                          1R {t("calculator.risk_1r")}
+                        </span>
+                        <span>
+                          {stats.capitalSizingRatio > 0
+                            ? `${stats.capitalSizingRatio.toFixed(1)}x ${t("calculator.position_leverage")}`
+                            : ""}
+                        </span>
+                        <span
+                          className={cn("font-semibold", PALETTE.positive.text)}
+                        >
+                          {stats.riskRewardRatio > 0
+                            ? `${stats.riskRewardRatio.toFixed(1)}R ${t("calculator.target_badge")}`
+                            : "0R"}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="text-xs text-muted-foreground font-medium pt-0.5 flex items-center justify-between">
-                  <span>{t("calculator.total")}</span>
-                  <span className="font-bold text-foreground">
-                    {formatCurrency(stats.totalPositionValue)}
-                  </span>
+
+                <Separator />
+
+                {/* Section: Trading Plan */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">
+                      {t("dialog.trading_plan")}
+                    </h3>
+                  </div>
+
+                  {/* Execution Strategy Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Entry */}
+                    <Card className="border border-border bg-muted/50">
+                      <CardContent className="space-y-1">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                          {t("calculator.entry_price")}
+                        </CardTitle>
+                        <p className="text-xs font-bold text-foreground leading-snug">
+                          {formatCurrency(entryPrice)}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Target Profit (TP) */}
+                    <Card
+                      className={cn(
+                        "border",
+                        BADGE.positive.border,
+                        BADGE.positive.bg,
+                      )}
+                    >
+                      <CardContent className="space-y-1">
+                        <CardTitle
+                          className={cn(
+                            "text-xs font-bold uppercase tracking-wider",
+                            PALETTE.positive.text,
+                          )}
+                        >
+                          {t("calculator.target_price")}
+                        </CardTitle>
+                        <p
+                          className={cn(
+                            "text-xs font-bold leading-snug",
+                            PALETTE.positive.text,
+                          )}
+                        >
+                          {formatCurrency(targetPrice)}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Stop Loss (SL) */}
+                    <Card
+                      className={cn(
+                        "border",
+                        BADGE.negative.border,
+                        BADGE.negative.bg,
+                      )}
+                    >
+                      <CardContent className="space-y-1">
+                        <CardTitle
+                          className={cn(
+                            "text-xs font-bold uppercase tracking-wider",
+                            PALETTE.negative.text,
+                          )}
+                        >
+                          {t("calculator.stop_loss_price")}
+                        </CardTitle>
+                        <p
+                          className={cn(
+                            "text-xs font-bold leading-snug",
+                            PALETTE.negative.text,
+                          )}
+                        >
+                          {formatCurrency(stopLossPrice)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Drawdown & Mathematical Edge Callout */}
+                  <Card className="border border-border bg-muted/50">
+                    <CardContent className="space-y-1">
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        {t("calculator.drawdown_title")}
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {t("calculator.drawdown_description")}
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-
-              {/* 2x2 Risk & Reward Metrics Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Max Risk (1R) */}
-                <div
-                  className={cn(
-                    "p-3.5 rounded-xl border space-y-1",
-                    BADGE.negative.border,
-                    BADGE.negative.bg,
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "text-[10px] uppercase font-bold tracking-wider",
-                      PALETTE.negative.text,
-                    )}
-                  >
-                    {t("calculator.max_risk")}
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xl sm:text-2xl font-black",
-                      PALETTE.negative.text,
-                    )}
-                  >
-                    -{formatCurrency(stats.maxRiskDollar)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground font-medium">
-                    -{stats.stopPercentDistance.toFixed(2)}%{" "}
-                    {t("calculator.sl_distance")}
-                  </div>
-                </div>
-
-                {/* Potential Gain */}
-                <div
-                  className={cn(
-                    "p-3.5 rounded-xl border space-y-1",
-                    BADGE.positive.border,
-                    BADGE.positive.bg,
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "text-[10px] uppercase font-bold tracking-wider",
-                      PALETTE.positive.text,
-                    )}
-                  >
-                    {t("calculator.potential_gain")}
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xl sm:text-2xl font-black",
-                      PALETTE.positive.text,
-                    )}
-                  >
-                    +{formatCurrency(stats.potentialRewardDollar)}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground font-medium">
-                    +{stats.targetPercentDistance.toFixed(2)}%{" "}
-                    {t("calculator.tp_distance")}
-                  </div>
-                </div>
-              </div>
-
-              {/* Risk to Reward Visualizer Card */}
-              <div className="p-3.5 rounded-xl border border-border bg-card/60 space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
-                    {t("calculator.risk_reward")}
-                  </span>
-                  <span className="text-base font-black text-foreground">
-                    1 :{" "}
-                    {stats.riskRewardRatio > 0
-                      ? stats.riskRewardRatio.toFixed(2)
-                      : "0.00"}
-                  </span>
-                </div>
-
-                {/* Progress ratio split bar */}
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden flex shadow-inner">
-                  <div
-                    className="h-full transition-all duration-300"
-                    style={{
-                      width: `${Math.min(50, stats.riskRewardRatio > 0 ? 100 / (1 + stats.riskRewardRatio) : 50)}%`,
-                      backgroundColor: PALETTE.negative.fill,
-                    }}
-                  />
-                  <div
-                    className="h-full flex-1 transition-all duration-300"
-                    style={{
-                      backgroundColor: PALETTE.positive.fill,
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium pt-0.5">
-                  <span className={cn("font-semibold", PALETTE.negative.text)}>
-                    1R {t("calculator.risk_1r")}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {stats.capitalSizingRatio > 0
-                      ? `${stats.capitalSizingRatio.toFixed(1)}x ${t("calculator.position_leverage")}`
-                      : ""}
-                  </span>
-                  <span className={cn("font-semibold", PALETTE.positive.text)}>
-                    {stats.riskRewardRatio > 0
-                      ? `${stats.riskRewardRatio.toFixed(1)}R Target`
-                      : "0R"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Drawdown & Mathematical Edge Callout */}
-              <div className="p-3.5 rounded-xl border border-primary/20 bg-primary/5 flex items-start gap-3 text-xs leading-relaxed text-foreground">
-                <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <div className="font-bold text-foreground text-xs">
-                    {t("calculator.drawdown_title")}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {t("calculator.drawdown_description")}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </DialogContent>
+          </Dialog>
+        </Card>
       </section>
     </div>
   );

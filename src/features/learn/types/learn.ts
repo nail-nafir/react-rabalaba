@@ -1,11 +1,11 @@
 export type PatternBias = 'bullish' | 'bearish' | 'neutral' | 'bilateral';
 
 export type PatternCategory =
-  | 'candlestick-single'
-  | 'candlestick-dual'
-  | 'candlestick-multi'
-  | 'chart-reversal'
-  | 'chart-continuation'
+  | 'candlestick_single'
+  | 'candlestick_dual'
+  | 'candlestick_multi'
+  | 'chart_reversal'
+  | 'chart_continuation'
   | 'indicator'
   | 'smc'
   | 'risk';
@@ -15,7 +15,7 @@ export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 export interface CandlestickPattern {
   id: string;
   nativeName?: string;
-  category: 'candlestick-single' | 'candlestick-dual' | 'candlestick-multi';
+  category: 'candlestick_single' | 'candlestick_dual' | 'candlestick_multi';
   bias: PatternBias;
   difficulty: DifficultyLevel;
   winRate: number; // percentage e.g. 72
@@ -25,7 +25,7 @@ export interface CandlestickPattern {
 
 export interface ChartPattern {
   id: string;
-  category: 'chart-reversal' | 'chart-continuation';
+  category: 'chart_reversal' | 'chart_continuation';
   bias: PatternBias;
   difficulty: DifficultyLevel;
   winRate: number;
@@ -35,7 +35,7 @@ export interface ChartPattern {
 
 export interface TradingStrategy {
   id: string;
-  category: 'indicators' | 'smc' | 'market-structure' | 'multi-timeframe';
+  category: 'indicators' | 'smc' | 'market_structure' | 'multi_timeframe';
   difficulty: DifficultyLevel;
   svgType: string;
 }
@@ -47,7 +47,7 @@ export interface QuizOption {
 
 export interface QuizQuestion {
   id: string;
-  category: 'candlestick' | 'chart-pattern' | 'indicator' | 'risk' | 'smc';
+  category: 'candlestick' | 'chart_pattern' | 'indicator' | 'risk' | 'smc';
   difficulty: DifficultyLevel;
   svgType: string;
   options: QuizOption[];

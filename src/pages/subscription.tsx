@@ -161,7 +161,7 @@ export default function SubscriptionPage() {
             </div>
 
             {/* Manual Activation Notice Dashboard Bar */}
-            <Card className="relative border border-border ring-0 items-center justify-center text-center w-full mx-auto shadow-sm p-6">
+            <Card className="relative border border-border items-center justify-center text-center w-full mx-auto px-4">
               {/* Visual gradient glow element */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none -z-10" />
 
@@ -223,8 +223,8 @@ function PaymentCard({
   icon: React.ElementType;
 }) {
   return (
-    <Card className="group relative overflow-hidden border border-border hover:border-primary hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ring-0">
-      <CardContent className="flex flex-col items-center justify-center text-center gap-3">
+    <Card className="group relative overflow-hidden border border-border hover:bg-muted/50 hover:border-primary cursor-pointer">
+      <CardContent className="px-4 flex flex-col items-center justify-center text-center gap-3">
         <div className="h-10 w-10 shrink-0 rounded-xl bg-muted text-foreground flex items-center justify-center transition-all duration-300 shadow-sm group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20 border border-transparent">
           <Icon className="h-5 w-5" />
         </div>
@@ -246,11 +246,12 @@ function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
   return (
     <Card
       className={cn(
-        "relative transition-all duration-300 h-full flex flex-col",
+        "relative h-full flex flex-col",
         highlighted
-          ? "border border-primary shadow-2xl shadow-primary/10 md:scale-110 z-20 overflow-visible ring-0"
-          : "border border-border shadow-sm overflow-hidden ring-0",
+          ? "border border-primary shadow-2xl shadow-primary/10 md:scale-110 z-20 overflow-visible"
+          : "border border-border",
       )}
+      aria-hidden="true"
     >
       {highlighted && (
         <div className="absolute top-0 right-0 left-0 h-0.5 bg-linear-to-r from-transparent via-primary to-transparent" />
@@ -262,7 +263,7 @@ function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
         </Badge>
       )}
 
-      <CardHeader className="space-y-4 flex flex-col items-center w-full p-6">
+      <CardHeader className="space-y-4 flex flex-col items-center w-full">
         <div
           className={cn(
             "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-md",
@@ -291,7 +292,7 @@ function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 pb-6">
+      <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 px-4">
         <Card
           className={cn(
             "w-full transition-all duration-300 select-none border shadow-none bg-muted/50",
@@ -386,10 +387,10 @@ function SubscriptionCard({
   return (
     <Card
       className={cn(
-        "relative transition-all duration-300 h-full flex flex-col cursor-pointer",
+        "relative h-full flex flex-col cursor-pointer",
         highlighted
-          ? "border border-primary shadow-2xl shadow-primary/10 md:scale-110 z-20 hover:scale-[1.12] hover:shadow-primary/20 overflow-visible ring-0"
-          : "border border-border hover:border-primary shadow-sm hover:-translate-y-1 hover:shadow-md overflow-hidden ring-0",
+          ? "transition-all duration-300 border border-primary shadow-2xl shadow-primary/10 md:scale-110 z-20 hover:scale-[1.12] hover:shadow-primary/20 overflow-visible"
+          : "border border-border hover:bg-muted/50 hover:border-primary",
       )}
     >
       {highlighted && (
@@ -402,7 +403,7 @@ function SubscriptionCard({
         </Badge>
       )}
 
-      <CardHeader className="space-y-4 flex flex-col items-center w-full p-6">
+      <CardHeader className="space-y-4 flex flex-col items-center w-full">
         <div
           className={cn(
             "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-md",
@@ -423,7 +424,7 @@ function SubscriptionCard({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 pb-6">
+      <CardContent className="flex-1 w-full flex flex-col items-center space-y-10 px-4">
         <Card
           className={cn(
             "w-full transition-all duration-300 select-none border shadow-none bg-muted/50",

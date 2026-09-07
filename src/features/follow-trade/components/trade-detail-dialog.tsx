@@ -308,14 +308,14 @@ function TradeDetailReadyDialog({
           )}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-          {trade.name} · {t(`common.asset_types.${trade.assetType}`)}
+          {trade.name} · {t(`common.asset_types.${trade.assetType.replaceAll("-", "_")}`)}
         </DialogDescription>
 
         {/* Price + P/L row */}
         {chartLoading && !isClosed ? (
           <div className="space-y-2 mt-2">
             <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-15 w-full rounded" />
+            <Skeleton className="h-15 w-full rounded-xl" />
           </div>
         ) : (
           <div className="flex items-end justify-between gap-3 mt-2">

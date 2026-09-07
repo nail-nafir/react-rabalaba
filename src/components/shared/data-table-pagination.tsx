@@ -51,13 +51,13 @@ export function DataTablePagination<TData>({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-xs select-none",
+        "flex items-center justify-between gap-3 text-xs select-none",
         className,
       )}
       aria-live="polite"
     >
       {/* Left Side: Page/Row Information & Interactive Click-to-Edit Input */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-muted-foreground whitespace-nowrap">
         <span>{t("table.page")}</span>
         {isEditing ? (
           <Input
@@ -78,7 +78,7 @@ export function DataTablePagination<TData>({
               }
             }}
             onBlur={submitEdit}
-            className="h-6 w-12 px-1 text-center text-xs rounded border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="h-7 w-12 px-1 text-center text-xs rounded border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary shadow-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         ) : (
           <button
@@ -91,7 +91,7 @@ export function DataTablePagination<TData>({
             }}
             disabled={!canJump}
             className={cn(
-              "font-semibold text-foreground px-1.5 py-0.5 rounded border border-border hover:bg-muted/50 transition-all duration-150",
+              "font-semibold text-foreground px-1.5 py-0.5 rounded border border-border hover:bg-muted/50 transition-all duration-150 inline-flex items-center justify-center min-w-6",
               canJump && "cursor-pointer",
             )}
             title={canJump ? "Click to edit page" : undefined}
@@ -100,20 +100,18 @@ export function DataTablePagination<TData>({
           </button>
         )}
         <span>{t("table.of")}</span>
-        <span className="font-semibold text-foreground">
-          {pageCount || 0}
-        </span>
+        <span className="font-semibold text-foreground">{pageCount || 0}</span>
       </div>
 
       {/* Right Side: Page Navigation Buttons */}
-      <div className="flex items-center gap-1.5 sm:justify-end">
+      <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
         <Button
           type="button"
           variant="outline"
           size="icon"
           onClick={() => table.firstPage()}
           disabled={!table.getCanPreviousPage()}
-          className="size-11 cursor-pointer sm:size-9"
+          className="hidden sm:inline-flex cursor-pointer"
           aria-label={t("table.first_page")}
           title={t("table.first_page")}
         >
@@ -125,25 +123,19 @@ export function DataTablePagination<TData>({
           size="icon"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
-          className="size-11 cursor-pointer sm:size-9"
+          className="cursor-pointer"
           aria-label={t("table.previous_page")}
           title={t("table.previous_page")}
         >
           <ChevronLeft className="size-4" />
         </Button>
-
-        {/* Fallback pagination status on ultra-small mobile screens */}
-        <span className="text-muted-foreground text-xs px-3 py-2 rounded-md bg-muted/40 border border-border/25 min-[480px]:hidden pointer-events-none">
-          {currentPage}/{pageCount}
-        </span>
-
         <Button
           type="button"
           variant="outline"
           size="icon"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
-          className="size-11 cursor-pointer sm:size-9"
+          className="cursor-pointer"
           aria-label={t("table.next_page")}
           title={t("table.next_page")}
         >
@@ -155,7 +147,7 @@ export function DataTablePagination<TData>({
           size="icon"
           onClick={() => table.lastPage()}
           disabled={!table.getCanNextPage()}
-          className="size-11 cursor-pointer sm:size-9"
+          className="hidden sm:inline-flex cursor-pointer"
           aria-label={t("table.last_page")}
           title={t("table.last_page")}
         >

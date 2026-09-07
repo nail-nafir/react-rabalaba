@@ -11,10 +11,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BADGE } from "@/constants/taxonomy/palette";
-import { TIER_COLORS } from "@/constants/taxonomy/colors";
 import { cn } from "@/lib/utils";
 import { PatternVisual } from "./pattern-visual";
 import { PatternDetailDialog } from "./pattern-detail-dialog";
+import { StrengthBar } from "@/components/charts/strength-bar";
 import { BookOpen } from "lucide-react";
 import type { CandlestickPattern, ChartPattern } from "../types/learn";
 
@@ -24,12 +24,6 @@ interface PatternCardProps {
 
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
-
-const getWinRateColor = (winRate: number): string => {
-  if (winRate >= 65) return TIER_COLORS.A.text; // text-emerald-400
-  if (winRate >= 55) return TIER_COLORS.B.text; // text-amber-400
-  return TIER_COLORS.C.text; // text-rose-400
-};
 
 export const PatternCard: React.FC<PatternCardProps> = ({ pattern }) => {
   const { t } = useTranslation();
@@ -42,67 +36,63 @@ export const PatternCard: React.FC<PatternCardProps> = ({ pattern }) => {
     ? BADGE.positive
     : isBearish
       ? BADGE.negative
-      : BADGE.warning;
+      : pattern.bias === "neutral"
+        ? BADGE.neutral
+        : BADGE.warning;
+
+  const diffBadge = (() => {
+    switch (pattern.difficulty) {
+      case "beginner":
+        return BADGE.positive;
+      case "intermediate":
+        return BADGE.warning;
+      case "advanced":
+        return BADGE.negative;
+      default:
+        return BADGE.neutral;
+    }
+  })();
 
   return (
-    <Card className="relative transition-all duration-300 h-full flex flex-col cursor-pointer border border-border hover:border-primary shadow-sm hover:-translate-y-1 hover:shadow-md overflow-hidden ring-0 bg-card group">
+    <Card className="relative h-full flex flex-col cursor-pointer border border-border hover:bg-muted/50 hover:border-primary group">
       {/* Header */}
-      <CardHeader className="space-y-4 flex flex-col w-full p-6">
+      <CardHeader className="space-y-4 flex flex-col w-full">
         <div className="flex items-center justify-between w-full gap-2">
-          <Badge
-            variant="outline"
-            className={cn(
-              COMPACT_SIGNAL_BADGE_CLASSNAME,
-              colors.bg,
-              colors.text,
-              colors.border,
-            )}
-          >
-            {t(`learn.common.bias.${pattern.bias}`)}
-          </Badge>
-
-          <div className="flex items-center gap-2.5">
-            <span
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge
+              variant="outline"
               className={cn(
-                "text-xs font-bold",
-                getWinRateColor(pattern.winRate),
+                COMPACT_SIGNAL_BADGE_CLASSNAME,
+                colors.bg,
+                colors.text,
+                colors.border,
               )}
             >
-              {pattern.winRate}%
-            </span>
-            <div
-              role="img"
-              aria-label={t("learn.common.rating_aria", {
-                count: pattern.reliability,
-              })}
-              title={`${pattern.reliability} / 5`}
-              className="flex items-center gap-0.5"
+              {t(`learn.common.bias.${pattern.bias}`)}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                COMPACT_SIGNAL_BADGE_CLASSNAME,
+                diffBadge.bg,
+                diffBadge.text,
+                diffBadge.border,
+              )}
             >
-              {Array.from({ length: 5 }).map((_, i) => {
-                const isActive = i < pattern.reliability;
-                return (
-                  <div
-                    key={i}
-                    aria-hidden
-                    className={cn(
-                      "w-1.5 h-3.5 rounded-[1.5px] transition-colors",
-                      isActive
-                        ? pattern.reliability >= 4
-                          ? "bg-emerald-500"
-                          : pattern.reliability === 3
-                            ? "bg-amber-400"
-                            : "bg-rose-500"
-                        : "bg-muted-foreground/20",
-                    )}
-                  />
-                );
-              })}
-            </div>
+              {t(`learn.common.difficulty.${pattern.difficulty}`)}
+            </Badge>
+          </div>
+
+          <div
+            title={t("learn.common.signal_strength")}
+            aria-label={t("learn.common.signal_strength")}
+          >
+            <StrengthBar value={pattern.winRate} barWidth="w-16" />
           </div>
         </div>
 
         <div className="space-y-1.5 w-full">
-          <CardTitle className="text-lg font-bold tracking-tight uppercase group-hover:text-primary transition-colors">
+          <CardTitle className="text-lg font-bold tracking-tight uppercase leading-7 line-clamp-2 min-h-14 group-hover:text-primary transition-colors">
             {t(`${patternKey}.name`)}
           </CardTitle>
           {"nativeName" in pattern && pattern.nativeName && (
@@ -117,7 +107,7 @@ export const PatternCard: React.FC<PatternCardProps> = ({ pattern }) => {
       </CardHeader>
 
       {/* Content */}
-      <CardContent className="flex-1 w-full flex flex-col items-center space-y-6 pb-6">
+      <CardContent className="flex-1 w-full flex flex-col items-center space-y-6 pb-0">
         {/* Inner Card Box */}
         <Card className="relative overflow-hidden w-full transition-all duration-300 select-none border shadow-none bg-muted/50 border-border hover:bg-muted/60">
           {/* Subtle dashed technical grid lines */}

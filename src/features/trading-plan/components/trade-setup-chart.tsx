@@ -24,7 +24,7 @@ import {
 import {
   Grid,
   Layers,
-  RotateCcw,
+  RefreshCw,
   SlidersHorizontal,
   Activity,
   BarChart2,
@@ -991,16 +991,17 @@ export function TradeSetupChart({
             zoomed/panned away (same action as double-clicking the chart). */}
         {viewport !== null && (
           <Button
-            variant="outline"
-            size="xs"
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => setViewport(null)}
             onPointerDown={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
+            title={t("dialog.chart_restore")}
             aria-label={t("dialog.chart_restore")}
-            className="absolute right-2 top-2 z-10 cursor-pointer bg-background/80 backdrop-blur-sm gap-1"
+            className="absolute right-2 top-2 z-10 h-7 w-7 cursor-pointer text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted bg-background/80 backdrop-blur-sm rounded-md border border-border/50 shadow-xs"
           >
-            <RotateCcw data-icon="inline-start" />
-            <span>{t("dialog.chart_restore")}</span>
+            <RefreshCw className="h-4 w-4" />
           </Button>
         )}
         <Card className="overflow-hidden border border-border bg-muted/50">
@@ -1019,7 +1020,7 @@ export function TradeSetupChart({
                 const dirColor = up ? "text-emerald-400" : "text-rose-400";
                 return (
                   <div
-                    className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 leading-none"
+                    className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 leading-none pr-9"
                     style={{
                       // Line the strip up with the plot's left edge (CHART_LEFT
                       // inside the same-width SVG below), not the card padding.

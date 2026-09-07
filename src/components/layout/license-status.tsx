@@ -16,12 +16,12 @@ const TIER_ICONS: Record<LicenseTier, React.ElementType> = {
 const TIER_STYLES: Record<LicenseTier, string> = {
   free: "text-muted-foreground",
   trial:
-    "border-amber-500/50! bg-amber-500/10! text-amber-600 dark:text-amber-400 hover:bg-amber-500/20!",
+    "border-primary! bg-primary! text-primary-foreground! shadow-xs hover:bg-primary/90!",
   premium:
-    "border-primary/50! bg-primary/10! text-primary hover:bg-primary/20!",
+    "border-primary! bg-primary! text-primary-foreground! shadow-xs hover:bg-primary/90!",
 };
 
-export function LicenseBadge() {
+export function LicenseStatus() {
   const { t } = useTranslation();
   const { tier, daysLeft, isConfigured, isResolving } = usePremiumAccess();
 

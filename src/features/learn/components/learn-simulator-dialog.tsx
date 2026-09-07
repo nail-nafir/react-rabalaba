@@ -9,10 +9,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { CandlestickSimulator } from "./candlestick-simulator";
 import { ChartPatternSimulator } from "./chart-pattern-simulator";
-import { Sparkles, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 
 export type SimulatorMode = "candlestick" | "chart";
 
@@ -60,18 +61,15 @@ export const LearnSimulatorDialog: React.FC<LearnSimulatorDialogProps> = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-5xl lg:max-w-6xl w-[96vw] max-h-[92vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden shadow-2xl">
-        {/* Dialog Header */}
-        <DialogHeader className="shrink-0 bg-popover/90 backdrop-blur-md p-5 sm:p-6 pb-4 border-b border-border space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <DialogTitle className="text-lg font-bold uppercase tracking-tight text-foreground">
-                  {t("learn.simulator_dialog.title")}
-                </DialogTitle>
-              </div>
-              <DialogDescription className="text-xs text-muted-foreground">
+      <DialogContent className="sm:max-w-5xl lg:max-w-6xl w-[96vw] max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
+        {/* Header styled identically to pattern detail dialog */}
+        <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pr-6">
+            <div className="space-y-0.5">
+              <DialogTitle className="text-lg font-bold tracking-tight text-foreground uppercase">
+                {t("learn.simulator_dialog.title")}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
                 {t("learn.simulator_dialog.description")}
               </DialogDescription>
             </div>
@@ -84,10 +82,11 @@ export const LearnSimulatorDialog: React.FC<LearnSimulatorDialogProps> = ({
               className="shrink-0"
             />
           </div>
+          <Separator className="mt-4" />
         </DialogHeader>
 
-        {/* Dialog Body (Scrollable) */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+        {/* Scrollable Content Body */}
+        <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
           {mode === "candlestick" ? (
             <CandlestickSimulator isDialog />
           ) : (

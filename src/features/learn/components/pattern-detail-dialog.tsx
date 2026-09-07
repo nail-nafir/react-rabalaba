@@ -9,31 +9,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
-import { TIER_COLORS } from "@/constants/taxonomy/colors";
 import { cn } from "@/lib/utils";
+import { BarChart3, CheckCircle2, Target } from "lucide-react";
 import { PatternVisual } from "./pattern-visual";
-import {
-  Target,
-  ShieldAlert,
-  Volume2,
-  CheckCircle2,
-  AlertTriangle,
-  Lightbulb,
-  Sparkles,
-} from "lucide-react";
 import type { CandlestickPattern, ChartPattern } from "../types/learn";
 
 export interface PatternDetailDialogProps {
   pattern: CandlestickPattern | ChartPattern;
   trigger: ReactElement;
 }
-
-const getWinRateColor = (winRate: number): string => {
-  if (winRate >= 65) return TIER_COLORS.A.text; // text-emerald-400
-  if (winRate >= 55) return TIER_COLORS.B.text; // text-amber-400
-  return TIER_COLORS.C.text; // text-rose-400
-};
 
 export const PatternDetailDialog: React.FC<PatternDetailDialogProps> = ({
   pattern,
@@ -50,7 +37,9 @@ export const PatternDetailDialog: React.FC<PatternDetailDialogProps> = ({
     ? BADGE.positive
     : isBearish
       ? BADGE.negative
-      : BADGE.warning;
+      : pattern.bias === "neutral"
+        ? BADGE.neutral
+        : BADGE.warning;
 
   const diffBadge = (() => {
     switch (pattern.difficulty) {
@@ -75,246 +64,247 @@ export const PatternDetailDialog: React.FC<PatternDetailDialogProps> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header styled identically to terminal detail dialogs */}
-        <DialogHeader className="shrink-0 bg-popover p-6 pb-4 border-b border-border space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "font-bold tracking-wider uppercase text-[10px] rounded-md",
-                  colors.bg,
-                  colors.text,
-                  colors.border,
-                )}
-              >
-                {t(`learn.common.bias.${pattern.bias}`)}
-              </Badge>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "font-bold tracking-wider uppercase text-[10px] rounded-md",
-                  diffBadge.bg,
-                  diffBadge.text,
-                  diffBadge.border,
-                )}
-              >
-                {t(`learn.common.difficulty.${pattern.difficulty}`)}
-              </Badge>
-              {"nativeName" in pattern && pattern.nativeName && (
-                <span className="text-xs text-muted-foreground">
-                  {pattern.nativeName}
-                </span>
+        <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
+          <DialogTitle className="text-lg font-bold tracking-tight text-foreground uppercase flex items-center gap-2 flex-wrap pr-6">
+            <span>{t(`${patternKey}.name`)}</span>
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-bold tracking-wider uppercase text-[10px] rounded-md",
+                colors.bg,
+                colors.text,
+                colors.border,
               )}
-            </div>
+            >
+              {t(`learn.common.bias.${pattern.bias}`)}
+            </Badge>
+          </DialogTitle>
 
-            <div className="flex items-center gap-2.5">
-              <span
-                className={cn(
-                  "text-xs font-bold",
-                  getWinRateColor(pattern.winRate),
-                )}
-              >
-                {pattern.winRate}% {t("learn.common.win_rate")}
-              </span>
-              <div
-                role="img"
-                aria-label={t("learn.common.rating_aria", {
-                  count: pattern.reliability,
-                })}
-                title={`${pattern.reliability} / 5`}
-                className="flex items-center gap-0.5"
-              >
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const isActive = i < pattern.reliability;
-                  return (
-                    <div
-                      key={i}
-                      aria-hidden
-                      className={cn(
-                        "w-1.5 h-3.5 rounded-[1.5px] transition-colors",
-                        isActive
-                          ? pattern.reliability >= 4
-                            ? "bg-emerald-500"
-                            : pattern.reliability === 3
-                              ? "bg-amber-400"
-                              : "bg-rose-500"
-                          : "bg-muted-foreground/20",
-                      )}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <DialogTitle className="text-xl font-bold tracking-tight text-foreground uppercase">
-              {t(`${patternKey}.name`)}
-            </DialogTitle>
+          <div className="space-y-0.5 mt-1">
+            {"nativeName" in pattern && pattern.nativeName && (
+              <p className="text-xs font-medium text-foreground/85">
+                {pattern.nativeName}
+              </p>
+            )}
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
               {t(`${patternKey}.description`)}
             </DialogDescription>
           </div>
+
+          {/* Meta badges */}
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                diffBadge.bg,
+                diffBadge.text,
+                diffBadge.border,
+              )}
+            >
+              {t(`learn.common.difficulty.${pattern.difficulty}`)}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-bold uppercase tracking-wider text-[10px] rounded-md",
+                BADGE.neutral.bg,
+                BADGE.neutral.text,
+                BADGE.neutral.border,
+              )}
+            >
+              {t(`learn.common.pattern_categories.${pattern.category}`)}
+            </Badge>
+          </div>
+
+          <Separator className="mt-4" />
         </DialogHeader>
 
         {/* Scrollable Content Body */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
-          {/* Visual Schematic Diagram Box */}
-          <div className="relative p-4 rounded-xl border border-border bg-muted/20 flex flex-col items-center justify-center overflow-hidden">
-            {/* Standard dashed technical grid lines */}
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
-            >
-              <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-              <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-              <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+        <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
+          {/* Section: Schematic Visual Diagram & Psychology */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">
+                {t("learn.pattern_dialog.schematic")}
+              </h3>
             </div>
-
-            <div className="relative z-10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-              {t("learn.pattern_dialog.schematic")}
-            </div>
-            <PatternVisual
-              type={pattern.svgType}
-              className="relative z-10 w-full max-w-lg h-48"
-            />
-          </div>
-
-          {/* Psychology & Context */}
-          <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              {t("learn.pattern_dialog.psychology")}
-            </h4>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t(`${patternKey}.psychology`)}
-            </p>
-          </div>
-
-          {/* Rules & Checklists */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-              <CheckCircle2
-                className={cn("h-3.5 w-3.5", PALETTE.positive.text)}
-              />
-              {t("learn.pattern_dialog.validation")}
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {rulesList.map((rule, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-2 p-2.5 rounded-lg border border-border/60 bg-muted/20 text-xs text-muted-foreground leading-relaxed"
-                >
-                  <span className="font-bold text-primary text-[10px] bg-primary/10 size-4 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <span>{rule}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Execution Strategy Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Entry Trigger */}
-            <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/5 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase">
-                <Target className="h-3.5 w-3.5" />
-                {t("learn.pattern_dialog.entry_trigger")}
-              </div>
-              <p className="text-xs text-foreground/90 leading-snug">
-                {t(
-                  `${patternKey}.${isCandle ? "entry_trigger" : "neckline_rule"}`,
-                )}
-              </p>
-            </div>
-
-            {/* Stop Loss */}
-            <div
-              className={cn(
-                "p-3.5 rounded-xl border space-y-1",
-                BADGE.negative.border,
-                BADGE.negative.bg,
-              )}
-            >
+            <Card className="relative border border-border bg-muted/50 flex flex-col items-center justify-center overflow-hidden">
+              {/* Standard dashed technical grid lines */}
               <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
+              >
+                <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+                <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+                <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+              </div>
+
+              <CardContent className="relative z-10 flex flex-col items-center justify-center w-full">
+                <PatternVisual
+                  type={pattern.svgType}
+                  className="w-full max-w-lg h-48"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Psychology & Context */}
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-1">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  {t("learn.pattern_dialog.psychology")}
+                </CardTitle>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t(`${patternKey}.psychology`)}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Separator />
+
+          {/* Section: Validation Rules */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">
+                {t("learn.pattern_dialog.validation")}
+              </h3>
+            </div>
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-2.5">
+                {rulesList.map((rule, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 text-xs leading-relaxed"
+                  >
+                    <span className="font-mono text-[10px] font-semibold text-muted-foreground bg-muted/70 border border-border size-5 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span className="text-foreground/90">{rule}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Separator />
+
+          {/* Section: Trading Plan */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">
+                {t("dialog.trading_plan")}
+              </h3>
+            </div>
+
+            {/* Execution Strategy Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Entry Trigger */}
+              <Card className="border border-border bg-muted/50">
+                <CardContent className="space-y-1">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    {t("learn.pattern_dialog.entry_trigger")}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    {t(
+                      `${patternKey}.${isCandle ? "entry_trigger" : "neckline_rule"}`,
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Stop Loss */}
+              <Card
                 className={cn(
-                  "flex items-center gap-1.5 text-xs font-bold uppercase",
-                  PALETTE.negative.text,
+                  "border",
+                  BADGE.negative.border,
+                  BADGE.negative.bg,
                 )}
               >
-                <ShieldAlert className="h-3.5 w-3.5" />
-                {t("learn.pattern_dialog.stop_loss")}
-              </div>
-              <p className="text-xs text-foreground/90 leading-snug">
-                {t(
-                  `${patternKey}.${isCandle ? "stop_loss" : "stop_loss_placement"}`,
-                )}
-              </p>
-            </div>
+                <CardContent className="space-y-1">
+                  <CardTitle
+                    className={cn(
+                      "text-xs font-bold uppercase tracking-wider",
+                      PALETTE.negative.text,
+                    )}
+                  >
+                    {t("learn.pattern_dialog.stop_loss")}
+                  </CardTitle>
+                  <p className="text-xs text-foreground/90 leading-snug">
+                    {t(
+                      `${patternKey}.${isCandle ? "stop_loss" : "stop_loss_placement"}`,
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
 
-            {/* Target / Volume */}
-            <div
-              className={cn(
-                "p-3.5 rounded-xl border space-y-1",
-                BADGE.positive.border,
-                BADGE.positive.bg,
-              )}
-            >
-              <div
+              {/* Target / Volume */}
+              <Card
                 className={cn(
-                  "flex items-center gap-1.5 text-xs font-bold uppercase",
-                  PALETTE.positive.text,
+                  "border",
+                  BADGE.positive.border,
+                  BADGE.positive.bg,
                 )}
               >
-                <Volume2 className="h-3.5 w-3.5" />
-                {t(
-                  `learn.pattern_dialog.${isCandle ? "volume_rule" : "target_projection"}`,
-                )}
-              </div>
-              <p className="text-xs text-foreground/90 leading-snug">
-                {t(
-                  `${patternKey}.${isCandle ? "volume_rule" : "target_calculation"}`,
-                )}
-              </p>
+                <CardContent className="space-y-1">
+                  <CardTitle
+                    className={cn(
+                      "text-xs font-bold uppercase tracking-wider",
+                      PALETTE.positive.text,
+                    )}
+                  >
+                    {t(
+                      `learn.pattern_dialog.${isCandle ? "volume_rule" : "target_projection"}`,
+                    )}
+                  </CardTitle>
+                  <p className="text-xs text-foreground/90 leading-snug">
+                    {t(
+                      `${patternKey}.${isCandle ? "volume_rule" : "target_calculation"}`,
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-          </div>
 
-          {/* False Breakout Trap (for Chart Patterns) */}
-          {!isCandle && (
-            <div
-              className={cn(
-                "p-4 rounded-xl border space-y-1 text-xs",
-                BADGE.warning.border,
-                BADGE.warning.bg,
-              )}
-            >
-              <div
+            {/* False Breakout Trap (for Chart Patterns) */}
+            {!isCandle && (
+              <Card
                 className={cn(
-                  "flex items-center gap-1.5 font-bold uppercase",
-                  PALETTE.warning.text,
+                  "border text-xs",
+                  BADGE.warning.border,
+                  BADGE.warning.bg,
                 )}
               >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                {t("learn.pattern_dialog.false_breakout")}
-              </div>
-              <p className="text-muted-foreground leading-relaxed">
-                {t(`${patternKey}.false_breakout_warning`)}
-              </p>
-            </div>
-          )}
+                <CardContent className="space-y-1">
+                  <CardTitle
+                    className={cn(
+                      "font-bold uppercase tracking-wider text-xs",
+                      PALETTE.warning.text,
+                    )}
+                  >
+                    {t("learn.pattern_dialog.false_breakout")}
+                  </CardTitle>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {t(`${patternKey}.false_breakout_warning`)}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Pro Trader Edge Callout */}
-          <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-start gap-3 text-xs leading-relaxed">
-            <Lightbulb className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-primary mr-1">
-                {t("learn.pattern_dialog.pro_tip")}
-              </span>
-              <span className="text-foreground/90 font-medium italic">
-                "{t(`${patternKey}.pro_tip`)}"
-              </span>
-            </div>
+            {/* Pro Trader Edge Callout */}
+            <Card className="border border-border bg-muted/50">
+              <CardContent className="space-y-1">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  {t("learn.pattern_dialog.pro_tip")}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t(`${patternKey}.pro_tip`)}
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </DialogContent>

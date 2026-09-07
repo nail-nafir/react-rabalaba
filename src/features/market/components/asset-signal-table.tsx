@@ -372,7 +372,7 @@ export function AssetSignalTable() {
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
-            {t(`common.asset_types.${row.original.assetType}`)}
+            {t(`common.asset_types.${row.original.assetType.replaceAll("-", "_")}`)}
           </span>
         ),
       },
@@ -528,11 +528,17 @@ export function AssetSignalTable() {
           return (
             <div className="py-1">
               {successRatesPending ? (
-                <Skeleton
-                  className="h-8 w-28"
+                <div
+                  className="flex items-center gap-2"
                   role="status"
                   aria-label={t("table.successrate_loading")}
-                />
+                >
+                  <Skeleton className="h-2 w-16 rounded-full" />
+                  <div className="flex flex-col gap-1">
+                    <Skeleton className="h-4 w-10" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
               ) : successRatesError ? (
                 <Badge
                   variant="outline"

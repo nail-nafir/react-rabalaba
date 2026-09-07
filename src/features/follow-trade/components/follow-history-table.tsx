@@ -392,7 +392,7 @@ export function FollowHistoryTable({
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
-            {t(`common.asset_types.${row.original.assetType}`)}
+            {t(`common.asset_types.${row.original.assetType.replaceAll("-", "_")}`)}
           </span>
         ),
       },

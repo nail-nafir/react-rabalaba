@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface FilterOption<T extends string> {
   value: T;
@@ -56,7 +56,7 @@ export function FilterGroup<T extends string>({
               <SelectItem
                 key={option.value}
                 value={option.value}
-                className="uppercase tracking-wider text-[10px] cursor-pointer"
+                className="uppercase tracking-wider text-[10px] cursor-pointer whitespace-nowrap"
               >
                 {option.label}
               </SelectItem>
@@ -68,26 +68,33 @@ export function FilterGroup<T extends string>({
   }
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-1 rounded-lg border border-input bg-card p-1",
-        className,
-      )}
+    <Tabs
+      value={value}
+      onValueChange={(nextValue) => {
+        if (nextValue !== null) onChange(nextValue as T);
+      }}
+      className="w-fit"
     >
-      {options.map((option) => (
-        <Button
-          key={option.value}
-          variant={value === option.value ? "default" : "ghost"}
-          size="xs"
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "text-[10px] font-bold whitespace-nowrap uppercase tracking-wider cursor-pointer",
-            value !== option.value && "text-muted-foreground hover:bg-accent!",
-          )}
-        >
-          {option.label}
-        </Button>
-      ))}
-    </div>
+      <TabsList
+        className={cn(
+          "h-auto flex w-fit items-center gap-1 rounded-lg border border-input bg-card p-1",
+          className,
+        )}
+      >
+        {options.map((option) => (
+          <TabsTrigger
+            key={option.value}
+            value={option.value}
+            className={cn(
+              "h-6 px-2 text-[10px] font-bold whitespace-nowrap uppercase tracking-wider cursor-pointer rounded-[min(var(--radius-md),10px)] transition-all",
+              "text-muted-foreground hover:bg-accent hover:text-foreground",
+              "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs",
+            )}
+          >
+            {option.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }

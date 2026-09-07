@@ -82,6 +82,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
     control,
     handleSubmit,
     watch,
+    reset,
     formState: { isValid },
   } = form;
   const kindValue = watch("kind");
@@ -164,8 +165,20 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
         </div>
 
         <DialogFooter>
-          <Button onClick={() => setCreatedCode(null)} size="lg">
-            <ActionButtonContent label={t("common.actions.create")} />
+          <Button
+            key="create-another-btn"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              reset();
+              setCreatedCode(null);
+            }}
+            size="lg"
+          >
+            <ActionButtonContent
+              label={t("admin.invitations.create_another", "Buat Lagi")}
+            />
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -213,7 +226,11 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent position="popper" align="start" className="p-0.5">
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="p-0.5"
+                    >
                       <SelectGroup>
                         {kindItems.map((item) => (
                           <SelectItem
@@ -359,6 +376,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
 
       <DialogFooter>
         <Button
+          key="submit-invitation-btn"
           type="submit"
           form="add-invitation-form"
           size="lg"

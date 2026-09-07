@@ -388,7 +388,7 @@ export function JournalDashboard({
       const valNum = d.pct;
       const isZero = valNum === 0;
       const color = isZero ? "var(--color-zinc-500)" : valNum > 0 ? POS : NEG;
-      const displayName = t(`common.asset_types.${d.assetType}`, d.assetType);
+      const displayName = t(`common.asset_types.${d.assetType.replaceAll("-", "_")}`, d.assetType);
 
       return {
         name: displayName,
@@ -411,15 +411,37 @@ export function JournalDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <ChartCard>
             <Skeleton className="h-3 w-32 mb-3" />
-            <Skeleton className="h-55 w-full rounded-xl" />
+            <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <div className="mt-3 flex w-full justify-center gap-4">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
           </ChartCard>
           <ChartCard>
             <Skeleton className="h-3 w-32 mb-3" />
-            <Skeleton className="h-55 w-full rounded-xl" />
+            <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <div className="mt-3 flex w-full justify-center gap-4">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
           </ChartCard>
           <ChartCard>
             <Skeleton className="h-3 w-32 mb-3" />
-            <Skeleton className="h-55 w-full rounded-xl" />
+            <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <div className="mt-3 flex w-full justify-center gap-4">
+                <Skeleton className="h-20 w-3" />
+                <Skeleton className="h-20 w-3" />
+                <Skeleton className="h-20 w-3" />
+                <Skeleton className="h-20 w-3" />
+              </div>
+            </div>
           </ChartCard>
         </div>
       </div>
@@ -889,7 +911,7 @@ export function JournalDashboard({
                           axisLine={false}
                           fontSize={11}
                           tickFormatter={(v) => {
-                            return t(`common.asset_types.${v}`, v) as string;
+                            return t(`common.asset_types.${v.replaceAll("-", "_")}`, v) as string;
                           }}
                         />
                         <YAxis
@@ -913,7 +935,7 @@ export function JournalDashboard({
                                 className="min-w-40"
                                 labelFormatter={(l) =>
                                   (
-                                    t(`common.asset_types.${l}`, l) as string
+                                    t(`common.asset_types.${l.replaceAll("-", "_")}`, l) as string
                                   ).toUpperCase()
                                 }
                                 formatter={(value) => {

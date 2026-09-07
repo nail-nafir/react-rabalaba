@@ -1,94 +1,26 @@
 import type { ChartPattern } from "../types/learn";
 
 export const CHART_PATTERNS: ChartPattern[] = [
-  {
-    "id": "head-and-shoulders",
-    "category": "chart-reversal",
-    "bias": "bearish",
-    "difficulty": "intermediate",
-    "winRate": 81,
-    "reliability": 5,
-    "svgType": "head-and-shoulders"
-  },
-  {
-    "id": "inverse-head-and-shoulders",
-    "category": "chart-reversal",
-    "bias": "bullish",
-    "difficulty": "intermediate",
-    "winRate": 83,
-    "reliability": 5,
-    "svgType": "inverse-head-and-shoulders"
-  },
-  {
-    "id": "double-top",
-    "category": "chart-reversal",
-    "bias": "bearish",
-    "difficulty": "beginner",
-    "winRate": 75,
-    "reliability": 4,
-    "svgType": "double-top"
-  },
-  {
-    "id": "double-bottom",
-    "category": "chart-reversal",
-    "bias": "bullish",
-    "difficulty": "beginner",
-    "winRate": 77,
-    "reliability": 4,
-    "svgType": "double-bottom"
-  },
-  {
-    "id": "cup-and-handle",
-    "category": "chart-continuation",
-    "bias": "bullish",
-    "difficulty": "intermediate",
-    "winRate": 79,
-    "reliability": 5,
-    "svgType": "cup-and-handle"
-  },
-  {
-    "id": "bull-flag",
-    "category": "chart-continuation",
-    "bias": "bullish",
-    "difficulty": "beginner",
-    "winRate": 82,
-    "reliability": 5,
-    "svgType": "bull-flag"
-  },
-  {
-    "id": "bear-flag",
-    "category": "chart-continuation",
-    "bias": "bearish",
-    "difficulty": "beginner",
-    "winRate": 80,
-    "reliability": 5,
-    "svgType": "bear-flag"
-  },
-  {
-    "id": "ascending-triangle",
-    "category": "chart-continuation",
-    "bias": "bullish",
-    "difficulty": "intermediate",
-    "winRate": 76,
-    "reliability": 4,
-    "svgType": "ascending-triangle"
-  },
-  {
-    "id": "descending-triangle",
-    "category": "chart-continuation",
-    "bias": "bearish",
-    "difficulty": "intermediate",
-    "winRate": 74,
-    "reliability": 4,
-    "svgType": "descending-triangle"
-  },
-  {
-    "id": "falling-wedge",
-    "category": "chart-reversal",
-    "bias": "bullish",
-    "difficulty": "intermediate",
-    "winRate": 75,
-    "reliability": 4,
-    "svgType": "falling-wedge"
-  }
+  { id: "head_and_shoulders", category: "chart_reversal", bias: "bearish", difficulty: "intermediate", winRate: 81, reliability: 5, svgType: "head_and_shoulders" },
+  { id: "inverse_head_and_shoulders", category: "chart_reversal", bias: "bullish", difficulty: "intermediate", winRate: 83, reliability: 5, svgType: "inverse_head_and_shoulders" },
+  { id: "double_top", category: "chart_reversal", bias: "bearish", difficulty: "beginner", winRate: 75, reliability: 4, svgType: "double_top" },
+  { id: "double_bottom", category: "chart_reversal", bias: "bullish", difficulty: "beginner", winRate: 77, reliability: 4, svgType: "double_bottom" },
+  { id: "bull_flag", category: "chart_continuation", bias: "bullish", difficulty: "beginner", winRate: 82, reliability: 5, svgType: "bull_flag" },
+  { id: "bear_flag", category: "chart_continuation", bias: "bearish", difficulty: "beginner", winRate: 80, reliability: 5, svgType: "bear_flag" },
+  { id: "bull_pennant", category: "chart_continuation", bias: "bullish", difficulty: "intermediate", winRate: 78, reliability: 4, svgType: "bull_pennant" },
+  { id: "bear_pennant", category: "chart_continuation", bias: "bearish", difficulty: "intermediate", winRate: 77, reliability: 4, svgType: "bear_pennant" },
+  { id: "ascending_triangle", category: "chart_continuation", bias: "bullish", difficulty: "intermediate", winRate: 76, reliability: 4, svgType: "ascending_triangle" },
+  { id: "descending_triangle", category: "chart_continuation", bias: "bearish", difficulty: "intermediate", winRate: 74, reliability: 4, svgType: "descending_triangle" },
+  { id: "falling_wedge", category: "chart_reversal", bias: "bullish", difficulty: "intermediate", winRate: 75, reliability: 4, svgType: "falling_wedge" },
+  { id: "rising_wedge", category: "chart_reversal", bias: "bearish", difficulty: "intermediate", winRate: 75, reliability: 4, svgType: "rising_wedge" },
+  { id: "triple_top", category: "chart_reversal", bias: "bearish", difficulty: "advanced", winRate: 72, reliability: 4, svgType: "triple_top" },
+  { id: "triple_bottom", category: "chart_reversal", bias: "bullish", difficulty: "advanced", winRate: 73, reliability: 4, svgType: "triple_bottom" },
+  { id: "rounding_top", category: "chart_reversal", bias: "bearish", difficulty: "advanced", winRate: 69, reliability: 3, svgType: "rounding_top" },
+  { id: "rounding_bottom", category: "chart_reversal", bias: "bullish", difficulty: "advanced", winRate: 71, reliability: 3, svgType: "rounding_bottom" },
+  { id: "ascending_channel", category: "chart_continuation", bias: "bullish", difficulty: "intermediate", winRate: 70, reliability: 3, svgType: "ascending_channel" },
+  { id: "descending_channel", category: "chart_continuation", bias: "bearish", difficulty: "intermediate", winRate: 70, reliability: 3, svgType: "descending_channel" },
+  { id: "symmetrical_triangle", category: "chart_continuation", bias: "bilateral", difficulty: "intermediate", winRate: 68, reliability: 3, svgType: "symmetrical_triangle" },
+  { id: "rectangle", category: "chart_continuation", bias: "bilateral", difficulty: "beginner", winRate: 67, reliability: 3, svgType: "rectangle" },
+  { id: "cup_and_handle", category: "chart_continuation", bias: "bullish", difficulty: "intermediate", winRate: 79, reliability: 5, svgType: "cup_and_handle" },
+  { id: "inverse_cup_and_handle", category: "chart_continuation", bias: "bearish", difficulty: "intermediate", winRate: 72, reliability: 3, svgType: "inverse_cup_and_handle" },
 ];

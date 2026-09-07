@@ -1,40 +1,28 @@
 import type { TradingStrategy } from "../types/learn";
 
 export const TRADING_STRATEGIES: TradingStrategy[] = [
-  {
-    "id": "moving-average-cross",
-    "category": "indicators",
-    "difficulty": "beginner",
-    "svgType": "ema-strategy"
-  },
-  {
-    "id": "rsi-divergence-mastery",
-    "category": "indicators",
-    "difficulty": "intermediate",
-    "svgType": "rsi-divergence"
-  },
-  {
-    "id": "bollinger-squeeze-breakout",
-    "category": "indicators",
-    "difficulty": "intermediate",
-    "svgType": "bollinger-strategy"
-  },
-  {
-    "id": "smc-market-structure",
-    "category": "smc",
-    "difficulty": "advanced",
-    "svgType": "smc-strategy"
-  },
-  {
-    "id": "atr-dynamic-risk",
-    "category": "market-structure",
-    "difficulty": "beginner",
-    "svgType": "atr-strategy"
-  },
-  {
-    "id": "multi-timeframe-framework",
-    "category": "multi-timeframe",
-    "difficulty": "intermediate",
-    "svgType": "mtf-strategy"
-  }
+  { id: "moving_average_cross", category: "indicators", difficulty: "beginner", svgType: "ema_strategy" },
+  { id: "rsi_divergence_mastery", category: "indicators", difficulty: "intermediate", svgType: "rsi_divergence" },
+  { id: "bollinger_squeeze_breakout", category: "indicators", difficulty: "intermediate", svgType: "bollinger_strategy" },
+  { id: "macd_momentum", category: "indicators", difficulty: "intermediate", svgType: "macd_strategy" },
+  { id: "stochastic_oscillator", category: "indicators", difficulty: "intermediate", svgType: "stochastic_strategy" },
+  { id: "vwap_mean_reversion", category: "indicators", difficulty: "intermediate", svgType: "vwap_strategy" },
+  { id: "volume_profile", category: "indicators", difficulty: "advanced", svgType: "volume_profile_strategy" },
+  { id: "fibonacci_retracement", category: "market_structure", difficulty: "beginner", svgType: "fibonacci_strategy" },
+  { id: "support_resistance_framework", category: "market_structure", difficulty: "beginner", svgType: "support_resistance_strategy" },
+  { id: "atr_dynamic_risk", category: "market_structure", difficulty: "beginner", svgType: "atr_strategy" },
+  { id: "multi_timeframe_framework", category: "multi_timeframe", difficulty: "intermediate", svgType: "mtf_strategy" },
+  { id: "smc_market_structure", category: "smc", difficulty: "advanced", svgType: "smc_strategy" },
+  { id: "smc_buy_side_liquidity", category: "smc", difficulty: "advanced", svgType: "buy_side_liquidity_strategy" },
+  { id: "smc_sell_side_liquidity", category: "smc", difficulty: "advanced", svgType: "sell_side_liquidity_strategy" },
+  { id: "smc_bullish_order_block", category: "smc", difficulty: "advanced", svgType: "order_block_strategy" },
+  { id: "smc_bearish_order_block", category: "smc", difficulty: "advanced", svgType: "bearish_order_block_strategy" },
+  { id: "smc_bullish_fvg", category: "smc", difficulty: "advanced", svgType: "fvg_strategy" },
+  { id: "smc_bearish_fvg", category: "smc", difficulty: "advanced", svgType: "bearish_fvg_strategy" },
+  { id: "smc_premium_zone", category: "smc", difficulty: "intermediate", svgType: "premium_zone_strategy" },
+  { id: "smc_discount_zone", category: "smc", difficulty: "intermediate", svgType: "discount_zone_strategy" },
+  { id: "smc_bullish_breaker", category: "smc", difficulty: "advanced", svgType: "breaker_block_strategy" },
+  { id: "smc_bearish_breaker", category: "smc", difficulty: "advanced", svgType: "bearish_breaker_strategy" },
+  { id: "smc_liquidity_sweep", category: "smc", difficulty: "advanced", svgType: "liquidity_sweep_strategy" },
+  { id: "smc_displacement", category: "smc", difficulty: "advanced", svgType: "displacement_strategy" },
 ];

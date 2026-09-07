@@ -179,14 +179,16 @@ const DonutGauge = memo(function DonutGauge({
           </RadialBarChart>
           {/* Inner label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <span className={cn("text-[10px] font-bold tabular-nums", textClass)}>
+            <span
+              className={cn("text-[10px] font-bold tabular-nums", textClass)}
+            >
               {normalizedValue}
             </span>
           </div>
         </div>
       </TooltipTrigger>
       <TooltipContent className="max-w-55 leading-relaxed">
-        {t(`market.score_explainer.${cardId}`, { defaultValue: "" })}
+        {t(`market.score_explainer.${cardId.replaceAll("-", "_")}`, { defaultValue: "" })}
       </TooltipContent>
     </Tooltip>
   );
@@ -243,7 +245,7 @@ function MarketContextFooter({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-55 leading-relaxed">
-                  {t(`market.context_explainer.${cardId}`, {
+                  {t(`market.context_explainer.${cardId.replaceAll("-", "_")}`, {
                     defaultValue: "",
                   })}
                 </TooltipContent>
@@ -577,7 +579,7 @@ function getLabel(cardId: string, t: (key: string) => string) {
 
 function SkeletonCard() {
   return (
-    <Card className="border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full border-border hover:border-zinc-700">
+    <Card className="border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full border-border">
       <CardHeader>
         <CardTitle className="flex min-w-0 items-center gap-2">
           <Skeleton className="size-4" />

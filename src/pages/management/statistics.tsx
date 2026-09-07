@@ -585,27 +585,58 @@ export default function AdminSystemPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <Card key={i} className="border-border/60">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4 rounded-full" />
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-3 w-32" />
-              </CardContent>
+            <Card
+              key={i}
+              className="border border-border bg-card shadow-xs"
+              aria-hidden="true"
+            >
+              <div className="flex h-full items-start justify-between p-5">
+                <div className="space-y-1">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="size-9 rounded-lg" />
+              </div>
             </Card>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="col-span-2 border-border/60">
-            <CardContent className="p-6">
-              <Skeleton className="h-64 w-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card
+            className="border border-border bg-card shadow-xs"
+            aria-hidden="true"
+          >
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <Skeleton className="size-8 rounded-md" />
+            </CardHeader>
+            <CardContent className="pt-2">
+              <Skeleton className="h-64 w-full rounded-xl" />
+              <div className="mt-4 flex justify-center gap-6">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-24" />
+              </div>
             </CardContent>
           </Card>
-          <Card className="border-border/60">
-            <CardContent className="p-6">
-              <Skeleton className="h-64 w-full" />
+          <Card
+            className="border border-border bg-card shadow-xs"
+            aria-hidden="true"
+          >
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <Skeleton className="size-8 rounded-md" />
+            </CardHeader>
+            <CardContent className="pt-2">
+              <Skeleton className="h-64 w-full rounded-xl" />
+              <div className="mt-4 flex justify-center gap-6">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-24" />
+              </div>
             </CardContent>
           </Card>
         </div>

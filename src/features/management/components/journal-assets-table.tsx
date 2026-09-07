@@ -430,7 +430,7 @@ export function JournalAssetsTable() {
                 title={
                   reason
                     ? t("admin.source_auto_tooltip", {
-                        reason: t(`admin.discovery_reason.${reason}`),
+                        reason: t(`admin.discovery_reason.${reason.replaceAll("-", "_")}`),
                       })
                     : undefined
                 }
@@ -502,7 +502,7 @@ export function JournalAssetsTable() {
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
             {row.original.asset_type
-              ? t(`common.asset_types.${row.original.asset_type}`)
+              ? t(`common.asset_types.${row.original.asset_type.replaceAll("-", "_")}`)
               : "—"}
           </span>
         ),
