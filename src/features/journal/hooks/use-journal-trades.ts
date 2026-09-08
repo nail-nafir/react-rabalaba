@@ -110,8 +110,10 @@ export function useJournalTrades({
     ],
     queryFn: () => fetchJournalTrades(scope, periodBounds),
     enabled: canReadJournal,
-    staleTime: 300_000,
-    refetchInterval: 300_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 
   // Never expose a previous identity's cached RLS result after logout, expiry,

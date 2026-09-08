@@ -271,7 +271,7 @@ export function TopPerformers({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3">
       {/* Header and selector */}
       <div className="flex flex-row items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
@@ -281,6 +281,7 @@ export function TopPerformers({
           value={period}
           options={periodOptions}
           onChange={setPeriod}
+          disabled={isLoading}
         />
       </div>
 

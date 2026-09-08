@@ -326,8 +326,8 @@ export function MarketSummaryRow() {
 
   if (isLoading) {
     return (
-      <>
-        <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
               {t("market.pulse")}
@@ -349,7 +349,7 @@ export function MarketSummaryRow() {
             <SkeletonCard key={`pulse-skeleton-${i}`} />
           ))}
         </div>
-      </>
+      </div>
     );
   }
 
@@ -396,8 +396,8 @@ export function MarketSummaryRow() {
   ];
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("market.pulse")}
@@ -539,7 +539,7 @@ export function MarketSummaryRow() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

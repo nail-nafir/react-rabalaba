@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { PageLoader } from "@/components/shared/page-loader";
+import { ResearchCopilot } from "@/features/chat/components/research-copilot";
 import { useTranslation } from "react-i18next";
 
 export function RootLayout() {
@@ -24,6 +25,7 @@ export function RootLayout() {
       </main>
       <Footer />
       <MobileNav />
+      <ResearchCopilot />
     </div>
   );
 }

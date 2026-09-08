@@ -51,12 +51,13 @@ flowchart LR
     SIG["computeSignal\nindicators → regime → scores\nLONG / SHORT / neutral"]
     TP["computeTradingPlan\nentry · stop · TP1/2/3 · RR"]
     EN["enrichAsset\ncontext de-rate\noptional evidence display-only*"]
+    PUB["applySignalEpisode\nactive snapshot → LONG/SHORT\npending / blocked / neutral → Neutral\nread or snapshot failure → Unavailable"]
     UI["AssetSignalTable / AssetDetailDialog\nscreener + signal detail"]
     BT["runBacktest + calibrateConfidence\nwalk-forward evidence"]
 
     U --> SU --> MQ --> PROXY
     PROXY --> BA --> SIG
-    SIG --> TP --> EN --> UI
+    SIG --> TP --> EN --> PUB --> UI
     BA --> BT
     UI --> BT
   end
@@ -80,6 +81,9 @@ flowchart LR
   end
 
   WRITES --> JT[("journal_trades")]
+  WRITES --> JS[("journal_signal_states\nreconciled from successful journal writes")]
+  JS --> AJ
+  JS --> PUB
   JT --> JD["Journal UI\nuseJournalTrades → dashboard / history"]
   WRITES --> ALERT["buildAutoJournalAlerts\nformatAlertBatchesForDiscord"]
   ALERT --> DISCORD["Discord webhook\nimmediate signal / TP / SL alert"]
@@ -99,7 +103,7 @@ flowchart LR
   classDef store fill:#eef2ff,stroke:#4f46e5,color:#111827
   classDef service fill:#ecfeff,stroke:#0891b2,color:#111827
   classDef engine fill:#fef3c7,stroke:#d97706,color:#111827
-  class JA,SETTINGS,OPEN,JT store
+  class JA,SETTINGS,OPEN,JT,JS store
   class AD,AJ,SUM,PROXY service
   class SIG,TP,EN,CORE,BA engine
 ```
@@ -140,12 +144,13 @@ flowchart TB
   end
 
   subgraph IO["Data lane / Lane data"]
-    LOAD["Read active journal_assets\nopen journal_trades + recent closed"]
+    LOAD["Read active journal_assets\nopen journal_trades + journal_signal_states"]
     BENCH["Fetch benchmark-only symbols\nfor top-down context"]
     FETCH["Fetch universe candles via\nCloudflare Yahoo proxy\n(cache-bust, bounded pool)"]
     ADAPT["adaptYahooChart\nnormalize candles + quote time\nbuild HTF trend"]
     HEALTH{"Provider response\nand candle data usable?"}
     OMIT["Omit failed asset\nkeep existing trade untouched"]
+    CLAIM["Claim aligned slot after usable market IO\njournal_settings.last_run_at"]
     DUE --> LOAD --> FETCH
     LOAD --> BENCH --> FETCH
     FETCH --> ADAPT --> HEALTH
@@ -165,7 +170,8 @@ flowchart TB
   subgraph DECISIONS["Journal decision lane / Lane keputusan jurnal"]
     LOOP["For each fetched journal asset"]
     OPENQ{"Symbol/timeframe still open\nafter planned closures?"}
-    STALEQ{"Quote older than\n90-minute freshness guard?"}
+    STALEQ{"Quote missing, too old,\nor too far in future?"}
+    ENTRYQ{"Decision age 0–15m, execution candle,\nand episode eligible?"}
     INSERT["Build FollowedTrade\nINSERT journal_trades"]
     SKIPNEW["Skip new emission"]
     LOOP --> STALEQ
@@ -173,7 +179,9 @@ flowchart TB
     STALEQ -- "no" --> OPENQ
     OPENQ -- "yes" --> SKIPNEW
     OPENQ -- "no" --> SIGNAL
-    CONTEXT --> INSERT
+    CONTEXT --> ENTRYQ
+    ENTRYQ -- "yes" --> INSERT
+    ENTRYQ -- "no" --> SKIPNEW
   end
 
   subgraph SYNC["Open-trade sync lane / Lane sinkronisasi trade"]
@@ -195,18 +203,16 @@ flowchart TB
 
   subgraph OUTPUT["Persistence + notification lane / Lane persistensi + notifikasi"]
     DB["journal_trades\nINSERTs + UPDATEs"]
-    CYCLE["Collect per-run results\nno-op branches produce no DB write"]
+    CYCLE["Collect successful journal writes\nreconcile and persist episode states"]
     ALERTS["buildAutoJournalAlerts\nformatAlertBatchesForDiscord"]
     WEBHOOK["Discord webhook\nbest-effort"]
-    STAMP["Stamp journal_settings.last_run_at\nonly after a due run"]
     INSERT --> DB
     CLOSE --> DB
     DB --> CYCLE
     CYCLE --> ALERTS --> WEBHOOK
-    CYCLE --> STAMP
   end
 
-  HEALTH -- "yes" --> OPENLOOP
+  HEALTH -- "yes" --> CLAIM --> OPENLOOP
   CLOSE --> LOOP
   KEEP --> LOOP
   OMIT --> CYCLE
@@ -231,6 +237,10 @@ flowchart TB
   enrichment menyesuaikan conviction/outlook, bukan membuat ulang plan di Edge.
 - 🇺🇸 `computeTradingPlan` runs in the adapter before post-signal enrichment;
   enrichment adjusts conviction/outlook and does not rebuild the plan in Edge.
+- 🇮🇩 Browser menerbitkan LONG/SHORT hanya dari episode aktif dengan snapshot
+  setup valid. Entry/TP/SL awal/R:R tetap; harga dan evidence boleh berubah.
+- 🇺🇸 Browser publication requires a valid active saved episode. Entry,
+  targets, initial stop and R:R stay fixed while market evidence may change.
 
 ## 3. Production sequence / Sequence production
 
@@ -275,7 +285,7 @@ sequenceDiagram
     A-->>S: skipped — no market fetch
   else Due and enabled
     A->>DB: Read active journal_assets
-    A->>DB: Read open trades
+    A->>DB: Read open trades + journal_signal_states
     A->>P: Fetch universe + context-only benchmark charts
     P->>M: Yahoo chart requests
     alt One provider response fails
@@ -288,7 +298,8 @@ sequenceDiagram
     end
     A->>E: adaptYahooChart + buildEngineContexts
     E-->>A: UnifiedAsset list + top-down contexts
-    A->>E: runAutoJournal(assets, openRows, contexts)
+    A->>DB: Claim due slot after usable market IO (last_run_at)
+    A->>E: runAutoJournal(assets, openRows, {contexts, signalStates})
     E-->>A: progress updates + closures + current-signal inserts
 
     opt Existing trade reaches a non-terminal TP milestone
@@ -304,7 +315,8 @@ sequenceDiagram
       A->>A: Skip new emission
     end
 
-    opt There are inserts or closures
+    A->>DB: Upsert episode states reconciled from successful journal writes
+    opt There are successful inserts or closures
       A->>E: buildAutoJournalAlerts + formatAlertBatchesForDiscord
       E-->>A: Complete alert batches ≤1900 chars
       loop Each batch
@@ -317,7 +329,6 @@ sequenceDiagram
         end
       end
     end
-    A->>DB: Stamp journal_settings.last_run_at
     A-->>S: Run summary
   end
 
@@ -329,7 +340,11 @@ sequenceDiagram
   P-->>UI: Chart response
   UI->>E: Browser adapter → computeSignal → computeTradingPlan
   UI->>E: enrichAsset (+ browser fundamentals when available)
-  E-->>UI: Screener/detail/trading setup
+  E-->>UI: Raw market analysis and candidate plan
+  UI->>DB: Read journal_signal_states (60s, mount/focus, refresh)
+  DB-->>UI: Recorded episodes or read error
+  UI->>E: applySignalEpisode(raw asset, saved episode, read availability)
+  E-->>UI: Shared table/dialog status + fixed active setup
   UI->>DB: Read journal_trades via useJournalTrades
   DB-->>UI: Open/closed rows
   UI-->>UI: Journal dashboard, history, P&L
@@ -363,6 +378,7 @@ sequenceDiagram
 |---|---|
 | Signal source / Sumber sinyal | Browser and Edge use the same pure modules bundled from `src/`; Edge imports the façade at `src/core/edge-engine.ts` and runs `_engine.mjs`. |
 | Trading plan order / Urutan trading plan | `yahoo-adapter.ts` calls `computeSignal`, then `computeTradingPlan` for non-neutral output. `enrichAsset` runs afterward. |
+| Terminal publication / Publikasi terminal | `applySignalEpisode` uses `journal_signal_states` for published LONG/SHORT and immutable setup levels; raw candidates cannot publish themselves. Episode and journal reads poll every 60 seconds and refetch on mount/focus. |
 | Edge vs browser / Edge vs browser | Edge does not have browser fundamentals. Browser detail may add fundamentals, smart money, accumulation, relative strength, backtest, and calibration overlays. |
 | Universe / Universe | Active `journal_assets` rows drive premium browser and server crypto/US/IDX scans; commodities and forex are constant-driven. Discovery only mutates `source='auto'` rows. |
 | Journal writes / Penulisan jurnal | `auto-journal` uses the Supabase service-role client for inserts/updates; browser journal reads are entitlement/RLS-gated. |
@@ -370,6 +386,7 @@ sequenceDiagram
 
 ## Related docs / Dokumen terkait
 
+- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — aturan dan contoh perjalanan trading dalam bahasa Indonesia.
 - [`00-architecture.md`](00-architecture.md) — runtime placement and pure/IO split.
 - [`02-data-flow.md`](02-data-flow.md) — browser market-data path and state.
 - [`05-edge-functions.md`](05-edge-functions.md) — cron gates, database reads/writes, and Discord.

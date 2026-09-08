@@ -13,6 +13,8 @@
 
 > Entry point: `src/core/engine/signals.ts:78` (`computeSignal`).
 
+Output engine adalah **arah analisis mentah**, belum merupakan sinyal trade terminal. Setelah enrichment, browser memakai `applySignalEpisode` dengan `journal_signal_states`: hanya episode aktif dengan setup valid menerbitkan LONG/SHORT. Kandidat yang belum tercatat berlabel Netral; setup trade aktif tetap memakai snapshot server. *Engine output is raw analysis; terminal publication requires a recorded active episode and valid saved setup. Unrecorded candidates display Neutral.*
+
 ---
 
 ## 🧠 Pipeline 5-Layer
@@ -90,7 +92,7 @@ Fundamental, earnings, dan analyst data ditampilkan sebagai konteks. Helper `app
 ## 📊 Backtest & Calibration
 
 ### Backtest — `backtest.ts:364` (`runBacktest`)
-🇮🇩 Walk-forward backtester **no lookahead**. Keputusan candle `i` dieksekusi di open `i+1`; reversal ditutup di open sebelum high/low diproses. Default `progressive`: TP1 memindahkan stop ke entry, TP2 memindahkannya ke TP1, dan TP final menutup posisi. Stop baru aktif mulai candle berikutnya; gap stop fill di harga open. `terminal`, `secured`, scale-out, dan TP1 tetap tersedia sebagai mode riset pembanding. Gross+net R, fee/slippage, timestamp keputusan/entry/exit ikut dicatat.
+🇮🇩 Walk-forward backtester **no lookahead**. Keputusan candle `i` dieksekusi di open `i+1`; reversal ditutup di open sebelum high/low diproses. Default `progressive`: TP1 memindahkan stop ke entry, TP2 memindahkannya ke TP1, dan TP final menutup posisi. Stop baru tidak diterapkan mundur pada wick; close candle selesai dapat mengonfirmasi retracement pada stop baru. Gap melewati stop aktif diisi di harga open. `terminal`, `secured`, scale-out, dan TP1 tetap tersedia sebagai mode riset pembanding. Gross+net R, fee/slippage, timestamp keputusan/entry/exit ikut dicatat.
 
 🇺🇸 No-lookahead walk-forward backtest. Its default progressive mode moves the stop to entry after TP1 and one target behind after each later partial TP; terminal/secured/scale-out/TP1 remain explicit research comparisons.
 
@@ -103,7 +105,7 @@ Fundamental, earnings, dan analyst data ditampilkan sebagai konteks. Helper `app
 
 `npm run gate:compare -- 10` memakai kontrak production `60d/1h`, lalu membagi waktu 50% history / 25% validation / 25% holdout. Kandidat harus menaikkan win rate ≥2pp tanpa menurunkan expectancy/PF, tanpa memperburuk drawdown, dan mempertahankan ≥50% trade.
 
-Script ini khusus riset filter entry hipotetis. Production tidak memakai hasil kandidat secara otomatis: setiap sinyal actionable yang tampil dari scan fresh tetap masuk jurnal agar parity screener → jurnal terjaga.
+Script ini khusus riset filter entry hipotetis. Production tidak memakai hasil kandidat secara otomatis. Server mencatat kandidat yang lolos guard entry dan episode; terminal hanya menerbitkan LONG/SHORT dari episode aktif dengan snapshot valid hasil pencatatan tersebut.
 
 Audit 2026-08-24: tidak ada kandidat baru yang lolos validation, jadi filter regime/HTF/tier **tidak dipromosikan** walaupun beberapa tampak bagus di holdout. Ini mencegah tuning ke satu periode; jalur live hanya menerima perbaikan correctness dan gate benchmark yang sudah ada.
 
@@ -124,6 +126,7 @@ File: `src/core/engine/trading-plan.ts:141` (`computeTradingPlan`).
 ---
 
 ## 🔗 Terkait / Related
+- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — aturan indikator, entry, setup tetap, dan perbedaan metrik
 - [`01-terminal-screener.md`](01-terminal-screener.md) — konsumen engine
 - [`../tsd/06-engine-internals.md`](../tsd/06-engine-internals.md) — tiap export + formula
 - [`03-auto-journal.md`](03-auto-journal.md) — engine di cron

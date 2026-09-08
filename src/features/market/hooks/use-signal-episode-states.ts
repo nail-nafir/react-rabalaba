@@ -10,7 +10,9 @@ export function useSignalEpisodeStates() {
   const query = useQuery({
     queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
     staleTime: 60_000,
-    refetchInterval: 1_800_000,
+    refetchInterval: 60_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("journal_signal_states")

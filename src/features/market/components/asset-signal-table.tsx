@@ -82,6 +82,7 @@ import {
 import {
   applySignalEpisode,
   signalEpisodeKey,
+  type TerminalAsset,
 } from "@/core/automation/signal-episode";
 import { formatPrice, formatVolume } from "@/lib/formatters";
 import type { Column } from "@tanstack/react-table";
@@ -94,7 +95,11 @@ import { FilterGroup } from "@/components/shared/filter-group";
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
 
-function SortIcon({ column }: { column: Column<UnifiedAsset, unknown> }) {
+function SortIcon<TData extends UnifiedAsset>({
+  column,
+}: {
+  column: Column<TData, unknown>;
+}) {
   const isSorted = column.getIsSorted();
   if (isSorted === "asc")
     return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
@@ -140,6 +145,8 @@ export function AssetSignalTable() {
   const {
     byKey: signalStates,
     isLoading: signalStatesLoading,
+    isSuccess: signalStatesAvailable,
+    isFetching: signalStatesFetching,
   } = useSignalEpisodeStates();
   const { data: cryptoAssets, isLoading: cryptoLoading } = useMarketData(
     universe.crypto,
@@ -179,10 +186,12 @@ export function AssetSignalTable() {
   // Refresh the whole screener: market data + its public track-record aggregate.
   const queryClient = useQueryClient();
   const assetRefreshingCount = useIsFetching({ queryKey: ["asset-data"] });
-  const isRefreshing = assetRefreshingCount > 0 || successRatesFetching;
+  const isRefreshing =
+    assetRefreshingCount > 0 || successRatesFetching || signalStatesFetching;
   const handleRefresh = () => {
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
+      queryClient.invalidateQueries({ queryKey: ["journal-trades"] }),
       queryClient.invalidateQueries({
         queryKey: PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY,
       }),
@@ -259,8 +268,7 @@ export function AssetSignalTable() {
   // via the shared enrichAsset chain (same one the detail dialog uses):
   // benchmark context may de-rate; optional flow/fundamental reads are
   // display-only. computeSignal stays pure and this layer never mutates cache.
-  const enrichedAssets = useMemo<UnifiedAsset[]>(() => {
-    if (allAssets.length === 0) return allAssets;
+  const enrichedAssets = useMemo<TerminalAsset[]>(() => {
     return allAssets.map((asset) => {
       const enriched = enrichAsset(asset, {
         cryptoContext: cryptoContext ?? undefined,
@@ -271,9 +279,18 @@ export function AssetSignalTable() {
       return applySignalEpisode(
         enriched,
         signalStates.get(signalEpisodeKey(asset.symbol, asset.timeframe)),
+        signalStatesAvailable,
       );
     });
-  }, [allAssets, cryptoContext, idxContext, usContext, smartMoney, signalStates]);
+  }, [
+    allAssets,
+    cryptoContext,
+    idxContext,
+    usContext,
+    smartMoney,
+    signalStates,
+    signalStatesAvailable,
+  ]);
 
   // Tahan SATU skeleton sampai SEMUA sumber screener selesai initial load:
   // base assets (semua kategori) + market context BTC + smart-money crypto —
@@ -337,7 +354,7 @@ export function AssetSignalTable() {
     signalFilter,
   ]);
 
-  const columns = useMemo<ColumnDef<UnifiedAsset>[]>(
+  const columns = useMemo<ColumnDef<TerminalAsset>[]>(
     () => [
       {
         accessorKey: "symbol",
@@ -372,7 +389,9 @@ export function AssetSignalTable() {
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
-            {t(`common.asset_types.${row.original.assetType.replaceAll("-", "_")}`)}
+            {t(
+              `common.asset_types.${row.original.assetType.replaceAll("-", "_")}`,
+            )}
           </span>
         ),
       },
@@ -574,10 +593,18 @@ export function AssetSignalTable() {
         cell: ({ row }) => {
           if (!row.original.outlook) return "-";
           const signal = row.original.outlook.signal;
+          const { signalStatus } = row.original;
           const colors = SIGNAL_COLORS[signal];
           return (
             <Badge
               variant="outline"
+              title={
+                signalStatus === "pending" ||
+                signalStatus === "blocked" ||
+                signalStatus === "unavailable"
+                  ? t(`dialog.signal_${signalStatus}_note`)
+                  : undefined
+              }
               className={cn(
                 COMPACT_SIGNAL_BADGE_CLASSNAME,
                 colors.bg,
@@ -585,7 +612,11 @@ export function AssetSignalTable() {
                 colors.border,
               )}
             >
-              {t(SIGNAL_LABEL_KEYS[signal])}
+              {t(
+                signalStatus === "unavailable"
+                  ? "dialog.signal_unavailable"
+                  : SIGNAL_LABEL_KEYS[signal],
+              )}
             </Badge>
           );
         },
@@ -620,7 +651,7 @@ export function AssetSignalTable() {
   });
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       {/* Header section */}
       <div className="flex flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
@@ -857,6 +888,8 @@ export function AssetSignalTable() {
                 <AssetDetailDialog
                   key={row.id}
                   symbol={row.original.symbol}
+                  signalStateAvailable={signalStatesAvailable}
+                  signalStateFetching={signalStatesFetching}
                   signalState={signalStates.get(
                     signalEpisodeKey(
                       row.original.symbol,
@@ -896,6 +929,6 @@ export function AssetSignalTable() {
       </div>
 
       {!isLoading && <DataTablePagination table={table} />}
-    </>
+    </div>
   );
 }

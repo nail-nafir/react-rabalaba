@@ -15,6 +15,7 @@ import {
 } from "@/core/engine/accumulation";
 import { enrichAsset } from "@/core/engine/enrichment";
 import { applySignalEpisode } from "@/core/automation/signal-episode";
+import { SIGNAL_EPISODE_STATES_QUERY_KEY } from "@/features/market/hooks/use-signal-episode-states";
 import { resolveAnalysisText } from "@/lib/analysis-text";
 import { normalizeYahooCandles } from "@/core/market/candles";
 import { TradeSetupChart, TradeSetupChartSettings } from "./trade-setup-chart";
@@ -152,18 +153,27 @@ function AssetDetailErrorContent({ onRetry }: { onRetry: () => void }) {
 interface AssetDetailDialogProps {
   symbol: string;
   signalState?: JournalSignalStateRow;
+  signalStateAvailable: boolean;
+  signalStateFetching: boolean;
   trigger: ReactElement;
 }
 
 export function AssetDetailDialog({
   symbol,
   signalState,
+  signalStateAvailable,
+  signalStateFetching,
   trigger,
 }: AssetDetailDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <AssetDetailDialogContent symbol={symbol} signalState={signalState} />
+      <AssetDetailDialogContent
+        symbol={symbol}
+        signalState={signalState}
+        signalStateAvailable={signalStateAvailable}
+        signalStateFetching={signalStateFetching}
+      />
     </Dialog>
   );
 }
@@ -171,7 +181,9 @@ export function AssetDetailDialog({
 function AssetDetailDialogContent({
   symbol,
   signalState,
-}: Pick<AssetDetailDialogProps, "symbol" | "signalState">) {
+  signalStateAvailable,
+  signalStateFetching,
+}: Omit<AssetDetailDialogProps, "trigger">) {
   const { t } = useTranslation();
   const { hasAccess } = usePremiumAccess();
 
@@ -232,6 +244,7 @@ function AssetDetailDialogContent({
               fundamentals: fundamentals ?? undefined,
             }),
             signalState,
+            signalStateAvailable,
           )
         : undefined,
     [
@@ -242,6 +255,7 @@ function AssetDetailDialogContent({
       smartMoney,
       fundamentals,
       signalState,
+      signalStateAvailable,
     ],
   );
   const outlook = enriched?.outlook ?? undefined;
@@ -249,6 +263,7 @@ function AssetDetailDialogContent({
   const relativeStrength = enriched?.relativeStrength;
   const assetFundamentals = enriched?.fundamentals;
   const tradingPlan = enriched?.tradingPlan;
+  const signalStatus = enriched?.signalStatus;
 
   // Normalized OHLC candles (shared by the chart, backtest and share card).
   const candles = useMemo(
@@ -326,7 +341,11 @@ function AssetDetailDialogContent({
                 SIGNAL_COLORS[outlook.signal].border,
               )}
             >
-              {t(SIGNAL_LABEL_KEYS[outlook.signal])}
+              {t(
+                signalStatus === "unavailable"
+                  ? "dialog.signal_unavailable"
+                  : SIGNAL_LABEL_KEYS[outlook.signal],
+              )}
             </Badge>
           )}
         </DialogTitle>
@@ -522,7 +541,38 @@ function AssetDetailDialogContent({
 
               {/* Custom SVG candlestick visual trade setup */}
               {outlook.signal === "neutral" || !tradingPlan || !asset ? (
-                outlook.suppressed ? (
+                signalStatus === "unavailable" ? (
+                  <div
+                    className="flex flex-col items-start gap-3"
+                    role="status"
+                  >
+                    <p className="text-sm text-muted-foreground">
+                      {t("dialog.signal_unavailable_note")}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={signalStateFetching}
+                      onClick={() => {
+                        void Promise.all([
+                          queryClient.invalidateQueries({
+                            queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
+                          }),
+                          queryClient.invalidateQueries({
+                            queryKey: ["journal-trades"],
+                          }),
+                        ]);
+                      }}
+                    >
+                      <RotateCw data-icon="inline-start" />
+                      {t("common.retry")}
+                    </Button>
+                  </div>
+                ) : signalStatus === "pending" || signalStatus === "blocked" ? (
+                  <p className="text-sm text-muted-foreground">
+                    {t(`dialog.signal_${signalStatus}_note`)}
+                  </p>
+                ) : outlook.suppressed ? (
                   <Card className="border border-amber-500/30 bg-amber-500/10">
                     <CardContent className="space-y-1">
                       <div className="flex items-start justify-between gap-2">
@@ -547,21 +597,26 @@ function AssetDetailDialogContent({
                   </p>
                 )
               ) : (
-                <TradeSetupChart
-                  candles={candles}
-                  plan={tradingPlan}
-                  signal={outlook.signal}
-                  assetType={asset.assetType}
-                  currentPrice={currentPrice}
-                  showEma20={showEma20}
-                  showEma50={showEma50}
-                  showEma200={showEma200}
-                  showBollingerBands={showBollingerBands}
-                  showVolume={showVolume}
-                  showRsi={showRsi}
-                  showZones={showZones}
-                  showGrid={showGrid}
-                />
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {t("dialog.recorded_setup_note")}
+                  </p>
+                  <TradeSetupChart
+                    candles={candles}
+                    plan={tradingPlan}
+                    signal={outlook.signal}
+                    assetType={asset.assetType}
+                    currentPrice={currentPrice}
+                    showEma20={showEma20}
+                    showEma50={showEma50}
+                    showEma200={showEma200}
+                    showBollingerBands={showBollingerBands}
+                    showVolume={showVolume}
+                    showRsi={showRsi}
+                    showZones={showZones}
+                    showGrid={showGrid}
+                  />
+                </>
               )}
             </div>
 

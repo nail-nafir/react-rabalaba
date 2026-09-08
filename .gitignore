@@ -30,6 +30,7 @@ dist-ssr
 .env.production
 .env.staging
 .env.development
+.dev.vars*
 
 # Generated edge-function engine bundle (built from src/ via esbuild)
 supabase/functions/**/_engine.mjs

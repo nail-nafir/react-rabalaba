@@ -401,12 +401,17 @@ export function JournalDashboard({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
             {t("journal.portfolio_stats")}
           </h2>
-          <Skeleton className="h-7 w-40" />
+          <FilterGroup
+            value={timeframe}
+            options={timeframeOptions}
+            onChange={setTimeframe}
+            disabled
+          />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <ChartCard>
@@ -436,10 +441,9 @@ export function JournalDashboard({
             <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
               <Skeleton className="h-48 w-full rounded-xl" />
               <div className="mt-3 flex w-full justify-center gap-4">
-                <Skeleton className="h-20 w-3" />
-                <Skeleton className="h-20 w-3" />
-                <Skeleton className="h-20 w-3" />
-                <Skeleton className="h-20 w-3" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
               </div>
             </div>
           </ChartCard>
@@ -499,7 +503,7 @@ export function JournalDashboard({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-row items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
           {t("journal.portfolio_stats")}
@@ -508,6 +512,7 @@ export function JournalDashboard({
           value={timeframe}
           options={timeframeOptions}
           onChange={setTimeframe}
+          disabled={isLoading}
         />
       </div>
 

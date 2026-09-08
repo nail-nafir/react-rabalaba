@@ -1,7 +1,7 @@
 # Dokumentasi RabaLaba / RabaLaba Documentation
 
-> 🇮🇩 Index navigasi buat semua dokumentasi proyek RabaLaba. Tiap dokumen bilingual Indonesia + English.
-> 🇺🇸 Navigation index for all RabaLaba project documentation. Each document is bilingual Indonesian + English.
+> 🇮🇩 Index navigasi dokumentasi RabaLaba. Spesifikasi umumnya bilingual; panduan aturan trading ditulis dalam bahasa Indonesia.
+> 🇺🇸 RabaLaba documentation index. Specifications are generally bilingual; the trading-rules guide is written in Indonesian.
 
 ---
 
@@ -13,7 +13,7 @@
 | `tsd/` | **Technical Spec Doc** — gimana kode diatur, arsitektur, data flow, schema, engine internals. *How the code is organized, architecture, data flow, schema, engine internals.* | Engineer |
 | `testing/` | **Test docs** — framework, coverage inventory, gap analysis, convention. *Test framework, coverage inventory, gap analysis, convention.* | Engineer/QA |
 | `ops/` | **Ops** — runbook produksi & security/RLS rationale. *Production runbook & security/RLS rationale.* | Engineer/ops |
-| `explainer/` | Dokumen ELI5 & SDD formal legacy. *Legacy ELI5 & formal SDD.* | Semua |
+| `explainer/` | Panduan aturan trading, ELI5, dan SDD. *Trading rules, ELI5, and SDD.* | Semua |
 
 ---
 
@@ -62,10 +62,11 @@
 | [`ops/runbook.md`](ops/runbook.md) | Runbook produksi: health check, incident playbook, rollback, restore DB, pause darurat |
 | [`ops/security.md`](ops/security.md) | Threat model, RLS/RPC rationale, secret management, trust boundaries |
 
-### Explainer (legacy)
+### Explainer
 
 | File | Topik / Topic |
 |---|---|
+| [`explainer/aturan-main-trading.md`](explainer/aturan-main-trading.md) | Aturan sinyal → setup tetap → jurnal/Discord → TP/SL → exit/reset, contoh LONG/SHORT, skor dan interval pembaruan |
 | [`explainer/auto-journal-explained.md`](explainer/auto-journal-explained.md) | ELI5 cara kerja robot *ELI5 how the robot works* |
 | [`explainer/auto-journal-system-design.md`](explainer/auto-journal-system-design.md) | SDD formal auto-journal *Formal SDD* |
 | [`explainer/server-vs-browser.md`](explainer/server-vs-browser.md) | Di mana kode jalan (4 tempat) + jangan percaya browser |

@@ -113,7 +113,7 @@ export const LearnContent: React.FC = () => {
 
       {/* Tab 1: Patterns & Formations */}
       {activeTab === "patterns" && (
-        <section className="flex flex-col gap-4">
+        <section className="flex flex-col gap-3">
           {/* Section Header Info */}
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">

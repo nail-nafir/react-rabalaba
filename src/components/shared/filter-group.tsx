@@ -20,6 +20,7 @@ interface FilterGroupProps<T extends string> {
   options: readonly FilterOption<T>[];
   onChange: (value: NoInfer<T>) => void;
   className?: string;
+  disabled?: boolean;
   /** "tabs" (default) = segmented control on desktop; "select" forces the
    *  dropdown on every breakpoint (mobile always renders the dropdown). */
   variant?: "tabs" | "select";
@@ -30,6 +31,7 @@ export function FilterGroup<T extends string>({
   options,
   onChange,
   className,
+  disabled = false,
   variant = "tabs",
 }: FilterGroupProps<T>) {
   const isMobile = useIsMobile();
@@ -38,13 +40,15 @@ export function FilterGroup<T extends string>({
     return (
       <Select
         value={value}
+        disabled={disabled}
         onValueChange={(nextValue) => {
-          if (nextValue !== null) onChange(nextValue as T);
+          if (!disabled && nextValue !== null) onChange(nextValue as T);
         }}
       >
         <SelectTrigger
           className={cn(
             "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8 cursor-pointer",
+            disabled && "cursor-not-allowed opacity-60",
             className,
           )}
         >
@@ -71,7 +75,7 @@ export function FilterGroup<T extends string>({
     <Tabs
       value={value}
       onValueChange={(nextValue) => {
-        if (nextValue !== null) onChange(nextValue as T);
+        if (!disabled && nextValue !== null) onChange(nextValue as T);
       }}
       className="w-fit"
     >
@@ -89,7 +93,9 @@ export function FilterGroup<T extends string>({
               "h-6 px-2 text-[10px] font-bold whitespace-nowrap uppercase tracking-wider cursor-pointer rounded-[min(var(--radius-md),10px)] transition-all",
               "text-muted-foreground hover:bg-accent hover:text-foreground",
               "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs",
+              disabled && "cursor-not-allowed opacity-60",
             )}
+            disabled={disabled}
           >
             {option.label}
           </TabsTrigger>

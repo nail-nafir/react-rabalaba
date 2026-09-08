@@ -47,7 +47,9 @@ Komponen: `src/features/market/components/asset-signal-table.tsx:90` (`AssetSign
 | Komoditas/Forex | selalu `DEFAULT_COMMODITY_TICKERS` / `DEFAULT_FOREX_TICKERS` (`:142-147`) |
 
 ### Data fetching (`:133-154`)
-`useMarketData(...)` per kategori (crypto/usStock/idStock/commodities/forex/favorites), semua share query key `["asset-data",…]`. `usePublicJournalSuccessRates()` mengambil agregat `{symbol,wins,total}` lewat RPC publik tanpa membuka row jurnal mentah. Tombol refresh meng-invalidasi kedua query family sekaligus.
+`useMarketData(...)` per kategori (crypto/usStock/idStock/commodities/forex/favorites), semua share query key `["asset-data",…]`. `usePublicJournalSuccessRates()` mengambil agregat `{symbol,wins,total}` lewat RPC publik tanpa membuka row jurnal mentah. `useSignalEpisodeStates()` membaca status dan snapshot dari `journal_signal_states`. Refresh menyegarkan data market, agregat keberhasilan, episode, dan cache jurnal.
+
+`applySignalEpisode` memproyeksikan hasil enrichment menjadi model tampilan lokal: LONG/SHORT hanya untuk episode aktif dengan setup tersimpan yang valid. Kandidat belum tercatat dan arah lama diblokir sama-sama berlabel **Netral**, dengan penjelasan sesuai alasan internalnya. State gagal dibaca atau setup rusak → **Tidak tersedia** dan tindakan coba lagi di dialog. Tabel dan dialog memakai state serta hasil pembacaan yang sama. Episode dan jurnal dipoll 60 detik, serta dibaca ulang saat mount/focus.
 
 ### Top-down context (`:156-166`)
 `useCryptoContext` (BTC), `useIdxContext` (IHSG+rapih), `useUsContext` (S&P+VIX+DXY) — subscribe cache shared, nyaris nol fetch ekstra.
@@ -72,7 +74,7 @@ TanStack Table, `pageSize 10` (`:553`):
 | **Strength** | `StrengthBar` (default sort desc) |
 | **Grade / Tier** | badge A/B/C + hint suppressed |
 | **Success rate** | agregat all-time per-symbol dari RPC `get_public_journal_success_rates`; denominator hanya win+loss (impas dikecualikan), anon/free/premium melihat angka identik, jurnal mentah tetap premium |
-| Signal | badge LONG/SHORT/NEUTRAL |
+| Signal | LONG/SHORT dari episode aktif; Netral ketika belum ada trade aktif; Tidak tersedia jika status/setup tidak dapat diverifikasi |
 | Sparkline | `Sparkline` mini price line |
 
 ### Kontrol (`:589-703`)
@@ -86,7 +88,7 @@ TanStack Table, `pageSize 10` (`:553`):
 ### Loading strategy (`:255-275`)
 Skeleton ditahan sampai **semua** sumber (aset dasar + BTC context + smart-money) selesai `isLoading`/`isPending` awal, jadi tabel muncul ter-sort sekaligus (tanpa per-kategori flash). Background refetch update nilai in-place.
 
-Success-rate adalah data sekunder: cell memakai skeleton berukuran tetap saat RPC masih pending, `Tidak tersedia` saat gagal, dan `Belum ada` hanya kalau simbol benar-benar belum punya trade tertutup.
+Pembacaan episode awal ikut loading tabel. Kegagalan episode tidak menghilangkan harga/analisis, tetapi menahan label LONG/SHORT. Success-rate adalah data sekunder: cell memakai skeleton berukuran tetap saat RPC masih pending, `Tidak tersedia` saat gagal, dan `Belum ada` hanya kalau simbol benar-benar belum punya trade tertutup.
 
 ### Row click (`:766`)
 Setiap row menjadi `DialogTrigger` untuk `AssetDetailDialog` miliknya. Tidak ada query parameter URL atau visibility state global; Radix menangani buka, tutup, fokus, Escape, dan restore-focus.
@@ -106,7 +108,7 @@ Komponen: `src/features/trading-plan/components/asset-detail-dialog.tsx:92` (`As
 |---|---|
 | Price row + favorite toggle | harga live + toggle favorite |
 | Meta badges | regime, trend, tier, risk |
-| **Trading Plan** | `TradeSetupChart` — entry/SL/TP1-3, zona profit/risk |
+| **Trading Plan** | `TradeSetupChart` dari snapshot episode aktif — entry, SL awal, TP, R:R tetap; harga dan evidence boleh berubah. SL aktif mengikuti milestone jurnal. |
 | **Supporting evidence** | `CategoryScoreChart` (4 kategori), `WinRateRing` (calibrated + sample), fundamentals/analyst overlay, accumulation flow panel, relative-strength panel, smart-money positioning panel, market-context-vs-benchmark panel, indicator status grid |
 | **Technical Indicators** | grid status per indikator |
 | **Analysis** | narasi via `resolveAnalysisText` (i18n key) |
@@ -135,6 +137,7 @@ File: `src/features/trading-plan/model/share-card.ts:666` (`buildShareCardSvg`),
 ---
 
 ## 🔗 Terkait / Related
+- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — kontrak publikasi dan contoh perjalanan trade
 - [`02-trading-engine.md`](02-trading-engine.md) — detail engine sinyal & enrichment
 - [`../tsd/06-engine-internals.md`](../tsd/06-engine-internals.md) — formula mendalam
 - [`../tsd/02-data-flow.md`](../tsd/02-data-flow.md) — flow data market

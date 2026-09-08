@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { JournalDashboard } from "@/features/journal/components/journal-dashboar
 import { TopPerformers } from "@/features/journal/components/top-performers";
 import { useJournalTrades } from "@/features/journal/hooks/use-journal-trades";
 import { useJournalPeriod } from "@/features/journal/hooks/use-journal-period";
+import { SIGNAL_EPISODE_STATES_QUERY_KEY } from "@/features/market/hooks/use-signal-episode-states";
 
 /**
  * Single owner for the premium journal query and detail dialog. The requested
@@ -22,6 +24,7 @@ import { useJournalPeriod } from "@/features/journal/hooks/use-journal-period";
  */
 export function JournalTerminalContent() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const period = useJournalPeriod();
   const { openTrades, history, isLoading, isFetching, refetch } =
     useJournalTrades({
@@ -81,6 +84,9 @@ export function JournalTerminalContent() {
           isFetching={isFetching}
           onRefresh={() => {
             void refetch();
+            void queryClient.invalidateQueries({
+              queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
+            });
           }}
         />
       </section>

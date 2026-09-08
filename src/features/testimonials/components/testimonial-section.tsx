@@ -198,7 +198,7 @@ export function TestimonialSection() {
                     ]
                   : []
               }
-              className="relative w-full max-w-5xl mx-auto px-1 sm:px-4"
+              className="relative mx-auto w-[calc(100%-6rem)] max-w-6xl"
             >
               <CarouselContent className="-ml-4 py-2">
                 {testimonials.map((testimonial) => {
@@ -219,7 +219,7 @@ export function TestimonialSection() {
                             : "basis-full md:basis-1/2 lg:basis-1/3",
                       )}
                     >
-                      <Card className="flex flex-col justify-between w-full h-full">
+                      <Card className="flex h-full w-full flex-col justify-between border border-border bg-card/45 backdrop-blur-xs">
                         <CardHeader className="grid grid-cols-[auto_1fr] gap-3">
                           <Avatar size="lg">
                             <AvatarFallback>
@@ -284,7 +284,7 @@ export function TestimonialSection() {
                             &ldquo;{testimonial.body}&rdquo;
                           </blockquote>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="mt-auto border-t border-border/40">
                           <div
                             role="img"
                             aria-label={t(
@@ -315,8 +315,8 @@ export function TestimonialSection() {
 
               {canScroll && (
                 <>
-                  <CarouselPrevious className="left-0 h-10 w-10 rounded-full border-border/80 bg-background/80 backdrop-blur-xs hover:bg-accent hover:text-foreground cursor-pointer shadow-md transition-all z-20" />
-                  <CarouselNext className="right-0 h-10 w-10 rounded-full border-border/80 bg-background/80 backdrop-blur-xs hover:bg-accent hover:text-foreground cursor-pointer shadow-md transition-all z-20" />
+                  <CarouselPrevious />
+                  <CarouselNext />
                 </>
               )}
             </Carousel>

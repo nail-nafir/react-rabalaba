@@ -12,7 +12,8 @@ External APIs                 Adapters                 react-query cache        
 ─────────────                 ────────                 ────────────────         ──────              ──
 CoinGecko /global + /coins/markets ─▶ adaptCoinGeckoDominance ─▶ ["dominance"] ─▶ crypto context + BTC.D footer ─▶ MarketSummaryRow
 Binance derivatives  ───────────────────────────────────▶ ["smart-money",sym]    ─▶ derivePositioning   ─▶ AssetSignalTable
-Yahoo chart          ─────────▶ adaptYahooChart ───────▶ ["asset-data",sym,…]   ─▶ computeSignal        ─▶ screener / dialog
+Yahoo chart          ─────────▶ adaptYahooChart + computeSignal ─▶ ["asset-data",sym,…] ─▶ enrichAsset ─▶ applySignalEpisode ─▶ screener / dialog
+Supabase episodes    ──────────────────────────────────▶ ["signal-episode-states"] ──────────────────▶ applySignalEpisode
 Yahoo quoteSummary   ─────────▶ adaptYahooFundamentals ─▶ ["fundamentals",sym]   ─▶ display-only context ─▶ detail dialog
 Yahoo calendar       ─────────▶ fetchEconomicCalendar ──▶ ["economic-calendar"]  ─                      ─▶ CalendarPage
 Supabase journal     ─────────▶ rowToFollowedTrade ─────▶ ["journal-trades"]     ─▶ buildTrackerStats   ─▶ JournalDashboard
@@ -55,6 +56,10 @@ Global default (`app/config/query-client.ts:3`): `staleTime`/`refetchInterval` 3
 | `useSmartMoney` (`:44`)          | `["smart-money",sym]` per crypto           | 30 min                      | `MAX_SYMBOLS=40`, plain object (bukan Map)    |
 | `useFundamentals` (`:17`)        | `["fundamentals",sym]`                     | 1 day                       | stocks only                                   |
 | `useEconomicCalendar` (`:7`)     | `["economic-calendar"]`                    | 30 min                      | poll auto-stop unmount                        |
+| `useSignalEpisodeStates` (market feature) | `["signal-episode-states"]` | 60 sec; always refetch mount/window focus | shared state and read status for table/dialog |
+| `useJournalTrades` (journal feature) | `["journal-trades"]` | 60 sec; always refetch mount/window focus | premium journal cache |
+
+`applySignalEpisode` publishes only valid active saved setups. Raw candidates stay internally pending and closed same-direction episodes stay blocked; both display Neutral with their respective explanation. Read errors or invalid snapshots display Unavailable. Entry/TP/initial SL/R:R are copied from the episode snapshot, while current market evidence remains live. Manual market/journal refresh and completed admin scans invalidate both episode and journal caches. See [aturan main trading](../explainer/aturan-main-trading.md).
 
 > 🇮🇩 Pola kunci: **dedupe-by-shared-key** — context subscribe cache screener (`["asset-data",…]`) → nyaris nol fetch ekstra di `/terminal`. `useMarketContexts` dan `useCryptoContext` berbagi `["dominance"]`; seluruh identitas snapshot (BTC, ETH, delta, timestamp) masuk query key crypto context supaya recompute konsisten.
 > 🇺🇸 Key pattern: **dedupe-by-shared-key** — contexts subscribe to the screener cache, while `useMarketContexts` and `useCryptoContext` share `["dominance"]`. The complete dominance snapshot identity is included in the crypto-context key.

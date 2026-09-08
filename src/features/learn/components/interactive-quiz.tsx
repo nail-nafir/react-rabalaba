@@ -1019,9 +1019,9 @@ export const InteractiveQuiz: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <section className="flex flex-col gap-3">
       {/* Section Header */}
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+      <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
         {t("learn.quiz_ui.title")}
       </h2>
 
@@ -1178,6 +1178,6 @@ export const InteractiveQuiz: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </section>
   );
 };

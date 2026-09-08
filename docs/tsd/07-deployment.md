@@ -73,6 +73,10 @@ Tiap file: `create extension pg_cron; pg_net;` → `vault.create_secret` (idempo
 | Var | Untuk / For |
 |---|---|
 | `COINGECKO_DEMO_API_KEY` / `COINGECKO_API_KEY` | inject `x-cg-demo-api-key` header di proxy coingecko (opsional, naikin quota) |
+| `VITE_SUPABASE_URL` | validasi bearer token chatbot melalui Supabase Auth |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | publishable key untuk Supabase Auth |
+
+Tambahkan juga Workers AI binding bernama `AI` di Cloudflare Pages. Untuk lokal, salin dua env Supabase di atas ke `.dev.vars`; binding `AI` sudah didefinisikan di `wrangler.toml`.
 
 ### Supabase Vault (cron)
 | Secret | Untuk / For |

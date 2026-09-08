@@ -50,13 +50,13 @@ services/supabase (database.types, journal-mapper façade) + features/*/model
 ## 🔁 Single-source engine — dua rumah / two homes
 
 🇮🇩 "Otak" (engine sinyal/TP-SL di `src/core/engine/` + automation core) **bukan** browser-only & **bukan** server-only — jalan di **dua-duanya**:
-- **Browser** → sinyal live di screener (real-time pas buka web).
+- **Browser** → analisis market terkini; sinyal LONG/SHORT dan setup terminal diproyeksikan dari episode server yang aktif dan valid (`journal_signal_states`).
 - **Cron (Deno)** → nulis jurnal otomatis (di-bundle jadi `_engine.mjs` lewat `npm run build:edge` — esbuild `--bundle --format=esm --platform=neutral --alias:@=./src`).
 
 Satu sumber kode, dua tempat eksekusi. `edge-engine.ts` (`src/core/edge-engine.ts:12`) facade re-export simbol yang cron import.
 
 🇺🇸 The "brain" (signal/TP-SL engine in `src/core/engine/` + automation core) is **neither** browser-only **nor** server-only — it runs in **both**:
-- **Browser** → live signals in the screener.
+- **Browser** → current market analysis; published LONG/SHORT and setups come from valid active server episodes (`journal_signal_states`).
 - **Cron (Deno)** → auto-journal writes (bundled as `_engine.mjs` via `npm run build:edge`).
 
 One source, two execution sites. `edge-engine.ts` (`src/core/edge-engine.ts:12`) is the facade re-exporting the symbols the cron imports.

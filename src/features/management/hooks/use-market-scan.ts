@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/services/supabase/client";
 import { toast } from "sonner";
+import { SIGNAL_EPISODE_STATES_QUERY_KEY } from "@/features/market/hooks/use-signal-episode-states";
 
 interface ScanResult {
   skipped?: string;
@@ -39,6 +40,9 @@ export function useMarketScan() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["journal-trades"] }),
         queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
+        queryClient.invalidateQueries({
+          queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
+        }),
       ]);
 
       toast.success(t("toasts.automation.scan_success"));
