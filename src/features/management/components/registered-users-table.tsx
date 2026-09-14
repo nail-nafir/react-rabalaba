@@ -46,7 +46,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { EmptyState } from "@/components/shared/empty-state";
+import { AlertCircle, Inbox } from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonAdminUserRow } from "@/components/shared/skeleton-card";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
@@ -104,7 +112,7 @@ function TierBadge({ tier }: { tier: string }) {
         : "bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground";
 
   const label = isPremium
-    ? t("admin.users_tier_premium", "Premium")
+    ? t("admin.users_tier_premium")
     : t(`admin.users_tier_${tier}`, tier);
 
   return (
@@ -183,15 +191,10 @@ function DeleteUserButton({
             <Trash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("admin.users_delete_confirm_title", {
-              defaultValue: "Hapus Pengguna?",
-            })}
+            {t("admin.users_delete_confirm_title")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t("admin.users_delete_confirm_desc", {
-              email: user.email,
-              defaultValue: `Apakah Anda yakin ingin menghapus pengguna ${user.email}? Semua data terkait pengguna ini akan terhapus permanen.`,
-            })}
+            {t("admin.users_delete_confirm_desc", { email: user.email })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -219,7 +222,13 @@ function DeleteUserButton({
 
 export function RegisteredUsersTable() {
   "use no memo";
-  const { users, isLoadingUsers: isLoading, deleteUser } = useAdminUsers();
+  const {
+    users,
+    isLoadingUsers: isLoading,
+    isErrorUsers,
+    refetchUsers,
+    deleteUser,
+  } = useAdminUsers();
   const { t } = useTranslation();
   const { user } = useAuth();
   const currentUserEmail = user?.email?.toLowerCase();
@@ -303,7 +312,7 @@ export function RegisteredUsersTable() {
                 variant="outline"
                 className="rounded-md text-[9px] font-extrabold uppercase tracking-wider border-destructive/40 bg-destructive/10 text-destructive shrink-0"
               >
-                Blocked
+                {t("admin.users_form_status_blocked")}
               </Badge>
             )}
           </div>
@@ -386,7 +395,7 @@ export function RegisteredUsersTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("table.disclaimer", "Penafian Risiko")}
+            {t("table.disclaimer")}
           </span>
         ),
         cell: ({ row }) => {
@@ -397,7 +406,7 @@ export function RegisteredUsersTable() {
                 variant="outline"
                 className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-rose-500/15 border-rose-500/30 text-rose-400"
               >
-                {t("admin.users_disclaimer_pending", "Belum")}
+                {t("admin.users_disclaimer_pending")}
               </Badge>
             );
           return (
@@ -432,7 +441,7 @@ export function RegisteredUsersTable() {
                     variant="link"
                     size="icon"
                     className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
-                    title={t("common.edit", "Edit")}
+                    title={t("common.edit")}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -515,7 +524,7 @@ export function RegisteredUsersTable() {
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">
-                    {t("admin.users_add_btn", "Tambah Pengguna")}
+                    {t("admin.users_add_btn")}
                   </span>
                 </Button>
               }
@@ -549,20 +558,50 @@ export function RegisteredUsersTable() {
                     <SkeletonAdminUserRow />
                   </TableRow>
                 ))
+              ) : isErrorUsers && users.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={columns.length} className="h-40 text-center">
+                    <Empty role="alert" className="min-h-40 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <AlertCircle aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                        <EmptyDescription>
+                          {t("common.load_error_description")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void refetchUsers()}
+                        >
+                          {t("common.retry")}
+                        </Button>
+                      </EmptyContent>
+                    </Empty>
+                  </TableCell>
+                </TableRow>
               ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={columns.length}
                     className="h-40 text-center"
                   >
-                    <EmptyState
-                      title={t("admin.users_empty_title")}
-                      description={
-                        search || tierFilter !== "all"
-                          ? t("admin.users_empty_filter_desc")
-                          : t("admin.users_empty_desc")
-                      }
-                    />
+                    <Empty className="min-h-40 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Inbox aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("admin.users_empty_title")}</EmptyTitle>
+                        <EmptyDescription>
+                          {search || tierFilter !== "all"
+                            ? t("admin.users_empty_filter_desc")
+                            : t("admin.users_empty_desc")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </TableCell>
                 </TableRow>
               ) : (

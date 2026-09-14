@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Copy } from "lucide-react";
+import { AlertCircle, Copy, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +17,14 @@ import { pickLocale } from "@/lib/localized";
 import { toast } from "sonner";
 import type { ReactElement } from "react";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 interface UserPaymentDialogProps {
   trigger: ReactElement;
@@ -25,7 +33,8 @@ interface UserPaymentDialogProps {
 export function UserPaymentDialog({ trigger }: UserPaymentDialogProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const { methods, isLoading } = usePaymentMethods();
+  const { methods, isLoading, isError, isFetching, refetch } =
+    usePaymentMethods();
 
   // Channels are admin-editable; the beneficiary follows the rows (all share one).
   const active = methods.filter((m) => m.active);
@@ -63,6 +72,41 @@ export function UserPaymentDialog({ trigger }: UserPaymentDialogProps) {
               <div className="flex h-24 items-center justify-center">
                 <Spinner className="h-5 w-5 text-muted-foreground" />
               </div>
+            ) : isError && active.length === 0 ? (
+              <Empty role="alert" className="min-h-40 rounded-xl border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <AlertCircle aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("common.load_error_description")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void refetch()}
+                    disabled={isFetching}
+                    aria-busy={isFetching}
+                  >
+                    {t("common.retry")}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            ) : active.length === 0 ? (
+              <Empty className="min-h-40 rounded-xl border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Inbox aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("payment.no_methods_title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("payment.no_methods_desc")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               active.map((item) => {
                 const desc = pickLocale(item.note, lang) as string | undefined;

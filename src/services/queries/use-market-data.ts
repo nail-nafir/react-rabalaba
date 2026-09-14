@@ -1,4 +1,8 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import {
+  useQueries,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   fetchYahooChart,
   searchYahooAssets,
@@ -6,6 +10,20 @@ import {
 import { adaptYahooChart } from "@/services/adapters/yahoo-adapter";
 import { DEFAULT_TIMEFRAME } from "@/constants/timeframes";
 import type { UnifiedAsset } from "@/types/asset";
+
+function combineMarketData(results: UseQueryResult<UnifiedAsset | null>[]) {
+  return {
+    data: results
+      .map((r) => r.data)
+      .filter((asset): asset is UnifiedAsset => !!asset),
+    dataUpdatedAt: Math.max(0, ...results.map((r) => r.dataUpdatedAt)),
+    isLoading: results.some((r) => r.isLoading),
+    isFetching: results.some((r) => r.isFetching),
+    isError: results.some((r) => r.isError),
+    error: results.find((r) => r.error)?.error,
+    refetch: () => Promise.all(results.map((r) => r.refetch())),
+  };
+}
 
 /**
  * Fetch market data for a batch of symbols.
@@ -27,20 +45,7 @@ export function useMarketData(symbols: string[]) {
       refetchInterval: 1_800_000,
       retry: 3,
     })),
-    combine: (results) => {
-      const data = results
-        .map((r) => r.data)
-        .filter((asset): asset is UnifiedAsset => !!asset);
-
-      return {
-        data,
-        isLoading: results.some((r) => r.isLoading),
-        isFetching: results.some((r) => r.isFetching),
-        isError: results.some((r) => r.isError),
-        error: results.find((r) => r.error)?.error,
-        refetch: () => results.forEach((r) => r.refetch()),
-      };
-    },
+    combine: combineMarketData,
   });
 }
 

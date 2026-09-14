@@ -182,13 +182,10 @@ export function FeatureTestimonialDialog({
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.testimonials.feature_title", "Slot Ulasan")}
+            {t("admin.testimonials.feature_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.testimonials.feature_desc",
-              "Pilih posisi terbaik dari slot publik yang tersedia buat menampilkan ulasan pilihan secara maksimal.",
-            )}
+            {t("admin.testimonials.feature_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -198,30 +195,21 @@ export function FeatureTestimonialDialog({
             <div className="flex items-center gap-3 font-semibold">
               <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-emerald-500" />
-                {t("admin.testimonials.summary_occupied", {
-                  count: occupiedCount,
-                  defaultValue: "{{count}} Terisi",
-                })}
+                {t("admin.testimonials.summary_occupied", { count: occupiedCount })}
               </span>
               <span className="text-muted-foreground font-medium flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-muted-foreground/40" />
-                {t("admin.testimonials.summary_empty", {
-                  count: emptyCount,
-                  defaultValue: "{{count}} Kosong",
-                })}
+                {t("admin.testimonials.summary_empty", { count: emptyCount })}
               </span>
             </div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-              {t("admin.testimonials.summary_total", {
-                count: maxSlots,
-                defaultValue: "Total {{count}} Slot",
-              })}
+              {t("admin.testimonials.summary_total", { count: maxSlots })}
             </span>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.testimonials.slot_label", "Pilih Posisi Slot")}
+              {t("admin.testimonials.slot_label")}
             </label>
 
             {/* Interactive Custom Slot Cards (Single Column Row List + Scrollable) */}
@@ -268,7 +256,7 @@ export function FeatureTestimonialDialog({
 
                         <div className="flex flex-col min-w-0">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Slot {slot}
+                            {t("admin.testimonials.slot_value", { slot })}
                           </span>
                           <span className="text-xs truncate mt-0.5">
                             {occupant ? (
@@ -284,10 +272,7 @@ export function FeatureTestimonialDialog({
                               </span>
                             ) : (
                               <span className="italic text-muted-foreground/70 font-normal">
-                                {t(
-                                  "admin.testimonials.slot_empty",
-                                  "Slot Kosong",
-                                )}
+                                {t("admin.testimonials.slot_empty")}
                               </span>
                             )}
                           </span>
@@ -299,10 +284,7 @@ export function FeatureTestimonialDialog({
                           variant="outline"
                           className="w-fit shrink-0 ml-2 rounded-md text-[10px] font-bold uppercase tracking-wider border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         >
-                          {t(
-                            "admin.testimonials.slot_active_badge",
-                            "Saat ini",
-                          )}
+                          {t("admin.testimonials.slot_active_badge")}
                         </Badge>
                       )}
                     </button>
@@ -316,13 +298,9 @@ export function FeatureTestimonialDialog({
               <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300 mt-2">
                 <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-500" />
                 <div>
-                  <p className="font-semibold">Slot akan digantikan</p>
+                  <p className="font-semibold">{t("admin.testimonials.slot_replace_title")}</p>
                   <p className="text-[11px] opacity-90 mt-0.5">
-                    {t("admin.testimonials.slot_replace_hint", {
-                      name: occupiedSlot.display_name,
-                      defaultValue:
-                        "Slot ini masih diisi {{name}}. Peniadaan slot bakal langsung memindahkan posisi ulasan.",
-                    })}
+                    {t("admin.testimonials.slot_replace_hint", { name: occupiedSlot.display_name })}
                   </p>
                 </div>
               </div>
@@ -345,28 +323,18 @@ export function FeatureTestimonialDialog({
                     <Pin />
                   </AlertDialogMedia>
                   <AlertDialogTitle>
-                    {t(
-                      "admin.testimonials.replace_title",
-                      "Ganti Posisi Slot?",
-                    )}
+                    {t("admin.testimonials.replace_title")}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     {t("admin.testimonials.replace_desc", {
                       slot: selectedSlotNumber,
-                      name:
-                        occupiedSlot?.display_name ??
-                        t(
-                          "admin.testimonials.another_testimonial",
-                          "ulasan lain",
-                        ),
-                      defaultValue:
-                        "Posisi Slot {{slot}} masih diisi {{name}}. Penggantian ulasan bakal langsung diproses.",
+                      name: occupiedSlot?.display_name ?? t("admin.testimonials.another_testimonial"),
                     })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={isReplacementWorking}>
-                    {t("common.cancel", "Batal")}
+                    {t("common.cancel")}
                   </AlertDialogCancel>
                   <AlertDialogAction
                     disabled={isReplacementWorking}

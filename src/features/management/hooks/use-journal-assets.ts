@@ -39,7 +39,7 @@ export function useJournalAssets() {
   const queryKey = useMemo(() => ["journal-assets", userId] as const, [userId]);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
     enabled: isAdmin,
     staleTime: 60_000,
@@ -154,5 +154,13 @@ export function useJournalAssets() {
     [userId, queryClient, queryKey],
   );
 
-  return { assets, isLoading, addAsset, toggleActive, removeAsset };
+  return {
+    assets,
+    isLoading,
+    isError,
+    refetch,
+    addAsset,
+    toggleActive,
+    removeAsset,
+  };
 }

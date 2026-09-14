@@ -70,27 +70,18 @@ export function TestimonialSettingsDialog({
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.testimonials.settings_title", "Pengaturan Slot Ulasan")}
+            {t("admin.testimonials.settings_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.testimonials.settings_desc",
-              "Atur kapasitas maksimal slot publik yang dapat ditampilkan di halaman utama.",
-            )}
+            {t("admin.testimonials.settings_desc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1 divide-y divide-border/60">
             <SettingRow
-              title={t(
-                "admin.testimonials.max_slots_label",
-                "Kapasitas Maksimal Slot",
-              )}
-              desc={t(
-                "admin.testimonials.max_slots_hint",
-                "Tentukan jumlah slot publik (1 s/d 12 slot). Kapasitas bawaan sistem adalah 6.",
-              )}
+              title={t("admin.testimonials.max_slots_label")}
+              desc={t("admin.testimonials.max_slots_hint")}
             >
               <Input
                 type="number"
@@ -118,7 +109,7 @@ export function TestimonialSettingsDialog({
             onClick={() => void handleSave()}
           >
             <ActionButtonContent
-              label={t("common.actions.save", "Simpan")}
+              label={t("common.actions.save")}
               pending={isSaving}
             />
           </Button>

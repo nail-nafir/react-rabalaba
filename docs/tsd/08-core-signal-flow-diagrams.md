@@ -50,16 +50,16 @@ flowchart LR
     BA["yahoo-adapter\nnormalize quote + candles\nresample HTF trend"]
     SIG["computeSignal\nindicators → regime → scores\nLONG / SHORT / neutral"]
     TP["computeTradingPlan\nentry · stop · TP1/2/3 · RR"]
-    EN["enrichAsset\ncontext de-rate\noptional evidence display-only*"]
+    EN["enrichAsset\ncontext de-rate\noptional evidence in open detail only*"]
     PUB["applySignalEpisode\nactive snapshot → LONG/SHORT\npending / blocked / neutral → Neutral\nread or snapshot failure → Unavailable"]
     UI["AssetSignalTable / AssetDetailDialog\nscreener + signal detail"]
-    BT["runBacktest + calibrateConfidence\nwalk-forward evidence"]
+    BT["Open detail only: Web Worker runBacktest\nReact Query metrics → calibrateConfidence"]
 
     U --> SU --> MQ --> PROXY
     PROXY --> BA --> SIG
     SIG --> TP --> EN --> PUB --> UI
-    BA --> BT
-    UI --> BT
+    BA -. selected candles .-> BT
+    UI -- open dialog --> BT
   end
 
   subgraph SERVER["Server path / Jalur server"]
@@ -339,7 +339,7 @@ sequenceDiagram
   M-->>P: OHLCV + metadata
   P-->>UI: Chart response
   UI->>E: Browser adapter → computeSignal → computeTradingPlan
-  UI->>E: enrichAsset (+ browser fundamentals when available)
+  UI->>E: enrichAsset (screener skips optional overlays; open detail includes them)
   E-->>UI: Raw market analysis and candidate plan
   UI->>DB: Read journal_signal_states (60s, mount/focus, refresh)
   DB-->>UI: Recorded episodes or read error
@@ -386,7 +386,7 @@ sequenceDiagram
 
 ## Related docs / Dokumen terkait
 
-- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — aturan dan contoh perjalanan trading dalam bahasa Indonesia.
+- [`../explainer/trading-methodology.md`](../explainer/trading-methodology.md) — aturan dan contoh perjalanan trading dalam bahasa Indonesia dan Inggris.
 - [`00-architecture.md`](00-architecture.md) — runtime placement and pure/IO split.
 - [`02-data-flow.md`](02-data-flow.md) — browser market-data path and state.
 - [`05-edge-functions.md`](05-edge-functions.md) — cron gates, database reads/writes, and Discord.

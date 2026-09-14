@@ -167,7 +167,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.billing.plan_slug", "Slug")}
+              {t("admin.billing.plan_slug")}
             </Label>
             <Input
               value={slug}
@@ -179,7 +179,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.billing.sort_order", "Urutan")}
+              {t("admin.billing.sort_order")}
             </Label>
             <Input
               type="number"
@@ -191,31 +191,28 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
         </div>
 
         <Bilingual
-          label={t("admin.billing.plan_name", "Nama")}
+          label={t("admin.billing.plan_name")}
           en={nameEn}
           id={nameId}
           onEn={setNameEn}
           onId={setNameId}
         />
         <Bilingual
-          label={t("admin.billing.plan_price", "Harga")}
+          label={t("admin.billing.plan_price")}
           en={priceEn}
           id={priceId}
           onEn={setPriceEn}
           onId={setPriceId}
         />
         <Bilingual
-          label={t(
-            "admin.billing.plan_original_price",
-            "Harga Coret (opsional)",
-          )}
+          label={t("admin.billing.plan_original_price")}
           en={origEn}
           id={origId}
           onEn={setOrigEn}
           onId={setOrigId}
         />
         <Bilingual
-          label={t("admin.billing.plan_description", "Deskripsi")}
+          label={t("admin.billing.plan_description")}
           en={descEn}
           id={descId}
           onEn={setDescEn}
@@ -223,7 +220,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
           textarea
         />
         <Bilingual
-          label={t("admin.billing.plan_features", "Benefit (satu per baris)")}
+          label={t("admin.billing.plan_features")}
           en={featEn}
           id={featId}
           onEn={setFeatEn}
@@ -234,7 +231,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.billing.plan_icon", "Ikon")}
+              {t("admin.billing.plan_icon")}
             </Label>
             <Select
               value={icon}
@@ -262,7 +259,7 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.billing.plan_cta_kind", "Aksi Tombol")}
+              {t("admin.billing.plan_cta_kind")}
             </Label>
             <Select
               value={ctaKind}
@@ -292,12 +289,12 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
 
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.plan_cta_link", "Link Tombol (opsional)")}
+            {t("admin.billing.plan_cta_link")}
           </Label>
           <Input
             value={ctaLink}
             onChange={(e) => setCtaLink(e.target.value)}
-            placeholder="/terminal or https://t.me/..."
+            placeholder={t("admin.billing.action_url_placeholder")}
             className="h-8 text-sm placeholder:text-xs"
           />
         </div>
@@ -307,13 +304,10 @@ function PlanForm({ plan, onClose, saving, setSaving }: PlanFormProps) {
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  {t("admin.billing.plan_highlighted", "Tandai paling laris")}
+                  {t("admin.billing.plan_highlighted")}
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed max-w-72">
-                  {t(
-                    "admin.billing.plan_highlighted_desc",
-                    "Tampilkan lencana Paling Laris dan sorot paket.",
-                  )}
+                  {t("admin.billing.plan_highlighted_desc")}
                 </p>
               </div>
               <Switch
@@ -369,14 +363,11 @@ export function SubscriptionPlanDialog({ trigger, plan }: SubscriptionPlanDialog
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {plan
-              ? t("admin.billing.plan_edit_title", "Ubah Paket")
-              : t("admin.billing.plan_add_title", "Tambah Paket")}
+              ? t("admin.billing.plan_edit_title")
+              : t("admin.billing.plan_add_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.billing.plan_dialog_desc",
-              "Atur harga dan benefit paket langganan (EN + ID).",
-            )}
+            {t("admin.billing.plan_dialog_desc")}
           </DialogDescription>
         </DialogHeader>
         <PlanForm

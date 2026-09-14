@@ -24,10 +24,10 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.menu_users", "Manajemen User")}
+          {t("admin.menu_users")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t("admin.admin_console_users_desc", "Kelola pengguna terdaftar, tingkat tier, dan penggunaan kode akses premium.") || "Kelola pengguna terdaftar dan pantau kode akses premium yang ditukarkan."}
+          {t("admin.admin_console_users_desc")}
         </p>
       </div>
 
@@ -37,7 +37,7 @@ export default function AdminUsersPage() {
         <div className="flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              {t("admin.users_list_title", "Pengguna Terdaftar")}
+              {t("admin.users_list_title")}
             </h2>
             <Button
               variant="link"

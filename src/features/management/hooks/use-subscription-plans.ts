@@ -22,7 +22,7 @@ export function useSubscriptionPlans() {
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: QUERY_KEY,
     staleTime: 60_000,
     queryFn: async () => {
@@ -108,5 +108,15 @@ export function useSubscriptionPlans() {
     [userId, queryClient],
   );
 
-  return { plans, isLoading, addPlan, updatePlan, toggleActive, removePlan };
+  return {
+    plans,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+    addPlan,
+    updatePlan,
+    toggleActive,
+    removePlan,
+  };
 }

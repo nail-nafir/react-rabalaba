@@ -1,3 +1,4 @@
+import { FormFieldError } from "@/components/shared/form-field-error";
 import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
@@ -15,7 +16,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { Input } from "@/components/ui/input";
-import { Field, FieldGroup, FieldError } from "@/components/ui/field";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { Link, useLocation } from "react-router-dom";
@@ -73,7 +74,7 @@ function LicenseAccessDialogContent({
   const { t } = useTranslation();
   const location = useLocation();
   const { user } = useAuth();
-  const { tier, grantAccess } = usePremiumAccess();
+  const { tier, daysLeft, grantAccess } = usePremiumAccess();
   const [showCode, setShowCode] = useState(false);
 
   const loginRedirectPath = buildLoginRedirect(
@@ -130,7 +131,7 @@ function LicenseAccessDialogContent({
     tier === "premium"
       ? t("license.status_premium")
       : tier === "trial"
-        ? t("license.status_trial", { defaultValue: "Versi uji coba aktif." })
+        ? t("license.status_trial", { count: daysLeft ?? 0 })
         : t("license.dialog_desc");
 
   if (!user) {
@@ -214,9 +215,7 @@ function LicenseAccessDialogContent({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    {t("license.section_activate", {
-                      defaultValue: "Kode Akses / Aktivasi",
-                    })}
+                    {t("license.section_activate")}
                   </label>
                   <div className="relative">
                     <Input
@@ -247,7 +246,7 @@ function LicenseAccessDialogContent({
                     </button>
                   </div>
                   {fieldState.invalid && (
-                    <FieldError
+                    <FormFieldError
                       errors={[fieldState.error]}
                       className="text-xs mt-1 font-medium"
                     />
@@ -258,11 +257,7 @@ function LicenseAccessDialogContent({
           </FieldGroup>
 
           <div className="text-xs text-muted-foreground flex items-center justify-between gap-2 pt-1">
-            <span>
-              {t("terminal.access_dialog_no_access", {
-                defaultValue: "Belum punya kode lisensi?",
-              })}
-            </span>
+            <span>{t("terminal.access_dialog_no_access")}</span>
             <DialogClose asChild>
               <Link
                 to="/subscription"
@@ -271,9 +266,7 @@ function LicenseAccessDialogContent({
                   "h-auto p-0 text-primary font-semibold underline whitespace-nowrap text-xs",
                 )}
               >
-                {t("terminal.access_dialog_no_access_link", {
-                  defaultValue: "Beli Lisensi",
-                })}
+                {t("terminal.access_dialog_no_access_link")}
               </Link>
             </DialogClose>
           </div>
@@ -289,11 +282,7 @@ function LicenseAccessDialogContent({
               "w-full sm:w-auto font-bold transition-all text-xs cursor-pointer inline-flex items-center justify-center",
             )}
           >
-            <ActionButtonContent
-              label={t("common.actions.upgrade", {
-                defaultValue: "Tingkatkan",
-              })}
-            />
+            <ActionButtonContent label={t("common.actions.upgrade")} />
           </Link>
         </DialogClose>
 

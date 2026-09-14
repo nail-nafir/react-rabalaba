@@ -124,7 +124,7 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.billing.method_category", "Kategori")}
+              {t("admin.billing.method_category")}
             </Label>
             <Select
               value={category}
@@ -152,7 +152,7 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {t("admin.billing.sort_order", "Urutan")}
+              {t("admin.billing.sort_order")}
             </Label>
             <Input
               type="number"
@@ -165,7 +165,7 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
 
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.method_name", "Nama")}
+            {t("admin.billing.method_name")}
           </Label>
           <Input
             value={name}
@@ -177,19 +177,19 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
 
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.method_account_no", "Nomor, Alamat")}
+            {t("admin.billing.method_account_no")}
           </Label>
           <Input
             value={accountNo}
             onChange={(e) => setAccountNo(e.target.value)}
-            placeholder="0123456789 or 0x..."
+            placeholder={t("admin.billing.method_account_placeholder")}
             className="h-8 text-sm placeholder:font-sans placeholder:text-xs"
           />
         </div>
 
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.method_account_name", "Atas Nama")}
+            {t("admin.billing.method_account_name")}
           </Label>
           <Input
             value={accountName}
@@ -201,7 +201,7 @@ function MethodForm({ method, onClose, saving, setSaving }: MethodFormProps) {
 
         <div className="space-y-1.5">
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.method_note", "Catatan (opsional, EN, ID)")}
+            {t("admin.billing.method_note")}
           </Label>
           <div className="grid grid-cols-2 gap-2">
             <Input
@@ -266,14 +266,11 @@ export function PaymentMethodDialog({
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {method
-              ? t("admin.billing.method_edit_title", "Ubah Metode")
-              : t("admin.billing.method_add_title", "Tambah Metode")}
+              ? t("admin.billing.method_edit_title")
+              : t("admin.billing.method_add_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.billing.method_dialog_desc",
-              "Atur rekening / e-wallet / alamat kripto pembayaran.",
-            )}
+            {t("admin.billing.method_dialog_desc")}
           </DialogDescription>
         </DialogHeader>
         <MethodForm

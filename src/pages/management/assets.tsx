@@ -27,10 +27,10 @@ export default function AdminAssetsPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.menu_assets", "Manajemen Aset")}
+          {t("admin.menu_assets")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t("admin.admin_console_desc", "Kelola semua aset dan jadwal rutin jurnal otomatis.")}
+          {t("admin.admin_console_desc")}
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export default function AdminAssetsPage() {
         <div className="flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              {t("admin.asset_list_title", "Aset Jurnal Otomatis")}
+              {t("admin.asset_list_title")}
             </h2>
             <Button
               variant="link"

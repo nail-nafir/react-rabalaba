@@ -24,6 +24,14 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/formatters";
@@ -73,7 +81,7 @@ export function TestimonialSection() {
           className="rounded-xl h-11 px-8 font-bold cursor-pointer"
         >
           <MessageSquareQuote className="mr-2 h-4 w-4" />
-          {t("testimonials.cta", "Bagikan pengalaman")}
+          {t("testimonials.cta")}
         </Button>
       }
     />
@@ -86,7 +94,7 @@ export function TestimonialSection() {
       )}
     >
       <MessageSquareQuote className="mr-2 h-4 w-4" />
-      {t("testimonials.cta", "Bagikan pengalaman")}
+      {t("testimonials.cta")}
     </Link>
   );
 
@@ -98,16 +106,13 @@ export function TestimonialSection() {
       <div className="mx-auto flex max-w-7xl flex-col gap-12 px-6">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
           <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-xs animate-shimmer">
-            {t("testimonials.badge", "Suara Komunitas")}
+            {t("testimonials.badge")}
           </Badge>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">
-            {t("testimonials.title", "Cerita dari Pengguna")}
+            {t("testimonials.title")}
           </h2>
           <p className="text-sm text-muted-foreground sm:text-base">
-            {t(
-              "testimonials.subtitle",
-              "Pengalaman nyata pengguna RabaLaba saat meriset pasar dan susun keputusan transaksi biar makin gacor dan anti rungkad.",
-            )}
+            {t("testimonials.subtitle")}
           </p>
         </div>
 
@@ -116,22 +121,24 @@ export function TestimonialSection() {
             {Array.from({ length: 3 }).map((_, index) => (
               <Card
                 key={index}
-                className="w-full max-w-md lg:max-w-sm flex-1 min-w-70"
+                className="flex h-full w-full max-w-md min-w-70 flex-1 flex-col justify-between border border-border bg-card/45 backdrop-blur-xs lg:max-w-sm"
                 aria-hidden="true"
               >
                 <CardHeader className="grid grid-cols-[auto_1fr] gap-3">
                   <Skeleton className="size-10 rounded-full" />
-                  <div className="flex flex-col gap-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-40" />
+                  <div className="min-w-0">
+                    <div className="flex min-h-5 items-center gap-1.5">
+                      <Skeleton className="h-4 w-32 max-w-full" />
+                      <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-3/4" />
+                <CardContent className="flex min-w-0 flex-col gap-2">
+                  <Skeleton className="h-3 w-full max-w-full" />
+                  <Skeleton className="h-3 w-full max-w-full" />
+                  <Skeleton className="h-3 w-3/4 max-w-full" />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="mt-auto border-t border-border/40">
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, star) => (
                       <Skeleton key={star} className="size-4 rounded-md" />
@@ -141,43 +148,41 @@ export function TestimonialSection() {
               </Card>
             ))}
           </div>
-        ) : isError ? (
+        ) : isError && testimonials.length === 0 ? (
           <Card className="mx-auto w-full max-w-2xl">
-            <CardHeader className="items-center text-center">
-              <CardTitle>
-                {t("testimonials.load_error_title", "Ulasan belum bisa dimuat")}
-              </CardTitle>
-              <CardDescription>
-                {t(
-                  "testimonials.load_error_description",
-                  "Coba muat ulang atau bagikan pengalaman sementara ini.",
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardFooter className="justify-center gap-2">
-              <Button variant="outline" onClick={() => void refetch()}>
-                <RefreshCw data-icon="inline-start" />
-                {t("common.retry", "Coba lagi")}
-              </Button>
-              {contributionButton}
-            </CardFooter>
+            <Empty role="alert" className="border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <RefreshCw aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("testimonials.load_error_title")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("testimonials.load_error_description")}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+                <Button variant="outline" onClick={() => void refetch()}>
+                  <RefreshCw data-icon="inline-start" />
+                  {t("common.retry")}
+                </Button>
+                {contributionButton}
+              </EmptyContent>
+            </Empty>
           </Card>
         ) : testimonials.length === 0 ? (
           <Card className="mx-auto w-full max-w-2xl">
-            <CardHeader className="items-center text-center">
-              <CardTitle>
-                {t("testimonials.empty_title", "Jadilah cerita pertama")}
-              </CardTitle>
-              <CardDescription>
-                {t(
-                  "testimonials.empty_description",
-                  "Belum ada ulasan pilihan sejauh ini. Kalau RabaLaba membantu, bagikan pengalaman nyata secara jujur biar makin banyak orang bisa ikut panen cuan.",
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center">
-              {contributionButton}
-            </CardContent>
+            <Empty className="border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <MessageSquareQuote aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("testimonials.empty_title")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("testimonials.empty_description")}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>{contributionButton}</EmptyContent>
+            </Empty>
           </Card>
         ) : (
           <>

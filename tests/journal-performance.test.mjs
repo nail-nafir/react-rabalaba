@@ -22,6 +22,20 @@ async function loadModule() {
   );
 }
 
+async function loadTableModule() {
+  if (!server) {
+    server = await createServer({
+      appType: "custom",
+      configFile: "vite.config.ts",
+      logLevel: "silent",
+      server: { middlewareMode: true, watch: null },
+    });
+  }
+  return server.ssrLoadModule(
+    "/src/features/follow-trade/model/live-progress.ts",
+  );
+}
+
 test.after(async () => {
   try {
     if (server) await server.close();
@@ -62,6 +76,61 @@ const yahooChart = (points) => ({
   indicators: {
     quote: [{ close: points.map(({ close }) => close) }],
   },
+});
+
+test("live journal progress stays isolated for duplicate symbols", async () => {
+  const { buildLiveProgressByTradeId } = await loadTableModule();
+  const followedAt = Date.UTC(2026, 7, 29);
+  const trade = (id, takeProfit) => ({
+    id,
+    symbol: "DUP-USD",
+    name: id,
+    assetType: "crypto",
+    signal: "long",
+    timeframe: "swing",
+    entryPrice: 100,
+    stopLoss: 90,
+    takeProfits: [takeProfit],
+    riskRewardRatio: 1,
+    strengthAtEntry: 80,
+    followedAt,
+    highestTpReached: 0,
+    status: "open",
+  });
+  const result = buildLiveProgressByTradeId(
+    [trade("trade-reached", 105), trade("trade-pending", 120)],
+    [
+      {
+        symbol: "DUP-USD",
+        price: 110,
+        quoteIndicators: {
+          open: [100],
+          high: [110],
+          low: [99],
+          close: [110],
+          volume: [1],
+        },
+        timestamps: [followedAt / 1000],
+      },
+    ],
+  );
+
+  assert.equal(result["trade-reached"].tpReached, 1);
+  assert.equal(result["trade-pending"].tpReached, 0);
+});
+
+test("journal table deduplicates live symbols and debounces search", () => {
+  const source = readFileSync(
+    new URL(
+      "../src/features/follow-trade/components/follow-history-table.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(source, /\[\.\.\.new Set\(openTrades\.map\(\(tr\) => tr\.symbol\)\)\]/);
+  assert.match(source, /useDebounce\(search, 100\)/);
+  assert.match(source, /progressByTradeId\[tr\.id\]/);
 });
 
 test("asset categories sum direction-aware closed-trade percentages", async () => {

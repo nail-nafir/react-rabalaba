@@ -39,7 +39,7 @@ export function useJournalSettings() {
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, isError, refetch } = useQuery({
     queryKey: QUERY_KEY,
     enabled: isAdmin,
     staleTime: 60_000,
@@ -110,5 +110,5 @@ export function useJournalSettings() {
     return data;
   }, [userId, queryClient]);
 
-  return { settings, isLoading, update, startNewPeriod };
+  return { settings, isLoading, isError, refetch, update, startNewPeriod };
 }

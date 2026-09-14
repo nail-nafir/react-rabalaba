@@ -5,15 +5,14 @@ import { TableCell } from "@/components/ui/table";
 export function SkeletonCalendarItem() {
   return (
     <Card className="border border-border" aria-hidden="true">
-      <CardContent className="flex items-center gap-3 sm:gap-4">
-        <div className="flex min-w-12 shrink-0 flex-col items-start sm:min-w-15">
-          <Skeleton className="h-3 w-10" />
+      <CardContent className="flex items-center gap-3 px-4 py-4 sm:gap-4">
+        <Skeleton className="size-7 shrink-0 rounded-lg sm:size-8" />
+        <Skeleton className="h-5 w-20 shrink-0 rounded-md" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <Skeleton className="h-4 w-3/4 max-w-64" />
+          <Skeleton className="h-3 w-1/4 max-w-16" />
         </div>
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-3 w-1/4" />
-        </div>
-        <Skeleton className="h-5 w-14 rounded-md" />
+        <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
       </CardContent>
     </Card>
   );
@@ -28,33 +27,40 @@ export function SkeletonAssetSignalRow() {
         </div>
       </TableCell>
       <TableCell>
-        <Skeleton className="h-4 w-12" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-16" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-12" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-14" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-20" />
       </TableCell>
       <TableCell>
-        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-20 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-2 w-16 rounded-full" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-5 w-8 rounded-md" />
       </TableCell>
       <TableCell>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-2 w-16 rounded-full" />
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
         <Skeleton className="h-5 w-16 rounded-md" />
       </TableCell>
       <TableCell>
-        <div className="flex justify-end pr-4">
-          <Skeleton className="h-5 w-14 rounded-md" />
-        </div>
+        <Skeleton className="h-8 w-16" />
       </TableCell>
     </>
   );
@@ -144,8 +150,8 @@ export function SkeletonJournalAssetRow() {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
         </div>
       </TableCell>
     </>
@@ -192,8 +198,8 @@ export function SkeletonAdminUserRow() {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
         </div>
       </TableCell>
     </>
@@ -219,9 +225,9 @@ export function SkeletonPaymentMethodRow() {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
         </div>
       </TableCell>
     </>
@@ -250,9 +256,9 @@ export function SkeletonSubscriptionPlanRow() {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
         </div>
       </TableCell>
     </>
@@ -287,9 +293,9 @@ export function SkeletonInvitationRow() {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
         </div>
       </TableCell>
     </>
@@ -327,8 +333,8 @@ export function SkeletonAccessCodeRow() {
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
-          <Skeleton className="h-7 w-7 rounded-md" />
-          <Skeleton className="h-7 w-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
+          <Skeleton className="size-7 rounded-md" />
         </div>
       </TableCell>
     </>

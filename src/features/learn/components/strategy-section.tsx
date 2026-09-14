@@ -18,6 +18,12 @@ import { PatternVisual } from "./pattern-visual";
 import { StrategyDetailDialog } from "./strategy-detail-dialog";
 import { TRADING_STRATEGIES } from "../data/strategy-data";
 import { BookOpen, Search, X } from "lucide-react";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import type { TradingStrategy } from "../types/learn";
 
 type StrategyFilter = "all" | TradingStrategy["category"];
@@ -118,9 +124,14 @@ export const StrategySection: React.FC = () => {
 
       {/* Strategy Cards Grid */}
       {filteredStrategies.length === 0 ? (
-        <div className="rounded-md border p-12 text-center text-xs text-muted-foreground">
-          {t("learn.strategies_ui.empty")}
-        </div>
+        <Empty className="min-h-48">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Search aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("learn.strategies_ui.empty")}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
           {filteredStrategies.map((strategy) => (

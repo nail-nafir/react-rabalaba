@@ -57,7 +57,7 @@ export function AuthLayout() {
                 if (nextValue !== null) void i18n.changeLanguage(nextValue);
               }}
             >
-              <SelectTrigger 
+              <SelectTrigger aria-label={t("common.language")}
                 className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg"
               >
                 <Languages className="h-3.5 w-3.5 text-muted-foreground mr-1" />
@@ -88,7 +88,7 @@ export function AuthLayout() {
                 }
               }}
             >
-              <SelectTrigger 
+              <SelectTrigger aria-label={t("common.theme")}
                 className="w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer pl-2.5 pr-2 gap-1 rounded-lg"
               >
                 {theme === 'dark' ? (

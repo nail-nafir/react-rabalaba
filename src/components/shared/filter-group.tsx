@@ -21,6 +21,7 @@ interface FilterGroupProps<T extends string> {
   onChange: (value: NoInfer<T>) => void;
   className?: string;
   disabled?: boolean;
+  "aria-label"?: string;
   /** "tabs" (default) = segmented control on desktop; "select" forces the
    *  dropdown on every breakpoint (mobile always renders the dropdown). */
   variant?: "tabs" | "select";
@@ -32,6 +33,7 @@ export function FilterGroup<T extends string>({
   onChange,
   className,
   disabled = false,
+  "aria-label": ariaLabel,
   variant = "tabs",
 }: FilterGroupProps<T>) {
   const isMobile = useIsMobile();
@@ -46,6 +48,7 @@ export function FilterGroup<T extends string>({
         }}
       >
         <SelectTrigger
+          aria-label={ariaLabel}
           className={cn(
             "w-fit min-w-30 sm:w-45 uppercase tracking-wider text-[10px] h-8 cursor-pointer",
             disabled && "cursor-not-allowed opacity-60",
@@ -80,6 +83,7 @@ export function FilterGroup<T extends string>({
       className="w-fit"
     >
       <TabsList
+        aria-label={ariaLabel}
         className={cn(
           "h-auto flex w-fit items-center gap-1 rounded-lg border border-input bg-card p-1",
           className,

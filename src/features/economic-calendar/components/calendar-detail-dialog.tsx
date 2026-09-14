@@ -51,8 +51,8 @@ export function CalendarDetailDialog({
     const text = [
       `📅 ${event.title} (${event.country})`,
       `⏰ ${event.date} • ${event.time}`,
-      `📊 Aktual: ${event.actual || "N/A"} | Prediksi: ${event.forecast || "N/A"} | Sebelumnya: ${event.previous || "N/A"}`,
-      `⚡ Dampak: ${event.impact.toUpperCase()}`,
+      `📊 ${t("calendar.actual")}: ${event.actual || "N/A"} | ${t("calendar.forecast")}: ${event.forecast || "N/A"} | ${t("calendar.previous")}: ${event.previous || "N/A"}`,
+      `⚡ ${t("calendar.market_volatility")}: ${t(IMPACT_LEVELS[event.impact].labelKey)}`,
       event.description ? `📝 ${event.description}` : "",
     ]
       .filter(Boolean)
@@ -221,11 +221,11 @@ export function CalendarDetailDialog({
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     {event.actual && event.actual !== "N/A"
                       ? deviation === "beat"
-                        ? "Beat (Diatas konsensus)"
+                        ? t("calendar.actual_beat")
                         : deviation === "miss"
-                          ? "Miss (Dibawah konsensus)"
+                          ? t("calendar.actual_miss")
                           : t("calendar.scheduled_event")
-                      : "Belum rilis"}
+                      : t("calendar.not_released")}
                   </p>
                 </CardContent>
               </Card>
@@ -242,7 +242,7 @@ export function CalendarDetailDialog({
                       : "—"}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-snug">
-                    Konsensus pasar
+                    {t("calendar.market_consensus")}
                   </p>
                 </CardContent>
               </Card>
@@ -259,7 +259,7 @@ export function CalendarDetailDialog({
                       : "—"}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-snug">
-                    Periode lalu
+                    {t("calendar.previous_period")}
                   </p>
                 </CardContent>
               </Card>
@@ -299,10 +299,10 @@ export function CalendarDetailDialog({
                   )}
                 >
                   {event.impact === "high"
-                    ? "High Volatility Alert"
+                    ? t("calendar.volatility_high_title")
                     : event.impact === "medium"
-                      ? "Moderate Volatility"
-                      : "Low Impact Event"}
+                      ? t("calendar.volatility_medium_title")
+                      : t("calendar.volatility_low_title")}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {event.impact === "high"

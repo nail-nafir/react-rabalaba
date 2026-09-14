@@ -16,10 +16,10 @@ export default function AdminInvitationsPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.invitations.page_title", "Undangan")}
+          {t("admin.invitations.page_title")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t("admin.invitations.page_desc", "Buat dan atur tautan undangan keanggotaan khusus buat calon anggota baru.")}
+          {t("admin.invitations.page_desc")}
         </p>
       </div>
 
@@ -29,10 +29,10 @@ export default function AdminInvitationsPage() {
         <div className="flex flex-row items-center justify-between gap-4">
           <div className="space-y-0.5">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              {t("admin.invitations.list_subtitle", "Daftar Undangan")}
+              {t("admin.invitations.list_subtitle")}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {t("admin.invitations.list_desc", "Daftar kode undangan aktif beserta informasi pemakaian dan status aksesnya.") || "Daftar kode undangan aktif beserta informasi pemakaian dan status aksesnya."}
+              {t("admin.invitations.list_desc")}
             </p>
           </div>
 
@@ -44,7 +44,7 @@ export default function AdminInvitationsPage() {
                 className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight shrink-0"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("admin.invitations.add_btn", "Buat Undangan")}</span>
+                <span className="hidden sm:inline">{t("admin.invitations.add_btn")}</span>
               </Button>
             }
           />

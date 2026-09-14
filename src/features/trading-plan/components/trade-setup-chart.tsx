@@ -333,7 +333,7 @@ export function TradeSetupChartSettings({
               <span className="h-0.5 w-3.5 rounded-full bg-chart-2 shrink-0" />
               <span className="font-medium">EMA 20</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">Fast</span>
+            <span className="text-[10px] text-muted-foreground">{t("dialog.ema_fast")}</span>
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuCheckboxItem
@@ -345,7 +345,7 @@ export function TradeSetupChartSettings({
               <span className="h-0.5 w-3.5 rounded-full bg-amber-400 shrink-0" />
               <span className="font-medium">EMA 50</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">Slow</span>
+            <span className="text-[10px] text-muted-foreground">{t("dialog.ema_slow")}</span>
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuCheckboxItem
@@ -357,7 +357,7 @@ export function TradeSetupChartSettings({
               <span className="h-0.5 w-3.5 rounded-full bg-white shrink-0" />
               <span className="font-medium">EMA 200</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">Macro</span>
+            <span className="text-[10px] text-muted-foreground">{t("dialog.ema_macro")}</span>
           </DropdownMenuCheckboxItem>
         </DropdownMenuGroup>
 
@@ -992,14 +992,14 @@ export function TradeSetupChart({
         {viewport !== null && (
           <Button
             type="button"
-            variant="ghost"
+            variant="link"
             size="icon"
             onClick={() => setViewport(null)}
             onPointerDown={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
             title={t("dialog.chart_restore")}
             aria-label={t("dialog.chart_restore")}
-            className="absolute right-2 top-2 z-10 h-7 w-7 cursor-pointer text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted bg-background/80 backdrop-blur-sm rounded-md border border-border/50 shadow-xs"
+            className="absolute right-2 top-2 z-10 h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -1043,26 +1043,26 @@ export function TradeSetupChart({
                         {chg.toFixed(2)}%
                       </span>
                       <LegendStat
-                        label="OPEN"
+                        label={t("dialog.ohlc_open")}
                         value={formatPrice(legendCandle.open, assetType)}
                       />
                       <LegendStat
-                        label="HIGH"
+                        label={t("dialog.ohlc_high")}
                         value={formatPrice(legendCandle.high, assetType)}
                         valueClassName="text-emerald-400"
                       />
                       <LegendStat
-                        label="LOW"
+                        label={t("dialog.ohlc_low")}
                         value={formatPrice(legendCandle.low, assetType)}
                         valueClassName="text-rose-400"
                       />
                       <LegendStat
-                        label="CLOSE"
+                        label={t("dialog.ohlc_close")}
                         value={formatPrice(legendCandle.close, assetType)}
                         valueClassName={dirColor}
                       />
                       <LegendStat
-                        label="VOLUME"
+                        label={t("table.volume").toUpperCase()}
                         // Yahoo often has no volume for a crypto intraday
                         // candle (a genuine 24/7 zero is impossible), so show
                         // "—" for a missing bar instead of a misleading "0".
@@ -1436,7 +1436,7 @@ export function TradeSetupChart({
                         : "text-muted-foreground";
                 const arrowH = 7;
                 const arrowHalf = 5;
-                const word = m.kind === "entry" ? "ENTRY" : "CLOSED";
+                const word = m.kind === "entry" ? t("journal.entry_marker") : t("journal.close_marker");
                 // Keep the marker badge clean: just the action word, no date /
                 // price cells (those read off the axis + level badges already).
                 const cells: PillCell[] = [{ text: word, emphasis: true }];
@@ -1603,7 +1603,7 @@ export function TradeSetupChart({
         <Card className="overflow-hidden border border-border bg-muted/50 transition-colors hover:border-primary">
           <CardContent className="flex flex-col gap-1.5">
             <span className="text-[10px] text-muted-foreground">
-              Risk : Reward
+              {t("dialog.risk_reward")}
             </span>
             <span className="text-base font-bold leading-none">
               1 : {formatRatio(model.riskReward)}

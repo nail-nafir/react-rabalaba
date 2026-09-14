@@ -24,7 +24,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
     // ── CANDLESTICKS ───────────────────────────────────────────────────
     case "hammer":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
 
           {/* Downtrend context candles */}
@@ -119,7 +119,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "shooting_star":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
 
           {/* Uptrend context candles */}
@@ -204,7 +204,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "inverted_hammer":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           <line
             x1="45"
@@ -440,7 +440,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "bullish_engulfing":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           {/* Context red */}
           <line
@@ -516,7 +516,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "bearish_engulfing":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           {/* Context green */}
           <line
@@ -591,7 +591,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "morning_star":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           {/* Day 1: Large Red */}
           <line
@@ -708,7 +708,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "tweezer":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           {/* Candle 1 (Red) */}
           <line
@@ -751,7 +751,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "piercing_line":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           <line
             x1="85"
@@ -931,7 +931,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "dark_cloud_cover":
       return (
-        <svg viewBox="0 0 240 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           <rect x="70" y="28" width="16" height="55" fill={green} rx="1.5" />
           <line
@@ -1071,7 +1071,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
     // ── CHART PATTERNS ─────────────────────────────────────────────────
     case "head_and_shoulders":
       return (
-        <svg viewBox="0 0 260 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="260" height="140" fill="transparent" />
           {/* Price Path */}
           <path
@@ -1162,7 +1162,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "inverse_head_and_shoulders":
       return (
-        <svg viewBox="0 0 260 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="260" height="140" fill="transparent" />
           {/* Price Path */}
           <path
@@ -1301,7 +1301,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
 
     case "double_bottom":
       return (
-        <svg viewBox="0 0 260 140" className={className}>
+        <svg viewBox="0 0 280 140" className={className}>
           <rect width="260" height="140" fill="transparent" />
           <path
             d="M 30 30 L 75 105 L 115 55 L 155 105 L 195 20"

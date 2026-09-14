@@ -15,6 +15,15 @@ const storedLang =
     ? localStorage.getItem("i18nextLng") || "id"
     : "id";
 
+function syncDocumentLanguage() {
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = i18n.resolvedLanguage || "id";
+  }
+}
+
+i18n.on("languageChanged", syncDocumentLanguage);
+i18n.on("initialized", syncDocumentLanguage);
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)

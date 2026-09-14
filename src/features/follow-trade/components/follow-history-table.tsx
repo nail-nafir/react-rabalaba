@@ -40,7 +40,6 @@ import {
   LIFECYCLE_STATUSES,
   FOLLOW_SIGNALS,
 } from "@/core/trade/follow-trade-model";
-import { normalizeYahooCandles } from "@/core/market/candles";
 import { LifecycleBadge, TpProgress } from "./follow-status";
 import {
   formatPrice,
@@ -59,8 +58,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useTablePagination } from "@/hooks/use-table-pagination";
 import { Separator } from "@/components/ui/separator";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonFollowHistoryRow } from "@/components/shared/skeleton-card";
 import { StrengthBar } from "@/components/charts/strength-bar";
@@ -83,6 +90,7 @@ import {
 import type { AssetFilterType } from "@/types/asset";
 import { cn } from "@/lib/utils";
 import { TradeDetailDialog } from "./trade-detail-dialog";
+import { buildLiveProgressByTradeId } from "../model/live-progress";
 
 const BADGE_CLASS = "font-bold tracking-wider uppercase text-[10px] rounded-md";
 
@@ -164,7 +172,7 @@ export function FollowHistoryTable({
   // Kept in a ref so the (memoized) column defs read fresh prices WITHOUT being
   // recreated every render — that churn is what made recharts hang earlier.
   const openSymbols = useMemo(
-    () => openTrades.map((tr) => tr.symbol),
+    () => [...new Set(openTrades.map((tr) => tr.symbol))],
     [openTrades],
   );
   const { data: liveAssets } = useMarketData(openSymbols);
@@ -177,24 +185,12 @@ export function FollowHistoryTable({
   // with the cron-persisted milestone as its monotonic floor. Kept in a ref so
   // the memoized column defs read fresh progress WITHOUT being recreated each
   // render — same reason as prices.
-  const progressBySymbol = useMemo(() => {
-    const assetBySym = new Map((liveAssets ?? []).map((a) => [a.symbol, a]));
-    const map: Record<string, FollowProgress> = {};
-    for (const tr of openTrades) {
-      const a = assetBySym.get(tr.symbol);
-      const candles = a?.quoteIndicators
-        ? normalizeYahooCandles(a.quoteIndicators, a.timestamps)
-        : undefined;
-      map[tr.symbol] = deriveFollowProgress(
-        tr,
-        a?.price ?? tr.entryPrice,
-        candles,
-      );
-    }
-    return map;
-  }, [openTrades, liveAssets]);
+  const progressByTradeId = useMemo(
+    () => buildLiveProgressByTradeId(openTrades, liveAssets ?? []),
+    [openTrades, liveAssets],
+  );
   const progressRef = useRef<Record<string, FollowProgress>>({});
-  progressRef.current = progressBySymbol;
+  progressRef.current = progressByTradeId;
 
   // Journal rows need the historical snapshot at that trade's point in time,
   // not the symbol's current aggregate. Kept in a ref so the memoized columns
@@ -210,6 +206,7 @@ export function FollowHistoryTable({
     { id: "date", desc: true },
   ]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 100);
   const [assetFilter, setAssetFilter] = useState<AssetFilterType>("all");
   const [dirFilter, setDirFilter] = useState<DirFilter>("all");
   const [lifecycleFilter, setLifecycleFilter] =
@@ -232,7 +229,7 @@ export function FollowHistoryTable({
 
   // One table = every trade. Open ("open") rows on top, then closed history.
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     return [...openTrades, ...history].filter((tr) => {
       if (assetFilter !== "all" && tr.assetType !== assetFilter) return false;
       if (dirFilter !== "all" && tr.signal !== dirFilter) return false;
@@ -243,7 +240,7 @@ export function FollowHistoryTable({
       if (pnlFilter !== "all") {
         const progress =
           tr.status === "open"
-            ? (progressBySymbol[tr.symbol] ??
+            ? (progressByTradeId[tr.id] ??
               deriveFollowProgress(tr, tr.entryPrice))
             : deriveFollowProgress(tr, tr.closePrice ?? tr.entryPrice);
 
@@ -266,12 +263,12 @@ export function FollowHistoryTable({
   }, [
     openTrades,
     history,
-    search,
+    debouncedSearch,
     assetFilter,
     dirFilter,
     lifecycleFilter,
     pnlFilter,
-    progressBySymbol,
+    progressByTradeId,
   ]);
 
   const dirOptions: FilterOption<DirFilter>[] = [
@@ -392,7 +389,9 @@ export function FollowHistoryTable({
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
-            {t(`common.asset_types.${row.original.assetType.replaceAll("-", "_")}`)}
+            {t(
+              `common.asset_types.${row.original.assetType.replaceAll("-", "_")}`,
+            )}
           </span>
         ),
       },
@@ -584,7 +583,7 @@ export function FollowHistoryTable({
           // live milestone (ref, off candles); closed → stored.
           const progress =
             tr.status === "open"
-              ? (progressRef.current[tr.symbol] ??
+              ? (progressRef.current[tr.id] ??
                 deriveFollowProgress(tr, tr.entryPrice))
               : deriveFollowProgress(tr, tr.closePrice ?? tr.entryPrice);
           return (
@@ -599,14 +598,7 @@ export function FollowHistoryTable({
                   {pct >= 0 ? "+" : ""}
                   {pct.toFixed(2)}%
                 </span>
-                <span
-                  className={cn(
-                    "opacity-40",
-                    pnlColor,
-                  )}
-                >
-                  •
-                </span>
+                <span className={cn("opacity-40", pnlColor)}>•</span>
                 <span
                   className={cn(
                     "text-[10px] leading-none",
@@ -638,7 +630,7 @@ export function FollowHistoryTable({
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Status
+            {t("table.status")}
           </span>
         ),
         cell: ({ row }) => (
@@ -652,15 +644,28 @@ export function FollowHistoryTable({
     [t, i18n.language],
   );
 
+  const { pagination, onPaginationChange } = useTablePagination(
+    filtered.length,
+    JSON.stringify([
+      assetFilter,
+      dirFilter,
+      lifecycleFilter,
+      pnlFilter,
+      debouncedSearch,
+      sorting,
+    ]),
+  );
   const table = useReactTable({
     data: filtered,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
+    onPaginationChange,
+    autoResetPageIndex: false,
+    getRowId: (row) => row.id,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -694,6 +699,7 @@ export function FollowHistoryTable({
         {/* Asset type — segmented tabs, like the market screener */}
         <FilterGroup
           value={assetFilter}
+          aria-label={t("table.type")}
           options={assetOptions}
           onChange={(v) => setAssetFilter(v as AssetFilterType)}
           className="flex-1 sm:flex-none"
@@ -701,6 +707,7 @@ export function FollowHistoryTable({
         <Separator orientation="vertical" className="mx-1" />
         <FilterGroup
           value={dirFilter}
+          aria-label={t("table.signal")}
           options={dirOptions}
           onChange={(v) => setDirFilter(v as DirFilter)}
           variant="select"
@@ -708,6 +715,7 @@ export function FollowHistoryTable({
         />
         <FilterGroup
           value={lifecycleFilter}
+          aria-label={t("journal.filter_all_status")}
           options={activeLifecycleOptions}
           onChange={(v) => handleLifecycleChange(v as LifecycleFilter)}
           variant="select"
@@ -715,6 +723,7 @@ export function FollowHistoryTable({
         />
         <FilterGroup
           value={pnlFilter}
+          aria-label={t("journal.filter_all_pnl")}
           options={activePnlOptions}
           onChange={(v) => handlePnlChange(v as PnlFilter)}
           variant="select"
@@ -728,12 +737,14 @@ export function FollowHistoryTable({
         <Input
           type="text"
           placeholder={t("market.search_placeholder")}
+          aria-label={t("market.search_placeholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 pr-9 h-9 text-sm focus:ring-primary/20 transition-all shadow-sm"
         />
         {search && (
           <button
+            aria-label={t("common.clear_search")}
             type="button"
             onClick={() => setSearch("")}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -764,8 +775,8 @@ export function FollowHistoryTable({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
+              Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={i} className="h-15 hover:bg-transparent">
                   <SkeletonFollowHistoryRow />
                 </TableRow>
               ))
@@ -775,10 +786,17 @@ export function FollowHistoryTable({
                   colSpan={columns.length}
                   className="h-48 text-center"
                 >
-                  <EmptyState
-                    title={t("journal.no_history_title")}
-                    description={t("journal.no_history")}
-                  />
+                  <Empty className="min-h-48 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Hourglass aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("journal.no_history_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("journal.no_history")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             ) : (

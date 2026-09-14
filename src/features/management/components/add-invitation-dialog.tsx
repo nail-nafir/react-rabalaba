@@ -7,7 +7,7 @@ import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, CheckCircle2, Calendar as CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
-import { id as localeId, enUS as localeEn } from "date-fns/locale";
+import { id as localeId, enUS as localeEn } from "react-day-picker/locale";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -62,8 +62,8 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
 
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const kindItems = [
-    { value: "full", label: t("admin.codes_form_type_full", "Penuh") },
-    { value: "trial", label: t("admin.codes_form_type_trial", "Uji Coba") },
+    { value: "full", label: t("admin.codes_form_type_full") },
+    { value: "trial", label: t("admin.codes_form_type_trial") },
   ] as const;
 
   const form = useForm<InvitationFormValues>({
@@ -121,13 +121,10 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.invitations.add_title", "Buat Undangan")}
+            {t("admin.invitations.add_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.invitations.add_desc",
-              "Buat link undangan yang memberi akses premium atau trial saat diklaim.",
-            )}
+            {t("admin.invitations.add_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -137,13 +134,10 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <p className="text-sm font-bold text-foreground">
-              {t("admin.invitations.created_title", "Undangan dibuat!")}
+              {t("admin.invitations.created_title")}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t(
-                "admin.invitations.created_desc",
-                "Bagikan link ini ke calon member.",
-              )}
+              {t("admin.invitations.created_desc")}
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-2.5 min-w-0">
@@ -177,7 +171,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
             size="lg"
           >
             <ActionButtonContent
-              label={t("admin.invitations.create_another", "Buat Lagi")}
+              label={t("admin.invitations.create_another")}
             />
           </Button>
         </DialogFooter>
@@ -192,13 +186,10 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
     >
       <DialogHeader>
         <DialogTitle className="text-lg font-bold text-foreground">
-          {t("admin.invitations.add_title", "Buat Undangan")}
+          {t("admin.invitations.add_title")}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-          {t(
-            "admin.invitations.add_desc",
-            "Buat link undangan yang memberi akses premium atau trial saat diklaim.",
-          )}
+          {t("admin.invitations.add_desc")}
         </DialogDescription>
       </DialogHeader>
 
@@ -215,7 +206,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
               render={({ field }) => (
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.invitations.field_kind", "Tipe")}
+                    {t("admin.invitations.field_kind")}
                   </Label>
                   <Select
                     value={field.value}
@@ -253,15 +244,12 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
               render={({ field }) => (
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.invitations.field_max", "Maksimal Pakai")}
+                    {t("admin.invitations.field_max")}
                   </Label>
                   <Input
                     {...field}
                     type="text"
-                    placeholder={t(
-                      "admin.codes_form_max_uses_placeholder",
-                      "∞ (Unlimited)",
-                    )}
+                    placeholder={t("admin.codes_form_max_uses_placeholder")}
                     className="h-8 text-sm placeholder:text-sm"
                   />
                 </div>
@@ -276,7 +264,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
               render={({ field }) => (
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.invitations.field_trial_days", "Hari Trial")}
+                    {t("admin.invitations.field_trial_days")}
                   </Label>
                   <Input
                     {...field}
@@ -294,10 +282,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
             render={({ field }) => (
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t(
-                    "admin.invitations.field_expires",
-                    "Kadaluarsa (opsional)",
-                  )}
+                  {t("admin.invitations.field_expires")}
                 </Label>
                 <div className="relative w-full">
                   <Popover>
@@ -317,10 +302,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
                           })
                         ) : (
                           <span>
-                            {t(
-                              "admin.invitations.select_date",
-                              "Pilih tanggal",
-                            )}
+                            {t("admin.invitations.select_date")}
                           </span>
                         )}
                       </Button>
@@ -338,6 +320,7 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
                   {field.value && (
                     <button
                       type="button"
+                      aria-label={t("calendar.clear_date")}
                       onClick={() => field.onChange(undefined)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer animate-in fade-in zoom-in-95 duration-100"
                     >
@@ -355,17 +338,11 @@ function InviteFormContent({ origin, saving, setSaving }: InviteFormProps) {
             render={({ field }) => (
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t(
-                    "admin.invitations.field_recipient",
-                    "Untuk Siapa (opsional)",
-                  )}
+                  {t("admin.invitations.field_recipient")}
                 </Label>
                 <Input
                   {...field}
-                  placeholder={t(
-                    "admin.invitations.field_recipient_ph",
-                    "cth: Budi / promo Juni",
-                  )}
+                  placeholder={t("admin.invitations.field_recipient_ph")}
                   className="h-8 text-sm placeholder:text-sm"
                 />
               </div>

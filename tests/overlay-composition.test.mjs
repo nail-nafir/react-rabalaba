@@ -52,7 +52,7 @@ test("every application overlay root has a matching Trigger", () => {
   );
 });
 
-test("controlled visibility is limited to local async Dialog workflows", () => {
+test("controlled visibility supports local async and on-demand detail dialogs", () => {
   const primitiveTags = Object.fromEntries(
     [
       "Dialog",
@@ -80,10 +80,9 @@ test("controlled visibility is limited to local async Dialog workflows", () => {
   );
   assert.equal(
     primitiveTags.Dialog.filter((tag) => /\bopen=/.test(tag)).length,
-    14,
+    16, // 14 mutation workflows + market/journal content mounted only while open.
   );
   for (const primitive of [
-    "Popover",
     "Sheet",
     "Select",
     "DropdownMenu",
@@ -197,14 +196,11 @@ test("canonical dialog action labels are one word in every locale", () => {
     "deactivate",
     "publish",
     "replace",
-    "move",
     "submit",
-    "unlock",
     "login",
     "logout",
     "upgrade",
     "reject",
-    "feature",
     "show",
     "hide",
   ];

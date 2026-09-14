@@ -23,7 +23,15 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/shared/empty-state";
+import { Inbox, AlertCircle } from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonAccessCodeRow } from "@/components/shared/skeleton-card";
 import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
@@ -47,8 +55,8 @@ function CodeKindBadge({ kind }: { kind: string }) {
       )}
     >
       {isFull
-        ? t("admin.codes_form_type_full", "Penuh")
-        : t("admin.codes_form_type_trial", "Uji Coba")}
+        ? t("admin.codes_form_type_full")
+        : t("admin.codes_form_type_trial")}
     </Badge>
   );
 }
@@ -70,7 +78,13 @@ function formatTs(iso: string | null): { date: string; time: string } | null {
 
 export function AccessCodesTable() {
   "use no memo";
-  const { accessCodes, isLoadingCodes, deleteAccessCode } = useAdminUsers();
+  const {
+    accessCodes,
+    isLoadingCodes,
+    isErrorCodes,
+    refetchCodes,
+    deleteAccessCode,
+  } = useAdminUsers();
   const { t } = useTranslation();
   const [revealedCodes, setRevealedCodes] = useState<Record<string, boolean>>(
     {},
@@ -205,7 +219,7 @@ export function AccessCodesTable() {
                     }))
                   }
                   className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
-                  title="Sembunyikan"
+                  title={t("common.actions.hide")}
                 >
                   <EyeOff className="h-4 w-4" />
                 </Button>
@@ -216,7 +230,7 @@ export function AccessCodesTable() {
                       variant="link"
                       size="icon"
                       className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
-                      title="Tampilkan"
+                      title={t("common.actions.show")}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -277,16 +291,48 @@ export function AccessCodesTable() {
                   <SkeletonAccessCodeRow />
                 </TableRow>
               ))
+            ) : isErrorCodes && accessCodes.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-32 text-center">
+                  <Empty role="alert" className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("common.load_error_description")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void refetchCodes()}
+                      >
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <EmptyState
-                    title={t("admin.codes_empty_title")}
-                    description={t("admin.codes_empty_desc")}
-                  />
+                  <Empty className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("admin.codes_empty_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("admin.codes_empty_desc")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             ) : (

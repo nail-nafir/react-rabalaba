@@ -1,3 +1,4 @@
+import { FormFieldError } from "@/components/shared/form-field-error";
 import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, FieldError } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
@@ -88,7 +89,7 @@ function ValidatePasswordDialogContent({
       if (error) {
         form.setError("password", {
           type: "manual",
-          message: t("auth.login_failed", "Password salah"),
+          message: "auth.login_failed",
         });
         toast.error(t("toasts.password.validation_error"));
       } else {
@@ -111,13 +112,10 @@ function ValidatePasswordDialogContent({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.validate_password_title", "Validasi Password")}
+            {t("admin.validate_password_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.validate_password_desc",
-              "Masukkan password Anda untuk memverifikasi tindakan sensitif ini.",
-            )}
+            {t("admin.validate_password_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -130,10 +128,7 @@ function ValidatePasswordDialogContent({
                 <Input
                   {...field}
                   type={showPassword ? "text" : "password"}
-                  placeholder={t(
-                    "auth.password_placeholder",
-                    "Masukkan password Anda",
-                  )}
+                  placeholder={t("auth.password_placeholder")}
                   aria-invalid={fieldState.invalid}
                   autoFocus
                   autoComplete="current-password"
@@ -155,7 +150,7 @@ function ValidatePasswordDialogContent({
                 </Button>
               </div>
               {fieldState.invalid && (
-                <FieldError
+                <FormFieldError
                   errors={[fieldState.error]}
                   className="text-[10px] sm:text-[11px] font-medium mt-1"
                 />

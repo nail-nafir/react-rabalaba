@@ -10,6 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -65,30 +73,28 @@ export function RiskDisclaimerDialog() {
   if (hasLoadError) {
     return (
       <Card className="mx-auto w-full sm:max-w-md border border-border text-foreground">
-        <CardHeader>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex size-16 items-center justify-center rounded-md bg-amber-500/10">
-              <AlertTriangle className="size-8 text-amber-500" />
-            </div>
-            <CardTitle className="text-lg font-bold text-foreground">
-              {t("disclaimer.load_error_title")}
-            </CardTitle>
-            <CardDescription className="text-xs leading-relaxed text-muted-foreground">
+        <Empty role="alert" className="border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertTriangle aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("disclaimer.load_error_title")}</EmptyTitle>
+            <EmptyDescription>
               {t("disclaimer.load_error_description")}
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            type="button"
-            size="lg"
-            disabled={retrying}
-            onClick={() => void handleRetry()}
-            className="min-h-11 w-full text-xs font-bold"
-          >
-            {t("common.retry")}
-          </Button>
-        </CardFooter>
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              type="button"
+              size="lg"
+              disabled={retrying}
+              onClick={() => void handleRetry()}
+              aria-busy={retrying}
+            >
+              {t("common.retry")}
+            </Button>
+          </EmptyContent>
+        </Empty>
       </Card>
     );
   }

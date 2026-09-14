@@ -1,5 +1,10 @@
 import { memo, useId, useMemo } from "react";
-import { AreaChart, Area, YAxis, ResponsiveContainer } from "recharts";
+import {
+  Area,
+  AreaChart,
+  ResponsiveContainer,
+  YAxis,
+} from "recharts";
 import { cn } from "@/lib/utils";
 
 const UP_COLOR = "var(--color-emerald-400)";
@@ -19,13 +24,8 @@ interface SparklineProps {
 }
 
 /**
- * Price sparkline whose recharts inputs (data, domain, margin) keep a stable
- * identity across re-renders. Recharts restarts the mount animation whenever
- * `data`/axis identity changes, and recharts 3.x fires setState from the
- * animation effect's cleanup — so feeding it fresh arrays every render lets a
- * re-render burst (e.g. opening a dialog) cascade into React's "Maximum update
- * depth exceeded". Memoizing on the source array limits the animation to mount
- * and real data changes.
+ * Price sparkline whose Recharts inputs stay stable across unrelated renders.
+ * Fixed-size table cells skip ResizeObserver; flexible cards stay responsive.
  */
 export const Sparkline = memo(function Sparkline({
   values,
@@ -41,14 +41,14 @@ export const Sparkline = memo(function Sparkline({
 
   const model = useMemo(() => {
     const points = (values ?? [])
-      .filter((p): p is number => p !== null)
+      .filter((point): point is number => Number.isFinite(point))
       .slice(-30);
     if (points.length < 2) return null;
     const min = Math.min(...points);
     const max = Math.max(...points);
     const pad = (max - min || 1) * 0.1;
     return {
-      data: points.map((v) => ({ v })),
+      data: points.map((value) => ({ value })),
       domain: [min - pad, max + pad] as [number, number],
       color: points[points.length - 1] >= points[0] ? UP_COLOR : DOWN_COLOR,
     };
@@ -58,41 +58,64 @@ export const Sparkline = memo(function Sparkline({
     () => ({ top: margin, right: margin, bottom: margin, left: margin }),
     [margin],
   );
+  const responsiveDimension = useMemo(
+    () => ({
+      width: typeof width === "number" ? width : 320,
+      height: typeof height === "number" ? height : 32,
+    }),
+    [height, width],
+  );
 
   if (!model) return null;
+
+  const fixedSize = typeof width === "number" && typeof height === "number";
+  const chart = (
+    <AreaChart
+      width={typeof width === "number" ? width : undefined}
+      height={typeof height === "number" ? height : undefined}
+      data={model.data}
+      margin={chartMargin}
+      accessibilityLayer={false}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={model.color} stopOpacity={0.45} />
+          <stop offset="100%" stopColor={model.color} stopOpacity={0.05} />
+        </linearGradient>
+      </defs>
+      <YAxis hide domain={model.domain} />
+      <Area
+        type="monotone"
+        dataKey="value"
+        stroke={model.color}
+        strokeWidth={strokeWidth}
+        fill={`url(#${gradientId})`}
+        dot={false}
+        activeDot={false}
+        isAnimationActive="auto"
+        animationDuration={animationDuration}
+        animationBegin={animationBegin}
+      />
+    </AreaChart>
+  );
 
   return (
     <div
       className={cn("pointer-events-none select-none", className)}
       style={{ width, height }}
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
-          data={model.data}
-          margin={chartMargin}
-          accessibilityLayer={false}
+      {fixedSize ? (
+        chart
+      ) : (
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          initialDimension={responsiveDimension}
+          debounce={100}
         >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={model.color} stopOpacity={0.45} />
-              <stop offset="100%" stopColor={model.color} stopOpacity={0.05} />
-            </linearGradient>
-          </defs>
-          <YAxis hide domain={model.domain} />
-          <Area
-            type="monotone"
-            dataKey="v"
-            stroke={model.color}
-            strokeWidth={strokeWidth}
-            fill={`url(#${gradientId})`}
-            dot={false}
-            activeDot={false}
-            isAnimationActive
-            animationDuration={animationDuration}
-            animationBegin={animationBegin}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+          {chart}
+        </ResponsiveContainer>
+      )}
     </div>
   );
 });

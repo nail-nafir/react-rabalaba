@@ -20,7 +20,14 @@ import {
   X,
 } from "lucide-react";
 import { useEconomicCalendar } from "@/services/queries/use-calendar-data";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -118,6 +125,7 @@ export default function CalendarPage() {
   const {
     data: allEvents = [],
     isLoading,
+    isError,
     refetch,
     isRefetching,
   } = useEconomicCalendar();
@@ -633,15 +641,20 @@ export default function CalendarPage() {
               </div>
             </Card>
           ) : (
-            <Card className="border border-border p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <CardTitle className="text-sm sm:text-base font-bold tracking-tight uppercase text-foreground">
+            <Card className="border border-border">
+              <Empty className="min-h-0 flex-row justify-between rounded-none border-0 p-4 text-left sm:p-5">
+                <EmptyHeader className="items-start text-left">
+                  <EmptyMedia variant="icon">
+                    <CalendarDays aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-sm sm:text-base">
                   {t("calendar.no_upcoming_catalyst")}
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
+                  </EmptyTitle>
+                  <EmptyDescription>
                   {t("calendar.no_events_desc")}
-                </p>
-              </div>
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             </Card>
           )}
         </section>
@@ -931,7 +944,7 @@ export default function CalendarPage() {
                     type="button"
                     onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    aria-label="Clear search"
+                    aria-label={t("common.clear_search")}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -958,11 +971,14 @@ export default function CalendarPage() {
           {/* Agenda Event Cards */}
           {isLoading ? (
             <div className="space-y-6">
-              <div className="border border-border rounded-xl ring-1 ring-foreground/10 overflow-hidden shadow-xs bg-card">
+              <div
+                className="border border-border rounded-xl ring-1 ring-foreground/10 overflow-hidden shadow-xs bg-card"
+                aria-hidden="true"
+              >
                 <div className="shrink-0 bg-popover p-4 pb-0">
                   <div className="flex items-center justify-between gap-3">
                     <Skeleton className="h-4 w-48 sm:w-64" />
-                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-3 w-16 shrink-0" />
                   </div>
                   <Separator className="mt-4" />
                 </div>
@@ -973,37 +989,72 @@ export default function CalendarPage() {
                       className="px-4 py-4 flex flex-row items-center justify-between gap-4"
                     >
                       <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
-                        <Skeleton className="h-5 w-20 rounded-md shrink-0" />
-                        <div className="space-y-1.5 flex-1 min-w-0">
-                          <Skeleton className="h-4 w-48 sm:w-64" />
-                          <Skeleton className="h-3 w-16" />
+                        <Skeleton className="size-7 shrink-0 rounded-lg sm:size-8" />
+                        <Skeleton className="h-5 w-20 shrink-0 rounded-md" />
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <Skeleton className="h-4 w-48 max-w-full sm:w-64" />
+                          <Skeleton className="h-3 w-20 max-w-full sm:w-28" />
                         </div>
                       </div>
                       <div className="flex items-center shrink-0">
-                        <Skeleton className="h-5 w-16 rounded-md shrink-0" />
+                        <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
+          ) : isError && allEvents.length === 0 ? (
+            <Card className="border border-border">
+              <Empty role="alert" className="min-h-56 border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <RefreshCw aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("common.load_error_description")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void refetch()}
+                    disabled={isRefetching}
+                    aria-busy={isRefetching}
+                  >
+                    <RefreshCw data-icon="inline-start" />
+                    {t("common.retry")}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            </Card>
           ) : Object.keys(groupedEvents).length === 0 ? (
-            <Card className="border border-border p-8 text-center">
-              <EmptyState
-                title={t("calendar.no_events")}
-                description={t("calendar.no_events_desc")}
-              />
-              {hasActiveFilters && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  className="mt-4 text-xs font-semibold cursor-pointer mx-auto gap-1.5"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>{t("calendar.reset_filter")}</span>
-                </Button>
-              )}
+            <Card className="border border-border">
+              <Empty className="min-h-56 border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <CalendarDays aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("calendar.no_events")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("calendar.no_events_desc")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {hasActiveFilters && (
+                  <EmptyContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetFilters}
+                    >
+                      <RotateCcw data-icon="inline-start" />
+                      {t("calendar.reset_filter")}
+                    </Button>
+                  </EmptyContent>
+                )}
+              </Empty>
             </Card>
           ) : (
             <div className="space-y-6">

@@ -30,7 +30,7 @@ export function LicenseStatus() {
   // While the entitlement is still resolving, show a placeholder instead of the
   // default 'free' badge — otherwise it flashes 'free' then snaps to 'premium'.
   if (isResolving) {
-    return <Skeleton className="h-8 w-22 rounded-md" />;
+    return <Skeleton className="h-8 w-24 max-w-full rounded-md" />;
   }
 
   const Icon = TIER_ICONS[tier];

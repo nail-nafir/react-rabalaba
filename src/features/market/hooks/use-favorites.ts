@@ -29,7 +29,7 @@ export function useFavorites() {
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["favorites", userId],
     enabled: !!userId,
     staleTime: 60_000,
@@ -101,5 +101,13 @@ export function useFavorites() {
     [userId, queryClient],
   );
 
-  return { favoriteSymbols, isLoading, addSymbol, addSymbols, removeSymbol };
+  return {
+    favoriteSymbols,
+    isLoading,
+    isError,
+    refetch,
+    addSymbol,
+    addSymbols,
+    removeSymbol,
+  };
 }

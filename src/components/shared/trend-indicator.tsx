@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import type { TrendDirection } from '@/types/market';
 import { TREND_DISPLAY } from '@/constants';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -24,6 +25,7 @@ export function TrendIndicator({
   meta,
   showBar = true,
 }: TrendIndicatorProps) {
+  const { t } = useTranslation();
   const display = TREND_DISPLAY[trend];
   const Icon = TREND_ICONS[trend];
 
@@ -47,7 +49,7 @@ export function TrendIndicator({
       <Icon className="h-3.5 w-3.5" />
       {showLabel && (
         <span className="text-xs font-medium">
-          {display.label}
+          {t(display.labelKey)}
           {meta && (showBar ? (
             miniBar(parseInt(meta))
           ) : (

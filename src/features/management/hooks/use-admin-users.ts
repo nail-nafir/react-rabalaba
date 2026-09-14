@@ -114,7 +114,12 @@ export function useAdminUsers() {
     [queryClient, codesKey],
   );
 
-  const { data: usersData, isLoading: isLoadingUsers } = useQuery({
+  const {
+    data: usersData,
+    isLoading: isLoadingUsers,
+    isError: isErrorUsers,
+    refetch: refetchUsers,
+  } = useQuery({
     queryKey: usersKey,
     enabled: isAdmin,
     staleTime: 60_000,
@@ -126,7 +131,12 @@ export function useAdminUsers() {
     },
   });
 
-  const { data: codesData, isLoading: isLoadingCodes } = useQuery({
+  const {
+    data: codesData,
+    isLoading: isLoadingCodes,
+    isError: isErrorCodes,
+    refetch: refetchCodes,
+  } = useQuery({
     queryKey: codesKey,
     enabled: isAdmin,
     staleTime: 60_000,
@@ -224,6 +234,11 @@ export function useAdminUsers() {
     isLoading: isLoadingUsers || isLoadingCodes,
     isLoadingUsers,
     isLoadingCodes,
+    isError: isErrorUsers || isErrorCodes,
+    isErrorUsers,
+    isErrorCodes,
+    refetchUsers,
+    refetchCodes,
     addUser,
     addAccessCode,
     toggleBlockUser,

@@ -12,12 +12,22 @@ import { cn } from "@/lib/utils";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  ArrowUpRightIcon,
   BotIcon,
+  CheckIcon,
   CopyIcon,
+  Clock3Icon,
+  Globe2Icon,
+  LogInIcon,
   PlusIcon,
   RefreshCcwIcon,
+  ShieldCheckIcon,
+  SlidersHorizontalIcon,
   SquareIcon,
+  TargetIcon,
+  TrendingUpIcon,
   XIcon,
+  ZapIcon,
 } from "lucide-react";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
@@ -40,6 +50,7 @@ import {
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
 import {
   Message,
+  MessageAvatar,
   MessageContent,
   MessageFooter,
   MessageHeader,
@@ -52,7 +63,6 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
-import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardContent,
@@ -60,18 +70,91 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { buildLoginRedirect } from "@/lib/auth-redirect";
 import { BADGE } from "@/constants/taxonomy/palette";
-import {
-  streamChat,
-  type ChatMessage,
-} from "@/features/chat/chat-stream";
+import { streamChat, type ChatMessage } from "@/features/chat/chat-stream";
 
 type ChatError = "auth" | "input" | "rate" | "unavailable";
+
+const TERMINAL_BADGE_CLASSNAME =
+  cn(
+    "rounded-md text-[10px] font-bold uppercase tracking-wider",
+    BADGE.accent.bg,
+    BADGE.accent.text,
+    BADGE.accent.border,
+  );
+
+const PROMPT_TEMPLATE_CONFIG = [
+  {
+    key: "thesis",
+    icon: TrendingUpIcon,
+    accent:
+      "text-emerald-400 bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20",
+  },
+  {
+    key: "invalidation",
+    icon: TargetIcon,
+    accent:
+      "text-amber-400 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500/20",
+  },
+  {
+    key: "risk",
+    icon: ShieldCheckIcon,
+    accent:
+      "text-primary bg-primary/10 border-primary/20 group-hover:bg-primary/20",
+  },
+  {
+    key: "entry",
+    icon: LogInIcon,
+    accent:
+      "text-primary bg-primary/10 border-primary/20 group-hover:bg-primary/20",
+  },
+  {
+    key: "context",
+    icon: Globe2Icon,
+    accent:
+      "text-emerald-400 bg-emerald-500/10 border-emerald-500/20 group-hover:bg-emerald-500/20",
+  },
+  {
+    key: "management",
+    icon: SlidersHorizontalIcon,
+    accent:
+      "text-amber-400 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500/20",
+  },
+  {
+    key: "catalyst",
+    icon: ZapIcon,
+    accent:
+      "text-primary bg-primary/10 border-primary/20 group-hover:bg-primary/20",
+  },
+  {
+    key: "timeframe",
+    icon: Clock3Icon,
+    accent:
+      "text-amber-400 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500/20",
+  },
+] as const;
+
+function randomPromptTemplates() {
+  const accents = [
+    ...new Set(PROMPT_TEMPLATE_CONFIG.map(({ accent }) => accent)),
+  ];
+
+  return accents.map((accent) => {
+    const candidates = PROMPT_TEMPLATE_CONFIG.filter(
+      (template) => template.accent === accent,
+    );
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  });
+}
 
 function errorKind(error: unknown): ChatError {
   const status =
@@ -91,6 +174,10 @@ function ChatSession({ accessToken }: { accessToken: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ChatError | null>(null);
   const [failedUserId, setFailedUserId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [promptTemplateConfig, setPromptTemplateConfig] = useState(
+    randomPromptTemplates,
+  );
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -106,7 +193,10 @@ function ChatSession({ accessToken }: { accessToken: string }) {
     setBusy(true);
     setError(null);
     setFailedUserId(null);
-    setMessages([...history, { id: assistantId, role: "assistant", content: "" }]);
+    setMessages([
+      ...history,
+      { id: assistantId, role: "assistant", content: "" },
+    ]);
 
     try {
       await streamChat(
@@ -179,6 +269,7 @@ function ChatSession({ accessToken }: { accessToken: string }) {
     setDraft("");
     setError(null);
     setFailedUserId(null);
+    setPromptTemplateConfig(randomPromptTemplates());
     inputRef.current?.focus();
   }
 
@@ -193,81 +284,123 @@ function ChatSession({ accessToken }: { accessToken: string }) {
     }
   }
 
-  async function copyResponse(content: string) {
+  async function copyResponse(messageId: string, content: string) {
     try {
       await navigator.clipboard.writeText(content);
+      setCopiedId(messageId);
       toast.success(t("chat.copied"));
+      setTimeout(() => setCopiedId(null), 2000);
     } catch {
       toast.error(t("chat.copy_failed"));
     }
   }
 
-  const prompts = [
-    t("chat.prompts.thesis"),
-    t("chat.prompts.invalidation"),
-    t("chat.prompts.risk"),
-  ];
+  function applyPromptTemplate(text: string) {
+    setDraft(text);
+    inputRef.current?.focus();
+  }
+
+  const promptTemplates = promptTemplateConfig.map((template) => ({
+    ...template,
+    text: t(`chat.prompts.${template.key}`),
+  }));
+
+  const lastMessage = messages.at(-1);
   const waitingForFirstToken =
-    busy &&
-    messages.at(-1)?.role === "assistant" &&
-    !messages.at(-1)?.content;
+    busy && lastMessage?.role === "assistant" && !lastMessage?.content;
   const failedIndex = failedUserId
     ? messages.findIndex((message) => message.id === failedUserId)
     : -1;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-4 py-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="min-h-11 sm:min-h-0"
-          disabled={!messages.length && !busy}
-          onClick={newChat}
-        >
-          <PlusIcon data-icon="inline-start" />
-          {t("chat.new_chat")}
-        </Button>
-      </div>
-      <Separator />
+      {messages.length > 0 ? (
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-muted/15 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span
+              className="size-1.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+            <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("chat.messages_label")}
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 min-h-7 gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-7"
+            disabled={busy}
+            onClick={newChat}
+          >
+            <PlusIcon className="size-3.5" aria-hidden="true" />
+            {t("chat.new_chat")}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-hidden">
         <MessageScrollerProvider>
           <MessageScroller aria-busy={busy}>
-            <MessageScrollerViewport>
+            <MessageScrollerViewport aria-label={t("chat.messages_label")}>
               <MessageScrollerContent
-                className="p-4"
+                className="gap-4 p-4"
                 role="log"
                 aria-live="polite"
                 aria-relevant="additions text"
               >
                 {!messages.length && !error ? (
-                  <MessageScrollerItem className="flex min-h-full">
-                    <Empty className="min-h-full px-0">
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <BotIcon />
-                        </EmptyMedia>
-                        <EmptyTitle>{t("chat.empty_title")}</EmptyTitle>
-                        <EmptyDescription>
-                          {t("chat.empty_description")}
-                        </EmptyDescription>
+                  <MessageScrollerItem className="my-auto flex min-h-full flex-col justify-center py-2">
+                    <Empty className="min-h-full px-1">
+                      <EmptyHeader className="w-full items-start space-y-1.5">
+                        <div className="w-full space-y-1 text-left">
+                          <EmptyTitle className="text-left text-base font-bold tracking-tight leading-snug text-foreground sm:text-lg">
+                            {t("chat.empty_title")}
+                          </EmptyTitle>
+                          <EmptyDescription className="max-w-72 text-left text-xs leading-relaxed text-muted-foreground sm:max-w-85">
+                            {t("chat.empty_description")}
+                          </EmptyDescription>
+                        </div>
                       </EmptyHeader>
-                      <EmptyContent className="items-stretch">
-                        {prompts.map((prompt) => (
-                          <Button
-                            key={prompt}
-                            type="button"
-                            variant="outline"
-                            className="h-auto min-h-11 justify-start whitespace-normal text-left"
-                            onClick={() => {
-                              setDraft(prompt);
-                              inputRef.current?.focus();
+                      <EmptyContent className="mt-3 w-full items-stretch gap-2 px-1">
+                        {promptTemplates.map((template) => (
+                          <Card
+                            key={template.key}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={template.text}
+                            className="group w-full cursor-pointer select-none border border-border transition-all duration-200 hover:border-primary hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+                            onClick={() => applyPromptTemplate(template.text)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                applyPromptTemplate(template.text);
+                              }
                             }}
                           >
-                            {prompt}
-                          </Button>
+                            <CardContent className="flex h-full items-center justify-between gap-3 px-4">
+                              <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <div
+                                  className={cn(
+                                    "flex size-7.5 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                                    template.accent,
+                                  )}
+                                >
+                                  <template.icon
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                                <span className="truncate text-xs font-medium text-foreground/90 group-hover:text-foreground">
+                                  {template.text}
+                                </span>
+                              </div>
+                              <ArrowUpRightIcon
+                                className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-primary"
+                                aria-hidden="true"
+                              />
+                            </CardContent>
+                          </Card>
                         ))}
                       </EmptyContent>
                     </Empty>
@@ -281,46 +414,79 @@ function ChatSession({ accessToken }: { accessToken: string }) {
                       messageId={message.id}
                       scrollAnchor={message.role === "user"}
                     >
-                      <Message align={message.role === "user" ? "end" : "start"}>
+                      <Message
+                        align={message.role === "user" ? "end" : "start"}
+                        className="gap-2.5"
+                      >
+                        {message.role === "assistant" ? (
+                          <MessageAvatar className="size-7 shrink-0 rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                            <BotIcon className="size-3.5" aria-hidden="true" />
+                          </MessageAvatar>
+                        ) : null}
                         <MessageContent>
-                          <MessageHeader>
+                          <MessageHeader className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
                             {message.role === "user"
-                              ? t("chat.you")
-                              : t("chat.assistant")}
+                              ? t("chat.trader")
+                              : t("chat.sensei")}
                           </MessageHeader>
                           <Bubble
-                            variant={message.role === "user" ? "default" : "muted"}
+                            variant={
+                              message.role === "user" ? "default" : "muted"
+                            }
+                            className={cn(
+                              "rounded-2xl transition-all",
+                              message.role === "user"
+                                ? "rounded-tr-xs bg-primary text-primary-foreground shadow-xs font-normal"
+                                : "rounded-tl-xs border border-border/60 bg-muted/60 text-foreground shadow-xs backdrop-blur-xs",
+                            )}
                           >
-                            <BubbleContent>
+                            <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
                               <span className="whitespace-pre-wrap">
                                 {message.content}
                               </span>
                             </BubbleContent>
                           </Bubble>
                           {message.role === "assistant" ? (
-                            <MessageFooter className="gap-1">
+                            <MessageFooter className="gap-1 pt-1">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon-sm"
-                                className="size-11 sm:size-7"
+                                className="size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:size-7"
                                 aria-label={t("chat.copy")}
                                 title={t("chat.copy")}
-                                onClick={() => void copyResponse(message.content)}
+                                onClick={() =>
+                                  void copyResponse(message.id, message.content)
+                                }
                               >
-                                <CopyIcon data-icon="inline-start" />
+                                {copiedId === message.id ? (
+                                  <CheckIcon
+                                    className="size-3.5 text-emerald-500"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <CopyIcon
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                )}
                               </Button>
-                              {index === messages.length - 1 && !busy && !error ? (
+                              {index === messages.length - 1 &&
+                              !busy &&
+                              !error ? (
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon-sm"
-                                  className="size-11 sm:size-7"
+                                  className="size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:size-7"
                                   aria-label={t("chat.retry")}
                                   title={t("chat.retry")}
                                   onClick={() => retryFrom(index)}
                                 >
-                                  <RefreshCcwIcon data-icon="inline-start" />
+                                  <RefreshCcwIcon
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
                                 </Button>
                               ) : null}
                             </MessageFooter>
@@ -333,37 +499,57 @@ function ChatSession({ accessToken }: { accessToken: string }) {
 
                 {waitingForFirstToken ? (
                   <MessageScrollerItem>
-                    <Marker role="status">
-                      <MarkerIcon>
-                        <Spinner
-                          aria-hidden="true"
-                          className="motion-reduce:animate-none"
-                        />
-                      </MarkerIcon>
-                      <MarkerContent>{t("chat.thinking")}</MarkerContent>
-                    </Marker>
+                    <div className="flex items-center gap-2.5 px-1 py-1">
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                        <BotIcon className="size-3.5" aria-hidden="true" />
+                      </div>
+                      <Marker
+                        role="status"
+                        className="rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+                      >
+                        <MarkerIcon>
+                          <Spinner
+                            aria-hidden="true"
+                            className="size-3.5 text-primary motion-reduce:animate-none"
+                          />
+                        </MarkerIcon>
+                        <MarkerContent className="text-xs font-medium">
+                          {t("chat.thinking")}
+                        </MarkerContent>
+                      </Marker>
+                    </div>
                   </MessageScrollerItem>
                 ) : null}
 
                 {error ? (
                   <MessageScrollerItem>
-                    <Message>
+                    <Message className="gap-2.5">
+                      <MessageAvatar className="size-7 shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 text-destructive">
+                        <BotIcon className="size-3.5" aria-hidden="true" />
+                      </MessageAvatar>
                       <MessageContent>
-                        <Bubble variant="destructive">
-                          <BubbleContent>
-                            <span role="alert">{t(`chat.errors.${error}`)}</span>
+                        <Bubble
+                          variant="destructive"
+                          role="alert"
+                          className="rounded-2xl rounded-tl-xs"
+                        >
+                          <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm">
+                            {t(`chat.errors.${error}`)}
                           </BubbleContent>
                         </Bubble>
                         {failedIndex >= 0 ? (
-                          <MessageFooter>
+                          <MessageFooter className="gap-1 pt-0.5">
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="min-h-11 sm:min-h-0"
+                              className="h-7 min-h-7 gap-1.5 rounded-md px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive sm:min-h-0"
                               onClick={() => retryFrom(failedIndex)}
                             >
-                              <RefreshCcwIcon data-icon="inline-start" />
+                              <RefreshCcwIcon
+                                className="size-3.5"
+                                aria-hidden="true"
+                              />
                               {t("chat.retry")}
                             </Button>
                           </MessageFooter>
@@ -374,63 +560,72 @@ function ChatSession({ accessToken }: { accessToken: string }) {
                 ) : null}
               </MessageScrollerContent>
             </MessageScrollerViewport>
-            <MessageScrollerButton aria-label={t("chat.scroll_latest")}>
-              <ArrowDownIcon data-icon="inline-start" />
+            <MessageScrollerButton
+              className="size-10 rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-xs sm:size-7"
+              aria-label={t("chat.scroll_latest")}
+            >
+              <ArrowDownIcon aria-hidden="true" />
             </MessageScrollerButton>
           </MessageScroller>
         </MessageScrollerProvider>
       </div>
 
-      <Separator />
       <form
-        className="shrink-0 w-full p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4"
+        className="w-full shrink-0 border-t border-border bg-card px-3.5 py-3 sm:px-4 sm:py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3"
         aria-busy={busy}
         onSubmit={handleSubmit}
       >
-        <FieldGroup className="gap-2">
+        <FieldGroup className="gap-1.5">
           <Field>
             <FieldLabel htmlFor="research-copilot-input" className="sr-only">
               {t("chat.input_label")}
             </FieldLabel>
-            <InputGroup>
+            <InputGroup className="rounded-xl border border-border bg-card shadow-xs transition-all focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
               <InputGroupTextarea
                 ref={inputRef}
                 id="research-copilot-input"
                 rows={1}
                 maxLength={2_000}
-                className="max-h-32 min-h-12 overflow-y-auto"
+                className="max-h-32 min-h-10 overflow-y-auto px-3.5 py-2 text-sm leading-relaxed"
                 placeholder={t("chat.placeholder")}
+                aria-describedby="research-copilot-hint"
                 value={draft}
                 disabled={busy}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}
               />
-              <InputGroupAddon align="block-end" className="p-1.5">
-                <InputGroupText className="hidden text-xs sm:flex">
+              <InputGroupAddon
+                align="block-end"
+                className="flex items-center justify-between w-full border-t border-border px-3 py-1.5"
+              >
+                <InputGroupText
+                  id="research-copilot-hint"
+                  className="sr-only text-[11px] text-muted-foreground/70 sm:not-sr-only sm:flex"
+                >
                   {t("chat.composer_hint")}
                 </InputGroupText>
                 {busy ? (
                   <InputGroupButton
                     type="button"
                     size="icon-sm"
-                    className="ml-auto size-8 shrink-0"
+                    className="ml-auto flex size-8 items-center justify-center rounded-lg p-0 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground sm:size-8"
                     aria-label={t("chat.stop")}
                     title={t("chat.stop")}
                     onClick={stop}
                   >
-                    <SquareIcon data-icon="inline-start" />
+                    <SquareIcon className="size-3.5" aria-hidden="true" />
                   </InputGroupButton>
                 ) : (
                   <InputGroupButton
                     type="submit"
                     variant="default"
                     size="icon-sm"
-                    className="ml-auto size-8 shrink-0"
+                    className="ml-auto flex size-8 items-center justify-center rounded-lg p-0 bg-primary text-primary-foreground shadow-xs transition-transform hover:bg-primary/90 active:scale-95 disabled:opacity-40 motion-reduce:transform-none sm:size-8"
                     disabled={!draft.trim()}
                     aria-label={t("chat.send")}
                     title={t("chat.send")}
                   >
-                    <ArrowUpIcon data-icon="inline-start" />
+                    <ArrowUpIcon className="size-4" aria-hidden="true" />
                   </InputGroupButton>
                 )}
               </InputGroupAddon>
@@ -454,41 +649,79 @@ export function ResearchCopilot() {
   );
 
   return (
-    <>
-      <Card
-        id="rabalaba-sensei-panel"
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          className="group fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex min-h-11 items-center gap-2 rounded-full border border-primary/40 bg-card/90 px-3.5 py-2 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md transition-all duration-200 hover:border-primary hover:bg-card hover:shadow-2xl hover:shadow-primary/20 active:scale-95 motion-reduce:transform-none motion-reduce:transition-none sm:right-6 sm:px-4 sm:text-sm md:bottom-6"
+          aria-label={t("chat.open")}
+          title={t("chat.open")}
+        >
+          <div className="relative flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+            <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="absolute -top-0.5 -right-0.5 flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
+          </div>
+          <span className="hidden font-medium tracking-tight whitespace-nowrap sm:inline">
+            {t("chat.title")}
+          </span>
+          <Badge
+            variant="outline"
+            className={cn("hidden sm:inline-flex", TERMINAL_BADGE_CLASSNAME)}
+          >
+            {t("chat.badge")}
+          </Badge>
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        forceMount
+        side="top"
+        align="end"
+        sideOffset={12}
+        collisionPadding={12}
+        aria-label={t("chat.title")}
         aria-hidden={!open}
-        className={`fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex h-[min(720px,calc(100dvh-6rem))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card p-0 shadow-2xl shadow-black/30 ring-1 ring-foreground/10 transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[min(440px,calc(100vw-3rem))] ${
-          open
-            ? "visible translate-y-0 opacity-100"
-            : "invisible pointer-events-none translate-y-3 opacity-0"
-        }`}
+        onOpenAutoFocus={(event) => {
+          const input = document.getElementById("research-copilot-input");
+          if (input instanceof HTMLTextAreaElement) {
+            event.preventDefault();
+            input.focus({ preventScroll: true });
+          }
+        }}
+        className={cn(
+          "w-[min(460px,calc(100vw-1.25rem))] max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none",
+          !open && "invisible pointer-events-none translate-y-2 opacity-0",
+        )}
       >
-          <CardHeader className="shrink-0 bg-popover p-4 pb-0">
-            <div className="flex items-start gap-3">
-              <Avatar className="size-10 border border-primary/30 bg-primary/10">
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  <BotIcon className="size-5" aria-hidden="true" />
-                </AvatarFallback>
-              </Avatar>
+        <Card
+          id="rabalaba-sensei-panel"
+          className="flex h-[min(680px,calc(100dvh-7.5rem))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all sm:h-[min(720px,calc(100dvh-6.5rem))]"
+        >
+          <CardHeader className="shrink-0 border-b border-border bg-card px-4 py-3 sm:px-5 sm:py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="relative flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-inner">
+                <BotIcon className="size-4.5" aria-hidden="true" />
+                <span className="absolute -top-0.5 -right-0.5 flex size-2">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+                  <span className="relative inline-flex size-2 rounded-full border border-card bg-emerald-500" />
+                </span>
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="truncate text-base">
+                  <CardTitle className="truncate text-base font-bold tracking-tight text-foreground leading-snug">
                     {t("chat.title")}
                   </CardTitle>
                   <Badge
                     variant="outline"
-                    className={cn(
-                      "w-fit shrink-0 rounded-md text-[10px] font-bold uppercase tracking-wider",
-                      BADGE.accent.bg,
-                      BADGE.accent.text,
-                      BADGE.accent.border,
-                    )}
+                    className={TERMINAL_BADGE_CLASSNAME}
                   >
-                    AI
+                    {t("chat.badge")}
                   </Badge>
                 </div>
-                <CardDescription className="mt-1 text-xs leading-relaxed">
+                <CardDescription className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
                   {t("chat.description")}
                 </CardDescription>
               </div>
@@ -496,15 +729,14 @@ export function ResearchCopilot() {
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="size-11 shrink-0 sm:size-8"
+                className="size-8 shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label={t("chat.close")}
                 title={t("chat.close")}
                 onClick={() => setOpen(false)}
               >
-                <XIcon aria-hidden="true" />
+                <XIcon className="size-4" aria-hidden="true" />
               </Button>
             </div>
-            <Separator className="mt-4" />
           </CardHeader>
 
           <CardContent className="flex min-h-0 flex-1 flex-col p-0">
@@ -521,10 +753,12 @@ export function ResearchCopilot() {
               <Empty className="h-full px-6">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
-                    <BotIcon />
+                    <BotIcon aria-hidden="true" />
                   </EmptyMedia>
                   <EmptyTitle>{t("chat.login_title")}</EmptyTitle>
-                  <EmptyDescription>{t("chat.login_description")}</EmptyDescription>
+                  <EmptyDescription>
+                    {t("chat.login_description")}
+                  </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
                   <Button asChild className="min-h-11">
@@ -534,20 +768,8 @@ export function ResearchCopilot() {
               </Empty>
             )}
           </CardContent>
-      </Card>
-
-      <Button
-        type="button"
-        className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 h-11 rounded-full px-3 text-xs font-semibold shadow-lg transition-transform duration-200 ease-out hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100 sm:px-4 sm:text-sm md:bottom-6"
-        aria-label={t("chat.open")}
-        title={t("chat.open")}
-        aria-expanded={open}
-        aria-controls="rabalaba-sensei-panel"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <BotIcon className="size-4 shrink-0" aria-hidden="true" />
-        <span className="whitespace-nowrap">{t("chat.title")}</span>
-      </Button>
-    </>
+        </Card>
+      </PopoverContent>
+    </Popover>
   );
 }

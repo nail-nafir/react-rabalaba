@@ -1,3 +1,4 @@
+import { FormFieldError } from "@/components/shared/form-field-error";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
@@ -6,7 +7,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Lock, Mail, MailCheck, UserPlus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, FieldError } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import {
@@ -42,7 +43,10 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     const { data: res, error } = await signUp(data.email, data.password);
     if (error) {
-      form.setError("email", { type: "manual", message: error.message });
+      form.setError("email", {
+        type: "manual",
+        message: "auth.register_failed",
+      });
       return;
     }
     // No session back = email confirmation required before first login.
@@ -112,6 +116,7 @@ export default function RegisterPage() {
                   {...field}
                   type="email"
                   placeholder={t("auth.email_placeholder")}
+                  aria-label={t("auth.email_label")}
                   aria-invalid={fieldState.invalid}
                   autoComplete="email"
                   autoFocus
@@ -122,7 +127,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               {fieldState.invalid && (
-                <FieldError
+                <FormFieldError
                   errors={[fieldState.error]}
                   className="text-[10px] sm:text-[11px] font-medium mt-1"
                 />
@@ -145,6 +150,7 @@ export default function RegisterPage() {
                   {...field}
                   type={showPassword ? "text" : "password"}
                   placeholder={t("auth.password_placeholder")}
+                  aria-label={t("auth.password_label")}
                   aria-invalid={fieldState.invalid}
                   autoComplete="new-password"
                   className="h-10 pl-9 pr-10 text-xs sm:text-sm bg-background/50 border-border/80 focus-visible:border-primary focus-visible:ring-primary/10 transition-all rounded-lg"
@@ -156,9 +162,9 @@ export default function RegisterPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  aria-label={`${t(showPassword ? "common.actions.hide" : "common.actions.show")} ${t("auth.password_label")}`}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-0 top-0 h-10 w-10 text-muted-foreground/60 hover:text-foreground hover:bg-transparent transition-colors cursor-pointer"
-                  tabIndex={-1}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -168,7 +174,7 @@ export default function RegisterPage() {
                 </Button>
               </div>
               {fieldState.invalid && (
-                <FieldError
+                <FormFieldError
                   errors={[fieldState.error]}
                   className="text-[10px] sm:text-[11px] font-medium mt-1"
                 />
@@ -191,6 +197,7 @@ export default function RegisterPage() {
                   {...field}
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder={t("auth.confirm_password_placeholder")}
+                  aria-label={t("auth.confirm_password_label")}
                   aria-invalid={fieldState.invalid}
                   autoComplete="new-password"
                   className="h-10 pl-9 pr-10 text-xs sm:text-sm bg-background/50 border-border/80 focus-visible:border-primary focus-visible:ring-primary/10 transition-all rounded-lg"
@@ -202,9 +209,9 @@ export default function RegisterPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  aria-label={`${t(showConfirmPassword ? "common.actions.hide" : "common.actions.show")} ${t("auth.confirm_password_label")}`}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-0 top-0 h-10 w-10 text-muted-foreground/60 hover:text-foreground hover:bg-transparent transition-colors cursor-pointer"
-                  tabIndex={-1}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -214,7 +221,7 @@ export default function RegisterPage() {
                 </Button>
               </div>
               {fieldState.invalid && (
-                <FieldError
+                <FormFieldError
                   errors={[fieldState.error]}
                   className="text-[10px] sm:text-[11px] font-medium mt-1"
                 />

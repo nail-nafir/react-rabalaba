@@ -53,15 +53,14 @@ export const STATUS_COLORS: Record<FollowStatus, BadgeColor> = {
   reversed: SIGNAL_COLORS.neutral,
 };
 
-/** Trend label (plain trading term, identical in both locales today) + text
- *  color from the shared palette. */
+/** Trend label key + text color from the shared palette. */
 export const TREND_DISPLAY: Record<
   TrendDirection,
-  { label: string; text: string }
+  { labelKey: string; text: string }
 > = {
-  bullish: { label: "Bullish", text: PALETTE.positive.text },
-  bearish: { label: "Bearish", text: PALETTE.negative.text },
-  sideways: { label: "Sideways", text: PALETTE.neutral.text },
+  bullish: { labelKey: "common.trends.bullish", text: PALETTE.positive.text },
+  bearish: { labelKey: "common.trends.bearish", text: PALETTE.negative.text },
+  sideways: { labelKey: "common.trends.sideways", text: PALETTE.neutral.text },
 };
 
 /** Text color per indicator status (asset detail dialog rows). bullish/oversold

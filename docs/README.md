@@ -1,7 +1,7 @@
 # Dokumentasi RabaLaba / RabaLaba Documentation
 
-> 🇮🇩 Index navigasi dokumentasi RabaLaba. Spesifikasi umumnya bilingual; panduan aturan trading ditulis dalam bahasa Indonesia.
-> 🇺🇸 RabaLaba documentation index. Specifications are generally bilingual; the trading-rules guide is written in Indonesian.
+> 🇮🇩 Index navigasi dokumentasi RabaLaba. Spesifikasi dan Trading Methodology tersedia dalam bahasa Indonesia–Inggris.
+> 🇺🇸 RabaLaba documentation index. Specifications and Trading Methodology are available in Indonesian and English.
 
 ---
 
@@ -66,7 +66,7 @@
 
 | File | Topik / Topic |
 |---|---|
-| [`explainer/aturan-main-trading.md`](explainer/aturan-main-trading.md) | Aturan sinyal → setup tetap → jurnal/Discord → TP/SL → exit/reset, contoh LONG/SHORT, skor dan interval pembaruan |
+| [`explainer/trading-methodology.md`](explainer/trading-methodology.md) | Aturan sinyal → setup tetap → jurnal/Discord → TP/SL → exit/reset, contoh LONG/SHORT, skor dan interval pembaruan |
 | [`explainer/auto-journal-explained.md`](explainer/auto-journal-explained.md) | ELI5 cara kerja robot *ELI5 how the robot works* |
 | [`explainer/auto-journal-system-design.md`](explainer/auto-journal-system-design.md) | SDD formal auto-journal *Formal SDD* |
 | [`explainer/server-vs-browser.md`](explainer/server-vs-browser.md) | Di mana kode jalan (4 tempat) + jangan percaya browser |

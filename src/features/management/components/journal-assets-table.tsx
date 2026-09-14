@@ -47,7 +47,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { EmptyState } from "@/components/shared/empty-state";
+import { AlertCircle, Inbox } from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonJournalAssetRow } from "@/components/shared/skeleton-card";
 import {
@@ -310,7 +318,14 @@ function DeleteButton({
 export function JournalAssetsTable() {
   "use no memo";
   const { t } = useTranslation();
-  const { assets, isLoading, toggleActive, removeAsset } = useJournalAssets();
+  const {
+    assets,
+    isLoading,
+    isError,
+    refetch,
+    toggleActive,
+    removeAsset,
+  } = useJournalAssets();
   const { users, isLoadingUsers } = useAdminUsers();
 
   const userMap = useMemo(() => {
@@ -703,22 +718,52 @@ export function JournalAssetsTable() {
                     <SkeletonJournalAssetRow />
                   </TableRow>
                 ))
+              ) : isError && assets.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={columns.length} className="h-40 text-center">
+                    <Empty role="alert" className="min-h-40 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <AlertCircle aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                        <EmptyDescription>
+                          {t("common.load_error_description")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void refetch()}
+                        >
+                          {t("common.retry")}
+                        </Button>
+                      </EmptyContent>
+                    </Empty>
+                  </TableCell>
+                </TableRow>
               ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={columns.length}
                     className="h-40 text-center"
                   >
-                    <EmptyState
-                      title={t("admin.empty_title")}
-                      description={
-                        search ||
-                        assetFilter !== "all" ||
-                        statusFilter !== "all"
-                          ? t("admin.empty_filter_desc")
-                          : t("admin.empty_desc")
-                      }
-                    />
+                    <Empty className="min-h-40 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Inbox aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("admin.empty_title")}</EmptyTitle>
+                        <EmptyDescription>
+                          {search ||
+                          assetFilter !== "all" ||
+                          statusFilter !== "all"
+                            ? t("admin.empty_filter_desc")
+                            : t("admin.empty_desc")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </TableCell>
                 </TableRow>
               ) : (

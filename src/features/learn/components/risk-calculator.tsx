@@ -598,7 +598,7 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="p-2 rounded-lg border border-border bg-muted/50 space-y-0.5">
                           <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
-                            Entry
+                            {t("dialog.entry")}
                           </span>
                           <span className="text-xs font-bold text-foreground truncate block">
                             {formatCurrency(presetItem.entry, 0)}
@@ -882,7 +882,7 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
               {/* Snap Target R:R */}
               <Card className="border border-border px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="text-lg font-bold tracking-tight uppercase text-foreground">
-                  {t("calculator.snap_target_rr", "Snap Target R:R")}
+                  {t("calculator.snap_target_rr")}
                 </CardTitle>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {[1.5, 2.0, 3.0, 4.0].map((ratio) => {

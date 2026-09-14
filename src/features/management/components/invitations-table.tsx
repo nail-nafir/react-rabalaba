@@ -36,7 +36,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/shared/empty-state";
+import { AlertCircle, Inbox } from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonInvitationRow } from "@/components/shared/skeleton-card";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
@@ -215,7 +223,7 @@ function DeleteInvitationButton({
           size="icon"
           aria-label={`Hapus undangan ${code}`}
           className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted"
-          title={t("admin.delete_btn", "Hapus")}
+          title={t("admin.delete_btn")}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -226,13 +234,10 @@ function DeleteInvitationButton({
             <Trash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("admin.invitations.delete_title", "Hapus undangan ini?")}
+            {t("admin.invitations.delete_title")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t(
-              "admin.invitations.delete_desc",
-              "Link undangan langsung tidak bisa dipakai lagi.",
-            )}
+            {t("admin.invitations.delete_desc")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -263,8 +268,14 @@ function inviteUrl(origin: string, code: string) {
 export function InvitationsTable() {
   "use no memo";
   const { t } = useTranslation();
-  const { invitations, isLoading, revokeInvitation, deleteInvitation } =
-    useAdminInvitations();
+  const {
+    invitations,
+    isLoading,
+    isError,
+    refetch,
+    revokeInvitation,
+    deleteInvitation,
+  } = useAdminInvitations();
   const [origin] = useState(() =>
     typeof window !== "undefined" ? window.location.origin : "",
   );
@@ -281,7 +292,7 @@ export function InvitationsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.invitations.col_invite", "Undangan")}
+            {t("admin.invitations.col_invite")}
           </span>
         ),
         cell: ({ row }) => (
@@ -302,7 +313,7 @@ export function InvitationsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.invitations.col_type", "Tipe")}
+            {t("admin.invitations.col_type")}
           </span>
         ),
         cell: ({ row }) => {
@@ -319,8 +330,8 @@ export function InvitationsTable() {
               )}
             >
               {isTrial
-                ? `${t("admin.codes_form_type_trial", "Uji Coba")}${inv.trial_days ? ` ${inv.trial_days}` : ""}`
-                : t("admin.codes_form_type_full", "Penuh")}
+                ? `${t("admin.codes_form_type_trial")}${inv.trial_days ? ` ${inv.trial_days}` : ""}`
+                : t("admin.codes_form_type_full")}
             </Badge>
           );
         },
@@ -330,7 +341,7 @@ export function InvitationsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.invitations.col_uses", "Pemakaian")}
+            {t("admin.invitations.col_uses")}
           </span>
         ),
         cell: ({ row }) => (
@@ -344,7 +355,7 @@ export function InvitationsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.invitations.col_expires", "Kadaluarsa")}
+            {t("admin.invitations.col_expires")}
           </span>
         ),
         cell: ({ row }) => {
@@ -366,7 +377,7 @@ export function InvitationsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("table.status", "Status")}
+            {t("table.status")}
           </span>
         ),
         cell: ({ row }) => <StatusBadge active={!row.original.revoked} />,
@@ -389,7 +400,7 @@ export function InvitationsTable() {
                 size="icon"
                 onClick={() => copy(inv.code)}
                 className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
-                title={t("admin.invitations.copy_link", "Salin link")}
+                title={t("admin.invitations.copy_link")}
               >
                 <Copy className="h-4 w-4" />
               </Button>
@@ -442,22 +453,48 @@ export function InvitationsTable() {
                   <SkeletonInvitationRow />
                 </TableRow>
               ))
+            ) : isError && invitations.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-32 text-center">
+                  <Empty role="alert" className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("common.load_error_description")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void refetch()}
+                      >
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <EmptyState
-                    title={t(
-                      "admin.invitations.empty_title",
-                      "Belum ada undangan",
-                    )}
-                    description={t(
-                      "admin.invitations.empty_desc",
-                      "Buat link undangan premium/trial pertama.",
-                    )}
-                  />
+                  <Empty className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("admin.invitations.empty_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("admin.invitations.empty_desc")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             ) : (

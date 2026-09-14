@@ -10,6 +10,12 @@ import { PatternCard } from "./pattern-card";
 import { StrategySection } from "./strategy-section";
 import { InteractiveQuiz } from "./interactive-quiz";
 import { Search, X } from "lucide-react";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 export type LearnTab = "patterns" | "strategies" | "quiz";
 type PatternCategory = "all" | "candlestick" | "chart";
@@ -185,9 +191,14 @@ export const LearnContent: React.FC = () => {
 
           {/* Pattern Cards */}
           {filteredPatterns.length === 0 ? (
-            <div className="rounded-md border p-12 text-center text-xs text-muted-foreground">
-              {t("learn.cheatsheet.empty")}
-            </div>
+            <Empty className="min-h-48">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("learn.cheatsheet.empty")}</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
               {filteredPatterns.map((pattern) => (

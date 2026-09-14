@@ -149,7 +149,7 @@ export function UserMenu() {
                       className="text-xs cursor-pointer"
                     >
                       <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-                      {t("admin.console_entry", "Kelola Sistem")}
+                      {t("admin.console_entry")}
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
@@ -162,7 +162,7 @@ export function UserMenu() {
                   className="text-xs cursor-pointer"
                 >
                   <MessageSquareQuote className="h-4 w-4 text-muted-foreground" />
-                  {t("testimonials.menu_entry", "Ulasan Pribadi")}
+                  {t("testimonials.menu_entry")}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -260,12 +260,10 @@ export function UserMenu() {
             <LogOut />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("auth.logout_confirm_title", { defaultValue: "Keluar?" })}
+            {t("auth.logout_confirm_title")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t("auth.logout_confirm_desc", {
-              defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?",
-            })}
+            {t("auth.logout_confirm_desc")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

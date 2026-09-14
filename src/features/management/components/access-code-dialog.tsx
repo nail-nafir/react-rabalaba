@@ -1,3 +1,4 @@
+import { FormFieldError } from "@/components/shared/form-field-error";
 import { useMemo, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
@@ -26,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
-import { Field, FieldError } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
 
@@ -72,8 +73,8 @@ function AccessCodeDialogContent({
     [accessCodes],
   );
   const kindItems = [
-    { value: "full", label: t("admin.codes_form_type_full", "Penuh") },
-    { value: "trial", label: t("admin.codes_form_type_trial", "Uji Coba") },
+    { value: "full", label: t("admin.codes_form_type_full") },
+    { value: "trial", label: t("admin.codes_form_type_trial") },
   ] as const;
 
   const schema = useMemo(
@@ -81,14 +82,11 @@ function AccessCodeDialogContent({
       accessCodeSchema.refine(
         (data) => !trackedSet.has(data.code.toLowerCase()),
         {
-          message: t(
-            "admin.codes_add_already_exists",
-            "Kode akses sudah terdaftar",
-          ),
+          message: "admin.codes_add_already_exists",
           path: ["code"],
         },
       ),
-    [t, trackedSet],
+    [trackedSet],
   );
 
   const form = useForm<AccessCodeFormValues>({
@@ -114,10 +112,7 @@ function AccessCodeDialogContent({
     if (trackedSet.has(code.toLowerCase())) {
       form.setError("code", {
         type: "manual",
-        message: t(
-          "admin.codes_add_already_exists",
-          "Kode akses sudah terdaftar",
-        ),
+        message: "admin.codes_add_already_exists",
       });
       toast.error(t("toasts.access_code.duplicate_error"));
       return;
@@ -144,10 +139,7 @@ function AccessCodeDialogContent({
       } else if (result === "duplicate") {
         form.setError("code", {
           type: "manual",
-          message: t(
-            "admin.codes_add_already_exists",
-            "Kode akses sudah terdaftar",
-          ),
+          message: "admin.codes_add_already_exists",
         });
         toast.error(t("toasts.access_code.duplicate_error"));
       } else {
@@ -168,13 +160,10 @@ function AccessCodeDialogContent({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.codes_add_dialog_title", "Tambah Kode Akses")}
+            {t("admin.codes_add_dialog_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.codes_add_dialog_desc",
-              "Buat kode akses premium baru untuk dibagikan ke pengguna.",
-            )}
+            {t("admin.codes_add_dialog_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -185,14 +174,11 @@ function AccessCodeDialogContent({
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid} className="gap-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[invalid=true]/field:text-destructive">
-                  {t("admin.codes_col_code", "Kode")}
+                  {t("admin.codes_col_code")}
                 </label>
                 <Input
                   {...field}
-                  placeholder={t(
-                    "admin.codes_add_code_placeholder",
-                    "KODE-AKSES-PREMIUM",
-                  )}
+                  placeholder={t("admin.codes_add_code_placeholder")}
                   autoFocus
                   autoComplete="off"
                   spellCheck={false}
@@ -200,7 +186,7 @@ function AccessCodeDialogContent({
                   className="placeholder:text-sm text-sm uppercase"
                 />
                 {fieldState.invalid && (
-                  <FieldError
+                  <FormFieldError
                     errors={[fieldState.error]}
                     className="text-[10px] sm:text-[11px] font-medium mt-1"
                   />
@@ -216,7 +202,7 @@ function AccessCodeDialogContent({
               render={({ field }) => (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.codes_col_type", "Tipe")}
+                    {t("admin.codes_col_type")}
                   </label>
                   <Select
                     value={field.value}
@@ -226,13 +212,14 @@ function AccessCodeDialogContent({
                   >
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue
-                        placeholder={t(
-                          "admin.codes_form_type_placeholder",
-                          "Pilih Tipe",
-                        )}
+                        placeholder={t("admin.codes_form_type_placeholder")}
                       />
                     </SelectTrigger>
-                    <SelectContent position="popper" align="start" className="p-0.5">
+                    <SelectContent
+                      position="popper"
+                      align="start"
+                      className="p-0.5"
+                    >
                       <SelectGroup>
                         {kindItems.map((item) => (
                           <SelectItem
@@ -256,19 +243,16 @@ function AccessCodeDialogContent({
               render={({ field, fieldState }) => (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.codes_col_max_uses", "Maksimal Pakai")}
+                    {t("admin.codes_col_max_uses")}
                   </label>
                   <Input
                     {...field}
-                    placeholder={t(
-                      "admin.codes_form_max_uses_placeholder",
-                      "∞ (Unlimited)",
-                    )}
+                    placeholder={t("admin.codes_form_max_uses_placeholder")}
                     type="text"
                     className="h-8 placeholder:text-sm text-sm"
                   />
                   {fieldState.invalid && (
-                    <FieldError
+                    <FormFieldError
                       errors={[fieldState.error]}
                       className="text-[9px] font-medium mt-0.5"
                     />
@@ -288,19 +272,16 @@ function AccessCodeDialogContent({
                   className="space-y-1.5"
                 >
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.codes_col_trial_days", "Hari Trial")}
+                    {t("admin.codes_col_trial_days")}
                   </label>
                   <Input
                     {...field}
-                    placeholder={t(
-                      "admin.codes_form_trial_days_placeholder",
-                      "Jumlah hari trial (cth: 30)",
-                    )}
+                    placeholder={t("admin.codes_form_trial_days_placeholder")}
                     type="text"
                     className="h-8 placeholder:text-sm text-sm"
                   />
                   {fieldState.invalid && (
-                    <FieldError
+                    <FormFieldError
                       errors={[fieldState.error]}
                       className="text-[9px] font-medium mt-0.5"
                     />
@@ -316,14 +297,11 @@ function AccessCodeDialogContent({
             render={({ field }) => (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t("admin.codes_col_note", "Catatan")}
+                  {t("admin.codes_col_note")}
                 </label>
                 <Input
                   {...field}
-                  placeholder={t(
-                    "admin.codes_form_note_placeholder",
-                    "Catatan opsional (cth: Promo Juni 2026)",
-                  )}
+                  placeholder={t("admin.codes_form_note_placeholder")}
                   className="h-8 placeholder:text-sm text-sm"
                 />
               </div>

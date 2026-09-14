@@ -5,6 +5,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 import {
   Dialog,
@@ -15,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CalendarRange, Radar, Zap, FileText } from "lucide-react";
+import { AlertCircle, CalendarRange, Radar, Zap, FileText } from "lucide-react";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
 import { formatAgo, getTimeBadgeClassName } from "../model/admin-utils";
@@ -220,7 +228,7 @@ function JournalSettingsForm({
                   <Switch
                     checked={draftEnabled}
                     onCheckedChange={setDraftEnabled}
-                    aria-label="Aktif atau jeda auto-journal"
+                    aria-label={t("admin.settings_auto_journal_label")}
                     className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
@@ -232,7 +240,7 @@ function JournalSettingsForm({
                   <Switch
                     checked={draftMarketHoursOnly}
                     onCheckedChange={setDraftMarketHoursOnly}
-                    aria-label="Jurnal hanya saat jam market"
+                    aria-label={t("admin.settings_market_hours_label")}
                     className="cursor-pointer"
                   />
                 </SettingRow>
@@ -305,7 +313,7 @@ function JournalSettingsForm({
                   <Switch
                     checked={draftSummaryEnabled}
                     onCheckedChange={setDraftSummaryEnabled}
-                    aria-label="Kirim rangkuman harian ke Discord"
+                    aria-label={t("admin.settings_summary_label")}
                     className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
@@ -317,7 +325,7 @@ function JournalSettingsForm({
                   <Switch
                     checked={draftWeeklyEnabled}
                     onCheckedChange={setDraftWeeklyEnabled}
-                    aria-label="Kirim rangkuman mingguan ke Discord"
+                    aria-label={t("admin.settings_weekly_label")}
                     className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
@@ -329,7 +337,7 @@ function JournalSettingsForm({
                   <Switch
                     checked={draftMonthlyEnabled}
                     onCheckedChange={setDraftMonthlyEnabled}
-                    aria-label="Kirim rangkuman bulanan ke Discord"
+                    aria-label={t("admin.settings_monthly_label")}
                     className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
@@ -373,7 +381,7 @@ function JournalSettingsForm({
                   <Switch
                     checked={draftSelectionEnabled}
                     onCheckedChange={setDraftSelectionEnabled}
-                    aria-label="Aktif atau jeda seleksi aset otomatis"
+                    aria-label={t("admin.settings_selection_label")}
                     className="cursor-pointer data-checked:bg-emerald-500"
                   />
                 </SettingRow>
@@ -463,7 +471,13 @@ interface JournalSettingsDialogProps {
 /** Settings Dialog container styled same as AddSignalAssetDialog/AddJournalAssetDialog */
 export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
   const { t } = useTranslation();
-  const { settings, isLoading, update, startNewPeriod } = useJournalSettings();
+  const {
+    settings,
+    isLoading,
+    refetch,
+    update,
+    startNewPeriod,
+  } = useJournalSettings();
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -492,17 +506,32 @@ export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
           <div className="flex h-32 items-center justify-center">
             <Spinner className="h-5 w-5 text-muted-foreground" />
           </div>
+        ) : settings ? (
+          <JournalSettingsForm
+            settings={settings}
+            onClose={() => setOpen(false)}
+            update={update}
+            startNewPeriod={startNewPeriod}
+            isSaving={isSaving}
+            setIsSaving={setIsSaving}
+          />
         ) : (
-          settings && (
-            <JournalSettingsForm
-              settings={settings}
-              onClose={() => setOpen(false)}
-              update={update}
-              startNewPeriod={startNewPeriod}
-              isSaving={isSaving}
-              setIsSaving={setIsSaving}
-            />
-          )
+          <Empty role="alert" className="min-h-56 border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <AlertCircle aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+              <EmptyDescription>
+                {t("common.load_error_description")}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" onClick={() => void refetch()}>
+                {t("common.retry")}
+              </Button>
+            </EmptyContent>
+          </Empty>
         )}
       </DialogContent>
     </Dialog>

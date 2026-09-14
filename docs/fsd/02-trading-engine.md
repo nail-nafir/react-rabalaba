@@ -126,7 +126,7 @@ File: `src/core/engine/trading-plan.ts:141` (`computeTradingPlan`).
 ---
 
 ## 🔗 Terkait / Related
-- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — aturan indikator, entry, setup tetap, dan perbedaan metrik
+- [`../explainer/trading-methodology.md`](../explainer/trading-methodology.md) — aturan indikator, entry, setup tetap, dan perbedaan metrik
 - [`01-terminal-screener.md`](01-terminal-screener.md) — konsumen engine
 - [`../tsd/06-engine-internals.md`](../tsd/06-engine-internals.md) — tiap export + formula
 - [`03-auto-journal.md`](03-auto-journal.md) — engine di cron

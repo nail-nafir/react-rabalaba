@@ -90,7 +90,7 @@ export function Footer() {
               <span className="flex items-center gap-2">
                 {t("footer.links.indices")}
                 <span className="text-[9px] bg-muted px-1 rounded uppercase tracking-tighter">
-                  Soon
+                  {t("footer.soon")}
                 </span>
               </span>
             </li>
@@ -98,7 +98,7 @@ export function Footer() {
               <span className="flex items-center gap-2">
                 {t("footer.links.currencies")}
                 <span className="text-[9px] bg-muted px-1 rounded uppercase tracking-tighter">
-                  Soon
+                  {t("footer.soon")}
                 </span>
               </span>
             </li>
@@ -108,7 +108,7 @@ export function Footer() {
         {/* Platform Column */}
         <div className="space-y-4 text-left">
           <h4 className="text-xs font-bold uppercase tracking-widest text-foreground">
-            Platform
+            {t("footer.platform")}
           </h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>

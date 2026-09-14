@@ -3,33 +3,39 @@ import { Link } from "react-router-dom";
 import { Home, Binoculars } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 export default function NotFoundPage() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center px-4">
-      <div className="flex flex-col items-center text-center">
-        <div className="mb-6 flex h-40 w-40 items-center justify-center rounded-4xl bg-muted/20 ring-1 ring-border/50">
-          <Binoculars className="h-24 w-24 text-muted-foreground/60" />
-        </div>
-        <h1 className="text-3xl font-bold text-foreground mb-3">
-          {t("not_found.title")}
-        </h1>
-        <p className="text-base text-muted-foreground max-w-md mb-8">
-          {t("not_found.description")}
-        </p>
+    <Empty className="min-h-[80vh] border-0 px-4">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Binoculars aria-hidden="true" />
+        </EmptyMedia>
+        <EmptyTitle className="text-3xl">{t("not_found.title")}</EmptyTitle>
+        <EmptyDescription>{t("not_found.description")}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
         <Link
           to="/"
           className={cn(
             buttonVariants({ variant: "default", size: "lg" }),
-            "rounded-xl px-10 font-bold shadow-lg shadow-primary/20 text-base",
+            "font-bold",
           )}
         >
-          <Home className="h-5 w-5 mr-2" />
+          <Home data-icon="inline-start" />
           {t("not_found.action")}
         </Link>
-      </div>
-    </div>
+      </EmptyContent>
+    </Empty>
   );
 }

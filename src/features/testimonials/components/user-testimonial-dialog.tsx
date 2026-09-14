@@ -1,13 +1,9 @@
-import {
-  useEffect,
-  useState,
-  type MouseEvent,
-  type ReactElement,
-} from "react";
+import { FormFieldError } from "@/components/shared/form-field-error";
+import { useEffect, useState, type MouseEvent, type ReactElement } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Star } from "lucide-react";
+import { AlertCircle, Star } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,11 +40,18 @@ import {
 import {
   Field,
   FieldDescription,
-  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuth } from "@/features/auth/hooks/use-auth";
@@ -215,14 +218,11 @@ function UserTestimonialDialogContent({
       <DialogHeader>
         <DialogTitle className="text-lg font-bold text-foreground">
           {submission
-            ? t("testimonials.form.edit_title", "Ulasan Pribadi")
-            : t("testimonials.form.create_title", "Bagikan Ulasan")}
+            ? t("testimonials.form.edit_title")
+            : t("testimonials.form.create_title")}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-          {t(
-            "testimonials.form.description",
-            "Ceritakan pengalaman menggunakan RabaLaba. Kutipan akan ditampilkan apa adanya setelah disetujui.",
-          )}
+          {t("testimonials.form.description")}
         </DialogDescription>
       </DialogHeader>
 
@@ -232,7 +232,10 @@ function UserTestimonialDialogContent({
             <div className="flex items-center gap-3">
               <Skeleton className="size-10 shrink-0 rounded-full" />
               <div className="min-w-0 flex-1 space-y-1.5">
-                <Skeleton className="h-4 w-32" />
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Skeleton className="h-4 w-32 max-w-full" />
+                  <Skeleton className="h-4 w-12 shrink-0 rounded-md" />
+                </div>
                 <Skeleton className="h-3 w-48 max-w-full" />
               </div>
             </div>
@@ -252,36 +255,31 @@ function UserTestimonialDialogContent({
 
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-28 w-full rounded-md" />
-            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-28 w-full max-w-full rounded-md" />
+            <Skeleton className="h-3 w-32 max-w-full" />
           </div>
 
           <div className="flex justify-end">
             <Skeleton className="h-11 w-28 rounded-md" />
           </div>
         </div>
-      ) : isError ? (
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle>
-              {t(
-                "testimonials.form.load_error_title",
-                "Ulasan belum bisa dimuat",
-              )}
-            </CardTitle>
-            <CardDescription>
-              {t(
-                "testimonials.form.load_error_description",
-                "Periksa koneksi lalu coba lagi sebelum membuat perubahan.",
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      ) : isError && !submission ? (
+        <Empty role="alert" className="min-h-56 border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertCircle aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("testimonials.form.load_error_title")}</EmptyTitle>
+            <EmptyDescription>
+              {t("testimonials.form.load_error_description")}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
             <Button variant="outline" onClick={() => void refetch()}>
-              {t("common.retry", "Coba lagi")}
+              {t("common.retry")}
             </Button>
-          </CardContent>
-        </Card>
+          </EmptyContent>
+        </Empty>
       ) : (
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -290,24 +288,13 @@ function UserTestimonialDialogContent({
           {submission && (
             <Card size="sm">
               <CardHeader>
-                <CardTitle>
-                  {t("testimonials.form.status_title", "Status ulasan")}
-                </CardTitle>
+                <CardTitle>{t("testimonials.form.status_title")}</CardTitle>
                 <CardDescription>
                   {submission.status === "approved"
-                    ? t(
-                        "testimonials.status.approved_description",
-                        "Ulasan sudah disetujui. Admin dapat memilihnya untuk tampil di landing.",
-                      )
+                    ? t("testimonials.status.approved_description")
                     : submission.status === "rejected"
-                      ? t(
-                          "testimonials.status.rejected_description",
-                          "Ulasan perlu diperbaiki sebelum diajukan kembali.",
-                        )
-                      : t(
-                          "testimonials.status.pending_description",
-                          "Ulasan sedang menunggu peninjauan admin.",
-                        )}
+                      ? t("testimonials.status.rejected_description")
+                      : t("testimonials.status.pending_description")}
                 </CardDescription>
                 <CardAction>
                   <Badge
@@ -315,10 +302,10 @@ function UserTestimonialDialogContent({
                     className={statusVariant(submission.status)}
                   >
                     {submission.status === "approved"
-                      ? t("testimonials.status.approved", "Disetujui")
+                      ? t("testimonials.status.approved")
                       : submission.status === "rejected"
-                        ? t("testimonials.status.rejected", "Ditolak")
-                        : t("testimonials.status.pending", "Menunggu")}
+                        ? t("testimonials.status.rejected")
+                        : t("testimonials.status.pending")}
                   </Badge>
                 </CardAction>
               </CardHeader>
@@ -327,25 +314,16 @@ function UserTestimonialDialogContent({
                 <CardContent className="flex flex-col gap-1">
                   {submission.status === "approved" ? (
                     <p className="text-sm text-muted-foreground">
-                      {t(
-                        "testimonials.form.approved_edit_warning",
-                        "Mengubah ulasan yang sudah disetujui akan mengirimnya kembali untuk ditinjau dan menghapusnya dari landing sementara.",
-                      )}
+                      {t("testimonials.form.approved_edit_warning")}
                     </p>
                   ) : (
                     <>
                       <p className="text-sm font-medium">
-                        {t(
-                          "testimonials.form.rejection_reason",
-                          "Catatan privat dari admin",
-                        )}
+                        {t("testimonials.form.rejection_reason")}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {submission.rejection_reason ||
-                          t(
-                            "testimonials.form.no_rejection_reason",
-                            "Admin tidak menyertakan catatan tambahan.",
-                          )}
+                          t("testimonials.form.no_rejection_reason")}
                       </p>
                     </>
                   )}
@@ -370,10 +348,7 @@ function UserTestimonialDialogContent({
                   </Badge>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  {t(
-                    "testimonials.form.automatic_profile_hint",
-                    "Nama dan status verifikasi diambil dari data akun asli Anda.",
-                  )}
+                  {t("testimonials.form.automatic_profile_hint")}
                 </p>
               </div>
             </div>
@@ -386,7 +361,7 @@ function UserTestimonialDialogContent({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel id="testimonial-rating-label">
-                    {t("testimonials.form.rating", "Penilaian")}
+                    {t("testimonials.form.rating")}
                   </FieldLabel>
                   <ToggleGroup
                     type="single"
@@ -421,7 +396,7 @@ function UserTestimonialDialogContent({
                       </ToggleGroupItem>
                     ))}
                   </ToggleGroup>
-                  <FieldError errors={[fieldState.error]} />
+                  <FormFieldError errors={[fieldState.error]} />
                 </Field>
               )}
             />
@@ -432,7 +407,7 @@ function UserTestimonialDialogContent({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="testimonial-body">
-                    {t("testimonials.form.body", "Ulasan")}
+                    {t("testimonials.form.body")}
                   </FieldLabel>
                   <Textarea
                     {...field}
@@ -440,15 +415,12 @@ function UserTestimonialDialogContent({
                     rows={5}
                     maxLength={TESTIMONIAL_LIMITS.body.max}
                     aria-invalid={fieldState.invalid}
-                    placeholder={t(
-                      "testimonials.form.body_placeholder",
-                      "Ceritakan hal yang paling membantu dari RabaLaba...",
-                    )}
+                    placeholder={t("testimonials.form.body_placeholder")}
                   />
                   <FieldDescription>
                     {(field.value ?? "").length}/{TESTIMONIAL_LIMITS.body.max}
                   </FieldDescription>
-                  <FieldError errors={[fieldState.error]} />
+                  <FormFieldError errors={[fieldState.error]} />
                 </Field>
               )}
             />
@@ -472,24 +444,21 @@ function UserTestimonialDialogContent({
                     disabled={isBusy}
                     className="text-xs font-bold cursor-pointer shrink-0"
                   >
-                    {t("testimonials.form.delete", "Hapus")}
+                    {t("testimonials.form.delete")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      {t("testimonials.form.delete_title", "Hapus ulasan?")}
+                      {t("testimonials.form.delete_title")}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      {t(
-                        "testimonials.form.delete_description",
-                        "Tindakan ini permanen dan ulasan akan langsung hilang dari landing jika sedang ditampilkan.",
-                      )}
+                      {t("testimonials.form.delete_description")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel disabled={isConfirmingDelete}>
-                      {t("common.cancel", "Batal")}
+                      {t("common.cancel")}
                     </AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"

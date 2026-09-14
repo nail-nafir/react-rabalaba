@@ -10,7 +10,13 @@ import { formatDateNumeric } from "@/lib/formatters";
 import { SIGNAL_COLORS, SIGNAL_LABEL_KEYS } from "@/constants";
 import type { FollowedTrade } from "@/core/trade/follow-trade-model";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { TradeDetailDialog } from "@/features/follow-trade/components/trade-detail-dialog";
 
 interface TopPerformersProps {
@@ -129,12 +135,17 @@ export function TopPerformers({
     if (items.length === 0) {
       if (isGainer) {
         return (
-          <EmptyState
-            title={t("journal.empty_gainers_title")}
-            description={t("journal.empty_gainers_desc")}
-            icon={<Shield className="h-14 w-14 text-muted-foreground" />}
-            className="py-8"
-          />
+          <Empty className="min-h-40 border-0 p-4">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Shield aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("journal.empty_gainers_title")}</EmptyTitle>
+              <EmptyDescription>
+                {t("journal.empty_gainers_desc")}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         );
       } else {
         const emptyLosersDescKey =
@@ -144,12 +155,15 @@ export function TopPerformers({
               ? "journal.empty_losers_desc_weekly"
               : "journal.empty_losers_desc_monthly";
         return (
-          <EmptyState
-            title={t("journal.empty_losers_title")}
-            description={t(emptyLosersDescKey)}
-            icon={<Sparkles className="h-14 w-14 text-muted-foreground" />}
-            className="py-8"
-          />
+          <Empty className="min-h-40 border-0 p-4">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Sparkles aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("journal.empty_losers_title")}</EmptyTitle>
+              <EmptyDescription>{t(emptyLosersDescKey)}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         );
       }
     }
@@ -254,9 +268,12 @@ export function TopPerformers({
             <div className="flex min-h-11 items-center justify-between gap-3 px-3 py-2">
               <div className="flex min-w-0 items-center gap-3">
                 <Skeleton className="size-7 shrink-0 rounded-full" />
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-3 w-32" />
+                <div className="min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3.5 w-12 rounded-lg" />
+                  </div>
+                  <Skeleton className="h-3 w-32 max-w-full" />
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end space-y-1.5 text-right">
@@ -289,11 +306,17 @@ export function TopPerformers({
       {gainers.length === 0 && losers.length === 0 && !isLoading ? (
         <Card className="border border-border">
           <CardContent>
-            <EmptyState
-              title={t("journal.empty_performers_title")}
-              description={t("journal.empty_performers_desc")}
-              icon={<Activity className="h-14 w-14 text-muted-foreground" />}
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Activity aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("journal.empty_performers_title")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("journal.empty_performers_desc")}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           </CardContent>
         </Card>
       ) : (
@@ -307,34 +330,50 @@ export function TopPerformers({
                     {t("journal.top_gainers")}
                   </span>
                   <div className="flex items-baseline gap-1 whitespace-nowrap">
-                    <span
-                      className={cn(
-                        "font-bold leading-none text-xs",
-                        gainerStats && gainerStats.totalPct > 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {gainerStats
-                        ? `+${gainerStats.totalPct.toFixed(2)}%`
-                        : "0.00%"}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground">
-                      {gainerStats
-                        ? t("journal.from_n_data", { count: gainerStats.count })
-                        : t("journal.from_n_data", { count: 0 })}
-                    </span>
+                    {isLoading ? (
+                      <>
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="h-2.5 w-16" />
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            "font-bold leading-none text-xs",
+                            gainerStats && gainerStats.totalPct > 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {gainerStats
+                            ? `+${gainerStats.totalPct.toFixed(2)}%`
+                            : "0.00%"}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {t("journal.from_n_data", { count: gainerStats?.count ?? 0 })}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-right">
-                  <span className="text-xs font-bold leading-none text-emerald-600 dark:text-emerald-400">
-                    {allProfitStats.totalPct > 0
-                      ? `+${allProfitStats.totalPct.toFixed(2)}%`
-                      : "0.00%"}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground leading-none">
-                    {t("journal.from_n_data", { count: allProfitStats.count })}
-                  </span>
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-2.5 w-16" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-bold leading-none text-emerald-600 dark:text-emerald-400">
+                        {allProfitStats.totalPct > 0
+                          ? `+${allProfitStats.totalPct.toFixed(2)}%`
+                          : "0.00%"}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground leading-none">
+                        {t("journal.from_n_data", { count: allProfitStats.count })}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               {isLoading ? renderSkeleton() : renderList(gainers, true)}
@@ -350,34 +389,50 @@ export function TopPerformers({
                     {t("journal.top_losers")}
                   </span>
                   <div className="flex items-baseline gap-1 whitespace-nowrap">
-                    <span
-                      className={cn(
-                        "font-bold leading-none text-xs",
-                        loserStats && loserStats.totalPct < 0
-                          ? "text-rose-600 dark:text-rose-400"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {loserStats
-                        ? `${loserStats.totalPct.toFixed(2)}%`
-                        : "0.00%"}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground">
-                      {loserStats
-                        ? t("journal.from_n_data", { count: loserStats.count })
-                        : t("journal.from_n_data", { count: 0 })}
-                    </span>
+                    {isLoading ? (
+                      <>
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="h-2.5 w-16" />
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            "font-bold leading-none text-xs",
+                            loserStats && loserStats.totalPct < 0
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {loserStats
+                            ? `${loserStats.totalPct.toFixed(2)}%`
+                            : "0.00%"}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {t("journal.from_n_data", { count: loserStats?.count ?? 0 })}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-right">
-                  <span className="text-xs font-bold leading-none text-rose-600 dark:text-rose-400">
-                    {allLossStats.totalPct < 0
-                      ? `${allLossStats.totalPct.toFixed(2)}%`
-                      : "0.00%"}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground leading-none">
-                    {t("journal.from_n_data", { count: allLossStats.count })}
-                  </span>
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-2.5 w-16" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-bold leading-none text-rose-600 dark:text-rose-400">
+                        {allLossStats.totalPct < 0
+                          ? `${allLossStats.totalPct.toFixed(2)}%`
+                          : "0.00%"}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground leading-none">
+                        {t("journal.from_n_data", { count: allLossStats.count })}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               {isLoading ? renderSkeleton() : renderList(losers, false)}

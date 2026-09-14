@@ -13,9 +13,12 @@
 
 ---
 
-## 📅 Mini Calendar
+## 📅 Calendar View
 
-Komponen: `src/features/economic-calendar/components/mini-calendar.tsx:163` (`MiniCalendar`).
+Komponen: `src/pages/calendar.tsx` (`CalendarPage`).
+
+🇮🇩 Tampilan kalender dan kontrol tanggal berada langsung pada halaman kalender.
+🇺🇸 The calendar view and date controls live in CalendarPage.
 
 Grid bulan dengan titik event, nav prev/next bulan, judul locale-aware (`i18n.language` → `id-ID`/`en-US`), callback date-click. Pure presentational.
 

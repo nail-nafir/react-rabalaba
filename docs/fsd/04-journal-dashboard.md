@@ -39,7 +39,7 @@ Bar total persen sinyal per tipe aset + jumlah/porsi transaksi. Nilainya adalah 
 
 ## 🏆 Top Performers
 
-File: `src/features/journal/components/top-performers.tsx:375` (`TopPerformers`). Top-3 gainer + top-3 loser (1D/1W/1M/ALL), agregat per period. Row click → `TradeDetailDialog`.
+File: `src/features/journal/components/top-performers.tsx:375` (`TopPerformers`). Top-3 gainer + top-3 loser (1D/1W/1M/ALL), agregat per period. Symbol button → `TradeDetailDialog`.
 
 ---
 
@@ -60,7 +60,7 @@ File: `src/features/follow-trade/components/follow-history-table.tsx:786` (`Foll
 | P&L | % + R + hasil ringkas (`TP n/total`, `BE`, `SL`, atau `Reversal`) via `deriveFollowProgress` |
 | Lifecycle badge | RUNNING/CLOSED, terpisah dari hasil trade |
 
-Filter: aset, direction, lifecycle (open/closed), PnL/outcome (tp/sl/breakeven/reversal_profit/reversal_loss — mirror donut). Live price via `useMarketData(openSymbols)` di refs (jaga column def memoized). Row click → `TradeDetailDialog`.
+Filter: aset, direction, lifecycle (open/closed), PnL/outcome (tp/sl/breakeven/reversal_profit/reversal_loss — mirror donut). Live price via `useMarketData(openSymbols)` di refs (jaga column def memoized). Symbol button → `TradeDetailDialog`.
 
 ---
 
@@ -95,3 +95,9 @@ File: `src/core/trade/follow-trade-model.ts:396` (`buildTrackerStats`).
 - [`01-terminal-screener.md`](01-terminal-screener.md) — trade plan chart
 - [`06-auth-entitlement.md`](06-auth-entitlement.md) — gating premium
 - [`../tsd/03-database-schema.md`](../tsd/03-database-schema.md) — `journal_trades` schema
+
+## Table execution / Eksekusi tabel
+
+🇮🇩 ID baris memakai UUID trade. Klik seluruh baris, Enter, atau Space membuka dialog controlled; query candle, normalisasi, dan analisis detail baru dipasang saat terbuka, lalu dilepas saat tutup. Snapshot entry/TP/SL tetap memakai trade tersimpan. Refresh mempertahankan halaman; filter/search/sort kembali ke halaman pertama dan indeks dibatasi saat hasil berkurang. Skeleton awal berisi 10 baris; refresh tidak mengganti data yang sudah tersedia.
+
+🇺🇸 Rows use trade UUIDs. Clicking anywhere on a row, Enter, or Space opens a controlled dialog; candle queries, normalization, and detail analysis mount only while open. Entry/TP/SL continue to use the saved trade snapshot. Refresh retains the page, filters/search/sort reset it, and shrinking results clamp the index. Initial skeletons contain ten rows; refresh retains available data.

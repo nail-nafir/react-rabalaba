@@ -7,11 +7,11 @@
 
 ## TL;DR
 
-🇮🇩 Halaman `/terminal` (default) nampilin lima kartu **Market Pulse** di atas, terus **screener tabel** aset multi-kelas dengan sinyal, strength, grade, success-rate, sparkline. Klik baris → **Asset Detail Dialog** dengan chart candlestick + rencana trading + evidence. Tombol Share → **share card PNG**.
+🇮🇩 Halaman `/terminal` (default) nampilin lima kartu **Market Pulse** di atas, terus **screener tabel** aset multi-kelas dengan sinyal, strength, grade, success-rate, sparkline. Klik baris aset → **Asset Detail Dialog** dengan chart candlestick + rencana trading + evidence. Tombol Share → **share card PNG**.
 
-🇺🇸 The `/terminal` page (default) shows five **Market Pulse** cards on top, then the multi-asset **screener table** with signal, strength, grade, success-rate, sparkline. Row click → **Asset Detail Dialog** with candlestick chart + trade plan + evidence. Share button → **share card PNG**.
+🇺🇸 The `/terminal` page (default) shows five **Market Pulse** cards on top, then the multi-asset **screener table** with signal, strength, grade, success-rate, sparkline. Asset-row click → **Asset Detail Dialog** with candlestick chart + trade plan + evidence. Share button → **share card PNG**.
 
-> Entry point: `src/pages/terminal/index.tsx:25` → market view at `:122-133`.
+> Entry point: `src/pages/terminal.tsx` → `AssetSignalTable`.
 
 ---
 
@@ -54,11 +54,12 @@ Komponen: `src/features/market/components/asset-signal-table.tsx:90` (`AssetSign
 ### Top-down context (`:156-166`)
 `useCryptoContext` (BTC), `useIdxContext` (IHSG+rapih), `useUsContext` (S&P+VIX+DXY) — subscribe cache shared, nyaris nol fetch ekstra.
 
-### Smart money (`:223-236`)
-`useSmartMoney(cryptoForSmartMoney)` — cuman untuk crypto dengan sinyal **non-neutral actionable** (jaga Binance call tetap bounded). Positioning (funding/OI/long-short) → `derivePositioning`.
+### Optional detail data
+🇮🇩 Smart money hanya diambil untuk aset pada dialog terbuka. Akumulasi dan relative strength juga hanya dihitung pada detail; tabel tidak menunggu API informasi tambahan.
+🇺🇸 Smart money is fetched only for the asset in an open dialog. Accumulation and relative strength are also computed in detail; the table does not wait for these optional APIs.
 
 ### Enrichment (`:238-253`)
-`enrichAsset(asset, { cryptoContext, idxContext, usContext, smartMoney })` dari `src/core/engine/enrichment.ts:81`. Hanya **context de-rate** (BTC/IHSG/S&P) yang mengubah keputusan; smart-money, accumulation, relative strength, dan fundamentals display-only. `computeSignal` tetap pure per-aset. Lihat `fsd/02` & `tsd/06` untuk detail engine.
+`enrichAsset(asset, { cryptoContext, idxContext, usContext }, { applyOptionalOverlays: false })` dari `src/core/engine/enrichment.ts:81`. Hanya **context de-rate** (BTC/IHSG/S&P) yang mengubah keputusan; smart-money, accumulation, relative strength, dan fundamentals display-only. `computeSignal` tetap pure per-aset. Lihat `fsd/02` & `tsd/06` untuk detail engine.
 
 ### Kolom tabel (`:316-553`)
 TanStack Table, `pageSize 10` (`:553`):
@@ -80,18 +81,46 @@ TanStack Table, `pageSize 10` (`:553`):
 ### Kontrol (`:589-703`)
 - FilterGroup tipe aset (all/crypto/us-stock/id-stock/commodity/forex/favorite)
 - FilterGroup sinyal (all/long/short/neutral)
-- Search debounced 300ms
+- Search debounced 100ms
 - **Favorites toggle** (premium-gated, `:640-651`)
 - **Add-ticker** (premium-gated, `:686-694`) → `AddTickerDialog` (Yahoo search, `add-ticker-dialog.tsx:229`)
 - Refresh
 
 ### Loading strategy (`:255-275`)
-Skeleton ditahan sampai **semua** sumber (aset dasar + BTC context + smart-money) selesai `isLoading`/`isPending` awal, jadi tabel muncul ter-sort sekaligus (tanpa per-kategori flash). Background refetch update nilai in-place.
+🇮🇩 Skeleton 10 baris setinggi data nyata menunggu universe, aset, benchmark, dan episode pada initial load. Refresh background mempertahankan tabel dan halaman sambil menampilkan indikator. Favorit tetap tersimpan jika API aset gagal.
+🇺🇸 Ten skeleton rows match the loaded row height while initial universe, asset, benchmark, and episode queries settle. Background refresh retains rows and pagination with a refresh indicator. Asset API failures never remove saved favorites.
 
 Pembacaan episode awal ikut loading tabel. Kegagalan episode tidak menghilangkan harga/analisis, tetapi menahan label LONG/SHORT. Success-rate adalah data sekunder: cell memakai skeleton berukuran tetap saat RPC masih pending, `Tidak tersedia` saat gagal, dan `Belum ada` hanya kalau simbol benar-benar belum punya trade tertutup.
 
-### Row click (`:766`)
-Setiap row menjadi `DialogTrigger` untuk `AssetDetailDialog` miliknya. Tidak ada query parameter URL atau visibility state global; Radix menangani buka, tutup, fokus, Escape, dan restore-focus.
+### Table interaction
+🇮🇩 Seluruh baris menjadi `DialogTrigger` dan dapat dibuka dengan klik, Enter, atau Space. ID baris memakai simbol. Layout, ukuran kontrol, dan perataan kolom mengikuti tampilan awal; input pencarian dan kontrol ikon tetap memiliki label aksesibel. Filter, pencarian, atau sorting kembali ke halaman pertama; hasil berkurang membatasi indeks halaman. Dialog controlled memakai state lokal, dan Radix menangani fokus, Escape, serta pengembalian fokus.
+🇺🇸 The entire row is the dialog trigger, supporting clicks, Enter, and Space. The symbol is the stable row ID. Layout, control sizes, and column alignment match the original interface; search and icon controls retain accessible labels. Filters/search/sorting reset pagination; shrinking results clamp it. Controlled dialog state stays local, with Radix handling focus, Escape, and focus restoration.
+
+`StrengthBar` / `SuccessRateBar`: CSS, tanpa animasi chart / no chart animations. `Sparkline`: SVG statis 30 close valid terakhir / static SVG of the latest 30 valid closes.
+
+### Performance verification (2026-09-10)
+
+🇮🇩 Baseline development memblokir main thread selama 3.563 ms saat pagination, dengan respons interaksi sekitar 3.680–3.720 ms. Sepuluh isi dialog tertutup tetap terpasang dan masing-masing menjalankan backtest sinkron. Setelah perubahan, pengukuran lokal memakai production preview, 201 aset, cache hangat, viewport 1440 × 1000, dan tanpa CPU throttling.
+
+🇺🇸 The development baseline blocked the main thread for 3,563 ms during pagination, with interaction latency around 3,680–3,720 ms. Ten closed dialog bodies remained mounted, each running a synchronous backtest. Post-change measurements use a local production preview with 201 assets, a warm cache, a 1440 × 1000 viewport, and no CPU throttling.
+
+| Interaction | Three samples / Tiga sampel | Median |
+|---|---|---|
+| Pagination | 17.2 / 18.0 / 19.0 ms | 18.0 ms |
+| Sorting | 19.6 / 21.9 / 16.8 ms | 19.6 ms |
+| Search / Pencarian | 118.0 / 122.9 / 119.6 ms | 119.6 ms |
+
+🇮🇩 Latensi diukur hingga dua `requestAnimationFrame` setelah isi tabel berubah: sejak pointer/keyboard untuk pagination dan sorting, serta sejak input terakhir untuk pencarian (termasuk debounce 100 ms). Event Timing untuk klik mencatat 32–40 ms. Tidak ada long task >50 ms atau worker backtest selama ketiga interaksi tersebut. Perbandingan build berbeda ini bukan benchmark sebelum/sesudah dengan kondisi identik.
+
+🇺🇸 Latency ends two `requestAnimationFrame` callbacks after table content changes. It starts at pointer/keyboard input for pagination and sorting, and at the final input event for search, including the 100 ms debounce. Click Event Timing records 32–40 ms. No task over 50 ms or backtest worker occurs during these interactions. Different build modes mean this is not a controlled before/after benchmark.
+
+🇮🇩 Membuka detail BTC membuat satu worker, selesai dan dihentikan sekitar 398 ms; membuka ulang revisi candle yang sama memakai cache. Render awal dialog masih memiliki satu long task 108 ms untuk UI/chart. Pagination jurnal tercatat 27.6 ms, dan observer query candle detail kembali ke nol saat ditutup. Regresi otomatis memeriksa dialog tertutup, kesetaraan hasil worker dengan engine langsung, cache/pembatalan/error/retry, serta keputusan dan snapshot entry/TP/SL tanpa overlay opsional.
+
+🇺🇸 Opening BTC detail creates one worker, which completes and terminates in about 398 ms; reopening the same candle revision reuses the cache. Initial dialog UI/chart rendering still has one 108 ms long task. Journal pagination measures 27.6 ms, and detail candle-query observers return to zero on close. Automated regressions cover closed dialogs, worker/direct-engine parity, cache/cancellation/error/retry, and unchanged decisions and entry/TP/SL snapshots without optional overlays.
+
+🇮🇩 QA mencakup 375/768/1024/1440 px, tema terang/gelap, scroll horizontal tabel, filter/sort/pencarian, hasil kosong, pembatasan halaman, dan favorit ketika API gagal. Refresh nyata pada halaman 2 mempertahankan sepuluh baris tanpa skeleton sambil indikator berputar. Dialog market/jurnal mengembalikan fokus; chat dapat dibuka dengan Enter dan ditutup dengan Escape, lalu fokus kembali ke launcher. Launcher chat mobile tetap mengambang di atas navigasi bawah. Aturan CSS reduced motion diaktifkan secara paksa untuk memeriksa transisi, bukan emulasi preferensi OS; transisi panel menjadi `none` dan grafik kecil tabel tidak beranimasi. Hasil akhir: 402 tes, build, dan lint lulus. Build masih menampilkan peringatan ukuran chunk utama >500 kB yang sudah ada sebelumnya.
+
+🇺🇸 QA covers 375/768/1024/1440 px, light/dark themes, horizontal table scrolling, filters/sorting/search, empty results, page clamping, and favorites during asset API failure. An actual refresh on page 2 keeps ten rows without skeletons while its indicator spins. Market/journal dialogs restore focus; chat opens with Enter, closes with Escape, and returns focus to its launcher. The mobile chat launcher floats above the bottom navigation. Reduced-motion CSS rules were forced on to inspect transitions, rather than emulating the OS preference; panel transitions become `none`, and table mini charts remain static. Final checks: 402 tests, build, and lint pass. The build retains the existing main-chunk size warning above 500 kB.
 
 ---
 
@@ -99,9 +128,9 @@ Setiap row menjadi `DialogTrigger` untuk `AssetDetailDialog` miliknya. Tidak ada
 
 Komponen: `src/features/trading-plan/components/asset-detail-dialog.tsx:92` (`AssetDetailDialog`).
 
-🇮🇩 Dialog analisis per-aset dibuka oleh `DialogTrigger` pada row. Content baru mount setelah dibuka, lalu re-fetch aset + re-jalanin **enrichment chain yang sama** dengan screener (jaga conviction/tier konsisten). Selain itu jalanin `runBacktest` + `calibrateConfidence` buat win-rate historis yang jujur.
+🇮🇩 Dialog controlled memasang content hanya ketika dibuka dan melepasnya ketika ditutup. Query aset memakai cache screener; enrichment detail menambahkan overlay tanpa mengubah rumus sinyal. `useAssetBacktest` menjalankan `runBacktest` dalam satu native module Web Worker untuk candle, jenis aset, dan timeframe terpilih. React Query menyimpan `BacktestMetrics` pada `["asset-backtest", symbol, timeframe, dataUpdatedAt]`; cache baru hanya ketika revisi candle berubah. Worker dihentikan saat selesai, gagal, atau query kehilangan observer setelah dialog ditutup. Loading/error/retry statistik tidak menghalangi panel lain.
 
-🇺🇸 The per-asset analysis dialog is opened by the row's `DialogTrigger`. Its content mounts only when opened, then re-fetches the asset and re-runs the **same enrichment chain** as the screener. It also runs `runBacktest` + `calibrateConfidence` for an honest historical win-rate.
+🇺🇸 Controlled dialogs mount content only while open. Asset queries reuse the screener cache; detail enrichment adds overlays without changing signal formulas. `useAssetBacktest` executes `runBacktest` in one native module Web Worker for the selected candles, asset type, and timeframe. React Query caches `BacktestMetrics` by `["asset-backtest", symbol, timeframe, dataUpdatedAt]`. A new candle revision gets new metrics; completion, failure, or losing the dialog observer terminates the worker. Statistics have independent loading/error/retry states.
 
 ### Section yang dirender
 | Section | Isi |
@@ -137,7 +166,7 @@ File: `src/features/trading-plan/model/share-card.ts:666` (`buildShareCardSvg`),
 ---
 
 ## 🔗 Terkait / Related
-- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — kontrak publikasi dan contoh perjalanan trade
+- [`../explainer/trading-methodology.md`](../explainer/trading-methodology.md) — kontrak publikasi dan contoh perjalanan trade
 - [`02-trading-engine.md`](02-trading-engine.md) — detail engine sinyal & enrichment
 - [`../tsd/06-engine-internals.md`](../tsd/06-engine-internals.md) — formula mendalam
 - [`../tsd/02-data-flow.md`](../tsd/02-data-flow.md) — flow data market

@@ -1,6 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,6 +14,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  AlertCircle,
   Loader2,
   RefreshCw,
   Search,
@@ -43,7 +43,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { StrengthBar } from "@/components/charts/strength-bar";
 import { Sparkline } from "@/components/charts/sparkline";
@@ -61,11 +68,11 @@ import { useAppSelector, useFilterActions } from "@/store/hooks";
 import { type SignalFilterType } from "@/store/slices/filter-slice";
 import { useFavorites } from "@/features/market/hooks/use-favorites";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useTablePagination } from "@/hooks/use-table-pagination";
 import { useMarketData } from "@/services/queries/use-market-data";
 import { useCryptoContext } from "@/services/queries/use-crypto-context";
 import { useIdxContext } from "@/services/queries/use-idx-context";
 import { useUsContext } from "@/services/queries/use-us-context";
-import { useSmartMoney } from "@/services/queries/use-smart-money";
 import { enrichAsset } from "@/core/engine/enrichment";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import {
@@ -122,11 +129,15 @@ export function AssetSignalTable() {
   const signalFilter = useAppSelector((s) => s.filter.signalFilter);
   const searchQuery = useAppSelector((s) => s.filter.searchQuery);
   const { setAssetType, setSignalFilter, setSearchQuery } = useFilterActions();
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, 100);
   const { hasAccess } = usePremiumAccess();
 
   // Favorite integration
-  const { favoriteSymbols, removeSymbol } = useFavorites();
+  const {
+    favoriteSymbols,
+    isError: favoritesError,
+    refetch: refetchFavorites,
+  } = useFavorites();
   const [showFavorites, setShowFavorites] = useState(false);
 
   // Aggregate-only public track record. Raw journal rows remain premium-only,
@@ -148,27 +159,37 @@ export function AssetSignalTable() {
     isSuccess: signalStatesAvailable,
     isFetching: signalStatesFetching,
   } = useSignalEpisodeStates();
-  const { data: cryptoAssets, isLoading: cryptoLoading } = useMarketData(
-    universe.crypto,
-  );
-  const { data: usStocks, isLoading: usLoading } = useMarketData(
-    universe.usStock,
-  );
-  const { data: idStocks, isLoading: idLoading } = useMarketData(
-    universe.idStock,
-  );
-  const { data: commodities, isLoading: comLoading } = useMarketData(
-    DEFAULT_COMMODITY_TICKERS,
-  );
-  const { data: forexAssets, isLoading: forexLoading } = useMarketData(
-    DEFAULT_FOREX_TICKERS,
-  );
+  const {
+    data: cryptoAssets,
+    isLoading: cryptoLoading,
+    isError: cryptoError,
+  } = useMarketData(universe.crypto);
+  const {
+    data: usStocks,
+    isLoading: usLoading,
+    isError: usError,
+  } = useMarketData(universe.usStock);
+  const {
+    data: idStocks,
+    isLoading: idLoading,
+    isError: idError,
+  } = useMarketData(universe.idStock);
+  const {
+    data: commodities,
+    isLoading: comLoading,
+    isError: commoditiesError,
+  } = useMarketData(DEFAULT_COMMODITY_TICKERS);
+  const {
+    data: forexAssets,
+    isLoading: forexLoading,
+    isError: forexError,
+  } = useMarketData(DEFAULT_FOREX_TICKERS);
 
   // Fetch favorite data
   const {
     data: favoriteAssets,
-    isFetching: favoriteFetching,
     isLoading: favoriteLoading,
+    isError: favoriteAssetsError,
   } = useMarketData(favoriteSymbols);
 
   // Top-down crypto context (BTC regime + score), shared & cached.
@@ -186,10 +207,18 @@ export function AssetSignalTable() {
   // Refresh the whole screener: market data + its public track-record aggregate.
   const queryClient = useQueryClient();
   const assetRefreshingCount = useIsFetching({ queryKey: ["asset-data"] });
+  const auxiliaryRefreshingCount =
+    useIsFetching({ queryKey: ["favorites"] }) +
+    useIsFetching({ queryKey: ["screener-universe"] });
   const isRefreshing =
-    assetRefreshingCount > 0 || successRatesFetching || signalStatesFetching;
+    assetRefreshingCount > 0 ||
+    auxiliaryRefreshingCount > 0 ||
+    successRatesFetching ||
+    signalStatesFetching;
   const handleRefresh = () => {
     void Promise.all([
+      universe.refetch(),
+      refetchFavorites(),
       queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
       queryClient.invalidateQueries({ queryKey: ["journal-trades"] }),
       queryClient.invalidateQueries({
@@ -210,18 +239,6 @@ export function AssetSignalTable() {
     value: opt.value,
     label: t(opt.labelKey),
   }));
-
-  // Monitor for symbols in favorites that failed to fetch
-  useEffect(() => {
-    if (!favoriteFetching && favoriteAssets && favoriteSymbols.length > 0) {
-      favoriteSymbols.forEach((sym) => {
-        if (!favoriteAssets.some((asset) => asset.symbol === sym)) {
-          toast.error(t("toasts.market.symbol_missing"));
-          removeSymbol(sym);
-        }
-      });
-    }
-  }, [favoriteAssets, favoriteSymbols, favoriteFetching, removeSymbol, t]);
 
   const allAssets = useMemo<UnifiedAsset[]>(() => {
     const combined = [
@@ -249,33 +266,21 @@ export function AssetSignalTable() {
     favoriteAssets,
   ]);
 
-  // Crypto with an actionable signal → fetch smart-money only for the coins
-  // where positioning actually matters (keeps Binance calls bounded).
-  const cryptoForSmartMoney = useMemo(
-    () =>
-      allAssets.filter(
-        (a) =>
-          a.assetType === "crypto" &&
-          a.outlook != null &&
-          a.outlook.signal !== "neutral",
-      ),
-    [allAssets],
-  );
-  const { data: smartMoney, isPending: smartMoneyPending } =
-    useSmartMoney(cryptoForSmartMoney);
-
   // Enrichment pass over the full universe (where cross-asset data exists),
   // via the shared enrichAsset chain (same one the detail dialog uses):
   // benchmark context may de-rate; optional flow/fundamental reads are
   // display-only. computeSignal stays pure and this layer never mutates cache.
   const enrichedAssets = useMemo<TerminalAsset[]>(() => {
     return allAssets.map((asset) => {
-      const enriched = enrichAsset(asset, {
-        cryptoContext: cryptoContext ?? undefined,
-        idxContext: idxContext ?? undefined,
-        usContext: usContext ?? undefined,
-        smartMoney: smartMoney[asset.symbol],
-      });
+      const enriched = enrichAsset(
+        asset,
+        {
+          cryptoContext: cryptoContext ?? undefined,
+          idxContext: idxContext ?? undefined,
+          usContext: usContext ?? undefined,
+        },
+        { applyOptionalOverlays: false },
+      );
       return applySignalEpisode(
         enriched,
         signalStates.get(signalEpisodeKey(asset.symbol, asset.timeframe)),
@@ -287,16 +292,12 @@ export function AssetSignalTable() {
     cryptoContext,
     idxContext,
     usContext,
-    smartMoney,
     signalStates,
     signalStatesAvailable,
   ]);
 
-  // Tahan SATU skeleton sampai SEMUA sumber screener selesai initial load:
-  // base assets (semua kategori) + market context BTC + smart-money crypto —
-  // supaya table tampil sekaligus & sudah ter-sort, bukan nongol per-kategori
-  // lalu re-sort. Pakai flag first-load (isLoading/isPending), bukan isFetching,
-  // biar refetch background 30 menit update nilai di tempat tanpa nge-flash skeleton.
+  // Wait only for initial table inputs. Optional detail overlays never hold up
+  // the screener, and background refresh keeps the existing rows visible.
   const baseInitialLoading =
     cryptoLoading ||
     usLoading ||
@@ -304,16 +305,23 @@ export function AssetSignalTable() {
     comLoading ||
     forexLoading ||
     favoriteLoading;
-  // Smart money baru mount setelah ada crypto target; gate hanya saat ada target,
-  // kalau tidak ia kebaca "not pending" sebelum sempat jalan (premature reveal).
-  const smartMoneyGating = cryptoForSmartMoney.length > 0 && smartMoneyPending;
   const isLoading =
+    universe.isLoading ||
     baseInitialLoading ||
     cryptoContextLoading ||
     idxContextLoading ||
     usContextLoading ||
-    signalStatesLoading ||
-    smartMoneyGating;
+    signalStatesLoading;
+
+  const hasMarketDataError =
+    universe.isError ||
+    cryptoError ||
+    usError ||
+    idError ||
+    commoditiesError ||
+    forexError;
+  const hasFavoriteDataError =
+    showFavorites && (favoritesError || favoriteAssetsError);
 
   const displayFavCount = useMemo(() => {
     if (assetType === "all") return favoriteSymbols.length;
@@ -639,15 +647,27 @@ export function AssetSignalTable() {
     [successRateBySymbol, successRatesError, successRatesPending, t],
   );
 
+  const { pagination, onPaginationChange } = useTablePagination(
+    filteredData.length,
+    JSON.stringify([
+      assetType,
+      showFavorites,
+      debouncedSearch,
+      signalFilter,
+      sorting,
+    ]),
+  );
   const table = useReactTable({
     data: filteredData,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
+    onPaginationChange,
+    autoResetPageIndex: false,
+    getRowId: (row) => row.symbol,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -665,7 +685,7 @@ export function AssetSignalTable() {
             disabled={isRefreshing}
             title={t("journal.refresh")}
             aria-label={t("journal.refresh")}
-            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
           >
             <RefreshCw
               className={cn("h-4 w-4", isRefreshing && "animate-spin")}
@@ -689,6 +709,7 @@ export function AssetSignalTable() {
         <div className="flex items-center gap-2 min-w-0">
           <FilterGroup
             value={assetType}
+            aria-label={t("table.type")}
             options={translatedAssetOptions}
             onChange={(v) => setAssetType(v as AssetFilterType)}
             className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
@@ -698,6 +719,7 @@ export function AssetSignalTable() {
 
           <FilterGroup
             value={signalFilter}
+            aria-label={t("table.signal")}
             options={translatedSignalOptions}
             onChange={(v) => setSignalFilter(v as SignalFilterType)}
             variant="select"
@@ -713,12 +735,14 @@ export function AssetSignalTable() {
             <Input
               type="text"
               placeholder={t("market.search_placeholder")}
+              aria-label={t("market.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-9 text-sm placeholder:text-sm"
             />
             {searchQuery && (
               <button
+                aria-label={t("common.clear_search")}
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -734,6 +758,8 @@ export function AssetSignalTable() {
             {hasAccess || showFavorites ? (
               <Button
                 size="lg"
+                aria-label={t("common.favorite")}
+                aria-pressed={showFavorites}
                 variant={showFavorites ? "default" : "secondary"}
                 onClick={() => {
                   if (showFavorites) {
@@ -782,6 +808,7 @@ export function AssetSignalTable() {
                 trigger={
                   <Button
                     size="lg"
+                    aria-label={t("common.favorite")}
                     variant="secondary"
                     className="cursor-pointer transition-all"
                   >
@@ -802,6 +829,7 @@ export function AssetSignalTable() {
                 trigger={
                   <Button
                     size="lg"
+                    aria-label={t("market.add_ticker_btn")}
                     className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -816,6 +844,7 @@ export function AssetSignalTable() {
                 trigger={
                   <Button
                     size="lg"
+                    aria-label={t("market.add_ticker_btn")}
                     className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -850,11 +879,44 @@ export function AssetSignalTable() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
+              Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={i} className="h-15 hover:bg-transparent">
                   <SkeletonAssetSignalRow />
                 </TableRow>
               ))
+            ) : filteredData.length === 0 &&
+              ((hasMarketDataError && !enrichedAssets.length) ||
+                (hasFavoriteDataError && !favoriteAssets?.length)) ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-64 text-center"
+                >
+                  <Empty role="alert" className="min-h-64 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("market.data_unavailable")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("market.data_unavailable_desc")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        aria-busy={isRefreshing}
+                      >
+                        <RefreshCw data-icon="inline-start" />
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
@@ -862,24 +924,29 @@ export function AssetSignalTable() {
                   className="h-64 text-center"
                 >
                   {showFavorites && favoriteSymbols.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-8 max-w-sm mx-auto space-y-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-md bg-amber-500/10 text-amber-500 animate-pulse">
-                        <Star className="h-6 w-6 fill-amber-500/20" />
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="font-semibold text-foreground text-sm">
-                          {t("market.favorite_empty")}
-                        </h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
+                    <Empty className="min-h-64 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Star aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("market.favorite_empty")}</EmptyTitle>
+                        <EmptyDescription>
                           {t("market.favorite_empty_desc")}
-                        </p>
-                      </div>
-                    </div>
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   ) : (
-                    <EmptyState
-                      title={t("market.no_assets_found")}
-                      description={t("market.no_assets_found_desc")}
-                    />
+                    <Empty className="min-h-64 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Search aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("market.no_assets_found")}</EmptyTitle>
+                        <EmptyDescription>
+                          {t("market.no_assets_found_desc")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   )}
                 </TableCell>
               </TableRow>

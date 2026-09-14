@@ -13,6 +13,14 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useDisclaimer } from "@/features/auth/hooks/use-disclaimer";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 type TerminalView = "market" | "journal";
 
@@ -21,7 +29,11 @@ function JournalAccessState({ resolving }: { resolving: boolean }) {
 
   if (resolving) {
     return (
-      <Card className="border border-border" aria-busy="true" aria-hidden="true">
+      <Card
+        className="border border-border"
+        aria-busy="true"
+        aria-hidden="true"
+      >
         <CardContent className="flex min-h-72 flex-col items-center justify-center gap-5 p-6">
           <Skeleton className="size-14 rounded-xl" />
           <div className="flex w-full max-w-md flex-col items-center gap-2">
@@ -37,30 +49,32 @@ function JournalAccessState({ resolving }: { resolving: boolean }) {
 
   return (
     <Card className="border border-border">
-      <CardContent className="flex min-h-72 flex-col items-center justify-center gap-5 p-6 text-center">
-        <div className="flex size-14 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 text-primary">
-          <LockKeyhole className="size-6" aria-hidden="true" />
-        </div>
-        <div className="flex max-w-md flex-col gap-2">
-          <h2 className="text-lg font-bold text-foreground">
-            {t("license.login_required_title")}
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {t("license.login_required_desc")}
-          </p>
-        </div>
-        <LicenseAccessDialog
-          trigger={
-            <Button
-              type="button"
-              size="lg"
-              className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
-            >
-              <Key className="h-3.5 w-3.5" />
-              <span>{t("terminal.access_dialog_unlock_btn")}</span>
-            </Button>
-          }
-        />
+      <CardContent className="p-0">
+        <Empty className="min-h-72 border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <LockKeyhole aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("license.login_required_title")}</EmptyTitle>
+            <EmptyDescription>
+              {t("license.login_required_desc")}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <LicenseAccessDialog
+              trigger={
+                <Button
+                  type="button"
+                  size="lg"
+                  className="font-bold text-xs"
+                >
+                  <Key data-icon="inline-start" />
+                  {t("terminal.access_dialog_unlock_btn")}
+                </Button>
+              }
+            />
+          </EmptyContent>
+        </Empty>
       </CardContent>
     </Card>
   );
@@ -126,6 +140,7 @@ export default function TerminalPage() {
 
           <FilterGroup
             value={activeView}
+            aria-label={t("common.terminal")}
             options={terminalViewItems}
             onChange={(view) => setView(view as TerminalView)}
           />

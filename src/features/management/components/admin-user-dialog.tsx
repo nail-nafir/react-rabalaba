@@ -1,3 +1,4 @@
+import { FormFieldError } from "@/components/shared/form-field-error";
 import { useMemo, useState, useEffect, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
@@ -23,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
-import { Field, FieldError } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import type { AdminUserRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,11 +84,11 @@ function AdminUserDialogContent({
   const statusItems = [
     {
       value: "active",
-      label: t("admin.users_form_status_active", "Aktif"),
+      label: t("admin.users_form_status_active"),
     },
     {
       value: "blocked",
-      label: t("admin.users_form_status_blocked", "Diblokir"),
+      label: t("admin.users_form_status_blocked"),
     },
   ] as const;
 
@@ -104,21 +105,15 @@ function AdminUserDialogContent({
           (data) =>
             isEditMode || !trackedSet.has(data.email.trim().toLowerCase()),
           {
-            message: t(
-              "admin.users_add_already_exists",
-              "Pengguna sudah terdaftar di sistem",
-            ),
+            message: "admin.users_add_already_exists",
             path: ["email"],
           },
         )
         .refine((data) => isEditMode || data.password.length >= 12, {
-          message: t(
-            "admin.users_password_min",
-            "Password awal minimal 12 karakter",
-          ),
+          message: "admin.users_password_min",
           path: ["password"],
         }),
-    [isEditMode, t, trackedSet],
+    [isEditMode, trackedSet],
   );
 
   const form = useForm<UserFormValues>({
@@ -223,10 +218,7 @@ function AdminUserDialogContent({
       if (trackedSet.has(email)) {
         form.setError("email", {
           type: "manual",
-          message: t(
-            "admin.users_add_already_exists",
-            "Pengguna sudah terdaftar di sistem",
-          ),
+          message: "admin.users_add_already_exists",
         });
         toast.error(t("toasts.user.add_error"));
         return;
@@ -249,10 +241,7 @@ function AdminUserDialogContent({
         } else if (result === "duplicate") {
           form.setError("email", {
             type: "manual",
-            message: t(
-              "admin.users_add_already_exists",
-              "Pengguna sudah terdaftar di sistem",
-            ),
+            message: "admin.users_add_already_exists",
           });
           toast.error(t("toasts.user.add_error"));
         } else {
@@ -275,19 +264,13 @@ function AdminUserDialogContent({
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
             {isEditMode
-              ? t("admin.users_edit_dialog_title", "Edit Pengguna")
-              : t("admin.users_add_dialog_title", "Tambah Pengguna Baru")}
+              ? t("admin.users_edit_dialog_title")
+              : t("admin.users_add_dialog_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
             {isEditMode
-              ? t(
-                  "admin.users_edit_dialog_desc",
-                  "Ubah kasta atau peranan pengguna dalam sistem.",
-                )
-              : t(
-                  "admin.users_add_dialog_desc",
-                  "Tambahkan pengguna langsung ke sistem dan buat password awal minimal 12 karakter.",
-                )}
+              ? t("admin.users_edit_dialog_desc")
+              : t("admin.users_add_dialog_desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -304,10 +287,7 @@ function AdminUserDialogContent({
                   <Input
                     {...field}
                     type="email"
-                    placeholder={t(
-                      "admin.users_add_email_placeholder",
-                      "Alamat email pengguna",
-                    )}
+                    placeholder={t("admin.users_add_email_placeholder")}
                     disabled={isEditMode}
                     autoFocus={!isEditMode}
                     autoComplete="off"
@@ -321,7 +301,7 @@ function AdminUserDialogContent({
                   />
                 </div>
                 {!isEditMode && fieldState.invalid && (
-                  <FieldError
+                  <FormFieldError
                     errors={[fieldState.error]}
                     className="text-[10px] sm:text-[11px] font-medium mt-1"
                   />
@@ -337,18 +317,18 @@ function AdminUserDialogContent({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid} className="gap-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-data-[invalid=true]/field:text-destructive">
-                    {t("auth.password", "Password awal")}
+                    {t("admin.users_initial_password_label")}
                   </label>
                   <Input
                     {...field}
                     type="password"
-                    placeholder="Minimal 12 karakter"
+                    placeholder={t("admin.users_initial_password_placeholder")}
                     autoComplete="new-password"
                     aria-invalid={fieldState.invalid}
                     className="placeholder:text-sm text-sm"
                   />
                   {fieldState.invalid && (
-                    <FieldError
+                    <FormFieldError
                       errors={[fieldState.error]}
                       className="text-[10px] sm:text-[11px] font-medium mt-1"
                     />
@@ -375,10 +355,7 @@ function AdminUserDialogContent({
                   >
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue
-                        placeholder={t(
-                          "admin.users_form_tier_placeholder",
-                          "Pilih Kasta",
-                        )}
+                        placeholder={t("admin.users_form_tier_placeholder")}
                       />
                     </SelectTrigger>
                     <SelectContent
@@ -419,10 +396,7 @@ function AdminUserDialogContent({
                   >
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue
-                        placeholder={t(
-                          "admin.users_form_role_placeholder",
-                          "Pilih Peran",
-                        )}
+                        placeholder={t("admin.users_form_role_placeholder")}
                       />
                     </SelectTrigger>
                     <SelectContent
@@ -455,10 +429,7 @@ function AdminUserDialogContent({
               render={({ field, fieldState }) => (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t(
-                      "admin.users_form_trial_label",
-                      "Masa Berlaku Trial (Opsional)",
-                    )}
+                    {t("admin.users_form_trial_label")}
                   </label>
                   <Input
                     {...field}
@@ -466,7 +437,7 @@ function AdminUserDialogContent({
                     className="h-8 placeholder:text-sm text-sm"
                   />
                   {fieldState.invalid && (
-                    <FieldError
+                    <FormFieldError
                       errors={[fieldState.error]}
                       className="text-[9px] font-medium mt-0.5"
                     />
@@ -483,7 +454,7 @@ function AdminUserDialogContent({
               render={({ field }) => (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("admin.users_form_status_label", "Status Akun")}
+                    {t("admin.users_form_status_label")}
                   </label>
                   <Select
                     value={field.value ? "blocked" : "active"}
@@ -495,10 +466,7 @@ function AdminUserDialogContent({
                   >
                     <SelectTrigger className="w-full h-8 uppercase tracking-wider text-[10px] cursor-pointer">
                       <SelectValue
-                        placeholder={t(
-                          "admin.users_form_status_placeholder",
-                          "Pilih Status",
-                        )}
+                        placeholder={t("admin.users_form_status_placeholder")}
                       />
                     </SelectTrigger>
                     <SelectContent
@@ -528,7 +496,7 @@ function AdminUserDialogContent({
             <Card className="mt-4 bg-muted/50">
               <CardContent className="space-y-2.5 text-xs text-muted-foreground">
                 <h4 className="font-bold text-foreground text-[10px] uppercase tracking-wider mb-1">
-                  {t("admin.users_form_metadata_title", "Metadata Pengguna")}
+                  {t("admin.users_form_metadata_title")}
                 </h4>
                 <Separator className="my-2" />
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -574,10 +542,7 @@ function AdminUserDialogContent({
                   </div>
                   <div>
                     <span className="block font-semibold text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                      {t(
-                        "admin.users_form_metadata_email_confirmed",
-                        "Konfirmasi Email",
-                      )}
+                      {t("admin.users_form_metadata_email_confirmed")}
                     </span>
                     <span className="text-foreground">
                       {formatTs(user.email_confirmed_at)}

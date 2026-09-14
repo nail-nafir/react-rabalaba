@@ -11,10 +11,7 @@ import {
   computeTradeChartWindow,
   fitTradeWindowCandles,
 } from "@/features/follow-trade/model/trade-chart-window";
-import {
-  LifecycleBadge,
-  TpProgress,
-} from "./follow-status";
+import { LifecycleBadge, TpProgress } from "./follow-status";
 import { tradeOutcomeLabel } from "@/features/follow-trade/model/follow-outcome";
 import {
   formatPrice,
@@ -42,7 +39,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Share2, Target } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  Share2,
+  Target,
+} from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { SIGNAL_COLORS, PALETTE, SIGNAL_LABEL_KEYS } from "@/constants";
 
 import type { FollowedTrade } from "@/core/trade/follow-trade-model";
@@ -88,10 +98,11 @@ export function TradeDetailDialog({
   trigger,
   siblings = EMPTY_SIBLINGS,
 }: TradeDetailDialogProps) {
+  const [open, setOpen] = useState(false);
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <TradeDetailReadyDialog trade={trade} siblings={siblings} />
+      {open && <TradeDetailReadyDialog trade={trade} siblings={siblings} />}
     </Dialog>
   );
 }
@@ -138,7 +149,13 @@ function TradeDetailReadyDialog({
     () => (!isClosed ? [trade.symbol] : []),
     [trade.symbol, isClosed],
   );
-  const { data: assets, isLoading: liveLoading } = useMarketData(symbols);
+  const {
+    data: assets,
+    isLoading: liveLoading,
+    isError: liveError,
+    isFetching: liveFetching,
+    refetch: refetchLive,
+  } = useMarketData(symbols);
   const asset = assets?.[0];
 
   // CLOSED trades chart ONE continuous series from before entry up to now:
@@ -151,10 +168,13 @@ function TradeDetailReadyDialog({
         : null,
     [trade, isClosed],
   );
-  const { data: periodCandles, isLoading: periodLoading } = usePeriodCandles(
-    isClosed ? trade.symbol : null,
-    chartWindow,
-  );
+  const {
+    data: periodCandles,
+    isLoading: periodLoading,
+    isError: periodError,
+    isFetching: periodFetching,
+    refetch: refetchPeriod,
+  } = usePeriodCandles(isClosed ? trade.symbol : null, chartWindow);
 
   const candles = useMemo(
     () =>
@@ -166,6 +186,9 @@ function TradeDetailReadyDialog({
     [isClosed, periodCandles, asset],
   );
   const chartLoading = isClosed ? periodLoading : liveLoading;
+  const chartError = isClosed ? periodError : liveError;
+  const chartFetching = isClosed ? periodFetching : liveFetching;
+  const retryChart = isClosed ? refetchPeriod : refetchLive;
 
   // Build the trading plan from the running/saved setup data
   const tradingPlan = useMemo(() => buildPlanFromTrade(trade), [trade]);
@@ -308,14 +331,24 @@ function TradeDetailReadyDialog({
           )}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-          {trade.name} · {t(`common.asset_types.${trade.assetType.replaceAll("-", "_")}`)}
+          {trade.name} ·{" "}
+          {t(`common.asset_types.${trade.assetType.replaceAll("-", "_")}`)}
         </DialogDescription>
 
         {/* Price + P/L row */}
         {chartLoading && !isClosed ? (
-          <div className="space-y-2 mt-2">
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-15 w-full rounded-xl" />
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <Skeleton className="h-3 w-24" />
+              <div className="flex min-w-0 items-end gap-3">
+                <Skeleton className="h-8 w-32 max-w-full" />
+                <Skeleton className="h-4 w-16 shrink-0" />
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-3 w-12" />
+            </div>
           </div>
         ) : (
           <div className="flex items-end justify-between gap-3 mt-2">
@@ -336,19 +369,11 @@ function TradeDetailReadyDialog({
               </div>
             </div>
             <div className="text-right leading-tight">
-              <div
-                className={`text-xl font-bold ${
-                  pnlColor.text
-                }`}
-              >
+              <div className={`text-xl font-bold ${pnlColor.text}`}>
                 {sign(pnl.pct)}
                 {pnl.pct.toFixed(2)}%
               </div>
-              <div
-                className={`text-xs font-semibold ${
-                  pnlColor.text
-                }`}
-              >
+              <div className={`text-xs font-semibold ${pnlColor.text}`}>
                 {sign(pnl.r)}
                 {formatRatio(pnl.r)}R
               </div>
@@ -455,6 +480,30 @@ function TradeDetailReadyDialog({
               <Loader2 className="h-4 w-4 animate-spin" />
               {t("dialog.loading")}
             </div>
+          ) : chartError && candles.length === 0 ? (
+            <Empty role="alert" className="min-h-64 border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <AlertCircle aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("common.load_error_description")}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (retryChart) void retryChart();
+                  }}
+                  disabled={chartFetching || !retryChart}
+                  aria-busy={chartFetching}
+                >
+                  {t("common.retry")}
+                </Button>
+              </EmptyContent>
+            </Empty>
           ) : candles.length > 0 ? (
             <TradeSetupChart
               candles={candles}
@@ -473,9 +522,14 @@ function TradeDetailReadyDialog({
               showGrid={showGrid}
             />
           ) : (
-            <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-              {t("dialog.not_enough_data")}
-            </div>
+            <Empty className="min-h-64 border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Target aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("dialog.not_enough_data")}</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           )}
         </div>
       </div>

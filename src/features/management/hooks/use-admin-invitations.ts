@@ -17,7 +17,7 @@ export function useAdminInvitations() {
   const { isAdmin } = usePremiumAccess();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: KEY,
     enabled: isAdmin,
     staleTime: 60_000,
@@ -78,6 +78,8 @@ export function useAdminInvitations() {
   return {
     invitations: data ?? EMPTY,
     isLoading,
+    isError,
+    refetch,
     createInvitation,
     revokeInvitation,
     deleteInvitation,

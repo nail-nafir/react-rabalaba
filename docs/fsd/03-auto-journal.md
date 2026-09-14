@@ -104,7 +104,7 @@ File: `supabase/functions/daily-summary/index.ts:160`. Cron `0 * * * *` (hourly,
 ---
 
 ## 🔗 Terkait / Related
-- [`../explainer/aturan-main-trading.md`](../explainer/aturan-main-trading.md) — panduan aturan lengkap dan contoh LONG/SHORT
+- [`../explainer/trading-methodology.md`](../explainer/trading-methodology.md) — panduan aturan lengkap dan contoh LONG/SHORT
 - [`../explainer/auto-journal-explained.md`](../explainer/auto-journal-explained.md) — ELI5
 - [`../tsd/05-edge-functions.md`](../tsd/05-edge-functions.md) — detail teknis 3 cron
 - [`04-journal-dashboard.md`](04-journal-dashboard.md) — baca hasil jurnal

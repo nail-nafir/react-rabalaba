@@ -36,7 +36,7 @@ test("skeleton keeps one shared animation and surface baseline", () => {
 
 test("shared table skeletons preserve their live column counts", () => {
   const expectedColumns = {
-    SkeletonAssetSignalRow: 10,
+    SkeletonAssetSignalRow: 11,
     SkeletonFollowHistoryRow: 9,
     SkeletonJournalAssetRow: 8,
     SkeletonAdminUserRow: 7,
@@ -69,10 +69,40 @@ test("calendar loading item mirrors the event card shell", () => {
   assert.match(calendar, /<Card className="border border-border"/);
   assert.match(
     calendar,
-    /<CardContent className="flex items-center gap-3 sm:gap-4"/,
+    /<CardContent className="flex items-center gap-3 px-4 py-4 sm:gap-4"/,
   );
-  assert.match(calendar, /h-5 w-14 rounded-md/);
+  assert.match(calendar, /size-7 shrink-0 rounded-lg sm:size-8/);
+  assert.match(calendar, /h-5 w-20 shrink-0 rounded-md/);
+  assert.match(calendar, /h-4 w-3\/4 max-w-64/);
+  assert.match(calendar, /h-3 w-1\/4 max-w-16/);
+  assert.match(calendar, /h-5 w-16 shrink-0 rounded-md/);
   assert.doesNotMatch(calendar, /hover:/);
+});
+
+test("testimonials loading rows preserve every live column", () => {
+  const testimonials = read("src/features/management/components/testimonials-table.tsx");
+  const body = testimonials.match(
+    /function SkeletonRows\(\)[\s\S]*?(?=\nexport function|$)/,
+  )?.[0];
+
+  assert.ok(body);
+  assert.equal(body.match(/<TableCell>/g)?.length, 8);
+  assert.match(body, /h-3\.5 w-full max-w-72/);
+  assert.match(body, /h-3\.5 w-11\/12 max-w-64/);
+  assert.match(body, /h-3\.5 w-2\/3 max-w-48/);
+  assert.match(body, /size-7 rounded-md/);
+});
+
+test("page and dialog loading shells reserve their final content geometry", () => {
+  const statistics = read("src/pages/management/statistics.tsx");
+  const assetDialog = read("src/features/trading-plan/components/asset-detail-dialog.tsx");
+  const tradeDialog = read("src/features/follow-trade/components/trade-detail-dialog.tsx");
+
+  assert.match(statistics, /h-64 w-full rounded-xl/);
+  assert.match(statistics, /min-h-40 flex-1 flex-col rounded-lg/);
+  assert.match(assetDialog, /h-8 w-32 max-w-full/);
+  assert.match(assetDialog, /mx-auto size-24 rounded-full/);
+  assert.match(tradeDialog, /h-6 w-20/);
 });
 
 test("data skeletons do not use decorative shimmer", () => {

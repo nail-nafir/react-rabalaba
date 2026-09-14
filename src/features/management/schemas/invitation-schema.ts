@@ -1,5 +1,4 @@
 import * as z from "zod";
-import i18next from "i18next";
 
 /** Zod schema for the admin invitation form. */
 export const invitationSchema = z
@@ -10,10 +9,7 @@ export const invitationSchema = z
       .string()
       .trim()
       .refine((val) => !val || /^\d+$/.test(val), {
-        message: i18next.t(
-          "admin.codes_add_invalid_number",
-          "Harus berupa angka positif",
-        ),
+        message: "admin.codes_add_invalid_number",
       }),
     recipient: z.string().trim(),
     expiresAt: z.date().optional(),
@@ -26,10 +22,7 @@ export const invitationSchema = z
       return true;
     },
     {
-      message: i18next.t(
-        "admin.codes_add_invalid_number",
-        "Harus berupa angka positif",
-      ),
+      message: "admin.codes_add_invalid_number",
       path: ["trialDays"],
     },
   );

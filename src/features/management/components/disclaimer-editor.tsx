@@ -7,13 +7,21 @@
 import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Save, Users } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Save, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -201,25 +209,25 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
           variant="outline"
           className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground"
         >
-          {t("admin.disclaimer.version", "Versi")} {currentVersion}
+          {t("admin.disclaimer.version")} {currentVersion}
         </Badge>
         <Badge
           variant="outline"
           className="font-bold tracking-wider uppercase text-[10px] rounded-md bg-muted-foreground/15 border-muted-foreground/30 text-muted-foreground"
         >
-          {agreedCount ?? 0} {t("admin.disclaimer.accepted", "menyetujui")}
+          {agreedCount ?? 0} {t("admin.disclaimer.accepted")}
         </Badge>
       </div>
 
       {bilingual(
-        t("admin.disclaimer.title_label", "Judul"),
+        t("admin.disclaimer.title_label"),
         titleEn,
         setTitleEn,
         titleId,
         setTitleId,
       )}
       {bilingual(
-        t("admin.disclaimer.desc_label", "Deskripsi"),
+        t("admin.disclaimer.desc_label"),
         descEn,
         setDescEn,
         descId,
@@ -227,7 +235,7 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
         true,
       )}
       {bilingual(
-        t("admin.disclaimer.points_label", "Poin (satu per baris)"),
+        t("admin.disclaimer.points_label"),
         pointsEn,
         setPointsEn,
         pointsId,
@@ -235,14 +243,14 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
         true,
       )}
       {bilingual(
-        t("admin.disclaimer.confirm_label", "Teks Centang"),
+        t("admin.disclaimer.confirm_label"),
         confirmEn,
         setConfirmEn,
         confirmId,
         setConfirmId,
       )}
       {bilingual(
-        t("admin.disclaimer.agree_label", "Teks Tombol Setuju"),
+        t("admin.disclaimer.agree_label"),
         agreeEn,
         setAgreeEn,
         agreeId,
@@ -263,7 +271,7 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
           ) : (
             <Save className="h-3.5 w-3.5" />
           )}
-          {t("admin.disclaimer.save_btn", "Simpan")}
+          {t("admin.disclaimer.save_btn")}
         </Button>
 
         <AlertDialog
@@ -280,7 +288,7 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
               className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
             >
               <Users className="h-3.5 w-3.5" />
-              {t("admin.disclaimer.publish_btn", "Terbitkan Versi Baru")}
+              {t("admin.disclaimer.publish_btn")}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -289,21 +297,15 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
                 <Users />
               </AlertDialogMedia>
               <AlertDialogTitle>
-                {t(
-                  "admin.disclaimer.publish_confirm_title",
-                  "Terbitkan versi baru?",
-                )}
+                {t("admin.disclaimer.publish_confirm_title")}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {t(
-                  "admin.disclaimer.publish_confirm_desc",
-                  "Semua pengguna (login & anonim) akan diminta menyetujui ulang pada kunjungan berikutnya.",
-                )}
+                {t("admin.disclaimer.publish_confirm_desc")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isPublishing}>
-                {t("common.cancel", "Batal")}
+                {t("common.cancel")}
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={isPublishing || !hasChanges}
@@ -324,7 +326,14 @@ function EditorForm({ clauses, currentVersion, update }: EditorFormProps) {
 }
 
 export function DisclaimerEditor() {
-  const { clauses, isLoading, currentVersion, update } = useDisclaimer();
+  const { t } = useTranslation();
+  const {
+    clauses,
+    isLoading,
+    retry,
+    currentVersion,
+    update,
+  } = useDisclaimer();
 
   if (isLoading && !clauses) {
     return (
@@ -333,7 +342,27 @@ export function DisclaimerEditor() {
       </div>
     );
   }
-  if (!clauses) return null;
+  if (!clauses) {
+    return (
+      <Empty role="alert" className="min-h-56 border-0">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertCircle aria-hidden="true" />
+          </EmptyMedia>
+          <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+          <EmptyDescription>
+            {t("common.load_error_description")}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button variant="outline" onClick={() => void retry()}>
+            <RefreshCw data-icon="inline-start" />
+            {t("common.retry")}
+          </Button>
+        </EmptyContent>
+      </Empty>
+    );
+  }
 
   return (
     <EditorForm

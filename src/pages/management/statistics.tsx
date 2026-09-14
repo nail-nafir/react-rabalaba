@@ -14,6 +14,7 @@ import {
   Maximize2,
   Minimize2,
   Radio,
+  AlertCircle,
 } from "lucide-react";
 import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import { useJournalAssets } from "@/features/management/hooks/use-journal-assets";
@@ -28,6 +29,14 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   ChartContainer,
   ChartTooltip,
@@ -72,13 +81,27 @@ export default function AdminSystemPage() {
   }, [isChartFullscreen, isSignalFullscreen]);
 
   // Queries & data hooks
-  const { users, accessCodes, isLoading: isLoadingUsers } = useAdminUsers();
-  const { assets, isLoading: isLoadingAssets } = useJournalAssets();
-  const { settings, isLoading: isLoadingSettings } = useJournalSettings();
+  const {
+    users,
+    accessCodes,
+    isLoading: isLoadingUsers,
+    isErrorUsers,
+    refetchUsers,
+  } = useAdminUsers();
+  const {
+    assets,
+    isLoading: isLoadingAssets,
+  } = useJournalAssets();
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+  } = useJournalSettings();
   const {
     openTrades,
     history,
     isLoading: isLoadingTrades,
+    isError: tradesError,
+    refetch: refetchTrades,
   } = useJournalTrades({ scope: "history" });
 
   const totalSignals = useMemo(() => {
@@ -289,19 +312,14 @@ export default function AdminSystemPage() {
       {
         time: t0,
         type: "INFO",
-        msg: t(
-          "admin.summary_log_loading",
-          "Memuat data statistik dan metrik dashboard...",
-        ),
+        msg: t("admin.summary_log_loading"),
         color: "text-blue-400",
       },
       {
         time: t1,
         type: "SUCCESS",
         msg: t(
-          "admin.summary_log_success_load",
-          "Muat data pengguna ({{userCount}}) dan aset ({{assetCount}}) berhasil.",
-          {
+          "admin.summary_log_success_load", {
             userCount: userStats.total,
             assetCount: assetStats.total,
           },
@@ -315,9 +333,7 @@ export default function AdminSystemPage() {
         time: t2,
         type: "INFO",
         msg: t(
-          "admin.summary_log_scheduler_status",
-          "Penjadwal otomatis: Status = {{status}}, Jeda eksekusi = {{interval}} menit.",
-          {
+          "admin.summary_log_scheduler_status", {
             status: settings.enabled ? "OPERATIONAL" : "PAUSED",
             interval: settings.interval_minutes,
           },
@@ -330,28 +346,19 @@ export default function AdminSystemPage() {
       {
         time: t3,
         type: "WARN",
-        msg: t(
-          "admin.summary_log_yahoo_limit",
-          "API Yahoo Finance: Limiter throttle aman (0.01% dari limit harian).",
-        ),
+        msg: t("admin.summary_log_yahoo_limit"),
         color: PALETTE.warning.text,
       },
       {
         time: t4,
         type: "INFO",
-        msg: t(
-          "admin.summary_log_worker_triggered",
-          'Edge worker "auto-journal-engine" dipicu otomatis oleh scheduler cron.',
-        ),
+        msg: t("admin.summary_log_worker_triggered"),
         color: "text-blue-400",
       },
       {
         time: t5,
         type: "SUCCESS",
-        msg: t(
-          "admin.summary_log_db_sync",
-          "Sikronisasi cache server Supabase sukses dalam 120ms.",
-        ),
+        msg: t("admin.summary_log_db_sync"),
         color: PALETTE.positive.text,
       },
     );
@@ -361,15 +368,15 @@ export default function AdminSystemPage() {
 
   const userChartConfig: ChartConfig = {
     cumulative: {
-      label: t("admin.summary_chart_cum_users", "Total Pengguna"),
+      label: t("admin.summary_chart_cum_users"),
       color: "var(--color-primary)",
     },
     daily: {
-      label: t("admin.summary_chart_daily_users", "Daftar Baru"),
+      label: t("admin.summary_chart_daily_users"),
       color: PALETTE.positive.fill,
     },
     active: {
-      label: t("admin.summary_chart_active_users", "Aktivitas Pengguna"),
+      label: t("admin.summary_chart_active_users"),
       color: PALETTE.neutral.fill,
     },
   };
@@ -415,24 +422,51 @@ export default function AdminSystemPage() {
 
   const signalDailyConfig: ChartConfig = {
     cumulative: {
-      label: t("admin.summary_chart_cum_signals", "Total Sinyal"),
+      label: t("admin.summary_chart_cum_signals"),
       color: "var(--color-primary)",
     },
     daily: {
-      label: t("admin.summary_chart_daily_signals", "Sinyal Baru"),
+      label: t("admin.summary_chart_daily_signals"),
       color: PALETTE.positive.fill,
     },
   };
 
   const renderUserGrowthChart = (isFullscreen = false) => {
+    if (isErrorUsers && users.length === 0) {
+      return (
+        <Empty role="alert" className="min-h-60 border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertCircle aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+            <EmptyDescription>
+              {t("common.load_error_description")}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={() => void refetchUsers()}>
+              <RefreshCw data-icon="inline-start" />
+              {t("common.retry")}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      );
+    }
+
     if (registrationChartData.length === 0) {
       return (
-        <div className="flex h-60 items-center justify-center text-xs text-muted-foreground border border-dashed border-border rounded-lg bg-muted/20">
-          {t(
-            "admin.summary_no_signup_data",
-            "Belum ada data pendaftaran terekam.",
-          )}
-        </div>
+        <Empty className="min-h-60 border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("admin.summary_no_signup_data")}</EmptyTitle>
+            <EmptyDescription>
+              {t("admin.summary_chart_user_stats_desc")}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       );
     }
 
@@ -464,23 +498,14 @@ export default function AdminSystemPage() {
                   labelFormatter={(l) => fmtFullDate(String(l))}
                   formatter={(value, name, item) => {
                     let dotColor = "var(--color-primary)";
-                    let displayName = t(
-                      "admin.summary_chart_cum_users",
-                      "Total Pengguna",
-                    );
+                    let displayName = t("admin.summary_chart_cum_users");
 
                     if (item.dataKey === "daily" || name === "daily") {
                       dotColor = "var(--color-emerald-400)";
-                      displayName = t(
-                        "admin.summary_chart_daily_users",
-                        "Daftar Baru",
-                      );
+                      displayName = t("admin.summary_chart_daily_users");
                     } else if (item.dataKey === "active" || name === "active") {
                       dotColor = "var(--color-zinc-400)";
-                      displayName = t(
-                        "admin.summary_chart_active_users",
-                        "Aktivitas Pengguna",
-                      );
+                      displayName = t("admin.summary_chart_active_users");
                     }
 
                     return (
@@ -510,7 +535,7 @@ export default function AdminSystemPage() {
             stroke="var(--color-primary)"
             strokeWidth={2}
             dot={false}
-            name={t("admin.summary_chart_cum_users", "Total Pengguna")}
+            name={t("admin.summary_chart_cum_users")}
           />
           <Line
             type="monotone"
@@ -518,7 +543,7 @@ export default function AdminSystemPage() {
             stroke="var(--color-emerald-400)"
             strokeWidth={1.5}
             dot={false}
-            name={t("admin.summary_chart_daily_users", "Daftar Baru")}
+            name={t("admin.summary_chart_daily_users")}
           />
           <Line
             type="monotone"
@@ -526,7 +551,7 @@ export default function AdminSystemPage() {
             stroke="var(--color-zinc-400)"
             strokeWidth={1.5}
             dot={false}
-            name={t("admin.summary_chart_active_users", "Aktivitas Pengguna")}
+            name={t("admin.summary_chart_active_users")}
           />
         </LineChart>
       </ChartContainer>
@@ -538,15 +563,15 @@ export default function AdminSystemPage() {
 
     const legendItems = [
       {
-        name: t("admin.summary_chart_cum_users", "Total Pengguna"),
+        name: t("admin.summary_chart_cum_users"),
         color: "var(--color-primary)",
       },
       {
-        name: t("admin.summary_chart_daily_users", "Daftar Baru"),
+        name: t("admin.summary_chart_daily_users"),
         color: "var(--color-emerald-400)",
       },
       {
-        name: t("admin.summary_chart_active_users", "Aktivitas Pengguna"),
+        name: t("admin.summary_chart_active_users"),
         color: "var(--color-zinc-400)",
       },
     ];
@@ -581,7 +606,7 @@ export default function AdminSystemPage() {
       <div className="space-y-6">
         <div className="space-y-2">
           <Skeleton className="h-9 w-48" />
-          <Skeleton className="h-4 w-96" />
+          <Skeleton className="h-4 w-full max-w-96" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -617,6 +642,7 @@ export default function AdminSystemPage() {
               <div className="mt-4 flex justify-center gap-6">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-24" />
               </div>
             </CardContent>
           </Card>
@@ -640,6 +666,51 @@ export default function AdminSystemPage() {
             </CardContent>
           </Card>
         </div>
+        <Card
+          className="flex h-full flex-col border border-border bg-card shadow-xs"
+          aria-hidden="true"
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-full max-w-64" />
+            </div>
+            <Skeleton className="h-5 w-24 rounded-full" />
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col gap-4 pb-6 pt-2">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-card p-2.5"
+                >
+                  <Skeleton className="size-4 shrink-0 rounded-md" />
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <Skeleton className="h-3 w-16 max-w-full" />
+                    <Skeleton className="h-4 w-24 max-w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex min-h-40 flex-1 flex-col rounded-lg border border-border/80 bg-muted/20 p-3">
+              <div className="mb-2 flex items-center gap-1.5 border-b border-border/40 pb-2">
+                <Skeleton className="size-2 rounded-full" />
+                <Skeleton className="size-2 rounded-full" />
+                <Skeleton className="size-2 rounded-full" />
+                <Skeleton className="ml-2 h-3 w-40 max-w-full" />
+              </div>
+              <div className="flex flex-1 flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-9 shrink-0" />
+                    <Skeleton className="h-3 w-12 shrink-0" />
+                    <Skeleton className="h-3 min-w-0 flex-1" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -649,13 +720,10 @@ export default function AdminSystemPage() {
       {/* Title */}
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.summary_list_title", "Statistik Keseluruhan")}
+          {t("admin.summary_list_title")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t(
-            "admin.summary_stats_desc",
-            "Ikhtisar metrik administrasi pengguna, database, lisensi kode akses, dan status cron scheduler auto-journal.",
-          )}
+          {t("admin.summary_stats_desc")}
         </p>
       </div>
 
@@ -669,7 +737,7 @@ export default function AdminSystemPage() {
                 {userStats.total}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                {t("admin.summary_kpi_users", "Pengguna")}
+                {t("admin.summary_kpi_users")}
               </div>
             </div>
             <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -686,7 +754,7 @@ export default function AdminSystemPage() {
                 {assetStats.total}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                {t("admin.summary_kpi_assets", "Aset Jurnal")}
+                {t("admin.summary_kpi_assets")}
               </div>
             </div>
             <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -703,7 +771,7 @@ export default function AdminSystemPage() {
                 {codeStats.totalRedemptions}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                {t("admin.summary_kpi_redemptions", "Penukaran Kode")}
+                {t("admin.summary_kpi_redemptions")}
               </div>
             </div>
             <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -720,7 +788,7 @@ export default function AdminSystemPage() {
                 {totalSignals}
               </div>
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                {t("admin.summary_kpi_signals", "Sinyal Terbit")}
+                {t("admin.summary_kpi_signals")}
               </div>
             </div>
             <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -736,13 +804,10 @@ export default function AdminSystemPage() {
           <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
             <div className="space-y-1">
               <h2 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                {t("admin.summary_chart_user_stats", "Statistik Pengguna")}
+                {t("admin.summary_chart_user_stats")}
               </h2>
               <p className="text-[10px] text-muted-foreground">
-                {t(
-                  "admin.summary_chart_user_stats_desc",
-                  "Tren pendaftaran, kumulatif, dan aktivitas harian.",
-                )}
+                {t("admin.summary_chart_user_stats_desc")}
               </p>
             </div>
             <Button
@@ -752,7 +817,7 @@ export default function AdminSystemPage() {
               className="text-[10px] font-bold uppercase tracking-wider h-8 px-3 cursor-pointer flex items-center gap-1.5"
             >
               <Minimize2 className="size-3.5" />
-              {t("admin.summary_chart_close_fullscreen", "Keluar Fullscreen")}
+              {t("admin.summary_chart_close_fullscreen")}
             </Button>
           </div>
           <div className="flex-1 w-full bg-card border border-border rounded-xl p-6 flex flex-col justify-center min-h-0">
@@ -768,13 +833,10 @@ export default function AdminSystemPage() {
           <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
             <div className="space-y-1">
               <h2 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                {t("admin.summary_chart_signal_activity", "Aktivitas Sinyal")}
+                {t("admin.summary_chart_signal_activity")}
               </h2>
               <p className="text-[10px] text-muted-foreground">
-                {t(
-                  "admin.summary_chart_signal_activity_desc",
-                  "Sinyal harian dan kumulatif yang diterbitkan bulan ini.",
-                )}
+                {t("admin.summary_chart_signal_activity_desc")}
               </p>
             </div>
             <Button
@@ -784,17 +846,40 @@ export default function AdminSystemPage() {
               className="text-[10px] font-bold uppercase tracking-wider h-8 px-3 cursor-pointer flex items-center gap-1.5"
             >
               <Minimize2 className="size-3.5" />
-              {t("admin.summary_chart_close_fullscreen", "Keluar Fullscreen")}
+              {t("admin.summary_chart_close_fullscreen")}
             </Button>
           </div>
           <div className="flex-1 w-full bg-card border border-border rounded-xl p-6 flex flex-col justify-center min-h-0">
-            {signalDailyData.length === 0 ? (
-              <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground border border-dashed border-border rounded-lg bg-muted/20">
-                {t(
-                  "admin.summary_no_signals_data",
-                  "Belum ada sinyal diterbitkan.",
-                )}
-              </div>
+            {tradesError && signalDailyData.length === 0 ? (
+              <Empty role="alert" className="min-h-60 border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <AlertCircle aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("common.load_error_description")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button variant="outline" onClick={() => void refetchTrades()}>
+                    <RefreshCw data-icon="inline-start" />
+                    {t("common.retry")}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            ) : signalDailyData.length === 0 ? (
+              <Empty className="min-h-60 border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Radio aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("admin.summary_no_signals_data")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("admin.summary_chart_signal_activity_desc")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <>
                 <ChartContainer
@@ -829,19 +914,13 @@ export default function AdminSystemPage() {
                             labelFormatter={(l) => fmtFullDate(String(l))}
                             formatter={(value, name, item) => {
                               let dotColor = "var(--color-primary)";
-                              let displayName = t(
-                                "admin.summary_chart_cum_signals",
-                                "Total Sinyal",
-                              );
+                              let displayName = t("admin.summary_chart_cum_signals");
                               if (
                                 item.dataKey === "daily" ||
                                 name === "daily"
                               ) {
                                 dotColor = "var(--color-emerald-400)";
-                                displayName = t(
-                                  "admin.summary_chart_daily_signals",
-                                  "Sinyal Baru",
-                                );
+                                displayName = t("admin.summary_chart_daily_signals");
                               }
                               return (
                                 <>
@@ -870,7 +949,7 @@ export default function AdminSystemPage() {
                       stroke="var(--color-primary)"
                       strokeWidth={2}
                       dot={false}
-                      name={t("admin.summary_chart_cum_signals", "Total Sinyal")}
+                      name={t("admin.summary_chart_cum_signals")}
                     />
                     <Line
                       type="monotone"
@@ -878,24 +957,18 @@ export default function AdminSystemPage() {
                       stroke="var(--color-emerald-400)"
                       strokeWidth={1.5}
                       dot={false}
-                      name={t(
-                        "admin.summary_chart_daily_signals",
-                        "Sinyal Baru",
-                      )}
+                      name={t("admin.summary_chart_daily_signals")}
                     />
                   </LineChart>
                 </ChartContainer>
                 <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] text-muted-foreground font-normal px-2 w-full mt-6">
                   {[
                     {
-                      name: t("admin.summary_chart_cum_signals", "Total Sinyal"),
+                      name: t("admin.summary_chart_cum_signals"),
                       color: "var(--color-primary)",
                     },
                     {
-                      name: t(
-                        "admin.summary_chart_daily_signals",
-                        "Sinyal Baru",
-                      ),
+                      name: t("admin.summary_chart_daily_signals"),
                       color: "var(--color-emerald-400)",
                     },
                   ].map((item, idx) => (
@@ -926,13 +999,10 @@ export default function AdminSystemPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div className="space-y-1">
               <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">
-                {t("admin.summary_chart_user_stats", "Statistik Pengguna")}
+                {t("admin.summary_chart_user_stats")}
               </CardTitle>
               <CardDescription className="text-xs">
-                {t(
-                  "admin.summary_chart_user_stats_desc",
-                  "Tren pendaftaran, kumulatif, dan aktivitas harian.",
-                )}
+                {t("admin.summary_chart_user_stats_desc")}
               </CardDescription>
             </div>
             <Button
@@ -955,13 +1025,10 @@ export default function AdminSystemPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div className="space-y-1">
               <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">
-                {t("admin.summary_chart_signal_activity", "Aktivitas Sinyal")}
+                {t("admin.summary_chart_signal_activity")}
               </CardTitle>
               <CardDescription className="text-xs">
-                {t(
-                  "admin.summary_chart_signal_activity_desc",
-                  "Sinyal harian dan kumulatif yang diterbitkan bulan ini.",
-                )}
+                {t("admin.summary_chart_signal_activity_desc")}
               </CardDescription>
             </div>
             <Button
@@ -974,13 +1041,36 @@ export default function AdminSystemPage() {
             </Button>
           </CardHeader>
           <CardContent className="pt-2">
-            {signalDailyData.length === 0 ? (
-              <div className="flex h-64 items-center justify-center text-xs text-muted-foreground border border-dashed border-border rounded-lg bg-muted/20">
-                {t(
-                  "admin.summary_no_signals_data",
-                  "Belum ada sinyal diterbitkan.",
-                )}
-              </div>
+            {tradesError && signalDailyData.length === 0 ? (
+              <Empty role="alert" className="min-h-64 border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <AlertCircle aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("common.load_error_description")}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button variant="outline" onClick={() => void refetchTrades()}>
+                    <RefreshCw data-icon="inline-start" />
+                    {t("common.retry")}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            ) : signalDailyData.length === 0 ? (
+              <Empty className="min-h-64 border-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Radio aria-hidden="true" />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("admin.summary_no_signals_data")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("admin.summary_chart_signal_activity_desc")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <>
                 <ChartContainer
@@ -1015,19 +1105,13 @@ export default function AdminSystemPage() {
                             labelFormatter={(l) => fmtFullDate(String(l))}
                             formatter={(value, name, item) => {
                               let dotColor = "var(--color-primary)";
-                              let displayName = t(
-                                "admin.summary_chart_cum_signals",
-                                "Total Sinyal",
-                              );
+                              let displayName = t("admin.summary_chart_cum_signals");
                               if (
                                 item.dataKey === "daily" ||
                                 name === "daily"
                               ) {
                                 dotColor = "var(--color-emerald-400)";
-                                displayName = t(
-                                  "admin.summary_chart_daily_signals",
-                                  "Sinyal Baru",
-                                );
+                                displayName = t("admin.summary_chart_daily_signals");
                               }
                               return (
                                 <>
@@ -1056,7 +1140,7 @@ export default function AdminSystemPage() {
                       stroke="var(--color-primary)"
                       strokeWidth={2}
                       dot={false}
-                      name={t("admin.summary_chart_cum_signals", "Total Sinyal")}
+                      name={t("admin.summary_chart_cum_signals")}
                     />
                     <Line
                       type="monotone"
@@ -1064,24 +1148,18 @@ export default function AdminSystemPage() {
                       stroke="var(--color-emerald-400)"
                       strokeWidth={1.5}
                       dot={false}
-                      name={t(
-                        "admin.summary_chart_daily_signals",
-                        "Sinyal Baru",
-                      )}
+                      name={t("admin.summary_chart_daily_signals")}
                     />
                   </LineChart>
                 </ChartContainer>
                 <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] text-muted-foreground font-normal px-2 w-full mt-4">
                   {[
                     {
-                      name: t("admin.summary_chart_cum_signals", "Total Sinyal"),
+                      name: t("admin.summary_chart_cum_signals"),
                       color: "var(--color-primary)",
                     },
                     {
-                      name: t(
-                        "admin.summary_chart_daily_signals",
-                        "Sinyal Baru",
-                      ),
+                      name: t("admin.summary_chart_daily_signals"),
                       color: "var(--color-emerald-400)",
                     },
                   ].map((item, idx) => (
@@ -1110,13 +1188,10 @@ export default function AdminSystemPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="space-y-1">
             <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">
-              {t("admin.summary_diagnostics", "Konsol Diagnostik Service")}
+              {t("admin.summary_diagnostics")}
             </CardTitle>
             <CardDescription className="text-xs">
-              {t(
-                "admin.summary_diagnostics_desc",
-                "Status runtime edge worker, sinkronisasi database, dan log sistem.",
-              )}
+              {t("admin.summary_diagnostics_desc")}
             </CardDescription>
           </div>
           <div className="text-[10px] flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -1124,7 +1199,7 @@ export default function AdminSystemPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            LIVE PULSE
+            {t("admin.stats_live_pulse")}
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col gap-4 pb-6 pt-2">
@@ -1134,7 +1209,7 @@ export default function AdminSystemPage() {
               <Cpu className="size-4 text-muted-foreground shrink-0" />
               <div>
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
-                  {t("admin.summary_vite_env", "Vite Environment")}
+                  {t("admin.summary_vite_env")}
                 </div>
                 <div className="font-bold text-foreground mt-1">
                   Vite + React
@@ -1145,7 +1220,7 @@ export default function AdminSystemPage() {
               <HardDrive className="size-4 text-muted-foreground shrink-0" />
               <div>
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
-                  {t("admin.summary_db_engine", "Database Engine")}
+                  {t("admin.summary_db_engine")}
                 </div>
                 <div className="font-bold text-foreground mt-1">
                   Supabase PG
@@ -1156,7 +1231,7 @@ export default function AdminSystemPage() {
               <Layers className="size-4 text-muted-foreground shrink-0" />
               <div>
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
-                  {t("admin.summary_api_gateway", "API Gateway")}
+                  {t("admin.summary_api_gateway")}
                 </div>
                 <div className="font-bold text-foreground mt-1">
                   Yahoo Finance
@@ -1167,7 +1242,7 @@ export default function AdminSystemPage() {
               <RefreshCw className="size-4 text-muted-foreground shrink-0" />
               <div>
                 <div className="text-[10px] uppercase text-muted-foreground leading-none">
-                  {t("admin.summary_trans_service", "Translation Service")}
+                  {t("admin.summary_trans_service")}
                 </div>
                 <div className="font-bold text-foreground mt-1">
                   i18next v26

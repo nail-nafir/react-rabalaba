@@ -23,7 +23,14 @@ import {
 import { toast } from "sonner";
 
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { cn } from "@/lib/utils";
 import {
@@ -74,15 +81,15 @@ function StatusBadge({ status }: { status: TestimonialStatus }) {
 
   const config = {
     approved: {
-      label: t("admin.testimonials.status_approved", "Disetujui"),
+      label: t("admin.testimonials.status_approved"),
       cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     },
     pending: {
-      label: t("admin.testimonials.status_pending", "Menunggu"),
+      label: t("admin.testimonials.status_pending"),
       cls: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     },
     rejected: {
-      label: t("admin.testimonials.status_rejected", "Ditolak"),
+      label: t("admin.testimonials.status_rejected"),
       cls: "border-destructive/40 bg-destructive/10 text-destructive dark:text-red-400",
     },
   }[status];
@@ -113,8 +120,8 @@ function TierBadge({ verified }: { verified: boolean }) {
       )}
     >
       {verified
-        ? t("admin.users_tier_premium", "Premium")
-        : t("admin.users_tier_free", "Gratis")}
+        ? t("admin.users_tier_premium")
+        : t("admin.users_tier_free")}
     </Badge>
   );
 }
@@ -125,10 +132,7 @@ function Rating({ value }: { value: number }) {
   return (
     <span
       className="inline-flex items-center gap-1 font-medium"
-      aria-label={t("admin.testimonials.rating_accessible", {
-        value,
-        defaultValue: "{{value}} dari 5 bintang",
-      })}
+      aria-label={t("admin.testimonials.rating_accessible", { value })}
     >
       <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden="true" />
       <span>{value}/5</span>
@@ -180,19 +184,15 @@ function DeleteTestimonialDialog({
             <Trash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("admin.testimonials.delete_title", "Hapus ulasan permanen?")}
+            {t("admin.testimonials.delete_title")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t("admin.testimonials.delete_desc", {
-              name: submission.display_name,
-              defaultValue:
-                "Ulasan milik {{name}} akan dihapus permanen, termasuk dari landing. Tindakan ini tidak dapat dibatalkan.",
-            })}
+            {t("admin.testimonials.delete_desc", { name: submission.display_name })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isWorking}>
-            {t("common.cancel", "Batal")}
+            {t("common.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
@@ -248,10 +248,7 @@ function TestimonialActions({
       if (!currentFeatured && firstAvailable) {
         await feature(submission.id, firstAvailable);
         toast.success(
-          t("toasts.testimonial_admin.approve_feature_success", {
-            slot: firstAvailable,
-            defaultValue: "Mantep, ulasan lolos ke Slot {{slot}}",
-          }),
+          t("toasts.testimonial_admin.approve_feature_success", { slot: firstAvailable }),
         );
       } else {
         toast.success(t("toasts.testimonial_admin.approve_success"));
@@ -289,7 +286,7 @@ function TestimonialActions({
             disabled={isWorking}
             onClick={() => void handleApprove()}
             className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-emerald-500 hover:bg-muted cursor-pointer"
-            title={t("admin.testimonials.action_approve", "Setujui")}
+            title={t("admin.testimonials.action_approve")}
           >
             {working === "approve" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -307,7 +304,7 @@ function TestimonialActions({
                 size="icon"
                 disabled={isWorking}
                 className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
-                title={t("admin.testimonials.action_reject", "Tolak")}
+                title={t("admin.testimonials.action_reject")}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -328,8 +325,8 @@ function TestimonialActions({
                 )}
                 title={
                   currentFeatured
-                    ? t("admin.testimonials.action_move", "Kelola slot landing")
-                    : t("admin.testimonials.action_feature", "Pilih slot landing")
+                    ? t("admin.testimonials.action_move")
+                    : t("admin.testimonials.action_feature")
                 }
               >
                 {currentFeatured ? (
@@ -347,7 +344,7 @@ function TestimonialActions({
           disabled={isWorking}
           onClick={() => setDeleteOpen(true)}
           className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-destructive hover:bg-muted cursor-pointer"
-          title={t("admin.testimonials.action_delete", "Hapus permanen")}
+          title={t("admin.testimonials.action_delete")}
         >
           {working === "delete" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -372,13 +369,23 @@ function SkeletonRows() {
   return Array.from({ length: 5 }, (_, row) => (
     <TableRow key={row} className="hover:bg-transparent" aria-hidden="true">
       <TableCell>
-        <Skeleton className="h-4 w-28" />
+        <div className="space-y-1 py-0.5">
+          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="h-3 w-14" />
+        </div>
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-36" />
       </TableCell>
       <TableCell>
-        <Skeleton className="h-12 w-72" />
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </TableCell>
+      <TableCell>
+        <div className="flex max-w-80 flex-col gap-1.5 py-0.5">
+          <Skeleton className="h-3.5 w-full max-w-72" />
+          <Skeleton className="h-3.5 w-11/12 max-w-64" />
+          <Skeleton className="h-3.5 w-2/3 max-w-48" />
+        </div>
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-14" />
@@ -423,7 +430,7 @@ export function TestimonialsTable() {
         accessorKey: "created_at",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_date", "Ditambahkan")}
+            {t("admin.testimonials.col_date")}
           </span>
         ),
         cell: ({ row }) => {
@@ -444,7 +451,7 @@ export function TestimonialsTable() {
         accessorKey: "display_name",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_user", "Pengguna")}
+            {t("admin.testimonials.col_user")}
           </span>
         ),
         cell: ({ row }) => (
@@ -457,7 +464,7 @@ export function TestimonialsTable() {
         accessorKey: "verified_purchase",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_tier", "Kasta")}
+            {t("admin.testimonials.col_tier")}
           </span>
         ),
         cell: ({ row }) => (
@@ -468,7 +475,7 @@ export function TestimonialsTable() {
         accessorKey: "body",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_testimonial", "Ulasan")}
+            {t("admin.testimonials.col_testimonial")}
           </span>
         ),
         cell: ({ row }) => (
@@ -479,7 +486,7 @@ export function TestimonialsTable() {
             {row.original.rejection_reason && (
               <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <Badge variant="secondary">
-                  {t("admin.testimonials.private_note", "Privat")}
+                  {t("admin.testimonials.private_note")}
                 </Badge>
                 <span className="line-clamp-2">
                   {row.original.rejection_reason}
@@ -493,7 +500,7 @@ export function TestimonialsTable() {
         accessorKey: "rating",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_rating", "Penilaian")}
+            {t("admin.testimonials.col_rating")}
           </span>
         ),
         cell: ({ row }) => <Rating value={row.original.rating} />,
@@ -502,7 +509,7 @@ export function TestimonialsTable() {
         accessorKey: "status",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_status", "Status")}
+            {t("admin.testimonials.col_status")}
           </span>
         ),
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
@@ -511,7 +518,7 @@ export function TestimonialsTable() {
         id: "slot",
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.testimonials.col_slot", "Slot")}
+            {t("admin.testimonials.col_slot")}
           </span>
         ),
         cell: ({ row }) => {
@@ -523,10 +530,7 @@ export function TestimonialsTable() {
               variant="outline"
               className="w-fit rounded-md text-[10px] font-bold uppercase tracking-wider border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
             >
-              {t("admin.testimonials.slot_value", {
-                slot: item.slot,
-                defaultValue: "Slot {{slot}}",
-              })}
+              {t("admin.testimonials.slot_value", { slot: item.slot })}
             </Badge>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -537,7 +541,7 @@ export function TestimonialsTable() {
         id: "actions",
         header: () => (
           <span className="sr-only">
-            {t("admin.testimonials.col_actions", "Tindakan")}
+            {t("admin.testimonials.col_actions")}
           </span>
         ),
         cell: ({ row }) => (
@@ -568,28 +572,28 @@ export function TestimonialsTable() {
     <div className="space-y-4">
       {/* Table Container */}
       <div className="rounded-md border overflow-hidden shadow-sm">
-        {isError ? (
-          <EmptyState
-            icon={<AlertCircle className="size-12 text-destructive" />}
-            title={t("admin.testimonials.error_title", "Ulasan gagal dimuat")}
-            description={t(
-              "admin.testimonials.error_desc",
-              "Periksa koneksi atau izin admin, lalu coba lagi.",
-            )}
-            action={
+        {isError && submissions.length === 0 ? (
+          <Empty role="alert" className="min-h-56 border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <AlertCircle aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("admin.testimonials.error_title")}</EmptyTitle>
+              <EmptyDescription>
+                {t("admin.testimonials.error_desc")}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               <Button variant="outline" onClick={() => void refetch()}>
                 <RefreshCw data-icon="inline-start" />
-                {t("common.retry", "Coba lagi")}
+                {t("common.retry")}
               </Button>
-            }
-          />
+            </EmptyContent>
+          </Empty>
         ) : (
           <Table>
             <TableCaption className="sr-only">
-              {t(
-                "admin.testimonials.table_caption",
-                "Daftar ulasan pengguna untuk dimoderasi.",
-              )}
+              {t("admin.testimonials.table_caption")}
             </TableCaption>
             <TableHeader className="bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -616,19 +620,17 @@ export function TestimonialsTable() {
                     colSpan={columns.length}
                     className="h-32 text-center"
                   >
-                    <EmptyState
-                      icon={
-                        <MessageSquareQuote className="size-12 text-muted-foreground" />
-                      }
-                      title={t(
-                        "admin.testimonials.empty_title",
-                        "Belum ada ulasan",
-                      )}
-                      description={t(
-                        "admin.testimonials.empty_desc",
-                        "Ulasan pengguna akan muncul di antrean ini.",
-                      )}
-                    />
+                    <Empty className="min-h-32 border-0">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <MessageSquareQuote aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("admin.testimonials.empty_title")}</EmptyTitle>
+                        <EmptyDescription>
+                          {t("admin.testimonials.empty_desc")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </TableCell>
                 </TableRow>
               ) : (

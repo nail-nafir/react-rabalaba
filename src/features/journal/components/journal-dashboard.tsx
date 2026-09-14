@@ -21,7 +21,14 @@ import {
 import { PALETTE } from "@/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { EmptyState } from "@/components/shared/empty-state";
+import { BarChart3 } from "lucide-react";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FilterGroup } from "@/components/shared/filter-group";
 import {
@@ -418,10 +425,10 @@ export function JournalDashboard({
             <Skeleton className="h-3 w-32 mb-3" />
             <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
               <Skeleton className="h-48 w-full rounded-xl" />
-              <div className="mt-3 flex w-full justify-center gap-4">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-20" />
+              <div className="mt-3 flex w-full flex-wrap justify-center gap-x-4 gap-y-1.5 px-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-3 w-16" />
+                ))}
               </div>
             </div>
           </ChartCard>
@@ -429,10 +436,10 @@ export function JournalDashboard({
             <Skeleton className="h-3 w-32 mb-3" />
             <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
               <Skeleton className="h-48 w-full rounded-xl" />
-              <div className="mt-3 flex w-full justify-center gap-4">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-20" />
+              <div className="mt-3 flex w-full flex-wrap justify-center gap-x-4 gap-y-1.5 px-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-3 w-16" />
+                ))}
               </div>
             </div>
           </ChartCard>
@@ -440,10 +447,10 @@ export function JournalDashboard({
             <Skeleton className="h-3 w-32 mb-3" />
             <div className="mt-2 flex min-h-72 flex-1 flex-col items-center justify-center">
               <Skeleton className="h-48 w-full rounded-xl" />
-              <div className="mt-3 flex w-full justify-center gap-4">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-3 w-20" />
+              <div className="mt-3 flex w-full flex-wrap justify-center gap-x-4 gap-y-1.5 px-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-3 w-16" />
+                ))}
               </div>
             </div>
           </ChartCard>
@@ -519,10 +526,17 @@ export function JournalDashboard({
       {stats.totalFollowed === 0 || stats.closed === 0 ? (
         <Card className="border border-border">
           <CardContent>
-            <EmptyState
-              title={t("journal.empty_dashboard_title")}
-              description={t("journal.empty_dashboard")}
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <BarChart3 aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t("journal.empty_dashboard_title")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("journal.empty_dashboard")}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           </CardContent>
         </Card>
       ) : (
@@ -730,9 +744,14 @@ export function JournalDashboard({
           <ChartCard title={t("journal.chart_outcome_distribution")}>
             <div className="relative mt-2 flex min-h-72 flex-1 items-center justify-center">
               {pieData.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-zinc-500 text-xs font-medium select-none">
-                  {t("journal.chart_no_closed_trades")}
-                </div>
+                <Empty className="min-h-72 border-0">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <BarChart3 aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>{t("journal.chart_no_closed_trades")}</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center">
                   {/* Centered Donut Chart */}
@@ -892,9 +911,14 @@ export function JournalDashboard({
           <ChartCard title={t("journal.chart_asset_performance")}>
             <div className="flex min-h-72 flex-1 items-center justify-center mt-2">
               {assetTypePerformance.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-zinc-500 text-xs font-medium select-none">
-                  {t("journal.chart_no_category_data")}
-                </div>
+                <Empty className="min-h-72 border-0">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <BarChart3 aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>{t("journal.chart_no_category_data")}</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center">
                   <div className="h-48 w-full relative">

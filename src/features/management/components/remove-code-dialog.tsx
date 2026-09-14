@@ -76,15 +76,10 @@ export function RemoveCodeDialog({
             <Trash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("admin.codes_delete_confirm_title", {
-              defaultValue: "Hapus Kode Akses?",
-            })}
+            {t("admin.codes_delete_confirm_title")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t("admin.codes_delete_confirm_desc", {
-              code: code.code,
-              defaultValue: `Apakah Anda yakin ingin menghapus kode akses ${code.code}? Pengguna yang menggunakan kode ini tetap terdaftar, namun kode ini tidak dapat digunakan lagi.`,
-            })}
+            {t("admin.codes_delete_confirm_desc", { code: code.code })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -343,3 +343,23 @@ test("enrichAsset us-stock SHORT: flow attaches but cannot dampen conviction", a
   assert.equal(asset.outlook.strength, 60);
   assert.equal(asset.outlook.signal, "short");
 });
+
+test("screener skips optional overlays without changing signal or entry/TP/SL", async () => {
+  const { enrichAsset } = await loadModule("/src/core/engine/enrichment.ts");
+  for (const assetType of ["crypto", "id-stock", "us-stock", "commodity", "forex"]) {
+    const asset = makeAsset({
+      assetType,
+      ...candleSeries(makeFlowCandles()),
+      tradingPlan: { entry: 100, stopLoss: 95, takeProfit1: 107.5, takeProfit2: 112.5, takeProfit3: 117.5, riskRewardRatio: 1.5 },
+    });
+    const contexts = { cryptoContext: makeMarketCtx(), idxContext: makeIdxCtx() };
+    const original = structuredClone(asset);
+    const full = enrichAsset(asset, contexts);
+    const screen = enrichAsset(asset, contexts, { applyOptionalOverlays: false });
+    assert.deepEqual(screen.outlook, full.outlook);
+    assert.deepEqual(screen.tradingPlan, full.tradingPlan);
+    assert.equal(screen.accumulation, undefined);
+    assert.equal(screen.relativeStrength, undefined);
+    assert.deepEqual(asset, original, "enrichment cannot mutate the cached asset");
+  }
+});

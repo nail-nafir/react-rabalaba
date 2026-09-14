@@ -1,7 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchYahooChart } from "@/services/api/yahoo-finance";
-import { adaptYahooChart } from "@/services/adapters/yahoo-adapter";
-import { DEFAULT_TIMEFRAME } from "@/constants/timeframes";
+import { useMemo } from "react";
+import { useMarketData } from "./use-market-data";
 import { deriveCryptoContext } from "@/core/engine/crypto-context";
 import { computeWindowReturns } from "@/core/engine/relative-strength";
 import {
@@ -9,10 +7,9 @@ import {
   resampleCandlesToDaily,
 } from "@/core/market/candles";
 import { useCryptoDominance } from "./use-crypto-dominance";
-import type { CryptoContext } from "@/types/market";
 
 /** BTC is the macro driver for the crypto card. */
-const BTC_SYMBOL = "BTC-USD";
+const BTC_SYMBOLS = ["BTC-USD"];
 
 /**
  * Compute the shared top-down CryptoContext once (BTC regime/trend/score).
@@ -22,39 +19,29 @@ const BTC_SYMBOL = "BTC-USD";
  * market summary row, and the detail dialog.
  */
 export function useCryptoContext() {
-  const { range, interval } = DEFAULT_TIMEFRAME;
-
   // Dominance is optional context — fetched separately and cached longer. If it
   // fails (rate limit / unavailable) the context simply omits it (graceful).
   const { data: dominance } = useCryptoDominance();
 
-  return useQuery({
-    queryKey: [
-      "crypto-context",
-      range,
-      interval,
-      dominance?.btc,
-      dominance?.eth,
-      dominance?.btcDominanceChangePercent24h,
-      dominance?.updatedAt,
-    ],
-    queryFn: async (): Promise<CryptoContext | null> => {
-      const result = await fetchYahooChart(BTC_SYMBOL, range, interval);
-      const btc = adaptYahooChart(result);
-      if (!btc?.outlook) return null;
-      const btcReturns = computeWindowReturns(
-        resampleCandlesToDaily(
-          normalizeYahooCandles(btc.quoteIndicators, btc.timestamps),
-        ).map((c) => c.close),
-      );
-      return deriveCryptoContext(
-        btc.outlook,
-        dominance ?? undefined,
-        btcReturns,
-      );
-    },
-    staleTime: 1_800_000, // 30 minutes
-    refetchInterval: 1_800_000,
-    retry: 2,
-  });
+  const market = useMarketData(BTC_SYMBOLS);
+  const btc = market.data[0];
+  const btcReturns = useMemo(
+    () =>
+      btc
+        ? computeWindowReturns(
+            resampleCandlesToDaily(
+              normalizeYahooCandles(btc.quoteIndicators, btc.timestamps),
+            ).map((c) => c.close),
+          )
+        : undefined,
+    [btc],
+  );
+  const data = useMemo(
+    () =>
+      btc?.outlook
+        ? deriveCryptoContext(btc.outlook, dominance ?? undefined, btcReturns)
+        : null,
+    [btc, dominance, btcReturns],
+  );
+  return { ...market, data };
 }

@@ -133,54 +133,54 @@ export function AdminLayout() {
   }
 
   const consoleTitle = isOwner
-    ? t("admin.owner_console_title", "Pemilik")
-    : t("admin.admin_console_title", "Dashboard Admin");
+    ? t("admin.owner_console_title")
+    : t("admin.admin_console_title");
 
   const overviewItem = {
     to: "/admin/statistics",
-    label: t("admin.menu_summary", "Summary"),
+    label: t("admin.menu_summary"),
     icon: LineChart,
   };
 
   const managementItems = [
     {
       to: "/admin/users",
-      label: t("admin.menu_users", "Manajemen User"),
+      label: t("admin.menu_users"),
       icon: Users,
     },
     {
       to: "/admin/assets",
-      label: t("admin.menu_assets", "Manajemen Aset"),
+      label: t("admin.menu_assets"),
       icon: Database,
     },
     {
       to: "/admin/codes",
-      label: t("admin.menu_codes", "Kode Akses"),
+      label: t("admin.menu_codes"),
       icon: KeyRound,
     },
     {
       to: "/admin/invitations",
-      label: t("admin.menu_invitations", "Link Undangan"),
+      label: t("admin.menu_invitations"),
       icon: Mail,
     },
     {
       to: "/admin/testimonials",
-      label: t("admin.menu_testimonials", "Ulasan Pengguna"),
+      label: t("admin.menu_testimonials"),
       icon: MessageSquareQuote,
     },
     {
       to: "/admin/plans",
-      label: t("admin.menu_plans", "Paket Langganan"),
+      label: t("admin.menu_plans"),
       icon: Crown,
     },
     {
       to: "/admin/payments",
-      label: t("admin.menu_payments", "Metode Pembayaran"),
+      label: t("admin.menu_payments"),
       icon: Wallet,
     },
     {
       to: "/admin/disclaimer",
-      label: t("admin.menu_disclaimer", "Disclaimer"),
+      label: t("admin.menu_disclaimer"),
       icon: ShieldAlert,
     },
   ];
@@ -194,13 +194,13 @@ export function AdminLayout() {
   // Breadcrumb resolve: determine parent group and child page label based on route.
   const isStatistics = location.pathname.startsWith("/admin/statistics");
   const parentLabel = isStatistics
-    ? t("admin.nav_group_overview", "Summary")
-    : t("admin.nav_group_management", "Management");
+    ? t("admin.nav_group_overview")
+    : t("admin.nav_group_management");
 
   const currentLabel = isStatistics
-    ? t("admin.menu_summary", "Statistics")
+    ? t("admin.menu_summary")
     : (managementItems.find((item) => location.pathname.startsWith(item.to))
-        ?.label ?? t("admin.console_label", "Dashboard"));
+        ?.label ?? t("admin.console_label"));
 
   return (
     <>
@@ -239,7 +239,7 @@ export function AdminLayout() {
                           Raba<span className="text-primary">Laba</span>
                         </span>
                         <span className="text-[7px] font-bold tracking-[0.2em] uppercase text-muted-foreground mt-1 leading-none">
-                          {t("admin.console_label", "Dashboard")}
+                          {t("admin.console_label")}
                         </span>
                       </div>
                     </Link>
@@ -253,7 +253,7 @@ export function AdminLayout() {
               {/* Overview / Stats Group */}
               <SidebarGroup>
                 <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t("admin.nav_group_overview", "Ikhtisar")}
+                  {t("admin.nav_group_overview")}
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="mt-1">
                   <SidebarMenu>
@@ -282,7 +282,7 @@ export function AdminLayout() {
               {/* Management Group */}
               <SidebarGroup>
                 <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {t("admin.nav_group_management", "Manajemen")}
+                  {t("admin.nav_group_management")}
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="mt-1">
                   <SidebarMenu className="gap-1">
@@ -415,7 +415,7 @@ export function AdminLayout() {
                 >
                   <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
                   <span className="hidden md:inline">
-                    {t("admin.back_to_terminal", "Kembali ke Terminal")}
+                    {t("admin.back_to_terminal")}
                   </span>
                 </Link>
 
@@ -431,7 +431,7 @@ export function AdminLayout() {
                     if (nextValue !== null) void i18n.changeLanguage(nextValue);
                   }}
                 >
-                  <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
+                  <SelectTrigger aria-label={t("common.language")} className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                     <Languages className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
                     <span className="hidden sm:inline">
                       <SelectValue />
@@ -461,7 +461,7 @@ export function AdminLayout() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
+                  <SelectTrigger aria-label={t("common.theme")} className="w-8 sm:w-fit uppercase tracking-wider text-[10px] h-8 bg-card border-input hover:bg-accent cursor-pointer p-0 sm:pl-2.5 sm:pr-2 justify-center sm:justify-between gap-1 rounded-lg [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
                     {theme === "dark" ? (
                       <Moon className="h-3.5 w-3.5 text-muted-foreground mr-0 sm:mr-1" />
                     ) : theme === "light" ? (
@@ -505,12 +505,10 @@ export function AdminLayout() {
               <LogOut />
             </AlertDialogMedia>
             <AlertDialogTitle>
-              {t("auth.logout_confirm_title", { defaultValue: "Keluar?" })}
+              {t("auth.logout_confirm_title")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("auth.logout_confirm_desc", {
-                defaultValue: "Apakah Anda yakin ingin keluar dari akun Anda?",
-              })}
+              {t("auth.logout_confirm_desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

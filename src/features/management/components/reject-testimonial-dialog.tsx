@@ -73,13 +73,10 @@ export function RejectTestimonialDialog({
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-foreground">
-            {t("admin.testimonials.reject_title", "Tolak ulasan")}
+            {t("admin.testimonials.reject_title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {t(
-              "admin.testimonials.reject_desc",
-              "Alasan bersifat opsional dan hanya dapat dilihat oleh pengguna serta admin.",
-            )}
+            {t("admin.testimonials.reject_desc")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -87,20 +84,14 @@ export function RejectTestimonialDialog({
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor={rejectionReasonId}>
-                  {t(
-                    "admin.testimonials.rejection_reason_label",
-                    "Alasan penolakan (opsional)",
-                  )}
+                  {t("admin.testimonials.rejection_reason_label")}
                 </FieldLabel>
                 <Textarea
                   id={rejectionReasonId}
                   value={reason}
                   maxLength={500}
                   disabled={isSaving}
-                  placeholder={t(
-                    "admin.testimonials.rejection_reason_placeholder",
-                    "Contoh: mohon hindari informasi pribadi.",
-                  )}
+                  placeholder={t("admin.testimonials.rejection_reason_placeholder")}
                   onChange={(event) => setReason(event.target.value)}
                 />
               </Field>

@@ -36,7 +36,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/shared/empty-state";
+import { AlertCircle, Inbox } from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonPaymentMethodRow } from "@/components/shared/skeleton-card";
 import { usePaymentMethods } from "@/features/management/hooks/use-payment-methods";
@@ -197,7 +205,7 @@ function DeletePaymentMethodButton({
           variant="link"
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-muted"
-          title={t("admin.delete_btn", "Hapus")}
+          title={t("admin.delete_btn")}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -208,18 +216,15 @@ function DeletePaymentMethodButton({
             <Trash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("admin.billing.method_delete_title", "Hapus metode ini?")}
+            {t("admin.billing.method_delete_title")}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t(
-              "admin.billing.method_delete_desc",
-              "Metode akan hilang dari dialog pembayaran.",
-            )}
+            {t("admin.billing.method_delete_desc")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>
-            {t("common.cancel", "Batal")}
+            {t("common.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
@@ -241,8 +246,14 @@ function DeletePaymentMethodButton({
 export function PaymentMethodsTable() {
   "use no memo";
   const { t } = useTranslation();
-  const { methods, isLoading, toggleActive, removeMethod } =
-    usePaymentMethods();
+  const {
+    methods,
+    isLoading,
+    isError,
+    refetch,
+    toggleActive,
+    removeMethod,
+  } = usePaymentMethods();
   const columns = useMemo<ColumnDef<PaymentMethodRow>[]>(
     () => [
       {
@@ -250,7 +261,7 @@ export function PaymentMethodsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_method", "Metode")}
+            {t("admin.billing.col_method")}
           </span>
         ),
         cell: ({ row }) => (
@@ -264,7 +275,7 @@ export function PaymentMethodsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_category", "Tipe")}
+            {t("admin.billing.col_category")}
           </span>
         ),
         cell: ({ row }) => (
@@ -284,7 +295,7 @@ export function PaymentMethodsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_account", "Nomor / Alamat")}
+            {t("admin.billing.col_account")}
           </span>
         ),
         cell: ({ row }) => (
@@ -298,7 +309,7 @@ export function PaymentMethodsTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_active", "Status")}
+            {t("admin.billing.col_active")}
           </span>
         ),
         cell: ({ row }) => <StatusBadge active={row.original.active} />,
@@ -323,7 +334,7 @@ export function PaymentMethodsTable() {
                     variant="link"
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-muted"
-                    title={t("common.edit", "Ubah")}
+                    title={t("common.edit")}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -351,13 +362,10 @@ export function PaymentMethodsTable() {
       <div className="flex items-center justify-between gap-2">
         <div className="space-y-0.5">
           <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-            {t("admin.billing.methods_title", "Metode Pembayaran")}
+            {t("admin.billing.methods_title")}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {t(
-              "admin.billing.methods_desc",
-              "Rekening, e-wallet, dan alamat kripto di dialog pembayaran.",
-            )}
+            {t("admin.billing.methods_desc")}
           </p>
         </div>
         <PaymentMethodDialog
@@ -368,7 +376,7 @@ export function PaymentMethodsTable() {
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">
-                {t("admin.billing.add_method_btn", "Tambah Metode")}
+                {t("admin.billing.add_method_btn")}
               </span>
             </Button>
           }
@@ -401,22 +409,48 @@ export function PaymentMethodsTable() {
                   <SkeletonPaymentMethodRow />
                 </TableRow>
               ))
+            ) : isError && methods.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-32 text-center">
+                  <Empty role="alert" className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("common.load_error_description")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void refetch()}
+                      >
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <EmptyState
-                    title={t(
-                      "admin.billing.methods_empty_title",
-                      "Belum ada metode",
-                    )}
-                    description={t(
-                      "admin.billing.methods_empty_desc",
-                      "Tambahkan metode pembayaran pertama.",
-                    )}
-                  />
+                  <Empty className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("admin.billing.methods_empty_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("admin.billing.methods_empty_desc")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             ) : (

@@ -35,7 +35,14 @@ import {
 } from "@/components/ui/tooltip";
 import { Sparkline } from "@/components/charts/sparkline";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { TrendIndicator } from "@/components/shared/trend-indicator";
 import {
   mapCryptoCard,
@@ -96,7 +103,7 @@ function ContextChange({
 
 // All recharts inputs are hoisted/memoized — identity churn on data/domain/
 // margin restarts mount animations whose effect cleanup calls setState, which
-// can cascade into "Maximum update depth exceeded" (see sparkline.tsx).
+// can cascade into "Maximum update depth exceeded".
 // Dimensions mirror WinRateRing (size 112 / outer 52 / inner 42 / barSize 10)
 // scaled down to the 40px footer slot.
 const DONUT_SIZE = 40;
@@ -188,7 +195,7 @@ const DonutGauge = memo(function DonutGauge({
         </div>
       </TooltipTrigger>
       <TooltipContent className="max-w-55 leading-relaxed">
-        {t(`market.score_explainer.${cardId.replaceAll("-", "_")}`, { defaultValue: "" })}
+        {t(`market.score_explainer.${cardId.replaceAll("-", "_")}`)}
       </TooltipContent>
     </Tooltip>
   );
@@ -245,9 +252,7 @@ function MarketContextFooter({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-55 leading-relaxed">
-                  {t(`market.context_explainer.${cardId.replaceAll("-", "_")}`, {
-                    defaultValue: "",
-                  })}
+                  {t(`market.context_explainer.${cardId.replaceAll("-", "_")}`)}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -296,6 +301,7 @@ export function MarketSummaryRow() {
     data: assets,
     isLoading: assetsLoading,
     isFetching: assetsFetching,
+    isError: assetsError,
     refetch: refetchAssets,
   } = useMarketData(MARKET_PULSE_SYMBOLS);
 
@@ -322,7 +328,10 @@ export function MarketSummaryRow() {
     idxContextLoading ||
     usContextLoading;
 
-  const showEmptyState = !assets?.length && !assetsLoading && !isLoading;
+  const showErrorState = Boolean(assetsError && !assets?.length);
+  const showNoAssetsState = Boolean(
+    !showErrorState && !assets?.length && !assetsLoading && !isLoading,
+  );
 
   if (isLoading) {
     return (
@@ -418,28 +427,44 @@ export function MarketSummaryRow() {
       </div>
 
       <div className="w-full">
-        {showEmptyState ? (
-          <div className="w-full flex items-center justify-center border rounded-xl py-8 border-dashed">
-            <EmptyState
-              title={t("market.data_unavailable")}
-              description={t("market.data_unavailable_desc")}
-              action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    refetchAssets();
-                    refetchCryptoContext();
-                    refetchMarketContexts();
-                  }}
-                  className="gap-2 cursor-pointer font-semibold"
-                >
-                  <RotateCw data-icon="inline-start" />
-                  {t("common.retry")}
-                </Button>
-              }
-            />
-          </div>
+        {showErrorState ? (
+          <Empty role="alert" className="min-h-56 rounded-xl">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <AlertTriangle aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("market.data_unavailable")}</EmptyTitle>
+              <EmptyDescription>
+                {t("market.data_unavailable_desc")}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void refetchAssets();
+                  void refetchCryptoContext();
+                  void refetchMarketContexts();
+                }}
+              >
+                <RotateCw data-icon="inline-start" />
+                {t("common.retry")}
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : showNoAssetsState ? (
+          <Empty className="min-h-56 rounded-xl">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Info aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("market.no_assets_found")}</EmptyTitle>
+              <EmptyDescription>
+                {t("market.no_assets_found_desc")}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 w-full">
             {cards.map((card) => {
@@ -469,15 +494,17 @@ export function MarketSummaryRow() {
 
                   <CardContent className="flex flex-col gap-3 px-4 pt-0">
                     {card.status === "error" ? (
-                      <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
-                        <AlertTriangle className="h-8 w-8 text-rose-500/80 animate-pulse" />
-                        <span className="text-xs text-muted-foreground font-semibold">
-                          {t("market.data_offline")}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/60 max-w-50">
-                          {t("market.data_offline_desc")}
-                        </span>
-                      </div>
+                      <Empty role="alert" className="min-h-36 border-0 p-2">
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <AlertTriangle aria-hidden="true" />
+                          </EmptyMedia>
+                          <EmptyTitle>{t("market.data_offline")}</EmptyTitle>
+                          <EmptyDescription>
+                            {t("market.data_offline_desc")}
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
                     ) : (
                       <>
                         {/* Headline */}
@@ -579,7 +606,10 @@ function getLabel(cardId: string, t: (key: string) => string) {
 
 function SkeletonCard() {
   return (
-    <Card className="border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full border-border">
+    <Card
+      className="border transition-all duration-300 bg-card/45 backdrop-blur-xs w-full border-border"
+      aria-hidden="true"
+    >
       <CardHeader>
         <CardTitle className="flex min-w-0 items-center gap-2">
           <Skeleton className="size-4" />

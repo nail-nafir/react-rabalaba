@@ -9,6 +9,7 @@ import { PALETTE } from "@/constants";
 const EMPTY_CONFIG: ChartConfig = {};
 const DOMAIN: [number, number] = [0, 100];
 const MARGIN = { top: 0, right: 0, bottom: 0, left: 0 };
+const MINI_BAR_DIMENSION = { width: 64, height: 8 } as const;
 
 interface SuccessRateBarProps {
   wins: number;
@@ -39,7 +40,7 @@ export const SuccessRateBar = memo(function SuccessRateBar({
         failure: failurePercent,
       },
     ],
-    [successPercent, failurePercent],
+    [failurePercent, successPercent],
   );
 
   // Color logic matching our grade/tier colors
@@ -70,6 +71,7 @@ export const SuccessRateBar = memo(function SuccessRateBar({
       {total > 0 ? (
         <ChartContainer
           config={EMPTY_CONFIG}
+          initialDimension={MINI_BAR_DIMENSION}
           aria-hidden="true"
           className={cn(
             "aspect-auto overflow-hidden rounded-full bg-muted-foreground/20",
@@ -91,6 +93,7 @@ export const SuccessRateBar = memo(function SuccessRateBar({
               stackId="a"
               fill={PALETTE.positive.fill}
               radius={[4, 0, 0, 4]}
+              isAnimationActive="auto"
               animationDuration={700}
             />
             <Bar
@@ -98,6 +101,7 @@ export const SuccessRateBar = memo(function SuccessRateBar({
               stackId="a"
               fill={PALETTE.negative.fill}
               radius={[0, 4, 4, 0]}
+              isAnimationActive="auto"
               animationDuration={700}
             />
           </BarChart>

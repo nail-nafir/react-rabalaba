@@ -21,7 +21,7 @@ export function usePaymentMethods() {
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: QUERY_KEY,
     staleTime: 60_000,
     queryFn: async () => {
@@ -101,5 +101,15 @@ export function usePaymentMethods() {
     [userId, queryClient],
   );
 
-  return { methods, isLoading, addMethod, updateMethod, toggleActive, removeMethod };
+  return {
+    methods,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+    addMethod,
+    updateMethod,
+    toggleActive,
+    removeMethod,
+  };
 }

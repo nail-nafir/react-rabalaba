@@ -4,12 +4,14 @@ import { RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardAction,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Card } from "@/components/ui/card";
 import { FollowHistoryTable } from "@/features/follow-trade/components/follow-history-table";
 import { JournalDashboard } from "@/features/journal/components/journal-dashboard";
 import { TopPerformers } from "@/features/journal/components/top-performers";
@@ -26,32 +28,75 @@ export function JournalTerminalContent() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const period = useJournalPeriod();
-  const { openTrades, history, isLoading, isFetching, refetch } =
-    useJournalTrades({
+  const {
+    openTrades,
+    history,
+    isLoading,
+    isFetching,
+    isError: tradesError,
+    refetch,
+  } = useJournalTrades({
       scope: "active",
       periodBounds: period.bounds,
-      enabled: period.isSuccess,
+      enabled: period.bounds !== null,
     });
 
-  if (period.isError) {
+  if (period.isError && period.bounds === null) {
     return (
       <Card size="sm">
-        <CardHeader>
-          <CardTitle>{t("journal.period_load_error_title")}</CardTitle>
-          <CardDescription>
-            {t("journal.period_load_error_desc")}
-          </CardDescription>
-          <CardAction>
+        <Empty role="alert" className="min-h-48 border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <RefreshCw aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("journal.period_load_error_title")}</EmptyTitle>
+            <EmptyDescription>
+              {t("journal.period_load_error_desc")}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
             <Button
               type="button"
               variant="outline"
               onClick={() => void period.refetch()}
+              disabled={period.isFetching}
+              aria-busy={period.isFetching}
             >
               <RefreshCw data-icon="inline-start" />
               {t("common.retry")}
             </Button>
-          </CardAction>
-        </CardHeader>
+          </EmptyContent>
+        </Empty>
+      </Card>
+    );
+  }
+
+  if (tradesError && openTrades.length === 0 && history.length === 0) {
+    return (
+      <Card size="sm">
+        <Empty role="alert" className="min-h-48 border-0">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <RefreshCw aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+            <EmptyDescription>
+              {t("common.load_error_description")}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              aria-busy={isFetching}
+            >
+              <RefreshCw data-icon="inline-start" />
+              {t("common.retry")}
+            </Button>
+          </EmptyContent>
+        </Empty>
       </Card>
     );
   }

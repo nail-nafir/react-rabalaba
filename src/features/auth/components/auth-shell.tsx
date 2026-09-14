@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Radio, ShieldCheck, Zap, Cpu } from "lucide-react";
@@ -19,6 +20,7 @@ export function AuthShell({
   children,
   footer,
 }: AuthShellProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex min-h-[85vh] w-full items-center justify-center bg-background px-4 py-8 md:px-6">
       {/* Outer wrapper container with responsive split layout */}
@@ -64,7 +66,7 @@ export function AuthShell({
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[9px] text-slate-400 uppercase tracking-wider">
-                    Engine: online
+                    {t("auth.shell.engine_online")}
                   </span>
                 </div>
                 <span className="text-[9px] text-primary font-bold">
@@ -164,13 +166,13 @@ export function AuthShell({
               {/* Logs */}
               <div className="space-y-1 text-[9px] text-slate-400">
                 <p className="text-emerald-400/90">
-                  &gt; ALGO: BUY BTC @ $67,420 [TP1 hit]
+                  {t("auth.shell.signal_log")}
                 </p>
                 <p className="text-primary/90">
-                  &gt; PERFORMANCE: Win rate 76.4% [+12.4R]
+                  {t("auth.shell.performance_log")}
                 </p>
                 <p className="text-slate-500">
-                  &gt; SYSTEM: Live stream synced in 4ms
+                  {t("auth.shell.system_log")}
                 </p>
               </div>
             </div>
@@ -183,10 +185,10 @@ export function AuthShell({
                 </div>
                 <div>
                   <h4 className="font-semibold text-white text-xs">
-                    Rule-based Signals
+                    {t("auth.shell.signals_title")}
                   </h4>
                   <p className="text-[10px] text-slate-400 leading-normal">
-                    Systematic multi-asset analysis with targeted exit zones.
+                    {t("auth.shell.signals_desc")}
                   </p>
                 </div>
               </div>
@@ -196,11 +198,10 @@ export function AuthShell({
                 </div>
                 <div>
                   <h4 className="font-semibold text-white text-xs">
-                    Auto Journal Tracking
+                    {t("auth.shell.journal_title")}
                   </h4>
                   <p className="text-[10px] text-slate-400 leading-normal">
-                    Automatic tracking logs every performance metric
-                    transparently.
+                    {t("auth.shell.journal_desc")}
                   </p>
                 </div>
               </div>
@@ -210,7 +211,7 @@ export function AuthShell({
           {/* Secure footer */}
           <div className="relative z-10 flex items-center gap-1.5 text-[9px] text-slate-500">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-            <span>End-to-End Encrypted</span>
+            <span>{t("auth.shell.encrypted")}</span>
           </div>
         </div>
 

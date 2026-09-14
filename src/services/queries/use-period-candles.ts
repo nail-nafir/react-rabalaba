@@ -25,6 +25,7 @@ export function usePeriodCandles(
     ],
     enabled: !!symbol && !!window,
     staleTime: Infinity,
+    refetchInterval: false,
     retry: 3,
     queryFn: async (): Promise<NormalizedYahooCandle[]> => {
       const result = await fetchYahooChartPeriod(

@@ -9,10 +9,10 @@ export default function AdminPlansPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.menu_plans", "Paket Langganan")}
+          {t("admin.menu_plans")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t("admin.plans.page_desc", "Kelola harga paket, benefit, dan penawaran langganan.")}
+          {t("admin.plans.page_desc")}
         </p>
       </div>
 

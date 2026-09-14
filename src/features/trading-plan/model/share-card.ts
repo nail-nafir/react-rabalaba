@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { formatPrice, formatRatio, formatDayMonth, formatDateNumeric, formatClock, formatVolume } from "@/lib/formatters";
 import type { AssetType } from "@/types/asset";
 import type { NormalizedYahooCandle } from "@/core/market/candles";
@@ -31,8 +32,6 @@ export interface ShareCardMeta {
   locale?: string;
   /** Entry/close annotations plotted on the candles (journal/position view). */
   markers?: ChartMarker[];
-  /** Localized words for the marker badges (e.g. MASUK / TUTUP). */
-  markerLabels?: { entry: string; close: string };
 }
 
 const W = 1200;
@@ -167,6 +166,7 @@ function brandMark(x: number, y: number, size: number, color: string): string {
 export function buildShareCardSvg(
   model: TradeSetupModel,
   meta: ShareCardMeta,
+  t: TFunction,
 ): string {
   const C = getPalette();
   const isShort = model.signal === "short";
@@ -240,18 +240,18 @@ export function buildShareCardSvg(
     const chg = c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
     const vol = c.volume > 0 ? formatVolume(c.volume) : "—";
     const stat = (label: string, value: string, fill: string) =>
-      `<tspan dx="16" fill="${C.muted}">${label}</tspan><tspan dx="4" fill="${fill}">${esc(value)}</tspan>`;
+      `<tspan dx="16" fill="${C.muted}">${esc(label)}</tspan><tspan dx="4" fill="${fill}">${esc(value)}</tspan>`;
     return (
       `<text x="${left}" y="${top - 20}" font-family="${FONT_MONO}" font-size="15" dominant-baseline="central">` +
       `<tspan fill="${C.muted}">${esc(formatDayMonth(c.timestamp, meta.locale))} ${esc(formatClock(c.timestamp))}</tspan>` +
       // % change leads the OHLV cluster: a full group-gap (dx matches the stat
       // spacing below) from the date, not glued to the timestamp.
       `<tspan dx="16" fill="${dir}">${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%</tspan>` +
-      stat("OPEN", formatPrice(c.open, meta.assetType), C.text) +
-      stat("HIGH", formatPrice(c.high, meta.assetType), C.emerald) +
-      stat("LOW", formatPrice(c.low, meta.assetType), C.rose) +
-      stat("CLOSE", formatPrice(c.close, meta.assetType), dir) +
-      stat("VOLUME", vol, C.text) +
+      stat(t("dialog.ohlc_open"), formatPrice(c.open, meta.assetType), C.text) +
+      stat(t("dialog.ohlc_high"), formatPrice(c.high, meta.assetType), C.emerald) +
+      stat(t("dialog.ohlc_low"), formatPrice(c.low, meta.assetType), C.rose) +
+      stat(t("dialog.ohlc_close"), formatPrice(c.close, meta.assetType), dir) +
+      stat(t("table.volume").toUpperCase(), vol, C.text) +
       `</text>`
     );
   })();
@@ -313,7 +313,7 @@ export function buildShareCardSvg(
   // `trade-setup-chart.tsx` — out-of-window events clamp to the edge with an
   // outward chevron; in-window events fan above/below by price rank.
   const mGeo = (
-    meta.markers && meta.markerLabels && view.length
+    meta.markers && view.length
       ? mapMarkerToCandle(meta.markers, view)
       : []
   ).map((m) => ({
@@ -346,7 +346,7 @@ export function buildShareCardSvg(
               ? C.emerald
               : C.muted;
       const word = (
-        m.kind === "entry" ? meta.markerLabels!.entry : meta.markerLabels!.close
+        m.kind === "entry" ? t("journal.entry_marker") : t("journal.close_marker")
       ).toUpperCase();
       const bw = word.length * 9 + 16;
       const pill = (bx: number, cy: number) =>
@@ -435,7 +435,9 @@ export function buildShareCardSvg(
       ? [
           // Position + lifecycle in one chip. \u25B6 = running, \u25A0 = finished.
           {
-            text: meta.closed ? "\u25A0 CLOSED POSITION" : "\u25B6 OPEN POSITION",
+            text: meta.closed
+              ? `■ ${t("dialog.share_card.closed_position").toUpperCase()}`
+              : `▶ ${t("journal.open_position").toUpperCase()}`,
             chip: neutralChip,
           },
           ...(meta.closed && meta.closeReason
@@ -449,7 +451,7 @@ export function buildShareCardSvg(
               ]
             : []),
         ]
-      : [{ text: "\u2726 SIGNAL", chip: neutralChip }];
+      : [{ text: `✦ ${t("dialog.share_card.signal").toUpperCase()}`, chip: neutralChip }];
   let leftX = 56;
   const typeBadgeHtml = statusPills
     .map((p) => {
@@ -476,7 +478,7 @@ export function buildShareCardSvg(
       stroke: C.primary,
     });
   const rightPills: { text: string; chip: typeof neutralChip }[] = [
-    ...(gc ? [{ text: `✦ GRADE ${gradeUpper}`, chip: gc }] : []),
+    ...(gc ? [{ text: `✦ ${t("dialog.grade_label").toUpperCase()} ${gradeUpper}`, chip: gc }] : []),
     {
       text: `${signalArrow} ${model.signal.toUpperCase()} ${Math.round(meta.strength)}%`,
       chip: { text: accent, fill: accentFill, stroke: accent },
@@ -514,20 +516,20 @@ export function buildShareCardSvg(
 
   // Right-hand price label: a closed position shows its close price, otherwise
   // the live/current price (signals are always live).
-  const priceLabel = meta.closed ? "CLOSE PRICE" : "CURRENT PRICE";
+  const priceLabel = t(meta.closed ? "journal.close_price" : "journal.current_price").toUpperCase();
 
   // Dynamic right-hand header values: either centered PNL & current price for position, or only current price for signal
   const headerRightSide = meta.isPosition
     ? `<!-- Position P&L -->
 <text x="${W / 2}" y="${logoY + 148}" fill="${meta.pnlR !== undefined && meta.pnlR >= 0 ? C.emerald : C.rose}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}" letter-spacing="-0.01em">${meta.pnlPct !== undefined && meta.pnlPct >= 0 ? "+" : ""}${meta.pnlPct?.toFixed(2)}% (${meta.pnlR !== undefined && meta.pnlR >= 0 ? "+" : ""}${formatRatio(meta.pnlR ?? 0)}R)</text>
-<text x="${W / 2}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="middle" font-family="${FONT}">${meta.closed ? "REALIZED PNL" : "FLOATING PNL"}</text>
+<text x="${W / 2}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="middle" font-family="${FONT}">${esc(t(meta.closed ? "dialog.share_card.realized_pnl" : "dialog.share_card.floating_pnl").toUpperCase())}</text>
 
 <!-- Right-hand price -->
 <text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
-<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">${priceLabel}</text>`
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">${esc(priceLabel)}</text>`
     : `<!-- Current Price -->
 <text x="${W - 56}" y="${logoY + 148}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="end" font-family="${FONT_MONO}" letter-spacing="-0.01em">${esc(formatPrice(meta.currentPrice, meta.assetType))}</text>
-<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">CURRENT PRICE</text>`;
+<text x="${W - 56}" y="${logoY + 176}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">${esc(priceLabel)}</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
 <defs>
@@ -555,7 +557,7 @@ ${brandMark(logoX, logoY, logoSize, "#ffffff")}
 <text x="${wordmarkX}" y="${logoY + 50}" fill="${C.muted}" font-size="11" font-weight="700" font-family="${FONT}" letter-spacing="0.32em">TERMINAL</text>
 
 <!-- Top-right: timestamp -->
-<text x="${W - 56}" y="${logoY + 22}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.32em">GENERATED</text>
+<text x="${W - 56}" y="${logoY + 22}" fill="${C.muted}" font-size="11" font-weight="700" text-anchor="end" font-family="${FONT}" letter-spacing="0.32em">${esc(t("dialog.share_card.generated").toUpperCase())}</text>
 <text x="${W - 56}" y="${logoY + 46}" fill="${C.text}" font-size="16" font-weight="700" text-anchor="end" font-family="${FONT_MONO}">${esc(generatedAt)}</text>
 
 <!-- Brand-purple separator: divides letterhead from asset section -->
@@ -584,20 +586,20 @@ ${markers}
      no extra divider needed here). -->
 
 <!-- Stats row: R:R (left) · RISK (center) · REWARD (right) -->
-<text x="56" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="start" font-family="${FONT}">RISK : REWARD</text>
+<text x="56" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="start" font-family="${FONT}">${esc(t("dialog.risk_reward").toUpperCase())}</text>
 <text x="56" y="${statsValueY}" fill="${C.text}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="start" font-family="${FONT_MONO}">1 : ${formatRatio(model.riskReward)}</text>
 
-<text x="${W / 2}" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="middle" font-family="${FONT}">RISK</text>
+<text x="${W / 2}" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="middle" font-family="${FONT}">${esc(t("dialog.share_card.risk").toUpperCase())}</text>
 <text x="${W / 2}" y="${statsValueY}" fill="${C.rose}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="middle" font-family="${FONT_MONO}">${model.risk > 0 ? esc(formatPrice(model.risk, meta.assetType)) : "-"}</text>
 
-<text x="${W - 56}" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">REWARD</text>
+<text x="${W - 56}" y="${statsLabelY}" fill="${C.muted}" font-size="${LABEL_FONT}" font-weight="700" text-anchor="end" font-family="${FONT}">${esc(t("dialog.share_card.reward").toUpperCase())}</text>
 <text x="${W - 56}" y="${statsValueY}" fill="${C.emerald}" font-size="${HEADER_FONT}" font-weight="800" text-anchor="end" font-family="${FONT_MONO}">${reward > 0 ? esc(formatPrice(reward, meta.assetType)) : "-"}</text>
 
 <!-- Brand-purple separator: divides trade content from footer -->
 <line x1="56" y1="948" x2="${W - 56}" y2="948" stroke="${C.primary}" stroke-width="2"/>
 
 <!-- Footer: disclaimer + brand URL -->
-<text x="56" y="${footerY}" fill="${C.muted}" font-size="16" font-weight="600" font-family="${FONT}">Not Financial Advice. Do Your Own Research.</text>
+<text x="56" y="${footerY}" fill="${C.muted}" font-size="16" font-weight="600" font-family="${FONT}">${esc(t("dialog.share_card.disclaimer"))}</text>
 <text x="${W - 56}" y="${footerY}" fill="${C.muted}" font-size="16" font-weight="700" text-anchor="end" font-family="${FONT_MONO}">https://rabalaba.page.dev</text>
 </svg>`;
 }

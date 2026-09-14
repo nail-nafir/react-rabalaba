@@ -24,12 +24,14 @@ import {
 
 export function useScreenerUniverse(): ScreenerUniverse & {
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => Promise<unknown>;
 } {
   const { hasAccess } = usePremiumAccess();
   const { user } = useAuth();
   const userId = user?.id ?? null;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["screener-universe", userId],
     enabled: hasAccess,
     staleTime: 60_000,
@@ -51,7 +53,8 @@ export function useScreenerUniverse(): ScreenerUniverse & {
   // unstable references (see the render-loop guard in asset-signal-table).
   const grouped = useMemo(() => {
     if (!hasAccess) return FALLBACK_UNIVERSE;
-    if (isError) return { crypto: [], usStock: [], idStock: [] };
+    if (isError && data === undefined)
+      return { crypto: [], usStock: [], idStock: [] };
     return data === undefined ? FALLBACK_UNIVERSE : groupUniverse(data);
   }, [hasAccess, data, isError]);
 
@@ -60,5 +63,7 @@ export function useScreenerUniverse(): ScreenerUniverse & {
     usStock: grouped.usStock,
     idStock: grouped.idStock,
     isLoading: hasAccess && isLoading,
+    isError: hasAccess && isError,
+    refetch,
   };
 }

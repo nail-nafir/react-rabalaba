@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/features/market/hooks/use-favorites";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { toast } from "sonner";
-import { runBacktest } from "@/core/engine/backtest";
+import { useAssetBacktest } from "../hooks/use-asset-backtest";
 import { calibrateConfidence } from "@/core/engine/calibration";
 import { fightsBenchmark } from "@/core/engine/benchmark-derate";
 import { isNeutralPositioning } from "@/core/engine/smart-money";
@@ -43,7 +43,14 @@ import { useFundamentals } from "@/services/queries/use-fundamentals";
 import { useSmartMoney } from "@/services/queries/use-smart-money";
 import { useQueryClient } from "@tanstack/react-query";
 import { PercentageChange } from "@/components/shared/percentage-change";
-import { EmptyState } from "@/components/shared/empty-state";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryScoreChart } from "@/components/charts/category-score-chart";
@@ -66,6 +73,7 @@ import { cn } from "@/lib/utils";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 import {
   Target,
+  AlertCircle,
   TrendingUp,
   BarChart3,
   Gauge,
@@ -103,7 +111,13 @@ const getSmartMoneyLabelKey = (label: string): string => {
   }
 };
 
-function AssetDetailErrorContent({ onRetry }: { onRetry: () => void }) {
+function AssetDetailErrorContent({
+  onRetry,
+  isRetrying,
+}: {
+  onRetry: () => void;
+  isRetrying: boolean;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -117,35 +131,32 @@ function AssetDetailErrorContent({ onRetry }: { onRetry: () => void }) {
         </DialogDescription>
       </DialogHeader>
 
-      <div className="flex flex-col space-y-6">
-        <EmptyState
-          variant="dialog"
-          icon={<CloudOff className="size-6" aria-hidden="true" />}
-          action={
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-center">
-              <Button
-                type="button"
-                size="lg"
-                onClick={onRetry}
-                className="min-h-11"
-              >
-                <RotateCw className="size-4" aria-hidden="true" />
-                {t("common.retry")}
-              </Button>
-              <DialogClose asChild>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="min-h-11"
-                >
-                  {t("dialog.close_action")}
-                </Button>
-              </DialogClose>
-            </div>
-          }
-        />
-      </div>
+      <Empty role="alert" className="min-h-56 border-0">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <CloudOff aria-hidden="true" />
+          </EmptyMedia>
+          <EmptyTitle>{t("dialog.market_error_title")}</EmptyTitle>
+          <EmptyDescription>{t("dialog.market_error_desc")}</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+          <Button
+            type="button"
+            size="lg"
+            onClick={onRetry}
+            disabled={isRetrying}
+            aria-busy={isRetrying}
+          >
+            <RotateCw data-icon="inline-start" />
+            {t("common.retry")}
+          </Button>
+          <DialogClose asChild>
+            <Button type="button" size="lg" variant="outline">
+              {t("dialog.close_action")}
+            </Button>
+          </DialogClose>
+        </EmptyContent>
+      </Empty>
     </DialogContent>
   );
 }
@@ -165,15 +176,18 @@ export function AssetDetailDialog({
   signalStateFetching,
   trigger,
 }: AssetDetailDialogProps) {
+  const [open, setOpen] = useState(false);
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <AssetDetailDialogContent
-        symbol={symbol}
-        signalState={signalState}
-        signalStateAvailable={signalStateAvailable}
-        signalStateFetching={signalStateFetching}
-      />
+      {open && (
+        <AssetDetailDialogContent
+          symbol={symbol}
+          signalState={signalState}
+          signalStateAvailable={signalStateAvailable}
+          signalStateFetching={signalStateFetching}
+        />
+      )}
     </Dialog>
   );
 }
@@ -184,7 +198,7 @@ function AssetDetailDialogContent({
   signalStateAvailable,
   signalStateFetching,
 }: Omit<AssetDetailDialogProps, "trigger">) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasAccess } = usePremiumAccess();
 
   const querySymbol = symbol;
@@ -194,8 +208,9 @@ function AssetDetailDialogContent({
 
   const {
     data: assets,
+    dataUpdatedAt,
     isLoading: chartLoading,
-    isError: marketError,
+    isFetching: chartFetching,
     refetch: refetchMarket,
   } = useMarketData(querySymbol ? [querySymbol] : []);
   const asset = assets?.[0];
@@ -276,13 +291,13 @@ function AssetDetailDialogContent({
 
   // Historical performance (decision-support context shown SEPARATELY from
   // signal strength). Walk-forward, no-lookahead backtest over fetched candles.
-  const backtest = useMemo(() => {
-    if (!asset || candles.length < 150) return null;
-    return runBacktest(candles, {
-      assetType: asset.assetType,
-      timeframe: "swing",
-    }).metrics;
-  }, [candles, asset]);
+  const {
+    data: backtest,
+    isLoading: backtestLoading,
+    isFetching: backtestFetching,
+    isError: backtestError,
+    refetch: retryBacktest,
+  } = useAssetBacktest(asset, candles, dataUpdatedAt);
 
   // Calibrate confidence: map this signal's tier + regime to its historical
   // hit-rate from the same walk-forward backtest. Honest beats precise — shows
@@ -322,8 +337,13 @@ function AssetDetailDialogContent({
     });
   };
 
-  if (!chartLoading && (marketError || !asset)) {
-    return <AssetDetailErrorContent onRetry={refetchMarket} />;
+  if (!chartLoading && !asset) {
+    return (
+      <AssetDetailErrorContent
+        onRetry={() => void refetchMarket()}
+        isRetrying={chartFetching}
+      />
+    );
   }
 
   return (
@@ -357,9 +377,15 @@ function AssetDetailDialogContent({
 
         {/* Price row */}
         {chartLoading ? (
-          <div className="space-y-2 mt-2">
-            <Skeleton className="h-8 w-40" />
-            <Skeleton className="h-15 w-full rounded-xl" />
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <Skeleton className="h-3 w-24" />
+              <div className="flex min-w-0 items-end gap-3">
+                <Skeleton className="h-8 w-32 max-w-full" />
+                <Skeleton className="h-4 w-16 shrink-0" />
+              </div>
+            </div>
+            <Skeleton className="size-9 shrink-0 rounded-md" />
           </div>
         ) : (
           <div className="flex items-end justify-between gap-3 mt-2">
@@ -542,36 +568,50 @@ function AssetDetailDialogContent({
               {/* Custom SVG candlestick visual trade setup */}
               {outlook.signal === "neutral" || !tradingPlan || !asset ? (
                 signalStatus === "unavailable" ? (
-                  <div
-                    className="flex flex-col items-start gap-3"
-                    role="status"
-                  >
-                    <p className="text-sm text-muted-foreground">
-                      {t("dialog.signal_unavailable_note")}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={signalStateFetching}
-                      onClick={() => {
-                        void Promise.all([
-                          queryClient.invalidateQueries({
-                            queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
-                          }),
-                          queryClient.invalidateQueries({
-                            queryKey: ["journal-trades"],
-                          }),
-                        ]);
-                      }}
-                    >
-                      <RotateCw data-icon="inline-start" />
-                      {t("common.retry")}
-                    </Button>
-                  </div>
+                  <Empty role="alert" className="min-h-40 border-0 p-2">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("dialog.signal_unavailable")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("dialog.signal_unavailable_note")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={signalStateFetching}
+                        aria-busy={signalStateFetching}
+                        onClick={() => {
+                          void Promise.all([
+                            queryClient.invalidateQueries({
+                              queryKey: SIGNAL_EPISODE_STATES_QUERY_KEY,
+                            }),
+                            queryClient.invalidateQueries({
+                              queryKey: ["journal-trades"],
+                            }),
+                          ]);
+                        }}
+                      >
+                        <RotateCw data-icon="inline-start" />
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
                 ) : signalStatus === "pending" || signalStatus === "blocked" ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t(`dialog.signal_${signalStatus}_note`)}
-                  </p>
+                  <Empty className="min-h-40 border-0 p-2">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Target aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("dialog.no_setup")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t(`dialog.signal_${signalStatus}_note`)}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 ) : outlook.suppressed ? (
                   <Card className="border border-amber-500/30 bg-amber-500/10">
                     <CardContent className="space-y-1">
@@ -592,15 +632,17 @@ function AssetDetailDialogContent({
                     </CardContent>
                   </Card>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t("dialog.no_setup")}
-                  </p>
+                  <Empty className="min-h-40 border-0 p-2">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Target aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("dialog.no_setup")}</EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
                 )
               ) : (
                 <>
-                  <p className="text-xs text-muted-foreground">
-                    {t("dialog.recorded_setup_note")}
-                  </p>
                   <TradeSetupChart
                     candles={candles}
                     plan={tradingPlan}
@@ -640,13 +682,63 @@ function AssetDetailDialogContent({
 
               {/* Historical backtest + calibrated win-rate (one unit). Moved
                     up here, right under the category score. */}
-              {backtest && backtest.trades > 0 ? (
+              {backtestLoading ? (
+                <Card
+                  className="border border-border bg-muted/50"
+                  role="status"
+                >
+                  <CardContent className="space-y-4">
+                    <p className="text-xs text-muted-foreground">
+                      {t("dialog.bt_loading")}
+                    </p>
+                    <Skeleton className="mx-auto size-24 rounded-full" />
+                    <div className="flex items-stretch gap-3">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Card
+                          key={i}
+                          className="flex-1 border border-border"
+                          aria-hidden="true"
+                        >
+                          <CardContent className="flex flex-col gap-1">
+                            <Skeleton className="h-5 w-16 max-w-full" />
+                            <Skeleton className="h-3 w-20 max-w-full" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : backtestError ? (
+                <Card className="border border-border bg-muted/50">
+                  <Empty role="alert" className="min-h-40 border-0 p-4">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("dialog.bt_error")}</EmptyTitle>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        onClick={() => void retryBacktest()}
+                        disabled={backtestFetching}
+                        aria-busy={backtestFetching}
+                      >
+                        <RotateCw data-icon="inline-start" />
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </Card>
+              ) : backtest && backtest.trades > 0 ? (
                 <Card className="border border-border bg-muted/50">
                   <CardContent className="space-y-4">
                     <div className="flex justify-center">
                       <WinRateRing
                         value={backtest.winRate}
-                        label={`${backtest.trades} ${t("dialog.bt_trades").toLowerCase()}`}
+                        label={t("dialog.bt_trades", {
+                          count: backtest.trades,
+                        })}
                       />
                     </div>
                     <div className="flex items-stretch gap-3">
@@ -665,7 +757,7 @@ function AssetDetailDialogContent({
                             {backtest.expectancy.toFixed(2)}R
                           </div>
                           <CardDescription className="text-[10px] text-muted-foreground">
-                            Expectancy (Avg R)
+                            {t("dialog.bt_expectancy")}
                           </CardDescription>
                         </CardContent>
                       </Card>
@@ -684,7 +776,7 @@ function AssetDetailDialogContent({
                               : "∞"}
                           </div>
                           <CardDescription className="text-[10px] text-muted-foreground">
-                            Profit Factor
+                            {t("dialog.bt_profit_factor")}
                           </CardDescription>
                         </CardContent>
                       </Card>
@@ -694,7 +786,7 @@ function AssetDetailDialogContent({
                             -{backtest.maxDrawdownR.toFixed(2)}R
                           </div>
                           <CardDescription className="text-[10px] text-muted-foreground">
-                            Max Drawdown (R)
+                            {t("dialog.bt_max_drawdown")}
                           </CardDescription>
                         </CardContent>
                       </Card>
@@ -839,7 +931,7 @@ function AssetDetailDialogContent({
                         {t("dialog.fund_next_earnings", {
                           date: new Date(
                             assetFundamentals.nextEarningsMs,
-                          ).toLocaleDateString(),
+                          ).toLocaleDateString(i18n.language),
                         })}
                         {typeof assetFundamentals.analystCount === "number"
                           ? ` • ${t("dialog.fund_analysts", {
@@ -956,7 +1048,9 @@ function AssetDetailDialogContent({
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         {t("dialog.rs_title", {
-                          benchmark: relativeStrength.benchmark ?? "Benchmark",
+                          benchmark:
+                            relativeStrength.benchmark ??
+                            t("dialog.rs_benchmark"),
                         })}
                       </CardTitle>
                       <Badge
@@ -1048,7 +1142,7 @@ function AssetDetailDialogContent({
                                 ) : (
                                   <ArrowDown className="h-3 w-3" />
                                 )}
-                                price
+                                {t("table.price")}
                                 {smartMoney.flow.price === "up" ? (
                                   <ArrowUp className="h-3 w-3" />
                                 ) : (
@@ -1079,7 +1173,7 @@ function AssetDetailDialogContent({
                                 : "—"}
                             </div>
                             <CardDescription className="text-[10px] text-muted-foreground">
-                              Funding
+                              {t("dialog.funding")}
                             </CardDescription>
                           </CardContent>
                         </Card>
@@ -1102,7 +1196,7 @@ function AssetDetailDialogContent({
                                 : "—"}
                             </div>
                             <CardDescription className="text-[10px] text-muted-foreground">
-                              OI 24h
+                              {t("dialog.oi_24h")}
                             </CardDescription>
                           </CardContent>
                         </Card>
@@ -1114,7 +1208,7 @@ function AssetDetailDialogContent({
                                 : "—"}
                             </div>
                             <CardDescription className="text-[10px] text-muted-foreground">
-                              Long/Short
+                              {t("dialog.long_short")}
                             </CardDescription>
                           </CardContent>
                         </Card>
@@ -1122,33 +1216,29 @@ function AssetDetailDialogContent({
                     </CardContent>
                   </Card>
                 ) : smartMoneyUnavailable && asset?.assetType === "crypto" ? (
-                  <Card className="border border-rose-500/30 bg-rose-500/10">
-                    <CardContent className="space-y-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                          {t("dialog.sm_unavailable_title")}
-                        </span>
+                  <Card className="border border-border bg-muted/50">
+                    <Empty role="alert" className="min-h-40 border-0 p-4">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <AlertCircle aria-hidden="true" />
+                        </EmptyMedia>
+                        <EmptyTitle>{t("dialog.sm_unavailable_title")}</EmptyTitle>
+                        <EmptyDescription>
+                          {t("dialog.sm_unavailable_desc")}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
                         <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={handleRetrySmartMoney}
+                          variant="outline"
+                          onClick={() => void handleRetrySmartMoney()}
                           disabled={isRetryingSmartMoney}
-                          title={t("dialog.sm_retry")}
-                          aria-label={t("dialog.sm_retry")}
-                          className="-mt-1 -mr-1 shrink-0 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-400"
+                          aria-busy={isRetryingSmartMoney}
                         >
-                          <RotateCw
-                            className={cn(
-                              "h-3.5 w-3.5",
-                              isRetryingSmartMoney && "animate-spin",
-                            )}
-                          />
+                          <RotateCw data-icon="inline-start" />
+                          {t("dialog.sm_retry")}
                         </Button>
-                      </div>
-                      <p className="text-xs leading-relaxed text-rose-700/90 dark:text-rose-300/90">
-                        {t("dialog.sm_unavailable_desc")}
-                      </p>
-                    </CardContent>
+                      </EmptyContent>
+                    </Empty>
                   </Card>
                 ) : null)}
 
@@ -1360,25 +1450,22 @@ function AssetDetailDialogContent({
                   }
                 />
                 <IndicatorItem
-                  label="Support"
+                  label={t("dialog.support")}
                   value={formatPrice(
                     outlook.indicators.support,
                     asset?.assetType,
                   )}
                 />
                 <IndicatorItem
-                  label="Resistance"
+                  label={t("dialog.resistance")}
                   value={formatPrice(
                     outlook.indicators.resistance,
                     asset?.assetType,
                   )}
                 />
                 <IndicatorItem
-                  label="OBV Trend"
-                  value={
-                    outlook.indicators.obvTrend.charAt(0).toUpperCase() +
-                    outlook.indicators.obvTrend.slice(1)
-                  }
+                  label={t("dialog.obv_trend")}
+                  value={t(`dialog.obv_${outlook.indicators.obvTrend}`)}
                   status={
                     outlook.indicators.obvTrend === "rising"
                       ? "bullish"
@@ -1388,18 +1475,22 @@ function AssetDetailDialogContent({
                   }
                 />
                 <IndicatorItem
-                  label="Vol. Spike"
-                  value={outlook.indicators.volumeSpike ? "Yes" : "No"}
+                  label={t("dialog.volume_spike")}
+                  value={
+                    outlook.indicators.volumeSpike
+                      ? t("common.yes")
+                      : t("common.no")
+                  }
                   status={outlook.indicators.volumeSpike ? "bullish" : "normal"}
                 />
                 <IndicatorItem
-                  label="RSI Diverg."
+                  label={t("dialog.rsi_divergence")}
                   value={
                     outlook.indicators.rsiDivergence === "none"
-                      ? "None"
+                      ? t("dialog.divergence_none")
                       : outlook.indicators.rsiDivergence === "bullish"
-                        ? "Bullish"
-                        : "Bearish"
+                        ? t("dialog.fund_bullish")
+                        : t("dialog.fund_bearish")
                   }
                   status={
                     outlook.indicators.rsiDivergence === "bullish"
@@ -1417,14 +1508,14 @@ function AssetDetailDialogContent({
                   )}
                 />
                 <IndicatorItem
-                  label="Swing High"
+                  label={t("dialog.swing_high")}
                   value={formatPrice(
                     outlook.indicators.recentSwingHigh,
                     asset?.assetType,
                   )}
                 />
                 <IndicatorItem
-                  label="Swing Low"
+                  label={t("dialog.swing_low")}
                   value={formatPrice(
                     outlook.indicators.recentSwingLow,
                     asset?.assetType,
@@ -1456,16 +1547,21 @@ function AssetDetailDialogContent({
                 />
                 <AnalysisItem
                   icon={Gauge}
-                  title="Momentum"
+                  title={t("dialog.cat_momentum")}
                   text={resolveAnalysisText(t, outlook.analysis.momentum)}
                 />
               </div>
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-            {t("dialog.not_enough_data")}
-          </div>
+          <Empty className="min-h-56 border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Target aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>{t("dialog.not_enough_data")}</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
       </div>
     </DialogContent>

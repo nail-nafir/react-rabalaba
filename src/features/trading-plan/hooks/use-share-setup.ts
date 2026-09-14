@@ -68,29 +68,27 @@ export function useShareSetup() {
         signal,
         currentPrice,
       );
-      const svg = buildShareCardSvg(model, {
-        symbol,
-        name,
-        strength,
-        grade,
-        currentPrice,
-        assetType,
-        candles,
-        isPosition,
-        closed,
-        closeReason,
-        entryPrice,
-        pnlPct,
-        pnlR,
-        locale: i18n.language,
-        markers,
-        // Hardcoded (not translated) so the share card matches the web chart,
-        // whose markers always read "ENTRY" / "CLOSED".
-        markerLabels: {
-          entry: "ENTRY",
-          close: "CLOSED",
+      const svg = buildShareCardSvg(
+        model,
+        {
+          symbol,
+          name,
+          strength,
+          grade,
+          currentPrice,
+          assetType,
+          candles,
+          isPosition,
+          closed,
+          closeReason,
+          entryPrice,
+          pnlPct,
+          pnlR,
+          locale: i18n.language,
+          markers,
         },
-      });
+        t,
+      );
       const blob = await svgToPngBlob(
         svg,
         SHARE_CARD_SIZE.width,

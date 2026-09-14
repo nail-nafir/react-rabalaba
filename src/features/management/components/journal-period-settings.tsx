@@ -43,7 +43,7 @@ export function JournalPeriodSettings({
   isSaving,
   startNewPeriod,
 }: JournalPeriodSettingsProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -52,7 +52,7 @@ export function JournalPeriodSettings({
     settings.journal_period_reset_at ?? null,
     nowMs,
   );
-  const rangeSeparator = i18n.language.startsWith("id") ? "s.d." : "to";
+  const rangeSeparator = t("admin.period_range_separator");
 
   const formatWibNumeric = (ms: number) => {
     const parts = new Intl.DateTimeFormat("id-ID", {

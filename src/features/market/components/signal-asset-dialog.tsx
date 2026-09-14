@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useFavorites } from "@/features/market/hooks/use-favorites";
 import { cn } from "@/lib/utils";
@@ -37,8 +45,13 @@ export function SignalAssetDialog({ trigger }: SignalAssetDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const debouncedSearch = useDebounce(inputValue, 300);
-  const { data: suggestions, isLoading: isSearching } =
-    useYahooSearch(debouncedSearch);
+  const {
+    data: suggestions,
+    isLoading: isSearching,
+    isError: searchError,
+    isFetching: searchFetching,
+    refetch: refetchSearch,
+  } = useYahooSearch(debouncedSearch);
   const trackedSet = useMemo(
     () => new Set(favoriteSymbols.map((symbol) => symbol.toUpperCase())),
     [favoriteSymbols],
@@ -88,7 +101,10 @@ export function SignalAssetDialog({ trigger }: SignalAssetDialogProps) {
   };
 
   const canSuggest =
-    inputValue.trim().length >= 2 && !hideSuggestions && !isSearching;
+    inputValue.trim().length >= 2 &&
+    !hideSuggestions &&
+    !isSearching &&
+    (searchError || suggestions !== undefined);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -144,14 +160,37 @@ export function SignalAssetDialog({ trigger }: SignalAssetDialogProps) {
                   className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none cursor-pointer"
                 >
                   <X className="size-4 text-muted-foreground" />
-                  <span className="sr-only">Clear search</span>
+                  <span className="sr-only">{t("common.clear_search")}</span>
                 </button>
               ) : null}
             </div>
 
-            {canSuggest && suggestions && (
+            {canSuggest && (
               <div className="absolute top-full right-0 left-0 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover shadow-2xl animate-in fade-in slide-in-from-top-1 z-50">
-                {suggestions.length > 0 ? (
+                {searchError && (!suggestions || suggestions.length === 0) ? (
+                  <Empty role="alert" className="min-h-40 rounded-none border-0 p-4">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <SearchX aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("common.load_error_description")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void refetchSearch()}
+                        disabled={searchFetching}
+                        aria-busy={searchFetching}
+                      >
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                ) : suggestions && suggestions.length > 0 ? (
                   suggestions.map((suggestion: YahooSearchQuote) => {
                     const symbol = suggestion.symbol.toUpperCase();
                     const tracked = trackedSet.has(symbol);
@@ -193,19 +232,17 @@ export function SignalAssetDialog({ trigger }: SignalAssetDialogProps) {
                     );
                   })
                 ) : (
-                  <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
-                    <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-muted/50">
-                      <SearchX className="size-5 text-muted-foreground/60" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("market.ticker_not_found_suggestion")}
-                      </p>
-                      <p className="mx-auto max-w-45 text-[10px] leading-relaxed text-muted-foreground">
+                  <Empty className="min-h-40 rounded-none border-0 p-4">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <SearchX aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("market.ticker_not_found_suggestion")}</EmptyTitle>
+                      <EmptyDescription>
                         {t("market.add_ticker_dialog_desc")}
-                      </p>
-                    </div>
-                  </div>
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 )}
               </div>
             )}

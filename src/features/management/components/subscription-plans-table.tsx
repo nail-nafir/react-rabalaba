@@ -36,7 +36,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/shared/empty-state";
+import { AlertCircle, Inbox } from "lucide-react";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { SkeletonSubscriptionPlanRow } from "@/components/shared/skeleton-card";
 import { useSubscriptionPlans } from "@/features/management/hooks/use-subscription-plans";
@@ -202,7 +210,7 @@ function DeletePlanButton({
           variant="link"
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-muted"
-          title={t("admin.delete_btn", "Hapus")}
+          title={t("admin.delete_btn")}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -213,21 +221,15 @@ function DeletePlanButton({
             <Trash2 />
           </AlertDialogMedia>
           <AlertDialogTitle>
-            {t("admin.billing.plan_delete_title", {
-              name,
-              defaultValue: `Hapus paket ${name}?`,
-            })}
+            {t("admin.billing.plan_delete_title", { name })}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {t("admin.billing.plan_delete_desc", {
-              name,
-              defaultValue: `Apakah Anda yakin ingin menghapus paket ${name}? Paket akan hilang dari halaman langganan.`,
-            })}
+            {t("admin.billing.plan_delete_desc", { name })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>
-            {t("common.cancel", "Batal")}
+            {t("common.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
@@ -250,7 +252,14 @@ export function SubscriptionPlansTable() {
   "use no memo";
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const { plans, isLoading, toggleActive, removePlan } = useSubscriptionPlans();
+  const {
+    plans,
+    isLoading,
+    isError,
+    refetch,
+    toggleActive,
+    removePlan,
+  } = useSubscriptionPlans();
   const columns = useMemo<ColumnDef<SubscriptionPlanRow>[]>(
     () => [
       {
@@ -258,7 +267,7 @@ export function SubscriptionPlansTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_plan", "Paket")}
+            {t("admin.billing.col_plan")}
           </span>
         ),
         cell: ({ row }) => (
@@ -274,7 +283,7 @@ export function SubscriptionPlansTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_tier", "Tingkatan")}
+            {t("admin.billing.col_tier")}
           </span>
         ),
         cell: ({ row }) => (
@@ -291,7 +300,7 @@ export function SubscriptionPlansTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_price", "Harga")}
+            {t("admin.billing.col_price")}
           </span>
         ),
         cell: ({ row }) => (
@@ -305,7 +314,7 @@ export function SubscriptionPlansTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_highlight", "Highlight")}
+            {t("admin.billing.col_highlight")}
           </span>
         ),
         cell: ({ row }) => (
@@ -319,8 +328,8 @@ export function SubscriptionPlansTable() {
             )}
           >
             {row.original.highlighted
-              ? t("admin.billing.col_highlight", "Terlaris")
-              : t("common.no", "Tidak")}
+              ? t("admin.billing.col_highlight")
+              : t("common.no")}
           </Badge>
         ),
       },
@@ -329,7 +338,7 @@ export function SubscriptionPlansTable() {
         enableSorting: false,
         header: () => (
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("admin.billing.col_active", "Aktif")}
+            {t("admin.billing.col_active")}
           </span>
         ),
         cell: ({ row }) => <StatusBadge active={row.original.active} />,
@@ -355,7 +364,7 @@ export function SubscriptionPlansTable() {
                     variant="link"
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-muted"
-                    title={t("common.edit", "Ubah")}
+                    title={t("common.edit")}
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -387,13 +396,10 @@ export function SubscriptionPlansTable() {
       <div className="flex items-center justify-between gap-2">
         <div className="space-y-0.5">
           <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-            {t("admin.billing.plans_title", "Daftar Paket Langganan")}
+            {t("admin.billing.plans_title")}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {t(
-              "admin.billing.plans_desc",
-              "Kelola dan atur konfigurasi paket langganan aktif beserta harga dan fiturnya.",
-            )}
+            {t("admin.billing.plans_desc")}
           </p>
         </div>
         <SubscriptionPlanDialog
@@ -404,7 +410,7 @@ export function SubscriptionPlansTable() {
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">
-                {t("admin.billing.add_plan_btn", "Tambah Paket")}
+                {t("admin.billing.add_plan_btn")}
               </span>
             </Button>
           }
@@ -437,22 +443,48 @@ export function SubscriptionPlansTable() {
                   <SkeletonSubscriptionPlanRow />
                 </TableRow>
               ))
+            ) : isError && plans.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-32 text-center">
+                  <Empty role="alert" className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <AlertCircle aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("common.load_error_description")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void refetch()}
+                      >
+                        {t("common.retry")}
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </TableCell>
+              </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <EmptyState
-                    title={t(
-                      "admin.billing.plans_empty_title",
-                      "Belum ada paket",
-                    )}
-                    description={t(
-                      "admin.billing.plans_empty_desc",
-                      "Tambahkan paket langganan pertama.",
-                    )}
-                  />
+                  <Empty className="min-h-32 border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>{t("admin.billing.plans_empty_title")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("admin.billing.plans_empty_desc")}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             ) : (

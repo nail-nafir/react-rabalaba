@@ -39,7 +39,7 @@ export function DataTablePagination<TData>({
   const submitEdit = () => {
     setIsEditing(false);
     const trimmedInput = editValue.trim();
-    if (trimmedInput === "") return;
+    if (trimmedInput === "" || pageCount === 0) return;
 
     const parsed = Number(trimmedInput);
     if (!Number.isFinite(parsed)) return;
@@ -62,6 +62,7 @@ export function DataTablePagination<TData>({
         {isEditing ? (
           <Input
             id={pageInputId}
+            aria-label={t("table.page")}
             type="number"
             inputMode="numeric"
             min={1}
@@ -94,7 +95,8 @@ export function DataTablePagination<TData>({
               "font-semibold text-foreground px-1.5 py-0.5 rounded border border-border hover:bg-muted/50 transition-all duration-150 inline-flex items-center justify-center min-w-6",
               canJump && "cursor-pointer",
             )}
-            title={canJump ? "Click to edit page" : undefined}
+            aria-label={`${t("table.page")} ${currentPage}`}
+            title={t("table.page")}
           >
             {currentPage}
           </button>

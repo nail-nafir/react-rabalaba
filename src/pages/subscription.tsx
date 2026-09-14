@@ -13,6 +13,8 @@ import {
   Play,
   CreditCard,
   Terminal,
+  AlertCircle,
+  Inbox,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
@@ -33,6 +35,14 @@ import { useSubscriptionPlans } from "@/features/management/hooks/use-subscripti
 import { pickLocale } from "@/lib/localized";
 import { UserPaymentDialog } from "@/features/market/components/user-payment-dialog";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 /** lucide icon names stored on a plan row → component. Falls back to Terminal. */
 const ICON_MAP: Record<string, React.ElementType> = { Terminal, Zap, Shield };
@@ -58,7 +68,8 @@ export default function SubscriptionPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const { isConfigured } = usePremiumAccess();
-  const { plans, isLoading } = useSubscriptionPlans();
+  const { plans, isLoading, isError, isFetching, refetch } =
+    useSubscriptionPlans();
 
   const activePlans = plans.filter((p) => p.active);
 
@@ -86,11 +97,46 @@ export default function SubscriptionPage() {
           {/* Subscription Tiers Section */}
           <section className="space-y-3 pb-6 md:pb-10">
             <div className="grid grid-cols-1 md:grid-cols-3 pt-12 md:pt-16 gap-8 md:gap-10 w-full items-stretch">
-              {isLoading && activePlans.length === 0
-                ? Array.from({ length: 3 }).map((_, i) => (
-                    <PlanSkeleton key={i} highlighted={i === 1} />
-                  ))
-                : activePlans.map((plan) => {
+              {isLoading && activePlans.length === 0 ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <PlanSkeleton key={i} highlighted={i === 1} />
+                ))
+              ) : isError && activePlans.length === 0 ? (
+                <Empty role="alert" className="min-h-64 md:col-span-3">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <AlertCircle aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+                    <EmptyDescription>
+                      {t("common.load_error_description")}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button
+                      variant="outline"
+                      onClick={() => void refetch()}
+                      disabled={isFetching}
+                      aria-busy={isFetching}
+                    >
+                      {t("common.retry")}
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              ) : activePlans.length === 0 ? (
+                <Empty className="min-h-64 md:col-span-3">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Inbox aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>{t("subscription.no_plans_title")}</EmptyTitle>
+                    <EmptyDescription>
+                      {t("subscription.no_plans_desc")}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                activePlans.map((plan) => {
                     const cfg = ctaConfig(plan.cta_kind);
                     const isExternal =
                       !!plan.cta_link && /^https?:\/\//.test(plan.cta_link);
@@ -120,7 +166,8 @@ export default function SubscriptionPage() {
                         btnIcon={cfg.icon}
                       />
                     );
-                  })}
+                  })
+              )}
             </div>
           </section>
 

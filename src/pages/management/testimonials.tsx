@@ -12,13 +12,10 @@ export default function AdminTestimonialsPage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-          {t("admin.testimonials.page_title", "Ulasan Pengguna")}
+          {t("admin.testimonials.page_title")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {t(
-            "admin.testimonials.page_desc",
-            "Kelola ulasan pengguna dan atur posisi kutipan terbaik di halaman utama.",
-          )}
+          {t("admin.testimonials.page_desc")}
         </p>
       </div>
 
@@ -28,13 +25,10 @@ export default function AdminTestimonialsPage() {
         <div className="flex flex-row items-center justify-between gap-4">
           <div className="space-y-0.5">
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-              {t("admin.testimonials.list_subtitle", "Daftar Ulasan Pengguna")}
+              {t("admin.testimonials.list_subtitle")}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {t(
-                "admin.testimonials.list_desc",
-                "Daftar ulasan pengguna beserta status dan slot publiknya.",
-              )}
+              {t("admin.testimonials.list_desc")}
             </p>
           </div>
 
@@ -47,7 +41,7 @@ export default function AdminTestimonialsPage() {
               >
                 <Settings className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
-                  {t("admin.settings_btn", "Pengaturan")}
+                  {t("admin.settings_btn")}
                 </span>
               </Button>
             }
