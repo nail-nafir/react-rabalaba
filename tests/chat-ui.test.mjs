@@ -9,6 +9,14 @@ const widgetPath = join(
   "src/features/chat/components/research-copilot.tsx",
 );
 const widget = readFileSync(widgetPath, "utf8");
+const assetDialog = readFileSync(
+  join(root, "src/features/trading-plan/components/asset-detail-dialog.tsx"),
+  "utf8",
+);
+const tradeDialog = readFileSync(
+  join(root, "src/features/follow-trade/components/trade-detail-dialog.tsx"),
+  "utf8",
+);
 const en = JSON.parse(
   readFileSync(join(root, "src/assets/locales/en.json"), "utf8"),
 );
@@ -62,9 +70,51 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "string",
     "react-markdown must remain a direct dependency",
   );
+  assert.equal(
+    typeof packageJson.dependencies["remark-gfm"],
+    "string",
+    "remark-gfm must remain a direct dependency",
+  );
   assert.match(widget, /from ["']react-markdown["']/);
+  assert.match(widget, /from ["']remark-gfm["']/);
+  assert.match(widget, /activeResearchContext/);
+  assert.match(widget, /researchCopilotRequestId/);
+  assert.match(widget, /researchSessionId/);
+  assert.match(
+    widget,
+    /useEffect\(\(\) => \{\s*if \(researchCopilotRequestId > 0\) setOpen\(true\);\s*\}, \[researchCopilotRequestId\]\)/,
+    "research requests must open the widget after the triggering layer closes",
+  );
+  assert.doesNotMatch(widget, /handledRequestId|openRequested/);
+  assert.match(widget, /open=\{open\}/);
+  assert.match(widget, /aria-hidden=\{!open\}/);
+  assert.match(widget, /onFocusOutside=\{\(event\) => event\.preventDefault\(\)\}/);
+  assert.match(widget, /!open && "invisible pointer-events-none/);
+  assert.match(widget, /onClick=\{\(\) => setOpen\(false\)\}/);
+  assert.match(widget, /terminalContext/);
+  assert.match(widget, /sessionContext/);
+  assert.match(widget, /context_label/);
+  assert.match(widget, /clear_context/);
+  const contextBadgeStart = widget.indexOf(
+    "{sessionContext ? (",
+  );
+  const contextBadgeEnd = widget.indexOf("</Badge>", contextBadgeStart);
+  const contextBadge = widget.slice(contextBadgeStart, contextBadgeEnd);
+  assert.match(contextBadge, /TERMINAL_BADGE_CLASSNAME/);
+  assert.match(contextBadge, /w-fit/);
+  assert.match(contextBadge, /max-w-full/);
+  assert.doesNotMatch(
+    contextBadge,
+    /flex-1|py-1/,
+    "context badge must size to its content instead of filling the chat row",
+  );
+  assert.match(widget, /max-w-full/);
+  assert.match(widget, /timeZone: "Asia\/Jakarta"/);
+  assert.match(widget, /WIB/);
+  assert.match(widget, /whitespace-nowrap/);
   assert.match(widget, /<ReactMarkdown\b/);
   assert.match(widget, /skipHtml/);
+  assert.match(widget, /remarkPlugins=\{\[remarkGfm\]\}/);
   assert.match(widget, /allowedElements/);
   assert.match(widget, /CHAT_MARKDOWN_COMPONENTS/);
   assert.match(widget, /components=\{CHAT_MARKDOWN_COMPONENTS\}/);
@@ -74,14 +124,69 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.match(widget, /<strong/);
   assert.match(widget, /<em/);
+  assert.match(widget, /<del/);
   assert.match(widget, /<code/);
+  assert.match(widget, /<blockquote/);
+  assert.match(widget, /<hr/);
+  assert.match(widget, /table:/);
+  assert.match(widget, /min-w-md/);
+  for (const element of [
+    "blockquote",
+    "hr",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+  ]) {
+    assert.match(widget, new RegExp(`"${element}"`));
+  }
   assert.match(widget, /list-decimal/);
   assert.match(widget, /list-disc/);
   assert.match(widget, /max-w-full overflow-x-auto/);
   assert.match(widget, /bg-background\/70/);
   assert.match(widget, /border border-border\/60/);
   assert.match(widget, /focus-visible:ring-2 focus-visible:ring-ring/);
-  assert.doesNotMatch(widget, /dangerouslySetInnerHTML|rehype-raw|remark-gfm/);
+  const triggerStart = widget.indexOf("<PopoverTrigger asChild>");
+  const triggerEnd = widget.indexOf("</PopoverTrigger>", triggerStart);
+  const trigger = widget.slice(triggerStart, triggerEnd);
+  assert.match(trigger, /<Button\b/);
+  for (const cardToken of [
+    "rounded-xl",
+    "border border-border",
+    "bg-card/45",
+    "backdrop-blur-xs",
+    "ring-1 ring-foreground/10",
+  ]) {
+    assert.match(
+      trigger,
+      new RegExp(cardToken.replaceAll("/", "\\/")),
+      `Sensei trigger must retain testimonial card token: ${cardToken}`,
+    );
+  }
+  assert.doesNotMatch(
+    trigger,
+    /rounded-2xl|border-primary\/25|bg-card\/95|shadow-xl|shadow-2xl/,
+    "Sensei trigger must not use the old pill/glow surface",
+  );
+  for (const openStateToken of [
+    "data-[state=open]:-translate-y-0.5",
+    "data-[state=open]:bg-card/60",
+    "group-data-[state=open]:scale-105",
+    "group-data-[state=open]:rotate-6",
+    "group-data-[state=open]:bg-primary",
+    "group-data-[state=open]:text-primary",
+  ]) {
+    assert.ok(
+      trigger.includes(openStateToken),
+      `Sensei trigger must mirror hover styling while open: ${openStateToken}`,
+    );
+  }
+  assert.match(trigger, /BotIcon/);
+  assert.match(trigger, /chat\.ask/);
+  assert.match(trigger, /chat\.title/);
+  assert.doesNotMatch(widget, /dangerouslySetInnerHTML|rehype-raw/);
   assert.match(
     widget,
     /text: t\(`chat\.prompts\.\$\{template\.key\}`\)/,
@@ -123,6 +228,40 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     new Set(accentValues).size,
     3,
     "three visible templates must map to three unique accent groups",
+  );
+  assert.match(assetDialog, /buildAssetResearchContext/);
+  assert.match(assetDialog, /setResearchContext/);
+  assert.match(assetDialog, /openResearchCopilot/);
+  assert.match(assetDialog, /chat\.ask_sensei/);
+  assert.match(
+    assetDialog,
+    /variant="ghost"\s+size="icon-sm"[\s\S]*?chat\.ask_sensei[\s\S]*?className="size-11 cursor-pointer sm:size-7"[\s\S]*?<Bot className="size-3\.5"/,
+  );
+  assert.match(
+    assetDialog,
+    /<DialogClose asChild>\s*<Button\s+type="button"\s+variant="ghost"\s+size="icon-sm"\s+onClick=\{handleAskSensei\}[\s\S]*?<\/Button>\s*<\/DialogClose>/,
+    "asset handoff must close its detail dialog",
+  );
+  assert.doesNotMatch(
+    assetDialog,
+    /chat\.ask_sensei[\s\S]*?<span className="hidden sm:inline">/,
+  );
+  assert.match(tradeDialog, /buildTradeResearchContext/);
+  assert.match(tradeDialog, /setResearchContext/);
+  assert.match(tradeDialog, /openResearchCopilot/);
+  assert.match(tradeDialog, /chat\.ask_sensei/);
+  assert.match(
+    tradeDialog,
+    /variant="ghost"\s+size="icon-sm"[\s\S]*?chat\.ask_sensei[\s\S]*?className="size-11 cursor-pointer sm:size-7"[\s\S]*?<Bot className="size-3\.5"/,
+  );
+  assert.match(
+    tradeDialog,
+    /<DialogClose asChild>\s*<Button\s+type="button"\s+variant="ghost"\s+size="icon-sm"\s+onClick=\{handleAskSensei\}[\s\S]*?<\/Button>\s*<\/DialogClose>/,
+    "trade handoff must close its detail dialog",
+  );
+  assert.doesNotMatch(
+    tradeDialog,
+    /chat\.ask_sensei[\s\S]*?<span className="hidden sm:inline">/,
   );
   for (const key of [
     "thesis",

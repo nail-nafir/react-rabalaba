@@ -1,9 +1,12 @@
+import type { TerminalResearchContext } from "./terminal-context";
+
 export type ChatRole = "user" | "assistant";
 
 export type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
+  terminalContext?: TerminalResearchContext | null;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -87,6 +90,7 @@ export async function streamChat(
   accessToken: string,
   onText: (text: string) => void,
   signal: AbortSignal,
+  terminalContext?: TerminalResearchContext | null,
 ) {
   const response = await fetch("/api/chat", {
     method: "POST",
@@ -95,7 +99,10 @@ export async function streamChat(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ messages: requestMessages(messages) }),
+    body: JSON.stringify({
+      messages: requestMessages(messages),
+      ...(terminalContext ? { terminalContext } : {}),
+    }),
     signal,
   });
 

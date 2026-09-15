@@ -3570,6 +3570,11 @@
     }
   },
   "chat": {
+    "ask": "Tanya",
+    "ask_sensei": "Bedah setup bareng Sensei",
+    "context_label": "Konteks Terminal",
+    "context_snapshot": "Waktu snapshot",
+    "clear_context": "Hapus konteks Terminal",
     "title": "RabaLaba Sensei",
     "description": "Copilot riset pasar kilat. Siap bedah setup trading.",
     "badge": "COPILOT AI",

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { formatPrice } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/features/market/hooks/use-favorites";
@@ -20,6 +20,10 @@ import { resolveAnalysisText } from "@/lib/analysis-text";
 import { normalizeYahooCandles } from "@/core/market/candles";
 import { TradeSetupChart, TradeSetupChartSettings } from "./trade-setup-chart";
 import { useShareSetup } from "../hooks/use-share-setup";
+import { buildAssetResearchContext } from "@/features/chat/terminal-context-builders";
+import type { TerminalResearchContext } from "@/features/chat/terminal-context";
+import { useAppDispatch } from "@/store/hooks";
+import { uiActions } from "@/store/slices/ui-slice";
 import {
   Dialog,
   DialogClose,
@@ -78,6 +82,7 @@ import {
   BarChart3,
   Gauge,
   Activity,
+  Bot,
   Loader2,
   Star,
   Share2,
@@ -199,6 +204,7 @@ function AssetDetailDialogContent({
   signalStateFetching,
 }: Omit<AssetDetailDialogProps, "trigger">) {
   const { t, i18n } = useTranslation();
+  const dispatch = useAppDispatch();
   const { hasAccess } = usePremiumAccess();
 
   const querySymbol = symbol;
@@ -312,6 +318,35 @@ function AssetDetailDialogContent({
   const currentPrice = asset?.price ?? 0;
   const changePercent = asset?.changePercent ?? 0;
 
+  const researchContext = useMemo<TerminalResearchContext | null>(() => {
+    if (!enriched) return null;
+    return buildAssetResearchContext({
+      asset: enriched,
+      signalStatus,
+      candles,
+      backtest,
+      marketContext: {
+        crypto: marketContext,
+        idx: idxContext,
+        us: usContext,
+      },
+    });
+  }, [
+    backtest,
+    candles,
+    enriched,
+    idxContext,
+    marketContext,
+    signalStatus,
+    usContext,
+  ]);
+
+  useEffect(() => {
+    if (researchContext) {
+      dispatch(uiActions.setResearchContext(researchContext));
+    }
+  }, [dispatch, researchContext]);
+
   const { isSharing, shareSetup } = useShareSetup();
   const [showEma20, setShowEma20] = useState(true);
   const [showEma50, setShowEma50] = useState(true);
@@ -335,6 +370,12 @@ function AssetDetailDialogContent({
       candles,
       tradingPlan,
     });
+  };
+
+  const handleAskSensei = () => {
+    if (researchContext) {
+      dispatch(uiActions.openResearchCopilot(researchContext));
+    }
   };
 
   if (!chartLoading && !asset) {
@@ -522,8 +563,23 @@ function AssetDetailDialogContent({
                     {t("dialog.trading_plan")}
                   </h3>
                 </div>
-                {tradingPlan && outlook.signal !== "neutral" && (
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1">
+                  {researchContext && (
+                    <DialogClose asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={handleAskSensei}
+                        aria-label={t("chat.ask_sensei")}
+                        title={t("chat.ask_sensei")}
+                        className="size-11 cursor-pointer sm:size-7"
+                      >
+                        <Bot className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </DialogClose>
+                  )}
+                  {tradingPlan && outlook.signal !== "neutral" && (
                     <TradeSetupChartSettings
                       showEma20={showEma20}
                       onShowEma20Change={setShowEma20}
@@ -542,6 +598,8 @@ function AssetDetailDialogContent({
                       showGrid={showGrid}
                       onShowGridChange={setShowGrid}
                     />
+                  )}
+                  {tradingPlan && outlook.signal !== "neutral" && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -561,8 +619,8 @@ function AssetDetailDialogContent({
                         <Share2 data-icon="inline-start" />
                       )}
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Custom SVG candlestick visual trade setup */}

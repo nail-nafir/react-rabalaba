@@ -8,6 +8,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -82,6 +83,9 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { buildLoginRedirect } from "@/lib/auth-redirect";
 import { BADGE } from "@/constants/taxonomy/palette";
 import { streamChat, type ChatMessage } from "@/features/chat/chat-stream";
+import type { TerminalResearchContext } from "@/features/chat/terminal-context";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { uiActions } from "@/store/slices/ui-slice";
 
 type ChatError = "auth" | "input" | "rate" | "unavailable";
 
@@ -148,14 +152,24 @@ const CHAT_MARKDOWN_ALLOWED_ELEMENTS = [
   "br",
   "strong",
   "em",
+  "del",
   "code",
   "pre",
   "h1",
   "h2",
   "h3",
+  "h4",
   "ul",
   "ol",
   "li",
+  "blockquote",
+  "hr",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
   "a",
 ] as const;
 
@@ -175,6 +189,11 @@ const CHAT_MARKDOWN_COMPONENTS: Components = {
       {children}
     </h3>
   ),
+  h4: ({ children }) => (
+    <h4 className="text-xs font-semibold leading-snug text-foreground">
+      {children}
+    </h4>
+  ),
   p: ({ children }) => <p className="leading-relaxed">{children}</p>,
   ul: ({ children }) => (
     <ul className="list-disc space-y-1.5 pl-5">{children}</ul>
@@ -187,6 +206,15 @@ const CHAT_MARKDOWN_COMPONENTS: Components = {
     <strong className="font-semibold">{children}</strong>
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
+  del: ({ children }) => (
+    <del className="text-muted-foreground line-through">{children}</del>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-primary/50 pl-3 text-muted-foreground">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="border-border" />,
   code: ({ children }) => (
     <code className="rounded bg-background/70 px-1 py-0.5 font-mono text-[0.9em]">
       {children}
@@ -196,6 +224,13 @@ const CHAT_MARKDOWN_COMPONENTS: Components = {
     <pre className="max-w-full overflow-x-auto rounded-lg border border-border/60 bg-background/70 p-3 text-[0.9em] leading-relaxed">
       {children}
     </pre>
+  ),
+  table: ({ children }) => (
+    <div className="max-w-full overflow-x-auto rounded-lg border border-border/60">
+      <table className="min-w-md w-full border-collapse text-left text-[0.9em] [&_td]:border-t [&_td]:border-border/60 [&_td]:px-3 [&_td]:py-2 [&_th]:border-b [&_th]:border-border [&_th]:bg-background/60 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold">
+        {children}
+      </table>
+    </div>
   ),
   a: ({ children, ...props }) => (
     <a
@@ -233,8 +268,15 @@ function errorKind(error: unknown): ChatError {
   return "unavailable";
 }
 
-function ChatSession({ accessToken }: { accessToken: string }) {
+function ChatSession({
+  accessToken,
+  terminalContext,
+}: {
+  accessToken: string;
+  terminalContext: TerminalResearchContext | null;
+}) {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -253,6 +295,9 @@ function ChatSession({ accessToken }: { accessToken: string }) {
     const controller = new AbortController();
     const assistantId = crypto.randomUUID();
     const failedId = history.findLast((message) => message.role === "user")?.id;
+    const requestContext =
+      history.find((message) => message.terminalContext !== undefined)
+        ?.terminalContext ?? null;
     let receivedText = false;
 
     abortRef.current = controller;
@@ -279,6 +324,7 @@ function ChatSession({ accessToken }: { accessToken: string }) {
           );
         },
         controller.signal,
+        requestContext,
       );
       if (!receivedText) throw new Error("Empty chat response");
     } catch (requestError) {
@@ -306,7 +352,12 @@ function ChatSession({ accessToken }: { accessToken: string }) {
 
     const history = [
       ...messages,
-      { id: crypto.randomUUID(), role: "user" as const, content },
+      {
+        id: crypto.randomUUID(),
+        role: "user" as const,
+        content,
+        ...(messages.length === 0 ? { terminalContext } : {}),
+      },
     ];
     setDraft("");
     void requestAssistant(history);
@@ -366,6 +417,22 @@ function ChatSession({ accessToken }: { accessToken: string }) {
     inputRef.current?.focus();
   }
 
+  function clearContext() {
+    setMessages((current) =>
+      current.map((message) =>
+        message.terminalContext === undefined
+          ? message
+          : { ...message, terminalContext: null },
+      ),
+    );
+    dispatch(uiActions.clearResearchContext());
+  }
+
+  const sessionContext =
+    messages.length === 0
+      ? terminalContext
+      : (messages.find((message) => message.terminalContext !== undefined)
+          ?.terminalContext ?? null);
   const promptTemplates = promptTemplateConfig.map((template) => ({
     ...template,
     text: t(`chat.prompts.${template.key}`),
@@ -377,12 +444,33 @@ function ChatSession({ accessToken }: { accessToken: string }) {
   const failedIndex = failedUserId
     ? messages.findIndex((message) => message.id === failedUserId)
     : -1;
+  const contextSummary = sessionContext
+    ? [
+        sessionContext.symbol,
+        sessionContext.kind === "trade"
+          ? sessionContext.position?.status
+          : sessionContext.signalStatus,
+        sessionContext.timeframe,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+  const contextTimestamp = sessionContext
+    ? `${new Intl.DateTimeFormat("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZone: "Asia/Jakarta",
+      }).format(
+        new Date(sessionContext.quoteTime ?? sessionContext.capturedAt),
+      )} WIB`
+    : "";
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      {messages.length > 0 ? (
+      {messages.length > 0 || sessionContext ? (
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-muted/15 px-4 py-2">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <span
               className="size-1.5 rounded-full bg-primary"
               aria-hidden="true"
@@ -390,18 +478,48 @@ function ChatSession({ accessToken }: { accessToken: string }) {
             <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t("chat.messages_label")}
             </span>
+            {sessionContext ? (
+              <Badge
+                variant="outline"
+                className={cn(
+                  TERMINAL_BADGE_CLASSNAME,
+                  "w-fit min-w-0 max-w-full shrink items-center gap-1.5",
+                )}
+                title={`${t("chat.context_label")}: ${contextSummary} · ${contextTimestamp}`}
+                aria-label={`${t("chat.context_label")}: ${contextSummary} · ${contextTimestamp}`}
+              >
+                <span className="sr-only">{t("chat.context_label")}</span>
+                <span className="min-w-0 truncate uppercase">
+                  {contextSummary}
+                </span>
+                <span className="shrink-0 whitespace-nowrap text-primary/70">
+                  · {contextTimestamp}
+                </span>
+                <button
+                  type="button"
+                  className="ml-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-md text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={t("chat.clear_context")}
+                  title={t("chat.clear_context")}
+                  onClick={clearContext}
+                >
+                  <XIcon className="size-3" aria-hidden="true" />
+                </button>
+              </Badge>
+            ) : null}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 min-h-7 gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-7"
-            disabled={busy}
-            onClick={newChat}
-          >
-            <PlusIcon className="size-3.5" aria-hidden="true" />
-            {t("chat.new_chat")}
-          </Button>
+          {messages.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 min-h-7 shrink-0 gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-7"
+              disabled={busy}
+              onClick={newChat}
+            >
+              <PlusIcon className="size-3.5" aria-hidden="true" />
+              {t("chat.new_chat")}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -511,6 +629,7 @@ function ChatSession({ accessToken }: { accessToken: string }) {
                                 <div className="space-y-2 wrap-break-word">
                                   <ReactMarkdown
                                     skipHtml
+                                    remarkPlugins={[remarkGfm]}
                                     allowedElements={
                                       CHAT_MARKDOWN_ALLOWED_ELEMENTS
                                     }
@@ -721,6 +840,16 @@ export function ResearchCopilot() {
   const { t } = useTranslation();
   const location = useLocation();
   const { session, user, ready } = useAuth();
+  const dispatch = useAppDispatch();
+  const activeResearchContext = useAppSelector(
+    (state) => state.ui.activeResearchContext,
+  );
+  const researchSessionId = useAppSelector(
+    (state) => state.ui.researchSessionId,
+  );
+  const researchCopilotRequestId = useAppSelector(
+    (state) => state.ui.researchCopilotRequestId,
+  );
   const [open, setOpen] = useState(false);
   const loginPath = buildLoginRedirect(
     location.pathname,
@@ -728,31 +857,50 @@ export function ResearchCopilot() {
     location.hash,
   );
 
+  useEffect(() => {
+    if (ready && !user) dispatch(uiActions.clearResearchContext());
+  }, [dispatch, ready, user]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (researchCopilotRequestId > 0) setOpen(true);
+  }, [researchCopilotRequestId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           type="button"
-          className="group fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex min-h-11 items-center gap-2 rounded-full border border-primary/40 bg-card/90 px-3.5 py-2 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md transition-all duration-200 hover:border-primary hover:bg-card hover:shadow-2xl hover:shadow-primary/20 active:scale-95 motion-reduce:transform-none motion-reduce:transition-none sm:right-6 sm:px-4 sm:text-sm md:bottom-6"
+          variant="ghost"
+          className="group fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-auto min-h-11 w-fit max-w-[calc(100vw-2rem)] cursor-pointer items-center gap-3 rounded-xl border border-border bg-card/45 px-3 py-2.5 text-card-foreground ring-1 ring-foreground/10 backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card/60 data-[state=open]:-translate-y-0.5 data-[state=open]:bg-card/60 active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none sm:right-6 sm:px-3.5 md:bottom-6"
           aria-label={t("chat.open")}
           title={t("chat.open")}
         >
-          <div className="relative flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-            <BotIcon className="size-3.5 shrink-0" aria-hidden="true" />
+          <div className="relative flex size-8.5 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-primary shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground group-data-[state=open]:scale-105 group-data-[state=open]:border-primary group-data-[state=open]:bg-primary group-data-[state=open]:text-primary-foreground">
+            <BotIcon
+              className="size-4.5 shrink-0 transition-transform duration-300 group-hover:rotate-6 group-data-[state=open]:rotate-6"
+              aria-hidden="true"
+            />
             <span className="absolute -top-0.5 -right-0.5 flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              <span className="relative inline-flex size-2 rounded-full border border-card bg-emerald-500" />
             </span>
           </div>
-          <span className="hidden font-medium tracking-tight whitespace-nowrap sm:inline">
-            {t("chat.title")}
-          </span>
-          <Badge
-            variant="outline"
-            className={cn("hidden sm:inline-flex", TERMINAL_BADGE_CLASSNAME)}
-          >
-            {t("chat.badge")}
-          </Badge>
+          <div className="flex min-w-0 flex-col items-start justify-center gap-0.5 text-left">
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded px-1.5 py-0 text-[9px] font-extrabold uppercase tracking-wider transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground group-data-[state=open]:border-primary group-data-[state=open]:bg-primary group-data-[state=open]:text-primary-foreground",
+                TERMINAL_BADGE_CLASSNAME,
+              )}
+            >
+              {t("chat.ask")}
+            </Badge>
+            <span className="truncate text-xs font-bold tracking-tight text-foreground transition-colors group-hover:text-primary group-data-[state=open]:text-primary">
+              {t("chat.title")}
+            </span>
+          </div>
         </Button>
       </PopoverTrigger>
 
@@ -764,6 +912,7 @@ export function ResearchCopilot() {
         collisionPadding={12}
         aria-label={t("chat.title")}
         aria-hidden={!open}
+        onFocusOutside={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
           const input = document.getElementById("research-copilot-input");
           if (input instanceof HTMLTextAreaElement) {
@@ -795,7 +944,7 @@ export function ResearchCopilot() {
                     {t("chat.title")}
                   </CardTitle>
                   <Badge variant="outline" className={TERMINAL_BADGE_CLASSNAME}>
-                    {t("chat.badge")}
+                    {t("chat.ask")}
                   </Badge>
                 </div>
                 <CardDescription className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
@@ -825,7 +974,11 @@ export function ResearchCopilot() {
                 />
               </div>
             ) : session && user ? (
-              <ChatSession key={user.id} accessToken={session.access_token} />
+              <ChatSession
+                key={`${user.id}:${researchSessionId}`}
+                accessToken={session.access_token}
+                terminalContext={activeResearchContext}
+              />
             ) : (
               <Empty className="h-full px-6">
                 <EmptyHeader>

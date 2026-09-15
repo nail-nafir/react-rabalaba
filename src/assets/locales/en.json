@@ -3570,10 +3570,15 @@
     }
   },
   "chat": {
+    "ask": "Ask",
+    "ask_sensei": "Review setup with Sensei",
+    "context_label": "Terminal context",
+    "context_snapshot": "Snapshot time",
+    "clear_context": "Clear Terminal context",
     "title": "RabaLaba Sensei",
     "description": "Fast market research copilot. Ready to breakdown setups.",
     "badge": "COPILOT AI",
-    "open": "Chat RabaLaba Sensei",
+    "open": "Ask RabaLaba Sensei",
     "close": "Close Sensei panel",
     "new_chat": "Start fresh chat",
     "empty_title": "What setup to breakdown today?",

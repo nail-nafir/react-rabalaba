@@ -80,6 +80,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 )}
                 <Button
                   type="button"
+                  size="lg"
+                  className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
                   onClick={() => {
                     this.setState({
                       hasError: false,
@@ -89,7 +91,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     window.location.reload();
                   }}
                 >
-                  <RefreshCw data-icon="inline-start" />
+                  <RefreshCw className="h-3.5 w-3.5" />
                   {t('error_boundary.action')}
                 </Button>
               </EmptyContent>

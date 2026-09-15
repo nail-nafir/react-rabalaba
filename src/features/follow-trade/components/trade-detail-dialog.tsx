@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useMarketData } from "@/services/queries/use-market-data";
 import { usePeriodCandles } from "@/services/queries/use-period-candles";
@@ -27,9 +27,14 @@ import { PercentageChange } from "@/components/shared/percentage-change";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useShareSetup } from "@/features/trading-plan/hooks/use-share-setup";
+import { buildTradeResearchContext } from "@/features/chat/terminal-context-builders";
+import type { TerminalResearchContext } from "@/features/chat/terminal-context";
+import { useAppDispatch } from "@/store/hooks";
+import { uiActions } from "@/store/slices/ui-slice";
 
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -41,6 +46,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertCircle,
+  Bot,
   Loader2,
   Share2,
   Target,
@@ -114,6 +120,7 @@ function TradeDetailReadyDialog({
   trade: FollowedTrade;
 }) {
   const { t, i18n } = useTranslation();
+  const dispatch = useAppDispatch();
   const [showEma20, setShowEma20] = useState(true);
   const [showEma50, setShowEma50] = useState(true);
   const [showEma200, setShowEma200] = useState(false);
@@ -237,7 +244,42 @@ function TradeDetailReadyDialog({
         : PALETTE.neutral;
   const sign = (v: number) => (v >= 0 ? "+" : "");
   // Running protection is replayed live; closed rows use their persisted exit.
-  const progress = deriveFollowProgress(trade, livePrice, candles);
+  const progress = useMemo(
+    () => deriveFollowProgress(trade, livePrice, candles),
+    [candles, livePrice, trade],
+  );
+
+  const researchContext = useMemo<TerminalResearchContext>(
+    () =>
+      buildTradeResearchContext({
+        trade,
+        asset,
+        candles,
+        tradingPlan,
+        price: displayPrice,
+        changePercent,
+        pnl,
+        progress,
+      }),
+    [
+      asset,
+      candles,
+      changePercent,
+      displayPrice,
+      pnl,
+      progress,
+      trade,
+      tradingPlan,
+    ],
+  );
+
+  useEffect(() => {
+    dispatch(uiActions.setResearchContext(researchContext));
+  }, [dispatch, researchContext]);
+
+  const handleAskSensei = () => {
+    dispatch(uiActions.openResearchCopilot(researchContext));
+  };
 
   const { isSharing, shareSetup } = useShareSetup();
 
@@ -437,6 +479,19 @@ function TradeDetailReadyDialog({
               <h3 className="text-sm font-semibold">{chartTitle}</h3>
             </div>
             <div className="flex items-center gap-2">
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleAskSensei}
+                  aria-label={t("chat.ask_sensei")}
+                  title={t("chat.ask_sensei")}
+                  className="size-11 cursor-pointer sm:size-7"
+                >
+                  <Bot className="size-3.5" aria-hidden="true" />
+                </Button>
+              </DialogClose>
               <TradeSetupChartSettings
                 showEma20={showEma20}
                 onShowEma20Change={setShowEma20}
