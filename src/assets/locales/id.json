@@ -216,7 +216,8 @@
       "position_shared": "Mantep, posisi sudah dibagikan",
       "signal_downloaded": "Mantep, gambar sudah diunduh",
       "signal_error": "Waduh, gambar sinyal zonk",
-      "signal_shared": "Mantep, sinyal sudah dibagikan"
+      "signal_shared": "Mantep, sinyal sudah dibagikan",
+      "downloaded_with_caption": "Mantep, gambar diunduh dan caption disalin"
     },
     "testimonial": {
       "delete_error": "Waduh, ulasan masih nyangkut",
@@ -730,6 +731,11 @@
       "risk": "Risiko",
       "reward": "Imbalan",
       "disclaimer": "Bukan Saran Keuangan. Lakukan Riset Mandiri."
+    },
+    "share_message": {
+      "signal": "RabaLaba · Setup {{direction}} {{symbol}} lagi live. Cek entry, target, dan risiko dulu.\n{{url}}",
+      "position_open": "RabaLaba · {{direction}} {{symbol}} masih aktif. Pantau target, stop, dan level risiko.\n{{url}}",
+      "position_closed": "RabaLaba · Trade {{symbol}} kelar: {{result}}. Cek hasil, lanjut evaluasi.\n{{url}}"
     }
   },
   "disclaimer": {
@@ -3579,7 +3585,7 @@
     "sensei": "Sensei",
     "thinking": "Lagi bedah chart dan level harga…",
     "input_label": "Input chat",
-    "placeholder": "Tanya seputar setup, trend market, atau level risiko…",
+    "placeholder": "Bedah setup dulu…",
     "composer_hint": "Enter kirim. Shift+Enter baris baru.",
     "send": "Kirim chat",
     "stop": "Stop jawaban",

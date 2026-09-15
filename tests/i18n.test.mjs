@@ -283,7 +283,7 @@ test("stored validation errors translate at render and preserve non-key messages
 test("calendar and share cards use the provided language", async () => {
   const { Calendar } = await load("/src/components/ui/calendar.tsx");
   const { id, enUS } = await import("react-day-picker/locale");
-  const { buildShareCardSvg } = await load(
+  const { buildShareCardSvg, buildShareMessage } = await load(
     "/src/features/trading-plan/model/share-card.ts",
   );
   const { buildTradeSetupModel } = await load(
@@ -314,6 +314,21 @@ test("calendar and share cards use the provided language", async () => {
   );
   const instance = createInstance();
   await instance.init({ resources, lng: "id" });
+  const forbiddenPronoun =
+    /\b(?:i|me|my|mine|we|us|our|ours|you|your|yours|they|them|their|theirs|aku|saya|kami|kita|kamu|kalian|mereka|anda|gue|lo)\b/i;
+  for (const key of ["signal", "position_open", "position_closed"]) {
+    const enCopy = get(resources.en.translation, `dialog.share_message.${key}`);
+    const idCopy = get(resources.id.translation, `dialog.share_message.${key}`);
+    assert.doesNotMatch(enCopy, forbiddenPronoun, `EN share copy ${key}`);
+    assert.doesNotMatch(idCopy, forbiddenPronoun, `ID share copy ${key}`);
+    assert.doesNotMatch(enCopy, /-/u, `ASCII dash in EN share copy ${key}`);
+    assert.doesNotMatch(idCopy, /-/u, `ASCII dash in ID share copy ${key}`);
+    const ratio = idCopy.length / enCopy.length;
+    assert.ok(
+      ratio >= 0.65 && ratio <= 1.6,
+      `share copy length is unbalanced for ${key}: ${enCopy.length}/${idCopy.length}`,
+    );
+  }
   for (const language of ["id", "en"]) {
     await instance.changeLanguage(language);
     const html = renderToStaticMarkup(
@@ -333,6 +348,45 @@ test("calendar and share cards use the provided language", async () => {
     );
     for (const isPosition of [false, true])
       for (const closed of [false, true]) {
+        const shareMeta = {
+          symbol: "BTC-USD",
+          isPosition,
+          closed,
+          closeReason: "TP 2/3",
+        };
+        const message = buildShareMessage(
+          model,
+          shareMeta,
+          instance.t.bind(instance),
+        );
+        const messageKey = !isPosition
+          ? "dialog.share_message.signal"
+          : closed
+            ? "dialog.share_message.position_closed"
+            : "dialog.share_message.position_open";
+        assert.equal(
+          message,
+          instance.t(messageKey, {
+            symbol: "BTC-USD",
+            direction: "LONG",
+            result: "TP 2/3",
+            url: "https://rabalaba.pages.dev",
+            interpolation: { escapeValue: false },
+          }),
+        );
+        assert.ok(message.includes("BTC-USD"));
+        assert.ok(
+          message.includes(isPosition && closed ? "TP 2/3" : "LONG"),
+        );
+        assert.equal(
+          message.split("\n").at(-1),
+          "https://rabalaba.pages.dev",
+        );
+        assert.equal(
+          (message.match(/https:\/\/rabalaba\.pages\.dev/g) ?? []).length,
+          1,
+        );
+
         const svg = buildShareCardSvg(
           model,
           {
@@ -371,5 +425,40 @@ test("calendar and share cards use the provided language", async () => {
             ),
           );
       }
+  }
+});
+
+test("trade share sends caption with the image and preserves the fallback", () => {
+  const shareCard = readFileSync(
+    "src/features/trading-plan/model/share-card.ts",
+    "utf8",
+  );
+  const shareHook = readFileSync(
+    "src/features/trading-plan/hooks/use-share-setup.ts",
+    "utf8",
+  );
+
+  assert.match(
+    shareCard,
+    /const shareData: ShareData = \{ files: \[file\], text: message \};/,
+  );
+  assert.match(shareCard, /nav\.canShare\?\.\(shareData\)/);
+  assert.match(shareCard, /nav\.share\(shareData\)/);
+  assert.match(shareCard, /const SHARE_URL = "https:\/\/rabalaba\.pages\.dev"/);
+  assert.match(shareCard, /url: SHARE_URL/);
+  assert.doesNotMatch(shareCard, /nav\.share\(\{[^}]*title/);
+  assert.match(shareCard, /navigator\.clipboard\.writeText\(message\)/);
+  assert.match(shareCard, /downloaded_with_caption/);
+  assert.match(shareHook, /buildShareMessage/);
+  assert.match(shareHook, /toasts\.share\.downloaded_with_caption/);
+  assert.match(shareHook, /AbortError/);
+
+  for (const path of [
+    "src/features/trading-plan/components/asset-detail-dialog.tsx",
+    "src/features/follow-trade/components/trade-detail-dialog.tsx",
+  ]) {
+    const source = readFileSync(path, "utf8");
+    assert.match(source, /useShareSetup/);
+    assert.match(source, /shareSetup\(/);
   }
 });

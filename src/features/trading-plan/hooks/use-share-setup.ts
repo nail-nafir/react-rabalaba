@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { buildTradeSetupModel } from "@/features/trading-plan/model/trade-setup-model";
 import {
   buildShareCardSvg,
+  buildShareMessage,
   svgToPngBlob,
   shareOrDownloadPng,
   SHARE_CARD_SIZE,
@@ -68,27 +69,24 @@ export function useShareSetup() {
         signal,
         currentPrice,
       );
-      const svg = buildShareCardSvg(
-        model,
-        {
-          symbol,
-          name,
-          strength,
-          grade,
-          currentPrice,
-          assetType,
-          candles,
-          isPosition,
-          closed,
-          closeReason,
-          entryPrice,
-          pnlPct,
-          pnlR,
-          locale: i18n.language,
-          markers,
-        },
-        t,
-      );
+      const shareMeta = {
+        symbol,
+        name,
+        strength,
+        grade,
+        currentPrice,
+        assetType,
+        candles,
+        isPosition,
+        closed,
+        closeReason,
+        entryPrice,
+        pnlPct,
+        pnlR,
+        locale: i18n.language,
+        markers,
+      };
+      const svg = buildShareCardSvg(model, shareMeta, t);
       const blob = await svgToPngBlob(
         svg,
         SHARE_CARD_SIZE.width,
@@ -97,9 +95,12 @@ export function useShareSetup() {
       const filename = isPosition
         ? `${symbol}-position.png`
         : `${symbol}-setup.png`;
-      const result = await shareOrDownloadPng(blob, filename);
+      const message = buildShareMessage(model, shareMeta, t);
+      const result = await shareOrDownloadPng(blob, filename, message);
 
-      if (isPosition) {
+      if (result === "downloaded_with_caption") {
+        toast.success(t("toasts.share.downloaded_with_caption"));
+      } else if (isPosition) {
         toast.success(
           t(
             result === "shared"

@@ -75,6 +75,11 @@ test("chart restore control matches the terminal refresh affordance", () => {
   assert.match(resetControl, /onPointerDown=\{\(e\) => e\.stopPropagation\(\)\}/);
   assert.match(resetControl, /onDoubleClick=\{\(e\) => e\.stopPropagation\(\)\}/);
 
+  assert.match(chart, /overscroll-x-none/);
+  assert.match(chart, /overflow-x-auto/);
+  assert.match(chart, /touchAction: "pan-y"/);
+  assert.match(chart, /addEventListener\("wheel", onWheel, \{ passive: false \}\)/);
+
   for (const path of [
     "src/features/trading-plan/components/asset-detail-dialog.tsx",
     "src/features/follow-trade/components/trade-detail-dialog.tsx",

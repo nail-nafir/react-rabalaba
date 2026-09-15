@@ -216,7 +216,8 @@
       "position_shared": "Nice, position is now shared",
       "signal_downloaded": "Nice, image is downloaded",
       "signal_error": "Bummer, signal image tanked",
-      "signal_shared": "Nice, signal is now shared"
+      "signal_shared": "Nice, signal is now shared",
+      "downloaded_with_caption": "Nice, image downloaded and caption copied"
     },
     "testimonial": {
       "delete_error": "Bummer, review is still stuck",
@@ -730,6 +731,11 @@
       "risk": "Risk",
       "reward": "Reward",
       "disclaimer": "Not Financial Advice. Do Your Own Research."
+    },
+    "share_message": {
+      "signal": "RabaLaba · {{direction}} {{symbol}} setup is live. Check entry, targets, and risk first.\n{{url}}",
+      "position_open": "RabaLaba · {{direction}} {{symbol}} is still active. Track targets, stop, and risk level.\n{{url}}",
+      "position_closed": "RabaLaba · {{symbol}} trade wrapped: {{result}}. Review the result, hype can wait.\n{{url}}"
     }
   },
   "disclaimer": {
@@ -3579,7 +3585,7 @@
     "sensei": "Sensei",
     "thinking": "Crunching chart data and levels…",
     "input_label": "Chat input",
-    "placeholder": "Ask about setups, market trends, or risk levels…",
+    "placeholder": "Break down a setup…",
     "composer_hint": "Enter sends. Shift+Enter adds newline.",
     "send": "Send prompt",
     "stop": "Stop answer",

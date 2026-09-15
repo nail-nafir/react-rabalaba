@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const INDEX_HTML = readFileSync("index.html", "utf8");
 const FAVICON_SVG = readFileSync("public/favicon.svg", "utf8");
+const PACKAGE_JSON = JSON.parse(readFileSync("package.json", "utf8"));
 
 function metaContent(attribute, key) {
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -26,7 +27,7 @@ test("static social preview metadata is crawler-ready", () => {
   const expected = {
     "og:title": "RabaLaba | Terminal Riset Multi Aset",
     "og:description":
-      "Terminal riset trading multi aset untuk membaca sinyal, menyusun rencana trading, dan mengelola risiko.",
+      "Terminal riset multi aset buat baca sinyal, susun setup, dan jaga risiko tetap terukur.",
     "og:type": "website",
     "og:url": "https://rabalaba.pages.dev/",
     "og:site_name": "RabaLaba",
@@ -41,7 +42,6 @@ test("static social preview metadata is crawler-ready", () => {
   for (const [key, value] of Object.entries(expected)) {
     assert.equal(metaContent("property", key), value);
   }
-
   for (const value of [
     expected["og:title"],
     expected["og:description"],
@@ -65,6 +65,22 @@ test("static social preview metadata is crawler-ready", () => {
   assert.doesNotMatch(INDEX_HTML, /document\.head|createElement\(["']meta/);
 });
 
+test("dynamic OG infrastructure stays removed", () => {
+  assert.equal(
+    PACKAGE_JSON.dependencies?.["@cloudflare/pages-plugin-vercel-og"],
+    undefined,
+  );
+
+  for (const path of [
+    "functions/_middleware.ts",
+    "functions/_shared/share-preview.ts",
+    "functions/og/[page].tsx",
+    "public/_routes.json",
+  ]) {
+    assert.equal(existsSync(path), false, `Unexpected dynamic OG file: ${path}`);
+  }
+});
+
 test("social preview image is a 1200 by 630 PNG", () => {
   const image = readFileSync("public/og-image.png");
   assert.deepEqual(
@@ -82,8 +98,8 @@ test("favicon keeps the social preview brand mark", () => {
   );
   assert.match(FAVICON_SVG, /viewBox="0 0 64 64"/);
   assert.match(FAVICON_SVG, /<rect width="64" height="64" rx="16"/);
-  assert.match(FAVICON_SVG, /id="surface"/);
+  assert.match(FAVICON_SVG, /<rect width="64" height="64" rx="16" fill="#863BFF" \/>/);
   assert.match(FAVICON_SVG, /M16\.247 7\.761a6 6 0 0 1 0 8\.478/);
   assert.match(FAVICON_SVG, /<circle cx="12" cy="12" r="2" fill="#FFFFFF"/);
-  assert.doesNotMatch(FAVICON_SVG, /id="bolt"|M37\.5 8/);
+  assert.doesNotMatch(FAVICON_SVG, /linearGradient|fill="url\(/);
 });

@@ -145,7 +145,7 @@ test("application uses Sonner directly with one localized title", () => {
 });
 
 test("toast locale keys are flat, complete, and referenced", () => {
-  assert.equal(localeKeys.length, 92);
+  assert.equal(localeKeys.length, 93);
   assert.deepEqual(Object.keys(flatLocales.en).sort(), localeKeys);
   assert.deepEqual(referencedToastKeys(), localeKeys);
 
@@ -214,8 +214,9 @@ test("localized toast pairs keep fixed tone and comparable one-line lengths", ()
       prefixPairs[idPrefix].some((prefix) => en.startsWith(prefix)),
       `en.${key}`,
     );
-    assert.ok(id.length >= 22 && id.length <= 40, `id.${key}`);
-    assert.ok(en.length >= 22 && en.length <= 40, `en.${key}`);
+    const captionToast = key === "share.downloaded_with_caption";
+    assert.ok(id.length >= 22 && id.length <= (captionToast ? 48 : 40), `id.${key}`);
+    assert.ok(en.length >= 22 && en.length <= (captionToast ? 48 : 40), `en.${key}`);
     assert.ok(Math.abs(id.length - en.length) <= 8, key);
   }
 });

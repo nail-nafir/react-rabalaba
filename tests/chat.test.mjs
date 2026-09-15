@@ -110,6 +110,14 @@ test("chat validates auth and streams the locked Workers AI model", async () => 
   assert.equal(inference.model, "@cf/google/gemma-4-26b-a4b-it");
   assert.equal(inference.input.stream, true);
   assert.equal(inference.input.messages[0].role, "system");
+  assert.match(
+    inference.input.messages[0].content,
+    /Use restrained Markdown only when it improves scanability/,
+  );
+  assert.match(
+    inference.input.messages[0].content,
+    /Avoid tables, blockquotes, code fences, horizontal rules, decorative symbols, and excessive headings/,
+  );
   assert.deepEqual(inference.input.messages.at(-1), {
     role: "user",
     content: "Test this",

@@ -34,6 +34,41 @@ export interface ShareCardMeta {
   markers?: ChartMarker[];
 }
 
+const SHARE_URL = "https://rabalaba.pages.dev";
+
+/** Short native-share caption for a signal, open position, or closed trade. */
+export function buildShareMessage(
+  model: Pick<TradeSetupModel, "signal">,
+  meta: Pick<ShareCardMeta, "symbol" | "isPosition" | "closed" | "closeReason">,
+  t: TFunction,
+): string {
+  const direction = model.signal.toUpperCase();
+  if (!meta.isPosition) {
+    return t("dialog.share_message.signal", {
+      symbol: meta.symbol,
+      direction,
+      url: SHARE_URL,
+      interpolation: { escapeValue: false },
+    });
+  }
+
+  if (!meta.closed) {
+    return t("dialog.share_message.position_open", {
+      symbol: meta.symbol,
+      direction,
+      url: SHARE_URL,
+      interpolation: { escapeValue: false },
+    });
+  }
+
+  return t("dialog.share_message.position_closed", {
+    symbol: meta.symbol,
+    result: meta.closeReason ?? t("journal.outcome_closed"),
+    url: SHARE_URL,
+    interpolation: { escapeValue: false },
+  });
+}
+
 const W = 1200;
 // Tall enough that the chart aspect (~2.1:1) matches the web renderer in
 // `trade-setup-chart.tsx` while leaving symmetric ~48px breathing room at
@@ -644,16 +679,17 @@ export async function svgToPngBlob(
 export async function shareOrDownloadPng(
   blob: Blob,
   filename: string,
-): Promise<"shared" | "downloaded"> {
+  message: string,
+): Promise<"shared" | "downloaded" | "downloaded_with_caption"> {
   const file = new File([blob], filename, { type: "image/png" });
   const nav = navigator as Navigator & {
     canShare?: (data?: ShareData) => boolean;
   };
-  if (typeof nav.share === "function" && nav.canShare?.({ files: [file] })) {
-    // Share ONLY the file — passing a `title` alongside makes macOS's share
-    // sheet attach a text/preview item too, which pastes as a second image
-    // (e.g. into WhatsApp). Files-only keeps it to exactly one image.
-    await nav.share({ files: [file] });
+  const shareData: ShareData = { files: [file], text: message };
+  if (typeof nav.share === "function" && nav.canShare?.(shareData)) {
+    // Keep text alongside the file without adding `title`, which can create a
+    // second preview item in some desktop share sheets.
+    await nav.share(shareData);
     return "shared";
   }
   const url = URL.createObjectURL(blob);
@@ -664,7 +700,13 @@ export async function shareOrDownloadPng(
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  return "downloaded";
+  try {
+    if (!navigator.clipboard?.writeText) return "downloaded";
+    await navigator.clipboard.writeText(message);
+    return "downloaded_with_caption";
+  } catch {
+    return "downloaded";
+  }
 }
 
 export const SHARE_CARD_SIZE = { width: W, height: H };

@@ -698,9 +698,13 @@ export function TradeSetupChart({
           CHART_TOP,
           CHART_BOTTOM,
         );
+      const horizontalDelta =
+        e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX;
+      const verticalDelta =
+        e.shiftKey && e.deltaX === 0 ? 0 : e.deltaY;
       const intent = resolveChartWheelIntent(
-        e.deltaX,
-        e.deltaY,
+        horizontalDelta,
+        verticalDelta,
         isOverPriceAxis,
       );
 
@@ -711,8 +715,8 @@ export function TradeSetupChart({
       const cur = vpRef.current;
       if (intent === "pan") {
         // Horizontal trackpad swipe → pan.
-        let shift = Math.round((e.deltaX / 300) * cur.span);
-        if (shift === 0) shift = e.deltaX > 0 ? 1 : -1;
+        let shift = Math.round((horizontalDelta / 300) * cur.span);
+        if (shift === 0) shift = horizontalDelta > 0 ? 1 : -1;
         applyViewport(cur.start + shift, cur.span);
       } else {
         // Price-axis wheel → zoom, anchored at the latest visible candle.
@@ -976,7 +980,7 @@ export function TradeSetupChart({
       <div
         ref={chartRef}
         className={cn(
-          "relative w-full select-none active:cursor-grabbing",
+          "relative w-full overflow-x-auto select-none overscroll-x-none active:cursor-grabbing",
           overPriceAxis ? "cursor-ns-resize" : "cursor-crosshair",
         )}
         style={{ touchAction: "pan-y" }}

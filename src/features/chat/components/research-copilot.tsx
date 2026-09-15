@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import ReactMarkdown, { type Components } from "react-markdown";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -84,13 +85,12 @@ import { streamChat, type ChatMessage } from "@/features/chat/chat-stream";
 
 type ChatError = "auth" | "input" | "rate" | "unavailable";
 
-const TERMINAL_BADGE_CLASSNAME =
-  cn(
-    "rounded-md text-[10px] font-bold uppercase tracking-wider",
-    BADGE.accent.bg,
-    BADGE.accent.text,
-    BADGE.accent.border,
-  );
+const TERMINAL_BADGE_CLASSNAME = cn(
+  "rounded-md text-[10px] font-bold uppercase tracking-wider",
+  BADGE.accent.bg,
+  BADGE.accent.text,
+  BADGE.accent.border,
+);
 
 const PROMPT_TEMPLATE_CONFIG = [
   {
@@ -142,6 +142,72 @@ const PROMPT_TEMPLATE_CONFIG = [
       "text-amber-400 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500/20",
   },
 ] as const;
+
+const CHAT_MARKDOWN_ALLOWED_ELEMENTS = [
+  "p",
+  "br",
+  "strong",
+  "em",
+  "code",
+  "pre",
+  "h1",
+  "h2",
+  "h3",
+  "ul",
+  "ol",
+  "li",
+  "a",
+] as const;
+
+const CHAT_MARKDOWN_COMPONENTS: Components = {
+  h1: ({ children }) => (
+    <h1 className="text-sm font-semibold leading-snug text-foreground">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-sm font-semibold leading-snug text-foreground">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-sm font-semibold leading-snug text-foreground">
+      {children}
+    </h3>
+  ),
+  p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+  ul: ({ children }) => (
+    <ul className="list-disc space-y-1.5 pl-5">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal space-y-1.5 pl-5">{children}</ol>
+  ),
+  li: ({ children }) => <li>{children}</li>,
+  strong: ({ children }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  em: ({ children }) => <em className="italic">{children}</em>,
+  code: ({ children }) => (
+    <code className="rounded bg-background/70 px-1 py-0.5 font-mono text-[0.9em]">
+      {children}
+    </code>
+  ),
+  pre: ({ children }) => (
+    <pre className="max-w-full overflow-x-auto rounded-lg border border-border/60 bg-background/70 p-3 text-[0.9em] leading-relaxed">
+      {children}
+    </pre>
+  ),
+  a: ({ children, ...props }) => (
+    <a
+      {...props}
+      target="_blank"
+      rel="noreferrer"
+      className="wrap-break-word text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+    </a>
+  ),
+};
 
 function randomPromptTemplates() {
   const accents = [
@@ -440,10 +506,24 @@ function ChatSession({ accessToken }: { accessToken: string }) {
                                 : "rounded-tl-xs border border-border/60 bg-muted/60 text-foreground shadow-xs backdrop-blur-xs",
                             )}
                           >
-                            <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
-                              <span className="whitespace-pre-wrap">
-                                {message.content}
-                              </span>
+                            <BubbleContent className="min-w-0 wrap-break-word px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
+                              {message.role === "assistant" ? (
+                                <div className="space-y-2 wrap-break-word">
+                                  <ReactMarkdown
+                                    skipHtml
+                                    allowedElements={
+                                      CHAT_MARKDOWN_ALLOWED_ELEMENTS
+                                    }
+                                    components={CHAT_MARKDOWN_COMPONENTS}
+                                  >
+                                    {message.content}
+                                  </ReactMarkdown>
+                                </div>
+                              ) : (
+                                <span className="whitespace-pre-wrap wrap-break-word">
+                                  {message.content}
+                                </span>
+                              )}
                             </BubbleContent>
                           </Bubble>
                           {message.role === "assistant" ? (
@@ -692,13 +772,13 @@ export function ResearchCopilot() {
           }
         }}
         className={cn(
-          "w-[min(460px,calc(100vw-1.25rem))] max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none",
+          "w-[min(460px,calc(100vw-1rem))] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none sm:max-h-[calc(100dvh-6.5rem)]",
           !open && "invisible pointer-events-none translate-y-2 opacity-0",
         )}
       >
         <Card
           id="rabalaba-sensei-panel"
-          className="flex h-[min(680px,calc(100dvh-7.5rem))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all sm:h-[min(720px,calc(100dvh-6.5rem))]"
+          className="flex h-[min(680px,calc(100dvh-9.5rem-env(safe-area-inset-bottom)))] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all sm:h-[min(720px,calc(100dvh-6.5rem))] sm:max-h-none"
         >
           <CardHeader className="shrink-0 border-b border-border bg-card px-4 py-3 sm:px-5 sm:py-3.5">
             <div className="flex items-center gap-3">
@@ -714,10 +794,7 @@ export function ResearchCopilot() {
                   <CardTitle className="truncate text-base font-bold tracking-tight text-foreground leading-snug">
                     {t("chat.title")}
                   </CardTitle>
-                  <Badge
-                    variant="outline"
-                    className={TERMINAL_BADGE_CLASSNAME}
-                  >
+                  <Badge variant="outline" className={TERMINAL_BADGE_CLASSNAME}>
                     {t("chat.badge")}
                   </Badge>
                 </div>

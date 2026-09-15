@@ -15,6 +15,9 @@ const en = JSON.parse(
 const id = JSON.parse(
   readFileSync(join(root, "src/assets/locales/id.json"), "utf8"),
 );
+const packageJson = JSON.parse(
+  readFileSync(join(root, "package.json"), "utf8"),
+);
 
 function getPath(value, path) {
   return path.split(".").reduce((current, key) => current?.[key], value);
@@ -47,6 +50,38 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /aria-describedby=/);
   assert.match(widget, /aria-hidden="true"/);
   assert.match(widget, /motion-reduce:/);
+  assert.match(
+    widget,
+    /100dvh-9\.5rem-env\(safe-area-inset-bottom\)/,
+    "mobile chat panel must reserve viewport and safe-area space",
+  );
+  assert.match(widget, /max-h-\[calc\(100dvh-9\.5rem-env\(safe-area-inset-bottom\)\)\]/);
+  assert.doesNotMatch(widget, /100dvh-7\.5rem/);
+  assert.equal(
+    typeof packageJson.dependencies["react-markdown"],
+    "string",
+    "react-markdown must remain a direct dependency",
+  );
+  assert.match(widget, /from ["']react-markdown["']/);
+  assert.match(widget, /<ReactMarkdown\b/);
+  assert.match(widget, /skipHtml/);
+  assert.match(widget, /allowedElements/);
+  assert.match(widget, /CHAT_MARKDOWN_COMPONENTS/);
+  assert.match(widget, /components=\{CHAT_MARKDOWN_COMPONENTS\}/);
+  assert.doesNotMatch(
+    widget,
+    /function renderInlineMarkdown|function renderAssistantMarkdown|renderAssistantMarkdown/,
+  );
+  assert.match(widget, /<strong/);
+  assert.match(widget, /<em/);
+  assert.match(widget, /<code/);
+  assert.match(widget, /list-decimal/);
+  assert.match(widget, /list-disc/);
+  assert.match(widget, /max-w-full overflow-x-auto/);
+  assert.match(widget, /bg-background\/70/);
+  assert.match(widget, /border border-border\/60/);
+  assert.match(widget, /focus-visible:ring-2 focus-visible:ring-ring/);
+  assert.doesNotMatch(widget, /dangerouslySetInnerHTML|rehype-raw|remark-gfm/);
   assert.match(
     widget,
     /text: t\(`chat\.prompts\.\$\{template\.key\}`\)/,
@@ -113,6 +148,8 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     Object.keys(id.chat),
     "EN/ID chat keys differ",
   );
+  assert.equal(en.chat.placeholder, "Break down a setup…");
+  assert.equal(id.chat.placeholder, "Bedah setup dulu…");
 
   const requiredKeys = [
     "title",
