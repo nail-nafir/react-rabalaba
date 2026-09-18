@@ -61,7 +61,7 @@ export const LearnSimulatorDialog: React.FC<LearnSimulatorDialogProps> = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-5xl lg:max-w-6xl w-[96vw] max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] sm:max-w-312 max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header styled identically to pattern detail dialog */}
         <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pr-6">

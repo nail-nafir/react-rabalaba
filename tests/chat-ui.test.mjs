@@ -17,6 +17,22 @@ const tradeDialog = readFileSync(
   join(root, "src/features/follow-trade/components/trade-detail-dialog.tsx"),
   "utf8",
 );
+const learnSimulator = readFileSync(
+  join(root, "src/features/learn/components/learn-simulator-dialog.tsx"),
+  "utf8",
+);
+const interactiveQuiz = readFileSync(
+  join(root, "src/features/learn/components/interactive-quiz.tsx"),
+  "utf8",
+);
+const journalSettings = readFileSync(
+  join(root, "src/features/management/components/journal-settings-dialog.tsx"),
+  "utf8",
+);
+const userTestimonial = readFileSync(
+  join(root, "src/features/testimonials/components/user-testimonial-dialog.tsx"),
+  "utf8",
+);
 const en = JSON.parse(
   readFileSync(join(root, "src/assets/locales/en.json"), "utf8"),
 );
@@ -58,13 +74,6 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /aria-describedby=/);
   assert.match(widget, /aria-hidden="true"/);
   assert.match(widget, /motion-reduce:/);
-  assert.match(
-    widget,
-    /100dvh-9\.5rem-env\(safe-area-inset-bottom\)/,
-    "mobile chat panel must reserve viewport and safe-area space",
-  );
-  assert.match(widget, /max-h-\[calc\(100dvh-9\.5rem-env\(safe-area-inset-bottom\)\)\]/);
-  assert.doesNotMatch(widget, /100dvh-7\.5rem/);
   assert.equal(
     typeof packageJson.dependencies["react-markdown"],
     "string",
@@ -117,8 +126,8 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /max-w-full/);
   assert.match(
     widget,
-    /w-\[calc\(100vw-2rem\)\][\s\S]*md:w-\[42rem\]/,
-    "Sensei panel must leave mobile viewport gutters and match detail dialog width",
+    /w-\[calc\(100vw-3rem\)\][\s\S]*md:w-170/,
+    "Sensei panel must align with the page px-6 mobile gutter and retain desktop width",
   );
   assert.match(
     assetDialog,
@@ -131,16 +140,104 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "Trade detail dialog is the width source of truth",
   );
   assert.match(
-    widget,
-    /h-\[min\(560px,calc\(100dvh-9\.5rem-env\(safe-area-inset-bottom\)\)\)\]/,
-    "Sensei panel must stay compact on mobile",
+    assetDialog,
+    /<DialogContent className="sm:max-w-2xl max-h-\[85vh\]/,
+    "Asset detail dialog is the height source of truth",
   );
   assert.match(
-    widget,
-    /sm:h-\[min\(600px,calc\(100dvh-6\.5rem\)\)\]/,
-    "Sensei panel must stay compact on desktop",
+    tradeDialog,
+    /<DialogContent className="sm:max-w-2xl max-h-\[85vh\]/,
+    "Trade detail dialog is the height source of truth",
   );
+  const popoverContentStart = widget.indexOf("<PopoverContent");
+  const panelCardStart = widget.indexOf("<Card", popoverContentStart);
+  const popoverShell = widget.slice(popoverContentStart, panelCardStart);
+  const panelCard = widget.slice(
+    panelCardStart,
+    widget.indexOf("<CardHeader", panelCardStart),
+  );
+  assert.match(
+    popoverShell,
+    /"w-auto max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0/,
+    "PopoverContent must remain a positioning-only shell",
+  );
+  assert.doesNotMatch(
+    popoverShell,
+    /w-\[calc\(100vw-|md:w-(?:166\.5|170)|max-h-/,
+    "PopoverContent must not own panel dimensions",
+  );
+  assert.match(
+    panelCard,
+    /w-\[calc\(100vw-3rem\)\]/,
+    "Sensei Card must own the mobile panel width",
+  );
+  assert.match(
+    panelCard,
+    /md:w-170/,
+    "Sensei Card must own the desktop panel width",
+  );
+  assert.doesNotMatch(
+    widget,
+    /md:w-166\.5/,
+    "old decimal desktop width must be removed",
+  );
+  assert.doesNotMatch(
+    widget,
+    /w-\[calc\(100vw-2\.375rem\)\]/,
+    "old mobile panel gutter must be removed",
+  );
+  assert.match(
+    learnSimulator,
+    /<DialogContent className="w-\[calc\(100%-2rem\)\] sm:w-\[calc\(100%-3rem\)\] sm:max-w-312 max-h-\[85vh\]/,
+    "Learn simulator must share Interactive Quiz sizing",
+  );
+  assert.match(
+    interactiveQuiz,
+    /<DialogContent className="w-\[calc\(100%-2rem\)\] sm:w-\[calc\(100%-3rem\)\] sm:max-w-312 max-h-\[85vh\]/,
+    "Interactive Quiz remains the Learn dialog sizing source",
+  );
+  assert.match(
+    journalSettings,
+    /className="sm:max-w-2xl max-h-\[85vh\] overflow-y-auto border border-border text-foreground"/,
+    "Journal settings must share Trade Detail height",
+  );
+  assert.match(
+    userTestimonial,
+    /className="sm:max-w-2xl max-h-\[85vh\] overflow-y-auto border border-border text-foreground"/,
+    "User Testimonial must share Trade Detail height",
+  );
+  assert.doesNotMatch(
+    learnSimulator,
+    /sm:max-w-5xl|lg:max-w-6xl|w-\[96vw\]/,
+    "Learn simulator must not retain its previous sizing",
+  );
+  assert.doesNotMatch(
+    userTestimonial,
+    /max-h-\[calc\(100vh-2rem\)\]|max-h-\[90dvh\]|sm:max-w-md/,
+    "User Testimonial must not retain its previous sizing",
+  );
+  assert.doesNotMatch(
+    journalSettings,
+    /max-h-\[90dvh\]/,
+    "Journal settings must not retain its previous height",
+  );
+  assert.match(panelCard, /h-110/);
+  assert.match(panelCard, /min-h-0[\s\S]*overflow-hidden/);
+  assert.match(panelCard, /sm:h-140/);
+  assert.doesNotMatch(
+    widget,
+    /<Sheet|SheetContent|SheetTrigger/,
+    "Sensei must not use Sheet after reverting to Popover",
+  );
+  assert.match(widget, /side="top"/);
   assert.match(widget, /align="center"/);
+  assert.match(widget, /sideOffset=\{12\}/);
+  assert.match(widget, /collisionPadding=\{12\}/);
+  assert.doesNotMatch(
+    widget,
+    /<PopoverPrimitive\.(Portal|Content)/,
+    "Sensei must continue using the shared Popover wrapper",
+  );
   assert.match(widget, /timeZone: "Asia\/Jakarta"/);
   assert.match(widget, /WIB/);
   assert.match(widget, /whitespace-nowrap/);
@@ -212,6 +309,12 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.match(messageRows, /UserRoundIcon/);
   assert.match(messageRows, /BotIcon/);
+  assert.match(
+    messageRows,
+    /<MessageContent\s+className=\{\s*message\.role === "assistant" \? "gap-0" : undefined\s*\}/,
+    "assistant message content must remove the extra footer gap so its avatar aligns with the bubble",
+  );
+  assert.match(messageRows, /<MessageFooter className="gap-1 pt-1">/);
   assert.doesNotMatch(
     widget,
     /MessageHeader/,
@@ -241,7 +344,12 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.match(loadingState, /<MessageContent className="w-fit">/);
   assert.match(loadingState, /<Marker[\s\S]*role="status"/);
-  assert.match(loadingState, /<Spinner[\s\S]*motion-reduce:animate-none/);
+  assert.match(
+    loadingState,
+    /<MarkerContent className="inline-block animate-shimmer rounded-md px-1 text-xs font-medium">/,
+    "thinking state must use the existing shimmer text treatment",
+  );
+  assert.doesNotMatch(loadingState, /<Spinner|<MarkerIcon/);
   assert.match(loadingState, /t\("chat\.thinking"\)/);
   const errorState = widget.slice(
     loadingStateEnd,
@@ -414,6 +522,45 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /\["INPUT", "TEXTAREA", "SELECT"\]\.includes\(target\.tagName\)/);
   assert.match(widget, /handleOpenChange\(!open\)/);
   assert.match(widget, /setDismissedRequestId\(researchCopilotRequestId\)/);
+  const openChangeStart = widget.indexOf("const handleOpenChange");
+  const openChangeEnd = widget.indexOf("useEffect(() => {", openChangeStart);
+  const openChange = widget.slice(openChangeStart, openChangeEnd);
+  assert.doesNotMatch(
+    openChange,
+    /clearResearchContext/,
+    "closing the panel must preserve the current chat context",
+  );
+  const newChatStart = widget.indexOf("function newChat() {");
+  const newChatEnd = widget.indexOf("function retryFrom", newChatStart);
+  const newChat = widget.slice(newChatStart, newChatEnd);
+  assert.match(newChat, /stop\(\)/);
+  assert.match(newChat, /setMessages\(\[\]\)/);
+  assert.match(newChat, /setDraft\(""\)/);
+  assert.match(newChat, /setError\(null\)/);
+  assert.match(newChat, /setFailedUserId\(null\)/);
+  assert.match(newChat, /setCopiedId\(null\)/);
+  assert.match(newChat, /setPromptTemplateConfig\(randomPromptTemplates\(\)\)/);
+  assert.match(newChat, /dispatch\(uiActions\.clearResearchContext\(\)\)/);
+  assert.match(widget, /\{messages\.length > 0 \|\| sessionContext \? \(/);
+  assert.match(widget, /onClick=\{newChat\}/);
+  const requestAssistantStart = widget.indexOf(
+    "async function requestAssistant",
+  );
+  const handleSubmitStart = widget.indexOf(
+    "function handleSubmit",
+    requestAssistantStart,
+  );
+  const requestAssistant = widget.slice(requestAssistantStart, handleSubmitStart);
+  assert.match(
+    requestAssistant,
+    /message\.id !== assistantId \|\| message\.content/,
+    "failed requests must remove only the empty assistant placeholder",
+  );
+  assert.doesNotMatch(
+    requestAssistant,
+    /setMessages\(\[\]\)/,
+    "failed requests must preserve existing chat history",
+  );
   assert.doesNotMatch(widget, /setOpen/);
   assert.doesNotMatch(widget, /event\.code !== "Space"|Control\+Shift\+Space Meta\+Shift\+Space/);
   assert.doesNotMatch(widget, /dangerouslySetInnerHTML|rehype-raw/);
@@ -427,7 +574,18 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /new Set\(PROMPT_TEMPLATE_CONFIG\.map\(\(\{ accent \}\) => accent\)\)/,
   );
   assert.match(widget, /return accents\.map\(\(accent\) =>/);
-  assert.match(widget, /useState\(\s*randomPromptTemplates,?\s*\)/);
+  assert.match(
+    widget,
+    /initialSnapshot\?\.promptTemplateConfig \?\? randomPromptTemplates\(\)/,
+  );
+  assert.match(widget, /type ChatSessionSnapshot =/);
+  assert.match(widget, /sessionStoreRef\.current\.snapshot = \{/);
+  assert.match(widget, /sessionStoreRef\.current\.snapshot = null/);
+  assert.match(
+    widget,
+    /snapshot\.messages\.filter\([\s\S]*message\.role === "user" \|\| message\.content/,
+    "closing a busy chat must not restore an empty assistant placeholder",
+  );
   assert.match(widget, /setPromptTemplateConfig\(randomPromptTemplates\(\)\)/);
   assert.match(widget, /promptTemplateConfig\.map\(/);
   assert.match(widget, /<EmptyHeader className="w-full items-start/);

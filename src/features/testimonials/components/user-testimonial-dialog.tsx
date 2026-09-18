@@ -212,7 +212,7 @@ function UserTestimonialDialogContent({
 
   return (
     <DialogContent
-      className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-md border border-border text-foreground"
+      className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
       showCloseButton={!isBusy}
     >
       <DialogHeader>

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -51,7 +52,7 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
+import { Marker, MarkerContent } from "@/components/ui/marker";
 import {
   Message,
   MessageAvatar,
@@ -264,6 +265,19 @@ function randomPromptTemplates() {
   });
 }
 
+type ChatSessionSnapshot = {
+  messages: ChatMessage[];
+  draft: string;
+  error: ChatError | null;
+  failedUserId: string | null;
+  promptTemplateConfig: ReturnType<typeof randomPromptTemplates>;
+};
+
+type ChatSessionStore = {
+  sessionId: number;
+  snapshot: ChatSessionSnapshot | null;
+};
+
 function errorKind(error: unknown): ChatError {
   const status =
     typeof error === "object" && error !== null && "status" in error
@@ -278,25 +292,59 @@ function errorKind(error: unknown): ChatError {
 function ChatSession({
   accessToken,
   terminalContext,
+  sessionStore,
 }: {
   accessToken: string;
   terminalContext: TerminalResearchContext | null;
+  sessionStore: ChatSessionStore;
 }) {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [draft, setDraft] = useState("");
+  const sessionStoreRef = useRef(sessionStore);
+  const initialSnapshot = sessionStore.snapshot;
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    () => initialSnapshot?.messages ?? [],
+  );
+  const [draft, setDraft] = useState(() => initialSnapshot?.draft ?? "");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<ChatError | null>(null);
-  const [failedUserId, setFailedUserId] = useState<string | null>(null);
+  const [error, setError] = useState<ChatError | null>(
+    () => initialSnapshot?.error ?? null,
+  );
+  const [failedUserId, setFailedUserId] = useState<string | null>(
+    () => initialSnapshot?.failedUserId ?? null,
+  );
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [promptTemplateConfig, setPromptTemplateConfig] = useState(
-    randomPromptTemplates,
+    () => initialSnapshot?.promptTemplateConfig ?? randomPromptTemplates(),
   );
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    sessionStoreRef.current.snapshot = {
+      messages,
+      draft,
+      error,
+      failedUserId,
+      promptTemplateConfig,
+    };
+  }, [draft, error, failedUserId, messages, promptTemplateConfig]);
+
+  useEffect(() => {
+    const store = sessionStoreRef.current;
+    return () => {
+      abortRef.current?.abort();
+      const snapshot = store.snapshot;
+      if (snapshot) {
+        store.snapshot = {
+          ...snapshot,
+          messages: snapshot.messages.filter(
+            (message) => message.role === "user" || message.content,
+          ),
+        };
+      }
+    };
+  }, []);
 
   async function requestAssistant(history: ChatMessage[]) {
     const controller = new AbortController();
@@ -389,11 +437,14 @@ function ChatSession({
 
   function newChat() {
     stop();
+    sessionStoreRef.current.snapshot = null;
     setMessages([]);
     setDraft("");
     setError(null);
     setFailedUserId(null);
+    setCopiedId(null);
     setPromptTemplateConfig(randomPromptTemplates());
+    dispatch(uiActions.clearResearchContext());
     inputRef.current?.focus();
   }
 
@@ -514,7 +565,7 @@ function ChatSession({
               </Badge>
             ) : null}
           </div>
-          {messages.length > 0 ? (
+          {messages.length > 0 || sessionContext ? (
             <Button
               type="button"
               variant="ghost"
@@ -619,7 +670,11 @@ function ChatSession({
                             <BotIcon className="size-3.5" aria-hidden="true" />
                           )}
                         </MessageAvatar>
-                        <MessageContent>
+                        <MessageContent
+                          className={
+                            message.role === "assistant" ? "gap-0" : undefined
+                          }
+                        >
                           <Bubble
                             align={message.role === "user" ? "end" : "start"}
                             variant={
@@ -709,13 +764,7 @@ function ChatSession({
                           role="status"
                           className="w-fit rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
                         >
-                          <MarkerIcon>
-                            <Spinner
-                              aria-hidden="true"
-                              className="size-3.5 text-primary motion-reduce:animate-none"
-                            />
-                          </MarkerIcon>
-                          <MarkerContent className="text-xs font-medium">
+                          <MarkerContent className="inline-block animate-shimmer rounded-md px-1 text-xs font-medium">
                             {t("chat.thinking")}
                           </MarkerContent>
                         </Marker>
@@ -858,6 +907,10 @@ export function ResearchCopilot() {
   );
   const [manualOpen, setManualOpen] = useState(false);
   const [dismissedRequestId, setDismissedRequestId] = useState(0);
+  const chatSessionStore = useMemo<ChatSessionStore>(
+    () => ({ sessionId: researchSessionId, snapshot: null }),
+    [researchSessionId],
+  );
   const open = manualOpen || researchCopilotRequestId > dismissedRequestId;
   const shortcutHint = t("chat.shortcut_hint");
   const loginPath = buildLoginRedirect(
@@ -964,13 +1017,13 @@ export function ResearchCopilot() {
           }
         }}
         className={cn(
-          "w-[calc(100vw-2rem)] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none md:w-2xl sm:max-h-[calc(100dvh-6.5rem)]",
+          "w-auto max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none",
           !open && "invisible pointer-events-none translate-y-2 opacity-0",
         )}
       >
         <Card
           id="rabalaba-sensei-panel"
-          className="flex h-[min(560px,calc(100dvh-9.5rem-env(safe-area-inset-bottom)))] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all sm:h-[min(600px,calc(100dvh-6.5rem))] sm:max-h-none"
+          className="flex w-[calc(100vw-3rem)] h-110 min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all md:w-170 sm:h-140"
         >
           <CardHeader className="shrink-0 border-b border-border bg-card px-3 py-2.5 md:px-5 md:py-3.5">
             <div className="flex items-center gap-2.5 md:gap-3">
@@ -1024,6 +1077,7 @@ export function ResearchCopilot() {
                 key={`${user.id}:${researchSessionId}`}
                 accessToken={session.access_token}
                 terminalContext={activeResearchContext}
+                sessionStore={chatSessionStore}
               />
             ) : (
               <Empty className="h-full px-6">

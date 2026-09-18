@@ -490,7 +490,7 @@ export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent
-        className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto border border-border text-foreground"
+        className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground"
         showCloseButton={!isSaving}
       >
         <DialogHeader>
