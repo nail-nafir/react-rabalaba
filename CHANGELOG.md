@@ -9,6 +9,16 @@
 
 ### Added
 
+- **Overhaul dokumentasi profesional (2026-09-16)**: struktur rename deskriptif bernomor (`docs/01-fsd-spesifikasi-fungsional/`, `02-tsd-spesifikasi-teknis/`, `03-testing-pengujian/`, `04-ops-operasional/`, `05-penjelasan-explainer/`), pola bilingual sekuensial ID-penuh-lalu-EN-penuh dengan panjang setara, gaya Gen-Z santai tanpa pronomina standalone, diagram Mermaid di 14 file (arsitektur, data-flow, ER schema, cache proxy, sequence 3 cron, trust boundary, pie coverage, flowchart metodologi), dan rewrite total SDD auto-journal mengikuti engine v5 + episodes + progressive exit v4.
+- **Professional documentation overhaul (2026-09-16)**: descriptive numbered structure (`docs/01-fsd-spesifikasi-fungsional/`, `02-tsd-spesifikasi-teknis/`, `03-testing-pengujian/`, `04-ops-operasional/`, `05-penjelasan-explainer/`), sequential full-ID-then-full-EN bilingual pattern with parity length, relaxed Gen-Z tone sans standalone pronouns, Mermaid diagrams in 14 files (architecture, data flow, schema ER, proxy cache, 3-cron sequence, trust boundary, coverage pie, methodology flowchart), plus total auto-journal SDD rewrite tracking engine v5 + episodes + progressive exit v4.
+
+### Fixed
+
+- **Angka kanonis dokumentasi dikunci**: 45 file / 422 case (`npm test`), 38 migrasi, 16 tabel, 28 RPC, `MIN_CALIBRATION_SAMPLE = 30`; durasi trial dinyatakan konfigurabel via `VITE_TRIAL_DURATION` (tanpa klaim fix 3/7 hari); typo flag `🇧🇧`/`🇮🇧` dikoreksi ke `🇺🇸`/`🇮🇩`; referensi `file:line` rapuh diganti format `file › fungsi`; email owner dan project ref hardcode disterilkan dari `supabase/README.md` menjadi placeholder.
+- **Documentation canonical figures locked**: 45 files / 422 cases (`npm test`), 38 migrations, 16 tables, 28 RPCs, `MIN_CALIBRATION_SAMPLE = 30`; trial length stated configurable via `VITE_TRIAL_DURATION` (no fixed 3/7-day claim); `🇧🇧`/`🇮🇧` flag typos corrected to `🇺🇸`/`🇮🇩`; brittle `file:line` refs replaced with `file › function` format; hardcoded owner email plus project ref sterilized from `supabase/README.md` into placeholders.
+
+### Added (previous)
+
 - **Dokumentasi lengkap** bilingual (ID/EN): `docs/{fsd,tsd,testing,ops,explainer}/` + index `docs/README.md`, termasuk coverage inventory 35 file/325 case dan engine-internals mendalam.
 - `README.md` project-specific (replace stock Vite template).
 - `CONTRIBUTING.md` — onboarding, convention, branching, PR flow, secret rules.

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -28,6 +29,7 @@ import {
   SquareIcon,
   TargetIcon,
   TrendingUpIcon,
+  UserRoundIcon,
   XIcon,
   ZapIcon,
 } from "lucide-react";
@@ -55,7 +57,6 @@ import {
   MessageAvatar,
   MessageContent,
   MessageFooter,
-  MessageHeader,
 } from "@/components/ui/message";
 import {
   MessageScroller,
@@ -95,6 +96,12 @@ const TERMINAL_BADGE_CLASSNAME = cn(
   BADGE.accent.text,
   BADGE.accent.border,
 );
+
+const CHAT_AVATAR_CLASSNAME =
+  "size-8 shrink-0 self-end rounded-full border border-border bg-muted text-muted-foreground";
+
+const CHAT_KEYCAP_CLASSNAME =
+  "rounded border border-border/80 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-muted-foreground";
 
 const PROMPT_TEMPLATE_CONFIG = [
   {
@@ -469,7 +476,7 @@ function ChatSession({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {messages.length > 0 || sessionContext ? (
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-muted/15 px-4 py-2">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-muted/15 px-3 py-1.5 md:px-4 md:py-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span
               className="size-1.5 rounded-full bg-primary"
@@ -528,7 +535,7 @@ function ChatSession({
           <MessageScroller aria-busy={busy}>
             <MessageScrollerViewport aria-label={t("chat.messages_label")}>
               <MessageScrollerContent
-                className="gap-4 p-4"
+                className="gap-3 p-3 md:gap-4 md:p-4"
                 role="log"
                 aria-live="polite"
                 aria-relevant="additions text"
@@ -546,14 +553,14 @@ function ChatSession({
                           </EmptyDescription>
                         </div>
                       </EmptyHeader>
-                      <EmptyContent className="mt-3 w-full items-stretch gap-2 px-1">
+                      <EmptyContent className="mt-2.5 w-full items-stretch gap-1.5 px-0 md:mt-3 md:gap-2 md:px-1">
                         {promptTemplates.map((template) => (
                           <Card
                             key={template.key}
                             role="button"
                             tabIndex={0}
                             aria-label={template.text}
-                            className="group w-full cursor-pointer select-none border border-border transition-all duration-200 hover:border-primary hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+                            className="group w-full cursor-pointer select-none rounded-lg border border-border py-0 transition-all duration-200 hover:border-primary hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none md:rounded-xl md:py-4"
                             onClick={() => applyPromptTemplate(template.text)}
                             onKeyDown={(event) => {
                               if (event.key === "Enter" || event.key === " ") {
@@ -562,11 +569,11 @@ function ChatSession({
                               }
                             }}
                           >
-                            <CardContent className="flex h-full items-center justify-between gap-3 px-4">
-                              <div className="flex min-w-0 flex-1 items-center gap-3">
+                            <CardContent className="flex min-h-12 h-full items-center justify-between gap-2.5 px-3 py-2 md:min-h-0 md:gap-3 md:px-4 md:py-0">
+                              <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
                                 <div
                                   className={cn(
-                                    "flex size-7.5 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                                    "flex size-7 shrink-0 items-center justify-center rounded-lg border transition-colors md:size-7.5",
                                     template.accent,
                                   )}
                                 >
@@ -580,7 +587,7 @@ function ChatSession({
                                 </span>
                               </div>
                               <ArrowUpRightIcon
-                                className="size-4 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-primary"
+                                className="size-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-primary md:size-4"
                                 aria-hidden="true"
                               />
                             </CardContent>
@@ -602,29 +609,24 @@ function ChatSession({
                         align={message.role === "user" ? "end" : "start"}
                         className="gap-2.5"
                       >
-                        {message.role === "assistant" ? (
-                          <MessageAvatar className="size-7 shrink-0 rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                        <MessageAvatar className={CHAT_AVATAR_CLASSNAME}>
+                          {message.role === "user" ? (
+                            <UserRoundIcon
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                          ) : (
                             <BotIcon className="size-3.5" aria-hidden="true" />
-                          </MessageAvatar>
-                        ) : null}
+                          )}
+                        </MessageAvatar>
                         <MessageContent>
-                          <MessageHeader className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                            {message.role === "user"
-                              ? t("chat.trader")
-                              : t("chat.sensei")}
-                          </MessageHeader>
                           <Bubble
+                            align={message.role === "user" ? "end" : "start"}
                             variant={
                               message.role === "user" ? "default" : "muted"
                             }
-                            className={cn(
-                              "rounded-2xl transition-all",
-                              message.role === "user"
-                                ? "rounded-tr-xs bg-primary text-primary-foreground shadow-xs font-normal"
-                                : "rounded-tl-xs border border-border/60 bg-muted/60 text-foreground shadow-xs backdrop-blur-xs",
-                            )}
                           >
-                            <BubbleContent className="min-w-0 wrap-break-word px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
+                            <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
                               {message.role === "assistant" ? (
                                 <div className="space-y-2 wrap-break-word">
                                   <ReactMarkdown
@@ -698,61 +700,60 @@ function ChatSession({
 
                 {waitingForFirstToken ? (
                   <MessageScrollerItem>
-                    <div className="flex items-center gap-2.5 px-1 py-1">
-                      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                    <Message className="gap-2.5 px-1 py-1">
+                      <MessageAvatar className={CHAT_AVATAR_CLASSNAME}>
                         <BotIcon className="size-3.5" aria-hidden="true" />
-                      </div>
-                      <Marker
-                        role="status"
-                        className="rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
-                      >
-                        <MarkerIcon>
-                          <Spinner
-                            aria-hidden="true"
-                            className="size-3.5 text-primary motion-reduce:animate-none"
-                          />
-                        </MarkerIcon>
-                        <MarkerContent className="text-xs font-medium">
-                          {t("chat.thinking")}
-                        </MarkerContent>
-                      </Marker>
-                    </div>
+                      </MessageAvatar>
+                      <MessageContent className="w-fit">
+                        <Marker
+                          role="status"
+                          className="w-fit rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <MarkerIcon>
+                            <Spinner
+                              aria-hidden="true"
+                              className="size-3.5 text-primary motion-reduce:animate-none"
+                            />
+                          </MarkerIcon>
+                          <MarkerContent className="text-xs font-medium">
+                            {t("chat.thinking")}
+                          </MarkerContent>
+                        </Marker>
+                      </MessageContent>
+                    </Message>
                   </MessageScrollerItem>
                 ) : null}
 
                 {error ? (
                   <MessageScrollerItem>
                     <Message className="gap-2.5">
-                      <MessageAvatar className="size-7 shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 text-destructive">
+                      <MessageAvatar className={CHAT_AVATAR_CLASSNAME}>
                         <BotIcon className="size-3.5" aria-hidden="true" />
                       </MessageAvatar>
                       <MessageContent>
-                        <Bubble
-                          variant="destructive"
-                          role="alert"
-                          className="rounded-2xl rounded-tl-xs"
-                        >
-                          <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm">
-                            {t(`chat.errors.${error}`)}
-                          </BubbleContent>
-                        </Bubble>
-                        {failedIndex >= 0 ? (
-                          <MessageFooter className="gap-1 pt-0.5">
+                        <div className="flex min-w-0 items-end gap-1.5">
+                          <Bubble variant="destructive" role="alert">
+                            <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm">
+                              {t(`chat.errors.${error}`)}
+                            </BubbleContent>
+                          </Bubble>
+                          {failedIndex >= 0 ? (
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
-                              className="h-7 min-h-7 gap-1.5 rounded-md px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive sm:min-h-0"
+                              size="icon-sm"
+                              className="size-7 shrink-0 rounded-md text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+                              aria-label={t("chat.retry")}
+                              title={t("chat.retry")}
                               onClick={() => retryFrom(failedIndex)}
                             >
                               <RefreshCcwIcon
                                 className="size-3.5"
                                 aria-hidden="true"
                               />
-                              {t("chat.retry")}
                             </Button>
-                          </MessageFooter>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </MessageContent>
                     </Message>
                   </MessageScrollerItem>
@@ -770,7 +771,7 @@ function ChatSession({
       </div>
 
       <form
-        className="w-full shrink-0 border-t border-border bg-card px-3.5 py-3 sm:px-4 sm:py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3"
+        className="w-full shrink-0 border-t border-border bg-card px-3 py-2 md:px-4 md:py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3"
         aria-busy={busy}
         onSubmit={handleSubmit}
       >
@@ -785,7 +786,7 @@ function ChatSession({
                 id="research-copilot-input"
                 rows={1}
                 maxLength={2_000}
-                className="max-h-32 min-h-10 overflow-y-auto px-3.5 py-2 text-sm leading-relaxed"
+                className="max-h-32 min-h-10 overflow-y-auto px-3 py-1.5 text-sm leading-relaxed md:px-3.5 md:py-2"
                 placeholder={t("chat.placeholder")}
                 aria-describedby="research-copilot-hint"
                 value={draft}
@@ -795,13 +796,18 @@ function ChatSession({
               />
               <InputGroupAddon
                 align="block-end"
-                className="flex items-center justify-between w-full border-t border-border px-3 py-1.5"
+                className="flex w-full items-center justify-between border-t border-border px-2.5 py-1 md:px-3 md:py-1.5"
               >
                 <InputGroupText
                   id="research-copilot-hint"
-                  className="sr-only text-[11px] text-muted-foreground/70 sm:not-sr-only sm:flex"
+                  aria-label={t("chat.composer_hint")}
+                  className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-[11px] text-muted-foreground/70"
                 >
-                  {t("chat.composer_hint")}
+                  <kbd className={CHAT_KEYCAP_CLASSNAME}>Enter</kbd>
+                  <span>{t("chat.composer_send")}</span>
+                  <span aria-hidden="true">·</span>
+                  <kbd className={CHAT_KEYCAP_CLASSNAME}>Shift + Enter</kbd>
+                  <span>{t("chat.composer_newline")}</span>
                 </InputGroupText>
                 {busy ? (
                   <InputGroupButton
@@ -850,7 +856,10 @@ export function ResearchCopilot() {
   const researchCopilotRequestId = useAppSelector(
     (state) => state.ui.researchCopilotRequestId,
   );
-  const [open, setOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [dismissedRequestId, setDismissedRequestId] = useState(0);
+  const open = manualOpen || researchCopilotRequestId > dismissedRequestId;
+  const shortcutHint = t("chat.shortcut_hint");
   const loginPath = buildLoginRedirect(
     location.pathname,
     location.search,
@@ -861,53 +870,87 @@ export function ResearchCopilot() {
     if (ready && !user) dispatch(uiActions.clearResearchContext());
   }, [dispatch, ready, user]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setManualOpen(nextOpen);
+      if (!nextOpen) setDismissedRequestId(researchCopilotRequestId);
+    },
+    [researchCopilotRequestId],
+  );
+
   useEffect(() => {
-    if (researchCopilotRequestId > 0) setOpen(true);
-  }, [researchCopilotRequestId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    const handleShortcut = (event: globalThis.KeyboardEvent) => {
+      const target = event.target;
+      const isEditable =
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+
+      if (
+        event.code !== "Slash" ||
+        !event.shiftKey ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.repeat ||
+        isEditable
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      handleOpenChange(!open);
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [handleOpenChange, open]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="ghost"
-          className="group fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-auto min-h-11 w-fit max-w-[calc(100vw-2rem)] cursor-pointer items-center gap-3 rounded-xl border border-border bg-card/45 px-3 py-2.5 text-card-foreground ring-1 ring-foreground/10 backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card/60 data-[state=open]:-translate-y-0.5 data-[state=open]:bg-card/60 active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none sm:right-6 sm:px-3.5 md:bottom-6"
-          aria-label={t("chat.open")}
-          title={t("chat.open")}
+          size="lg"
+          className="group fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 mx-auto flex h-11 min-h-11 min-w-0 w-fit max-w-[calc(100vw-2rem)] cursor-pointer items-center justify-start gap-2 rounded-xl border border-border bg-card/45 px-3 py-0 text-card-foreground ring-1 ring-foreground/10 backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card/60 data-[state=open]:-translate-y-0.5 data-[state=open]:bg-card/60 active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none md:bottom-6 md:h-9 md:min-h-0 md:min-w-90 md:w-fit md:justify-start md:gap-2 md:rounded-xl md:px-3.5"
+          aria-label={`${t("chat.open")}. ${shortcutHint}`}
+          title={`${t("chat.open")} · ${shortcutHint}`}
+          aria-keyshortcuts="Shift+/"
         >
-          <div className="relative flex size-8.5 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-primary shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground group-data-[state=open]:scale-105 group-data-[state=open]:border-primary group-data-[state=open]:bg-primary group-data-[state=open]:text-primary-foreground">
-            <BotIcon
-              className="size-4.5 shrink-0 transition-transform duration-300 group-hover:rotate-6 group-data-[state=open]:rotate-6"
-              aria-hidden="true"
-            />
-            <span className="absolute -top-0.5 -right-0.5 flex size-2">
+          <span className="relative inline-flex size-4.5 shrink-0 items-center justify-center">
+            <BotIcon className="size-4.5 shrink-0" aria-hidden="true" />
+            <span className="absolute -top-1 -right-1 flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
               <span className="relative inline-flex size-2 rounded-full border border-card bg-emerald-500" />
             </span>
-          </div>
-          <div className="flex min-w-0 flex-col items-start justify-center gap-0.5 text-left">
+          </span>
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 whitespace-nowrap">
+            <span className="min-w-0 truncate text-xs font-bold uppercase tracking-tight text-foreground transition-colors group-hover:text-white group-data-[state=open]:text-white">
+              RabaLaba
+            </span>
             <Badge
               variant="outline"
-              className={cn(
-                "rounded px-1.5 py-0 text-[9px] font-extrabold uppercase tracking-wider transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground group-data-[state=open]:border-primary group-data-[state=open]:bg-primary group-data-[state=open]:text-primary-foreground",
-                TERMINAL_BADGE_CLASSNAME,
-              )}
+              className={cn("shrink-0", TERMINAL_BADGE_CLASSNAME)}
             >
-              {t("chat.ask")}
+              {t("chat.sensei")}
             </Badge>
-            <span className="truncate text-xs font-bold tracking-tight text-foreground transition-colors group-hover:text-primary group-data-[state=open]:text-primary">
-              {t("chat.title")}
-            </span>
-          </div>
+          </span>
+          <kbd
+            className={cn(
+              "hidden shrink-0 md:ml-auto md:inline-flex",
+              CHAT_KEYCAP_CLASSNAME,
+            )}
+          >
+            {shortcutHint}
+          </kbd>
         </Button>
       </PopoverTrigger>
 
       <PopoverContent
         forceMount
         side="top"
-        align="end"
+        align="center"
         sideOffset={12}
         collisionPadding={12}
         aria-label={t("chat.title")}
@@ -921,30 +964,33 @@ export function ResearchCopilot() {
           }
         }}
         className={cn(
-          "w-[min(460px,calc(100vw-1rem))] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none sm:max-h-[calc(100dvh-6.5rem)]",
+          "w-[calc(100vw-2rem)] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] max-w-none overflow-visible border-0 bg-transparent p-0 shadow-none ring-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none md:w-2xl sm:max-h-[calc(100dvh-6.5rem)]",
           !open && "invisible pointer-events-none translate-y-2 opacity-0",
         )}
       >
         <Card
           id="rabalaba-sensei-panel"
-          className="flex h-[min(680px,calc(100dvh-9.5rem-env(safe-area-inset-bottom)))] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all sm:h-[min(720px,calc(100dvh-6.5rem))] sm:max-h-none"
+          className="flex h-[min(560px,calc(100dvh-9.5rem-env(safe-area-inset-bottom)))] max-h-[calc(100dvh-9.5rem-env(safe-area-inset-bottom))] min-h-0 flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card py-0 shadow-2xl transition-all sm:h-[min(600px,calc(100dvh-6.5rem))] sm:max-h-none"
         >
-          <CardHeader className="shrink-0 border-b border-border bg-card px-4 py-3 sm:px-5 sm:py-3.5">
-            <div className="flex items-center gap-3">
-              <div className="relative flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-inner">
-                <BotIcon className="size-4.5" aria-hidden="true" />
+          <CardHeader className="shrink-0 border-b border-border bg-card px-3 py-2.5 md:px-5 md:py-3.5">
+            <div className="flex items-center gap-2.5 md:gap-3">
+              <div className="relative flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-inner md:size-9">
+                <BotIcon className="size-4 md:size-4.5" aria-hidden="true" />
                 <span className="absolute -top-0.5 -right-0.5 flex size-2">
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
                   <span className="relative inline-flex size-2 rounded-full border border-card bg-emerald-500" />
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="truncate text-base font-bold tracking-tight text-foreground leading-snug">
-                    {t("chat.title")}
+                <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                  <CardTitle className="min-w-0 truncate text-base font-bold uppercase tracking-tight text-foreground leading-snug">
+                    RabaLaba
                   </CardTitle>
-                  <Badge variant="outline" className={TERMINAL_BADGE_CLASSNAME}>
-                    {t("chat.ask")}
+                  <Badge
+                    variant="outline"
+                    className={cn("shrink-0", TERMINAL_BADGE_CLASSNAME)}
+                  >
+                    {t("chat.sensei")}
                   </Badge>
                 </div>
                 <CardDescription className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
@@ -958,7 +1004,7 @@ export function ResearchCopilot() {
                 className="size-8 shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label={t("chat.close")}
                 title={t("chat.close")}
-                onClick={() => setOpen(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 <XIcon className="size-4" aria-hidden="true" />
               </Button>

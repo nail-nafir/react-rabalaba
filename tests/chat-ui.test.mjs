@@ -80,17 +80,23 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /activeResearchContext/);
   assert.match(widget, /researchCopilotRequestId/);
   assert.match(widget, /researchSessionId/);
+  assert.match(widget, /const \[manualOpen, setManualOpen\] = useState\(false\)/);
   assert.match(
     widget,
-    /useEffect\(\(\) => \{\s*if \(researchCopilotRequestId > 0\) setOpen\(true\);\s*\}, \[researchCopilotRequestId\]\)/,
-    "research requests must open the widget after the triggering layer closes",
+    /const \[dismissedRequestId, setDismissedRequestId\] = useState\(0\)/,
   );
+  assert.match(
+    widget,
+    /manualOpen \|\| researchCopilotRequestId > dismissedRequestId/,
+    "research requests must derive the widget open state without an effect",
+  );
+  assert.doesNotMatch(widget, /eslint-disable react-hooks\/set-state-in-effect/);
   assert.doesNotMatch(widget, /handledRequestId|openRequested/);
   assert.match(widget, /open=\{open\}/);
   assert.match(widget, /aria-hidden=\{!open\}/);
   assert.match(widget, /onFocusOutside=\{\(event\) => event\.preventDefault\(\)\}/);
   assert.match(widget, /!open && "invisible pointer-events-none/);
-  assert.match(widget, /onClick=\{\(\) => setOpen\(false\)\}/);
+  assert.match(widget, /onClick=\{\(\) => handleOpenChange\(false\)\}/);
   assert.match(widget, /terminalContext/);
   assert.match(widget, /sessionContext/);
   assert.match(widget, /context_label/);
@@ -109,6 +115,32 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "context badge must size to its content instead of filling the chat row",
   );
   assert.match(widget, /max-w-full/);
+  assert.match(
+    widget,
+    /w-\[calc\(100vw-2rem\)\][\s\S]*md:w-\[42rem\]/,
+    "Sensei panel must leave mobile viewport gutters and match detail dialog width",
+  );
+  assert.match(
+    assetDialog,
+    /<DialogContent className="sm:max-w-2xl/,
+    "Asset detail dialog is the width source of truth",
+  );
+  assert.match(
+    tradeDialog,
+    /<DialogContent className="sm:max-w-2xl/,
+    "Trade detail dialog is the width source of truth",
+  );
+  assert.match(
+    widget,
+    /h-\[min\(560px,calc\(100dvh-9\.5rem-env\(safe-area-inset-bottom\)\)\)\]/,
+    "Sensei panel must stay compact on mobile",
+  );
+  assert.match(
+    widget,
+    /sm:h-\[min\(600px,calc\(100dvh-6\.5rem\)\)\]/,
+    "Sensei panel must stay compact on desktop",
+  );
+  assert.match(widget, /align="center"/);
   assert.match(widget, /timeZone: "Asia\/Jakarta"/);
   assert.match(widget, /WIB/);
   assert.match(widget, /whitespace-nowrap/);
@@ -148,10 +180,170 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /bg-background\/70/);
   assert.match(widget, /border border-border\/60/);
   assert.match(widget, /focus-visible:ring-2 focus-visible:ring-ring/);
+  const messageRowsStart = widget.indexOf(
+    "{messages.map((message, index) =>",
+  );
+  const waitingStateStart = widget.indexOf(
+    "{waitingForFirstToken ? (",
+    messageRowsStart,
+  );
+  const messageRows = widget.slice(messageRowsStart, waitingStateStart);
+  assert.match(
+    messageRows,
+    /align=\{message\.role === "user" \? "end" : "start"\}/,
+    "bubbles must follow the same alignment as their Message row",
+  );
+  assert.match(messageRows, /variant=\{[\s\S]*message\.role/);
+  assert.match(
+    messageRows,
+    /<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/,
+    "all senders must use the circular MessageAvatar composition",
+  );
+  assert.match(
+    widget,
+    /const CHAT_AVATAR_CLASSNAME =\s*"size-8 shrink-0 self-end rounded-full border border-border bg-muted text-muted-foreground"/,
+    "sender avatars must share one neutral visual source of truth",
+  );
+  assert.equal(
+    widget.match(/<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/g)
+      ?.length,
+    3,
+    "normal, loading, and error messages must reuse the same avatar class",
+  );
+  assert.match(messageRows, /UserRoundIcon/);
+  assert.match(messageRows, /BotIcon/);
+  assert.doesNotMatch(
+    widget,
+    /MessageHeader/,
+    "chat rows should not render sender names",
+  );
+  assert.doesNotMatch(
+    messageRows,
+    /border-primary\/20|bg-primary\/10|border-destructive\/20|bg-destructive\/10/,
+    "sender avatars must not diverge by role",
+  );
+  assert.doesNotMatch(
+    messageRows,
+    /message\.role === "assistant" \? \(\s*<MessageAvatar/,
+    "user messages must not omit their avatar",
+  );
+  assert.doesNotMatch(
+    messageRows,
+    /rounded-lg|rounded-2xl|bg-muted\/60|backdrop-blur-xs|shadow-xs/,
+    "message bubbles must use the default Bubble surface instead of custom overrides",
+  );
+  const loadingStateEnd = widget.indexOf("{error ? (", waitingStateStart);
+  const loadingState = widget.slice(waitingStateStart, loadingStateEnd);
+  assert.match(loadingState, /<Message className="gap-2\.5 px-1 py-1">/);
+  assert.match(
+    loadingState,
+    /<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/,
+  );
+  assert.match(loadingState, /<MessageContent className="w-fit">/);
+  assert.match(loadingState, /<Marker[\s\S]*role="status"/);
+  assert.match(loadingState, /<Spinner[\s\S]*motion-reduce:animate-none/);
+  assert.match(loadingState, /t\("chat\.thinking"\)/);
+  const errorState = widget.slice(
+    loadingStateEnd,
+    widget.indexOf("</MessageScrollerContent>", loadingStateEnd),
+  );
+  assert.match(
+    errorState,
+    /<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/,
+    "error avatars must use the same circular MessageAvatar treatment",
+  );
+  const errorAvatarMarkup = errorState.slice(
+    errorState.indexOf("<MessageAvatar"),
+    errorState.indexOf("</MessageAvatar>") + "</MessageAvatar>".length,
+  );
+  assert.doesNotMatch(
+    errorAvatarMarkup,
+    /border-destructive\/20|bg-destructive\/10|text-destructive/,
+    "error avatar must reuse the sender avatar style",
+  );
+  assert.doesNotMatch(errorState, /rounded-2xl/);
+  assert.match(errorState, /<div className="flex min-w-0 items-end gap-1\.5">/);
+  assert.match(
+    errorState,
+    /<Bubble variant="destructive" role="alert">[\s\S]*<Button[\s\S]*size="icon-sm"[\s\S]*size-7 shrink-0[\s\S]*chat\.retry[\s\S]*RefreshCcwIcon/,
+    "error retry must be an icon button beside the destructive bubble",
+  );
+  assert.match(errorState, /aria-label=\{t\("chat\.retry"\)\}/);
+  assert.match(errorState, /title=\{t\("chat\.retry"\)\}/);
+  assert.match(errorState, /onClick=\{\(\) => retryFrom\(failedIndex\)\}/);
+  assert.doesNotMatch(
+    errorState,
+    /<MessageFooter[\s\S]*chat\.retry/,
+    "error retry must not render a visible text label or footer",
+  );
+  assert.doesNotMatch(
+    errorState,
+    />\s*\{t\("chat\.retry"\)\}\s*<\/Button>/,
+    "error retry must not render a visible text label",
+  );
   const triggerStart = widget.indexOf("<PopoverTrigger asChild>");
   const triggerEnd = widget.indexOf("</PopoverTrigger>", triggerStart);
   const trigger = widget.slice(triggerStart, triggerEnd);
   assert.match(trigger, /<Button\b/);
+  assert.match(trigger, /size="lg"/);
+  assert.match(trigger, /h-11/);
+  assert.match(trigger, /min-h-11/);
+  assert.match(trigger, /w-fit/);
+  assert.match(trigger, /max-w-\[calc\(100vw-2rem\)\]/);
+  assert.match(trigger, /px-3/);
+  assert.match(trigger, /md:h-9 md:min-h-0 md:min-w-(?:\[360px\]|90) md:w-fit/);
+  assert.match(trigger, /inset-x-0/);
+  assert.match(trigger, /mx-auto/);
+  assert.doesNotMatch(trigger, /h-11 w-11/);
+  assert.match(
+    trigger,
+    /flex min-w-0 flex-1 items-center gap-1\.5 whitespace-nowrap/,
+    "Sensei label cluster stays on one line across mobile and desktop",
+  );
+  assert.match(trigger, /RabaLaba/);
+  assert.match(
+    trigger,
+    /<span className="[^\"]*uppercase[^\"]*">\s*RabaLaba/,
+    "floating widget brand uses CSS uppercase",
+  );
+  assert.match(trigger, /<Badge\b/);
+  assert.match(trigger, /variant="outline"/);
+  assert.match(trigger, /TERMINAL_BADGE_CLASSNAME/);
+  assert.match(trigger, /chat\.sensei/);
+  assert.doesNotMatch(trigger, /chat\.ask/);
+  assert.match(trigger, /className={cn\(\s*"shrink-0"/);
+  assert.match(trigger, /<kbd[\s\S]*shortcutHint[\s\S]*<\/kbd>/);
+  assert.match(
+    widget,
+    /const CHAT_KEYCAP_CLASSNAME =\s*"rounded border border-border\/80 bg-background\/60 px-1\.5 py-0\.5 font-mono text-\[10px\] font-medium leading-none text-muted-foreground"/,
+  );
+  assert.equal(
+    widget.match(/className=\{CHAT_KEYCAP_CLASSNAME\}/g)?.length,
+    2,
+    "both composer keycaps must share one style source",
+  );
+  assert.match(
+    trigger,
+    /className=\{cn\([\s\S]*CHAT_KEYCAP_CLASSNAME/,
+    "floating widget keycap must reuse the composer keycap style",
+  );
+  assert.match(trigger, /aria-keyshortcuts="Shift\+\//);
+  assert.match(
+    trigger,
+    /hidden shrink-0 md:ml-auto md:inline-flex/,
+  );
+  assert.match(trigger, /group-hover:text-white/);
+  assert.match(trigger, /group-data-\[state=open\]:text-white/);
+  assert.doesNotMatch(
+    trigger,
+    /group-hover:text-primary|group-data-\[state=open\]:text-primary/,
+    "RabaLaba must not switch to the primary color on hover or open",
+  );
+  assert.doesNotMatch(
+    trigger,
+    /bg-primary\/15|border-primary\/30|shadow-xs|md:size-8\.5/,
+    "Sensei icon must not use the old visual container",
+  );
   for (const cardToken of [
     "rounded-xl",
     "border border-border",
@@ -170,22 +362,60 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /rounded-2xl|border-primary\/25|bg-card\/95|shadow-xl|shadow-2xl/,
     "Sensei trigger must not use the old pill/glow surface",
   );
+  assert.match(
+    widget,
+    /id="research-copilot-hint"[\s\S]*aria-label=\{t\("chat\.composer_hint"\)\}[\s\S]*flex min-w-0 flex-1 flex-wrap items-center gap-1/,
+    "composer hint stays accessible and wraps safely on narrow screens",
+  );
+  assert.match(widget, /<kbd className=\{CHAT_KEYCAP_CLASSNAME\}>Enter<\/kbd>/);
+  assert.match(
+    widget,
+    /<span>\{t\("chat\.composer_send"\)\}<\/span>/,
+  );
+  assert.match(
+    widget,
+    /<kbd className=\{CHAT_KEYCAP_CLASSNAME\}>Shift \+ Enter<\/kbd>/,
+  );
+  assert.match(
+    widget,
+    /<span>\{t\("chat\.composer_newline"\)\}<\/span>/,
+  );
   for (const openStateToken of [
     "data-[state=open]:-translate-y-0.5",
     "data-[state=open]:bg-card/60",
-    "group-data-[state=open]:scale-105",
-    "group-data-[state=open]:rotate-6",
-    "group-data-[state=open]:bg-primary",
-    "group-data-[state=open]:text-primary",
   ]) {
     assert.ok(
       trigger.includes(openStateToken),
       `Sensei trigger must mirror hover styling while open: ${openStateToken}`,
     );
   }
+  assert.doesNotMatch(
+    trigger,
+    /rotate/,
+    "Sensei trigger robot icon must not tilt or rotate",
+  );
   assert.match(trigger, /BotIcon/);
-  assert.match(trigger, /chat\.ask/);
-  assert.match(trigger, /chat\.title/);
+  assert.match(trigger, /chat\.open/);
+  const panelHeaderStart = widget.indexOf('<CardHeader className="shrink-0');
+  const panelHeaderEnd = widget.indexOf("</CardHeader>", panelHeaderStart);
+  const panelHeader = widget.slice(panelHeaderStart, panelHeaderEnd);
+  assert.match(panelHeader, /<CardTitle className="[^\"]*uppercase[^\"]*">[\s\S]*RabaLaba/);
+  assert.match(panelHeader, /<Badge[\s\S]*chat\.sensei/);
+  assert.match(panelHeader, /TERMINAL_BADGE_CLASSNAME/);
+  assert.doesNotMatch(panelHeader, /chat\.ask(?!_)/);
+  assert.match(widget, /event\.code !== "Slash"/);
+  assert.match(widget, /!event\.shiftKey/);
+  assert.match(widget, /event\.metaKey/);
+  assert.match(widget, /event\.ctrlKey/);
+  assert.match(widget, /event\.altKey/);
+  assert.match(widget, /event\.shiftKey/);
+  assert.match(widget, /event\.repeat/);
+  assert.match(widget, /target\.isContentEditable/);
+  assert.match(widget, /\["INPUT", "TEXTAREA", "SELECT"\]\.includes\(target\.tagName\)/);
+  assert.match(widget, /handleOpenChange\(!open\)/);
+  assert.match(widget, /setDismissedRequestId\(researchCopilotRequestId\)/);
+  assert.doesNotMatch(widget, /setOpen/);
+  assert.doesNotMatch(widget, /event\.code !== "Space"|Control\+Shift\+Space Meta\+Shift\+Space/);
   assert.doesNotMatch(widget, /dangerouslySetInnerHTML|rehype-raw/);
   assert.match(
     widget,
@@ -210,7 +440,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.doesNotMatch(promptSection, /<Button\b/);
   assert.match(
     promptSection,
-    /group w-full cursor-pointer select-none border border-border transition-all duration-200/,
+    /group w-full cursor-pointer select-none rounded-lg border border-border py-0 transition-all duration-200/,
   );
   assert.match(promptSection, /hover:border-primary hover:bg-muted\/50/);
   assert.match(promptSection, /role="button"/);
@@ -219,6 +449,9 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(promptSection, /event\.key === "Enter" \|\| event\.key === " "/);
   assert.match(promptSection, /template\.accent/);
   assert.match(promptSection, /justify-between/);
+  assert.match(promptSection, /min-h-12/);
+  assert.match(promptSection, /px-3 py-2/);
+  assert.match(promptSection, /md:px-4/);
   assert.match(promptSection, /<template\.icon/);
   const accentValues = [
     ...widget.matchAll(/accent:\s*(?:"([^"]+)"|\n\s*"([^"]+)")/g),
@@ -276,8 +509,12 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     assert.match(widget, new RegExp(`key: "${key}"`));
   }
   assert.doesNotMatch(widget, /panelRef|document\.activeElement/);
+  const widgetWithoutBrandCopy = widget
+    .replaceAll(/>\s*RabaLaba\s*<\/span>/g, "></span>")
+    .replace(/>\s*RabaLaba\s*<\/CardTitle>/, "></CardTitle>")
+    .replaceAll(/>\s*(?:Enter|Shift \+ Enter)\s*<\/kbd>/g, "></kbd>");
   assert.doesNotMatch(
-    widget,
+    widgetWithoutBrandCopy,
     />\s*[A-Za-z][^<{]*<\/[A-Za-z]/,
     "visible widget copy must come from translations",
   );
@@ -287,14 +524,23 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     Object.keys(id.chat),
     "EN/ID chat keys differ",
   );
-  assert.equal(en.chat.placeholder, "Break down a setup…");
-  assert.equal(id.chat.placeholder, "Bedah setup dulu…");
+  assert.equal(en.chat.placeholder, "Ask Sensei…");
+  assert.equal(id.chat.placeholder, "Tanya Sensei…");
+  assert.equal(en.chat.composer_send, "send");
+  assert.equal(id.chat.composer_send, "kirim");
+  assert.equal(en.chat.composer_newline, "new line");
+  assert.equal(id.chat.composer_newline, "baris baru");
+  assert.equal(en.chat.thinking, "Sensei is cooking up some insights…");
+  assert.equal(id.chat.thinking, "Sensei lagi ngeracik data…");
+  assert.equal(en.chat.shortcut_hint, "Shift + /");
+  assert.equal(id.chat.shortcut_hint, "Shift + /");
 
   const requiredKeys = [
     "title",
     "description",
     "badge",
     "open",
+    "shortcut_hint",
     "close",
     "new_chat",
     "empty_title",
@@ -302,12 +548,13 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "login_title",
     "login_description",
     "loading",
-    "trader",
     "sensei",
     "thinking",
     "input_label",
     "placeholder",
     "composer_hint",
+    "composer_send",
+    "composer_newline",
     "send",
     "stop",
     "copy",
@@ -355,6 +602,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "description",
   ];
   for (const path of pairedPaths) {
+    if (path === "placeholder") continue;
     const enCopy = getPath(en.chat, path);
     const idCopy = getPath(id.chat, path);
     const ratio = idCopy.length / enCopy.length;

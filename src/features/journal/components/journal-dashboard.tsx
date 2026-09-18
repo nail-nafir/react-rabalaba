@@ -851,16 +851,6 @@ export function JournalDashboard({
                       <span className="text-xl font-bold text-foreground mt-1 leading-none">
                         {stats.winRate.toFixed(0)}%
                       </span>
-                      <span className="text-[10px] text-muted-foreground mt-1 leading-none">
-                        {stats.winLoss.wins} {t("journal.profit_abbr")} /{" "}
-                        {stats.winLoss.losses} {t("journal.loss_abbr")}
-                        {stats.winLoss.breakevens > 0 && (
-                          <>
-                            {" "}/ {stats.winLoss.breakevens}{" "}
-                            {t("journal.breakeven_abbr")}
-                          </>
-                        )}
-                      </span>
                       <span className="text-[10px] text-foreground mt-0.5">
                         {stats.closed} {t("journal.transactions")}
                       </span>
