@@ -346,9 +346,10 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(loadingState, /<Marker[\s\S]*role="status"/);
   assert.match(
     loadingState,
-    /<MarkerContent className="inline-block animate-shimmer rounded-md px-1 text-xs font-medium">/,
-    "thinking state must use the existing shimmer text treatment",
+    /<MarkerContent className="inline-block shimmer rounded-md px-1 text-xs font-medium">/,
+    "thinking state must use the official shadcn shimmer text treatment",
   );
+  assert.doesNotMatch(loadingState, /animate-shimmer/);
   assert.doesNotMatch(loadingState, /<Spinner|<MarkerIcon/);
   assert.match(loadingState, /t\("chat\.thinking"\)/);
   const errorState = widget.slice(

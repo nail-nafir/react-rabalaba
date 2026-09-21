@@ -105,7 +105,7 @@ export function TestimonialSection() {
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-12 px-6">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
-          <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-xs animate-shimmer">
+          <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-xs animate-highlight">
             {t("testimonials.badge")}
           </Badge>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">

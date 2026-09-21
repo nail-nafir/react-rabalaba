@@ -31,7 +31,7 @@ test("skeleton keeps one shared animation and surface baseline", () => {
   assert.match(skeleton, /animate-pulse/);
   assert.match(skeleton, /rounded-md/);
   assert.match(skeleton, /bg-muted/);
-  assert.doesNotMatch(skeleton, /animate-shimmer/);
+  assert.doesNotMatch(skeleton, /animate-(?:shimmer|highlight)/);
 });
 
 test("shared table skeletons preserve their live column counts", () => {
@@ -105,8 +105,8 @@ test("page and dialog loading shells reserve their final content geometry", () =
   assert.match(tradeDialog, /h-6 w-20/);
 });
 
-test("data skeletons do not use decorative shimmer", () => {
-  assert.doesNotMatch(allSource, /<Skeleton[^>]*animate-shimmer/);
+test("data skeletons do not use decorative highlight animation", () => {
+  assert.doesNotMatch(allSource, /<Skeleton[^>]*animate-(?:shimmer|highlight)/);
 });
 
 test("unused shared card skeleton exports stay removed", () => {

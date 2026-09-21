@@ -137,18 +137,18 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 }
 
-/* Shimmer animation for badges */
-@keyframes shimmer {
+/* Highlight animation for badges */
+@keyframes highlight {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
 }
 
-.animate-shimmer {
+.animate-highlight {
     position: relative;
     overflow: hidden;
 }
 
-.animate-shimmer::after {
+.animate-highlight::after {
     content: "";
     position: absolute;
     top: 0;
@@ -161,7 +161,7 @@
         rgba(255, 255, 255, 0.4),
         transparent
     );
-    animation: shimmer 2s infinite;
+    animation: highlight 2s infinite;
 }
 
 /* Ticker animation */
@@ -186,7 +186,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .animate-shimmer::after,
+    .animate-highlight::after,
     .animate-ticker,
     .animate-pulse {
         animation: none;

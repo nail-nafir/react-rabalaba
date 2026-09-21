@@ -764,7 +764,7 @@ function ChatSession({
                           role="status"
                           className="w-fit rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
                         >
-                          <MarkerContent className="inline-block animate-shimmer rounded-md px-1 text-xs font-medium">
+                          <MarkerContent className="inline-block shimmer rounded-md px-1 text-xs font-medium">
                             {t("chat.thinking")}
                           </MarkerContent>
                         </Marker>

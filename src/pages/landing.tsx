@@ -98,7 +98,7 @@ export default function LandingPage() {
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-7xl mx-auto px-6">
           <div className="text-center space-y-8">
             <div className="flex justify-center">
-              <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm animate-shimmer">
+              <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm animate-highlight">
                 {t("hero.badge")}
               </Badge>
             </div>

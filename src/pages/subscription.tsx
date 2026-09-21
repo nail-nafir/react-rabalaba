@@ -305,7 +305,7 @@ function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
       )}
 
       {highlighted && (
-        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-shimmer shadow-md shadow-primary/25 border-0 z-30 opacity-50">
+        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-highlight shadow-md shadow-primary/25 border-0 z-30 opacity-50">
           <Skeleton className="h-2.5 w-16 bg-primary-foreground/20" />
         </Badge>
       )}
@@ -445,7 +445,7 @@ function SubscriptionCard({
       )}
 
       {highlighted && (
-        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-shimmer shadow-md shadow-primary/25 border-0 z-30">
+        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-highlight shadow-md shadow-primary/25 border-0 z-30">
           {t("subscription.most_popular")}
         </Badge>
       )}
