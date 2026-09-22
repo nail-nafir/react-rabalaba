@@ -57,7 +57,7 @@ export function JournalTerminalContent() {
           <EmptyContent>
             <Button
               type="button"
-              variant="outline"
+              size="lg"
               onClick={() => void period.refetch()}
               disabled={period.isFetching}
               aria-busy={period.isFetching}
@@ -87,7 +87,7 @@ export function JournalTerminalContent() {
           <EmptyContent>
             <Button
               type="button"
-              variant="outline"
+              size="lg"
               onClick={() => void refetch()}
               disabled={isFetching}
               aria-busy={isFetching}

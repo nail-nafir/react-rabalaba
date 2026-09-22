@@ -548,7 +548,7 @@ function TradeDetailReadyDialog({
               </EmptyHeader>
               <EmptyContent>
                 <Button
-                  variant="outline"
+                  size="lg"
                   onClick={() => {
                     if (retryChart) void retryChart();
                   }}

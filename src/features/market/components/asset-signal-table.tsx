@@ -904,8 +904,7 @@ export function AssetSignalTable() {
                     </EmptyHeader>
                     <EmptyContent>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="lg"
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                         aria-busy={isRefreshing}

@@ -573,8 +573,7 @@ export function RegisteredUsersTable() {
                       </EmptyHeader>
                       <EmptyContent>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          size="lg"
                           onClick={() => void refetchUsers()}
                         >
                           {t("common.retry")}

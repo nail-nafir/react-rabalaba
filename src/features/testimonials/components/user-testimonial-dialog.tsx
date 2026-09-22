@@ -275,7 +275,7 @@ function UserTestimonialDialogContent({
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" onClick={() => void refetch()}>
+            <Button size="lg" onClick={() => void refetch()}>
               {t("common.retry")}
             </Button>
           </EmptyContent>

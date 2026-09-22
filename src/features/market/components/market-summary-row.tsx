@@ -440,8 +440,7 @@ export function MarketSummaryRow() {
             </EmptyHeader>
             <EmptyContent>
               <Button
-                variant="outline"
-                size="sm"
+                size="lg"
                 onClick={() => {
                   void refetchAssets();
                   void refetchCryptoContext();

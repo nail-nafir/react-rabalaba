@@ -355,7 +355,7 @@ export function DisclaimerEditor() {
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" onClick={() => void retry()}>
+          <Button size="lg" onClick={() => void retry()}>
             <RefreshCw data-icon="inline-start" />
             {t("common.retry")}
           </Button>

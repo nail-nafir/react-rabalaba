@@ -306,8 +306,7 @@ export function AccessCodesTable() {
                     </EmptyHeader>
                     <EmptyContent>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="lg"
                         onClick={() => void refetchCodes()}
                       >
                         {t("common.retry")}

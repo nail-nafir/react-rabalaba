@@ -1,5 +1,21 @@
 export const MAX_RESEARCH_CONTEXT_CANDLES = 50;
 
+const RESEARCH_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("id-ID", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Asia/Jakarta",
+});
+
+export function formatResearchTimestamp(timestamp: number | null): string {
+  if (timestamp === null || !Number.isFinite(timestamp)) return "";
+
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : `${RESEARCH_TIMESTAMP_FORMATTER.format(date)} WIB`;
+}
+
 export type ResearchCandle = {
   open: number;
   high: number;

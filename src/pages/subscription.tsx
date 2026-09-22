@@ -114,7 +114,7 @@ export default function SubscriptionPage() {
                   </EmptyHeader>
                   <EmptyContent>
                     <Button
-                      variant="outline"
+                      size="lg"
                       onClick={() => void refetch()}
                       disabled={isFetching}
                       aria-busy={isFetching}
@@ -137,36 +137,34 @@ export default function SubscriptionPage() {
                 </Empty>
               ) : (
                 activePlans.map((plan) => {
-                    const cfg = ctaConfig(plan.cta_kind);
-                    const isExternal =
-                      !!plan.cta_link && /^https?:\/\//.test(plan.cta_link);
-                    return (
-                      <SubscriptionCard
-                        key={plan.slug}
-                        name={pickLocale(plan.name, lang, "") as string}
-                        price={pickLocale(plan.price, lang, "") as string}
-                        originalPrice={
-                          (pickLocale(plan.original_price, lang) as
-                            | string
-                            | undefined) || undefined
-                        }
-                        description={
-                          pickLocale(plan.description, lang, "") as string
-                        }
-                        features={
-                          pickLocale(plan.features, lang, []) as string[]
-                        }
-                        ctaText={t(cfg.labelKey)}
-                        ctaLink={plan.cta_link ?? "#"}
-                        isExternal={isExternal}
-                        icon={ICON_MAP[plan.icon ?? ""] ?? Terminal}
-                        highlighted={plan.highlighted}
-                        isPayment={plan.cta_kind === "payment"}
-                        isLicense={plan.cta_kind === "license"}
-                        btnIcon={cfg.icon}
-                      />
-                    );
-                  })
+                  const cfg = ctaConfig(plan.cta_kind);
+                  const isExternal =
+                    !!plan.cta_link && /^https?:\/\//.test(plan.cta_link);
+                  return (
+                    <SubscriptionCard
+                      key={plan.slug}
+                      name={pickLocale(plan.name, lang, "") as string}
+                      price={pickLocale(plan.price, lang, "") as string}
+                      originalPrice={
+                        (pickLocale(plan.original_price, lang) as
+                          | string
+                          | undefined) || undefined
+                      }
+                      description={
+                        pickLocale(plan.description, lang, "") as string
+                      }
+                      features={pickLocale(plan.features, lang, []) as string[]}
+                      ctaText={t(cfg.labelKey)}
+                      ctaLink={plan.cta_link ?? "#"}
+                      isExternal={isExternal}
+                      icon={ICON_MAP[plan.icon ?? ""] ?? Terminal}
+                      highlighted={plan.highlighted}
+                      isPayment={plan.cta_kind === "payment"}
+                      isLicense={plan.cta_kind === "license"}
+                      btnIcon={cfg.icon}
+                    />
+                  );
+                })
               )}
             </div>
           </section>
@@ -305,12 +303,12 @@ function PlanSkeleton({ highlighted }: { highlighted?: boolean }) {
       )}
 
       {highlighted && (
-        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-highlight shadow-md shadow-primary/25 border-0 z-30 opacity-50">
+        <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 shadow-md shadow-primary/25 border-0 z-30 opacity-50">
           <Skeleton className="h-2.5 w-16 bg-primary-foreground/20" />
         </Badge>
       )}
 
-      <CardHeader className="space-y-4 flex flex-col items-center w-full">
+      <CardHeader className="space-y-4 pt-4 flex flex-col items-center w-full">
         <div
           className={cn(
             "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-md",
@@ -445,12 +443,14 @@ function SubscriptionCard({
       )}
 
       {highlighted && (
-        <Badge className="absolute -top-6.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 animate-highlight shadow-md shadow-primary/25 border-0 z-30">
-          {t("subscription.most_popular")}
+        <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest rounded-full bg-primary text-primary-foreground px-3 py-0.5 shadow-md shadow-primary/25 border-0 z-30">
+          <span className="text-primary-foreground/60 shimmer">
+            {t("subscription.most_popular")}
+          </span>
         </Badge>
       )}
 
-      <CardHeader className="space-y-4 flex flex-col items-center w-full">
+      <CardHeader className="space-y-4 pt-4 flex flex-col items-center w-full">
         <div
           className={cn(
             "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-md",

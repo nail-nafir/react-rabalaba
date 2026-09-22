@@ -445,7 +445,7 @@ export default function AdminSystemPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" onClick={() => void refetchUsers()}>
+            <Button size="lg" onClick={() => void refetchUsers()}>
               <RefreshCw data-icon="inline-start" />
               {t("common.retry")}
             </Button>
@@ -862,7 +862,7 @@ export default function AdminSystemPage() {
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button variant="outline" onClick={() => void refetchTrades()}>
+                  <Button size="lg" onClick={() => void refetchTrades()}>
                     <RefreshCw data-icon="inline-start" />
                     {t("common.retry")}
                   </Button>
@@ -1053,7 +1053,7 @@ export default function AdminSystemPage() {
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button variant="outline" onClick={() => void refetchTrades()}>
+                  <Button size="lg" onClick={() => void refetchTrades()}>
                     <RefreshCw data-icon="inline-start" />
                     {t("common.retry")}
                   </Button>

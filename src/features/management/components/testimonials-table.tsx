@@ -584,7 +584,7 @@ export function TestimonialsTable() {
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button variant="outline" onClick={() => void refetch()}>
+              <Button size="lg" onClick={() => void refetch()}>
                 <RefreshCw data-icon="inline-start" />
                 {t("common.retry")}
               </Button>

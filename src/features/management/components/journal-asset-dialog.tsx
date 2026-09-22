@@ -199,8 +199,7 @@ export function JournalAssetDialog({ trigger }: JournalAssetDialogProps) {
                     </EmptyHeader>
                     <EmptyContent>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="lg"
                         onClick={() => void refetchSearch()}
                         disabled={searchFetching}
                         aria-busy={searchFetching}

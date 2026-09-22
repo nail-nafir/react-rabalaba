@@ -73,30 +73,46 @@ export function TestimonialSection() {
     };
   }, [api]);
 
-  const contributionButton = isAuthenticated ? (
-    <UserTestimonialDialog
-      trigger={
-        <Button
-          size="lg"
-          className="rounded-xl h-11 px-8 font-bold cursor-pointer"
-        >
-          <MessageSquareQuote className="mr-2 h-4 w-4" />
+  const contributionButton = (
+    variant: "default" | "secondary" = "default",
+  ) => {
+    const className =
+      variant === "secondary"
+        ? "cursor-pointer transition-all"
+        : "font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight";
+    const content = (
+      <>
+        <MessageSquareQuote className="h-3.5 w-3.5" />
+        <span className="text-xs font-bold tracking-tight">
           {t("testimonials.cta")}
-        </Button>
-      }
-    />
-  ) : (
-    <Link
-      to={TESTIMONIAL_LOGIN_PATH}
-      className={cn(
-        buttonVariants({ size: "lg" }),
-        "rounded-xl h-11 px-8 font-bold cursor-pointer",
-      )}
-    >
-      <MessageSquareQuote className="mr-2 h-4 w-4" />
-      {t("testimonials.cta")}
-    </Link>
-  );
+        </span>
+      </>
+    );
+
+    return isAuthenticated ? (
+      <UserTestimonialDialog
+        trigger={
+          <Button
+            size="lg"
+            variant={variant}
+            className={className}
+          >
+            {content}
+          </Button>
+        }
+      />
+    ) : (
+      <Link
+        to={TESTIMONIAL_LOGIN_PATH}
+        className={cn(
+          buttonVariants({ variant, size: "lg" }),
+          className,
+        )}
+      >
+        {content}
+      </Link>
+    );
+  };
 
   return (
     <section
@@ -105,8 +121,8 @@ export function TestimonialSection() {
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-12 px-6">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 text-center">
-          <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-xs animate-highlight">
-            {t("testimonials.badge")}
+          <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-xs">
+            <span className="shimmer">{t("testimonials.badge")}</span>
           </Badge>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">
             {t("testimonials.title")}
@@ -161,11 +177,11 @@ export function TestimonialSection() {
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="flex-row flex-wrap justify-center gap-2">
-                <Button variant="outline" onClick={() => void refetch()}>
+                <Button size="lg" onClick={() => void refetch()}>
                   <RefreshCw data-icon="inline-start" />
                   {t("common.retry")}
                 </Button>
-                {contributionButton}
+                {contributionButton("secondary")}
               </EmptyContent>
             </Empty>
           </Card>
@@ -181,7 +197,7 @@ export function TestimonialSection() {
                   {t("testimonials.empty_description")}
                 </EmptyDescription>
               </EmptyHeader>
-              <EmptyContent>{contributionButton}</EmptyContent>
+              <EmptyContent>{contributionButton()}</EmptyContent>
             </Empty>
           </Card>
         ) : (
@@ -326,7 +342,7 @@ export function TestimonialSection() {
               )}
             </Carousel>
 
-            <div className="flex justify-center">{contributionButton}</div>
+            <div className="flex justify-center">{contributionButton()}</div>
           </>
         )}
       </div>

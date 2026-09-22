@@ -458,8 +458,7 @@ export function SubscriptionPlansTable() {
                     </EmptyHeader>
                     <EmptyContent>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="lg"
                         onClick={() => void refetch()}
                       >
                         {t("common.retry")}

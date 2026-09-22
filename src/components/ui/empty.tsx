@@ -86,6 +86,9 @@ function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="empty-content"
       className={cn(
         "flex w-full max-w-sm min-w-0 flex-col items-center gap-2.5 text-sm text-balance",
+        "[&>[data-slot=button][data-variant=default]]:h-9 [&>[data-slot=button][data-variant=default]]:min-h-9 [&>[data-slot=button][data-variant=default]]:rounded-lg [&>[data-slot=button][data-variant=default]]:px-2.5 [&>[data-slot=button][data-variant=default]]:gap-1.5 [&>[data-slot=button][data-variant=default]]:text-xs [&>[data-slot=button][data-variant=default]]:font-bold [&>[data-slot=button][data-variant=default]]:tracking-tight [&>[data-slot=button][data-variant=default]]:transition-all [&>[data-slot=button][data-variant=default]]:cursor-pointer",
+        "[&>[data-slot=button][data-variant=secondary]]:h-9 [&>[data-slot=button][data-variant=secondary]]:min-h-9 [&>[data-slot=button][data-variant=secondary]]:rounded-lg [&>[data-slot=button][data-variant=secondary]]:px-2.5 [&>[data-slot=button][data-variant=secondary]]:gap-1.5 [&>[data-slot=button][data-variant=secondary]]:text-xs [&>[data-slot=button][data-variant=secondary]]:font-bold [&>[data-slot=button][data-variant=secondary]]:tracking-tight [&>[data-slot=button][data-variant=secondary]]:transition-all [&>[data-slot=button][data-variant=secondary]]:cursor-pointer",
+        "[&>a]:h-9 [&>a]:min-h-9 [&>a]:rounded-lg [&>a]:px-2.5 [&>a]:gap-1.5 [&>a]:text-xs [&>a]:font-bold [&>a]:tracking-tight [&>a]:transition-all [&>a]:cursor-pointer",
         className
       )}
       {...props}

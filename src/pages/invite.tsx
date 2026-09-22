@@ -164,7 +164,7 @@ export default function InvitePage() {
             </EmptyHeader>
             <EmptyContent>
               <Button
-                variant="outline"
+                size="lg"
                 onClick={() => navigate("/terminal")}
               >
                 {t("invite.go_terminal")}
@@ -193,7 +193,7 @@ export default function InvitePage() {
             </EmptyHeader>
             <EmptyContent>
               <Button
-                variant="outline"
+                size="lg"
                 onClick={() => void refetchPeek()}
                 disabled={isPeeking}
                 aria-busy={isPeeking}
@@ -223,7 +223,7 @@ export default function InvitePage() {
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button asChild variant="outline">
+              <Button asChild size="lg">
                 <Link to="/terminal">{t("invite.go_terminal")}</Link>
               </Button>
             </EmptyContent>

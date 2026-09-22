@@ -9,6 +9,20 @@ const widgetPath = join(
   "src/features/chat/components/research-copilot.tsx",
 );
 const widget = readFileSync(widgetPath, "utf8");
+const terminalContext = readFileSync(
+  join(root, "src/features/chat/terminal-context.ts"),
+  "utf8",
+);
+const globalCss = readFileSync(join(root, "src/index.css"), "utf8");
+const landing = readFileSync(join(root, "src/pages/landing.tsx"), "utf8");
+const subscription = readFileSync(
+  join(root, "src/pages/subscription.tsx"),
+  "utf8",
+);
+const testimonialSection = readFileSync(
+  join(root, "src/features/testimonials/components/testimonial-section.tsx"),
+  "utf8",
+);
 const assetDialog = readFileSync(
   join(root, "src/features/trading-plan/components/asset-detail-dialog.tsx"),
   "utf8",
@@ -238,8 +252,87 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /<PopoverPrimitive\.(Portal|Content)/,
     "Sensei must continue using the shared Popover wrapper",
   );
-  assert.match(widget, /timeZone: "Asia\/Jakarta"/);
-  assert.match(widget, /WIB/);
+  assert.match(widget, /formatResearchTimestamp/);
+  assert.match(
+    terminalContext,
+    /Intl\.DateTimeFormat\("id-ID",[\s\S]*timeZone: "Asia\/Jakarta"/,
+  );
+  assert.match(terminalContext, /WIB/);
+  assert.doesNotMatch(widget, /new Intl\.DateTimeFormat/);
+  assert.match(globalCss, /@import "shadcn\/tailwind\.css";/);
+  assert.doesNotMatch(globalCss, /@keyframes highlight|\.animate-highlight/);
+  assert.match(
+    landing,
+    /<span className="shimmer">\{t\("hero\.badge"\)\}<\/span>/,
+  );
+  assert.match(
+    testimonialSection,
+    /<span className="shimmer">\{t\("testimonials\.badge"\)\}<\/span>/,
+  );
+  assert.match(
+    subscription,
+    /<span className="text-primary-foreground\/60 shimmer">[\s\S]*\{t\("subscription\.most_popular"\)\}/,
+  );
+  assert.doesNotMatch(
+    `${landing}\n${testimonialSection}\n${subscription}`,
+    /tw-shimmer|aria-hidden="true" className="pointer-events-none absolute inset-0/,
+  );
+  assert.equal(
+    subscription.match(/<Badge className="absolute -top-2\.5/g)?.length,
+    2,
+    "subscription badges must straddle the card outline",
+  );
+  assert.doesNotMatch(subscription, /-top-6\.5/);
+  assert.doesNotMatch(
+    `${landing}\n${testimonialSection}\n${subscription}`,
+    /animate-highlight|@keyframes highlight/,
+  );
+  assert.match(
+    subscription,
+    /className="font-bold transition-all text-xs cursor-pointer items-center gap-1\.5 tracking-tight"/,
+    "subscription activation CTA remains the primary style source",
+  );
+  assert.match(
+    subscription,
+    /buttonVariants\(\{ variant: "secondary", size: "lg" \}\)[\s\S]*?"cursor-pointer transition-all group"/,
+    "subscription contact CTA remains the secondary style source",
+  );
+  assert.match(
+    landing,
+    /buttonVariants\(\{ size: "lg" \}\)[\s\S]*?"font-bold transition-all text-xs cursor-pointer items-center gap-1\.5 tracking-tight"[\s\S]*?<Monitor className="h-3\.5 w-3\.5" \/>[\s\S]*?<span>\{t\("common\.open_terminal"\)\}<\/span>/,
+    "market signal CTA must match the subscription primary style",
+  );
+  assert.match(
+    landing,
+    /buttonVariants\(\{ variant: "secondary", size: "lg" \}\)[\s\S]*?"cursor-pointer transition-all"[\s\S]*?<CreditCard className="h-3\.5 w-3\.5" \/>[\s\S]*?<span className="text-xs font-bold tracking-tight">[\s\S]*?\{t\("common\.view_plans"\)/,
+    "tier CTA must match the subscription secondary style",
+  );
+  assert.match(
+    testimonialSection,
+    /const className =\s*variant === "secondary"\s*\? "cursor-pointer transition-all"\s*: "font-bold transition-all text-xs cursor-pointer items-center gap-1\.5 tracking-tight"/,
+    "testimonial CTA must preserve subscription primary and secondary styles",
+  );
+  const contributionButton = testimonialSection.slice(
+    testimonialSection.indexOf("const contributionButton ="),
+    testimonialSection.indexOf("\n\n  return (", testimonialSection.indexOf("const contributionButton =")),
+  );
+  assert.equal(
+    contributionButton.match(/<MessageSquareQuote className="h-3\.5 w-3\.5" \/>/g)?.length,
+    1,
+    "authenticated and unauthenticated testimonial CTAs share a fixed-size icon",
+  );
+  assert.doesNotMatch(
+    contributionButton,
+    /transition-transform|group-hover:scale|variant === "secondary" \? \(/,
+    "testimonial CTA icons and labels must not scale or duplicate by variant",
+  );
+  assert.match(testimonialSection, /contributionButton\("secondary"\)/);
+  assert.match(testimonialSection, /contributionButton\(\)/);
+  assert.doesNotMatch(
+    `${landing}\n${testimonialSection}`,
+    /rounded-xl h-11 px-8|mr-2 h-4 w-4/,
+    "target CTAs must not retain the previous oversized button styling",
+  );
   assert.match(widget, /whitespace-nowrap/);
   assert.match(widget, /<ReactMarkdown\b/);
   assert.match(widget, /skipHtml/);
@@ -247,6 +340,15 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /allowedElements/);
   assert.match(widget, /CHAT_MARKDOWN_COMPONENTS/);
   assert.match(widget, /components=\{CHAT_MARKDOWN_COMPONENTS\}/);
+  assert.doesNotMatch(widget, /normalizeAssistantMarkdown/);
+  assert.match(widget, /\{message\.content\}\s*<\/ReactMarkdown>/);
+  assert.match(widget, /copyResponse\([\s\S]*message\.id,\s*message\.content,/);
+  assert.match(widget, /rel="noopener noreferrer"/);
+  assert.doesNotMatch(
+    widget,
+    /remark-math|rehype-katex|MathJax|katex/,
+    "chat markdown must not add a math renderer dependency",
+  );
   assert.doesNotMatch(
     widget,
     /function renderInlineMarkdown|function renderAssistantMarkdown|renderAssistantMarkdown/,
@@ -257,6 +359,12 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /<code/);
   assert.match(widget, /<blockquote/);
   assert.match(widget, /<hr/);
+  assert.match(widget, /type SubmitEvent,/);
+  assert.match(
+    widget,
+    /function handleSubmit\(event: SubmitEvent<HTMLFormElement>\)/,
+  );
+  assert.doesNotMatch(widget, /\bFormEvent\b/);
   assert.match(widget, /table:/);
   assert.match(widget, /min-w-md/);
   for (const element of [
@@ -293,19 +401,24 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(messageRows, /variant=\{[\s\S]*message\.role/);
   assert.match(
     messageRows,
-    /<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/,
-    "all senders must use the circular MessageAvatar composition",
+    /<MessageAvatar[\s\S]*message\.role === "user"[\s\S]*CHAT_USER_AVATAR_CLASSNAME[\s\S]*CHAT_ASSISTANT_AVATAR_CLASSNAME/,
+    "senders must use role-based circular MessageAvatar styles",
   );
   assert.match(
     widget,
-    /const CHAT_AVATAR_CLASSNAME =\s*"size-8 shrink-0 self-end rounded-full border border-border bg-muted text-muted-foreground"/,
-    "sender avatars must share one neutral visual source of truth",
+    /const CHAT_AVATAR_BASE_CLASSNAME =\s*"size-8 shrink-0 self-end rounded-full border"/,
   );
   assert.equal(
-    widget.match(/<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/g)
+    widget.match(/<MessageAvatar className=\{CHAT_ASSISTANT_AVATAR_CLASSNAME\}>/g)
       ?.length,
-    3,
-    "normal, loading, and error messages must reuse the same avatar class",
+    1,
+    "loading messages must reuse the assistant avatar class",
+  );
+  assert.match(widget, /border-primary\/30 bg-primary\/15 text-primary/);
+  assert.match(widget, /border-border bg-muted text-muted-foreground/);
+  assert.match(
+    widget,
+    /const CHAT_ERROR_AVATAR_CLASSNAME = cn\([\s\S]*border-destructive\/20 bg-destructive\/10 text-destructive dark:bg-destructive\/20/,
   );
   assert.match(messageRows, /UserRoundIcon/);
   assert.match(messageRows, /BotIcon/);
@@ -322,11 +435,6 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.doesNotMatch(
     messageRows,
-    /border-primary\/20|bg-primary\/10|border-destructive\/20|bg-destructive\/10/,
-    "sender avatars must not diverge by role",
-  );
-  assert.doesNotMatch(
-    messageRows,
     /message\.role === "assistant" \? \(\s*<MessageAvatar/,
     "user messages must not omit their avatar",
   );
@@ -340,15 +448,16 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(loadingState, /<Message className="gap-2\.5 px-1 py-1">/);
   assert.match(
     loadingState,
-    /<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/,
+    /<MessageAvatar className=\{CHAT_ASSISTANT_AVATAR_CLASSNAME\}>/,
   );
   assert.match(loadingState, /<MessageContent className="w-fit">/);
   assert.match(loadingState, /<Marker[\s\S]*role="status"/);
   assert.match(
     loadingState,
     /<MarkerContent className="inline-block shimmer rounded-md px-1 text-xs font-medium">/,
-    "thinking state must use the official shadcn shimmer text treatment",
+    "thinking state must use the official shadcn shimmer treatment",
   );
+  assert.doesNotMatch(loadingState, /animate-pulse/);
   assert.doesNotMatch(loadingState, /animate-shimmer/);
   assert.doesNotMatch(loadingState, /<Spinner|<MarkerIcon/);
   assert.match(loadingState, /t\("chat\.thinking"\)/);
@@ -358,17 +467,17 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.match(
     errorState,
-    /<MessageAvatar className=\{CHAT_AVATAR_CLASSNAME\}>/,
-    "error avatars must use the same circular MessageAvatar treatment",
+    /<MessageAvatar className=\{CHAT_ERROR_AVATAR_CLASSNAME\}>/,
+    "error avatars must use the destructive avatar treatment",
   );
   const errorAvatarMarkup = errorState.slice(
     errorState.indexOf("<MessageAvatar"),
     errorState.indexOf("</MessageAvatar>") + "</MessageAvatar>".length,
   );
-  assert.doesNotMatch(
+  assert.match(
     errorAvatarMarkup,
-    /border-destructive\/20|bg-destructive\/10|text-destructive/,
-    "error avatar must reuse the sender avatar style",
+    /className=\{CHAT_ERROR_AVATAR_CLASSNAME\}/,
+    "error avatar must use the destructive avatar class",
   );
   assert.doesNotMatch(errorState, /rounded-2xl/);
   assert.match(errorState, /<div className="flex min-w-0 items-end gap-1\.5">/);

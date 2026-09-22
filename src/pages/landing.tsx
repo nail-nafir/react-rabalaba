@@ -98,8 +98,8 @@ export default function LandingPage() {
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-7xl mx-auto px-6">
           <div className="text-center space-y-8">
             <div className="flex justify-center">
-              <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm animate-highlight">
-                {t("hero.badge")}
+              <Badge className="bg-primary/15 text-primary border-primary/30 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm">
+                <span className="shimmer">{t("hero.badge")}</span>
               </Badge>
             </div>
 
@@ -119,21 +119,23 @@ export default function LandingPage() {
                 to="/terminal"
                 className={cn(
                   buttonVariants({ size: "lg" }),
-                  "rounded-xl h-11 px-8 font-bold",
+                  "font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight",
                 )}
               >
-                <Monitor className="mr-2 h-4 w-4" />
-                {t("common.open_terminal")}
+                <Monitor className="h-3.5 w-3.5" />
+                <span>{t("common.open_terminal")}</span>
               </Link>
               <Link
                 to="/subscription"
                 className={cn(
                   buttonVariants({ variant: "secondary", size: "lg" }),
-                  "rounded-xl h-11 px-8 font-bold",
+                  "cursor-pointer transition-all",
                 )}
               >
-                <CreditCard className="mr-2 h-4 w-4" />
-                {t("common.view_plans")}
+                <CreditCard className="h-3.5 w-3.5" />
+                <span className="text-xs font-bold tracking-tight">
+                  {t("common.view_plans")}
+                </span>
               </Link>
             </div>
           </div>

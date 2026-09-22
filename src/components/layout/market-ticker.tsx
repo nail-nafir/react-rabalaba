@@ -10,83 +10,17 @@ export function MarketTicker({ showTitle = false }: { showTitle?: boolean }) {
   const { data: indices, isError: indicesError } = useMarketData(
     MARKET_INDICES.map((i) => i.symbol),
   );
-  const { data: crypto, isError: cryptoError } = useMarketData([
-    "BTC-USD",
-    "ETH-USD",
-    "SOL-USD",
-    "BNB-USD",
-  ]);
-  const { data: usStocks, isError: usError } = useMarketData([
-    "AAPL",
-    "MSFT",
-    "NVDA",
-    "TSLA",
-  ]);
-  const { data: idStocks, isError: idError } = useMarketData([
-    "BBCA.JK",
-    "BBRI.JK",
-    "BMRI.JK",
-    "TLKM.JK",
-  ]);
-
-  const isError = indicesError && cryptoError && usError && idError;
-
-  // Helper to format any asset into ticker format
-  const formatTickerItem = (
-    symbol: string,
-    name: string,
-    price: number,
-    change: number,
-    type: "index" | "stock" | "crypto",
-  ) => {
-    let displaySymbol = name || symbol;
-
-    // Standardize symbols for display if name is not helpful
-    if (type === "crypto" && displaySymbol.endsWith("-USD")) {
-      displaySymbol = displaySymbol.replace("-USD", "");
-    }
-    if (type === "stock" && displaySymbol.endsWith(".JK")) {
-      displaySymbol = displaySymbol.replace(".JK", "");
-    }
-
-    // Standardize price formatting
-    const displayPrice = formatPrice(
-      price,
-      symbol.endsWith(".JK") ? "id-stock" : undefined,
-    );
-
+  const tickerData = (indices ?? []).map((item) => {
+    const meta = MARKET_INDICES.find((index) => index.symbol === item.symbol);
     return {
-      symbol: displaySymbol,
-      price: displayPrice,
-      change,
+      symbol: meta?.name || item.name || item.symbol,
+      price: formatPrice(item.price),
+      change: item.changePercent,
     };
-  };
-
-  // Combine and format real data
-  const tickerData = [
-    ...(indices?.map((i) => {
-      const meta = MARKET_INDICES.find((m) => m.symbol === i.symbol);
-      return formatTickerItem(
-        i.symbol,
-        meta?.name || i.name,
-        i.price,
-        i.changePercent,
-        "index",
-      );
-    }) ?? []),
-    ...(usStocks?.map((s) =>
-      formatTickerItem(s.symbol, s.name, s.price, s.changePercent, "stock"),
-    ) ?? []),
-    ...(idStocks?.map((s) =>
-      formatTickerItem(s.symbol, s.name, s.price, s.changePercent, "stock"),
-    ) ?? []),
-    ...(crypto?.map((c) =>
-      formatTickerItem(c.symbol, c.name, c.price, c.changePercent, "crypto"),
-    ) ?? []),
-  ];
+  });
 
   // If error, hide everything
-  if (isError) return null;
+  if (indicesError) return null;
 
   const content = (
     <Card className="p-0 overflow-hidden bg-transparent border border-border">
@@ -106,38 +40,40 @@ export function MarketTicker({ showTitle = false }: { showTitle?: boolean }) {
             </div>
           </div>
         ) : (
-          <div className="animate-ticker flex whitespace-nowrap py-2">
-            {[...tickerData, ...tickerData, ...tickerData].map(
-              (item, i, arr) => (
-                <div
-                  key={`${item.symbol}-${i}`}
-                  className="inline-flex items-center gap-2 px-4 text-xs uppercase"
-                >
-                  <span className="font-medium text-foreground">
-                    {item.symbol}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {item.price}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-medium",
-                      item.change > 0
-                        ? "text-emerald-400"
-                        : item.change < 0
-                          ? "text-rose-400"
-                          : "text-zinc-400",
-                    )}
+          <div className="animate-ticker flex w-max whitespace-nowrap py-2">
+            {Array.from({ length: 2 }, (_, copyIndex) => (
+              <div
+                key={`ticker-copy-${copyIndex}`}
+                className="flex shrink-0"
+                aria-hidden={copyIndex > 0 ? true : undefined}
+              >
+                {tickerData.map((item) => (
+                  <div
+                    key={`${item.symbol}-${copyIndex}`}
+                    className="inline-flex items-center gap-2 px-4 text-xs uppercase"
                   >
-                    {item.change > 0 ? "+" : ""}
-                    {item.change.toFixed(2)}%
-                  </span>
-                  {i < arr.length - 1 && (
+                    <span className="font-medium text-foreground">
+                      {item.symbol}
+                    </span>
+                    <span className="text-muted-foreground">{item.price}</span>
+                    <span
+                      className={cn(
+                        "font-medium",
+                        item.change > 0
+                          ? "text-emerald-400"
+                          : item.change < 0
+                            ? "text-rose-400"
+                            : "text-zinc-400",
+                      )}
+                    >
+                      {item.change > 0 ? "+" : ""}
+                      {item.change.toFixed(2)}%
+                    </span>
                     <span className="ml-5 text-foreground">•</span>
-                  )}
-                </div>
-              ),
-            )}
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
       </CardContent>

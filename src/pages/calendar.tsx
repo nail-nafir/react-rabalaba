@@ -1018,8 +1018,7 @@ export default function CalendarPage() {
                 </EmptyHeader>
                 <EmptyContent>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={() => void refetch()}
                     disabled={isRefetching}
                     aria-busy={isRefetching}
@@ -1045,8 +1044,7 @@ export default function CalendarPage() {
                 {hasActiveFilters && (
                   <EmptyContent>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      size="lg"
                       onClick={handleResetFilters}
                     >
                       <RotateCcw data-icon="inline-start" />

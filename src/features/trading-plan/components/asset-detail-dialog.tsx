@@ -156,7 +156,7 @@ function AssetDetailErrorContent({
             {t("common.retry")}
           </Button>
           <DialogClose asChild>
-            <Button type="button" size="lg" variant="outline">
+            <Button type="button" size="lg" variant="secondary">
               {t("dialog.close_action")}
             </Button>
           </DialogClose>
@@ -639,7 +639,7 @@ function AssetDetailDialogContent({
                     <EmptyContent>
                       <Button
                         type="button"
-                        variant="outline"
+                        size="lg"
                         disabled={signalStateFetching}
                         aria-busy={signalStateFetching}
                         onClick={() => {
@@ -777,7 +777,7 @@ function AssetDetailDialogContent({
                     </EmptyHeader>
                     <EmptyContent>
                       <Button
-                        variant="outline"
+                        size="lg"
                         onClick={() => void retryBacktest()}
                         disabled={backtestFetching}
                         aria-busy={backtestFetching}
@@ -1287,7 +1287,7 @@ function AssetDetailDialogContent({
                       </EmptyHeader>
                       <EmptyContent>
                         <Button
-                          variant="outline"
+                          size="lg"
                           onClick={() => void handleRetrySmartMoney()}
                           disabled={isRetryingSmartMoney}
                           aria-busy={isRetryingSmartMoney}

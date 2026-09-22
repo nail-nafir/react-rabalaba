@@ -151,7 +151,7 @@ export default function LoginPage() {
           )}
         />
 
-        {/* Submit button with shimmer & micro-interaction active effect */}
+        {/* Submit button micro-interaction */}
         <Button
           type="submit"
           size="lg"

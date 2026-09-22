@@ -4,7 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type FormEvent,
+  type SubmitEvent,
   type KeyboardEvent,
 } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -85,7 +85,10 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { buildLoginRedirect } from "@/lib/auth-redirect";
 import { BADGE } from "@/constants/taxonomy/palette";
 import { streamChat, type ChatMessage } from "@/features/chat/chat-stream";
-import type { TerminalResearchContext } from "@/features/chat/terminal-context";
+import {
+  formatResearchTimestamp,
+  type TerminalResearchContext,
+} from "@/features/chat/terminal-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { uiActions } from "@/store/slices/ui-slice";
 
@@ -98,8 +101,20 @@ const TERMINAL_BADGE_CLASSNAME = cn(
   BADGE.accent.border,
 );
 
-const CHAT_AVATAR_CLASSNAME =
-  "size-8 shrink-0 self-end rounded-full border border-border bg-muted text-muted-foreground";
+const CHAT_AVATAR_BASE_CLASSNAME =
+  "size-8 shrink-0 self-end rounded-full border";
+const CHAT_USER_AVATAR_CLASSNAME = cn(
+  CHAT_AVATAR_BASE_CLASSNAME,
+  "border-primary/30 bg-primary/15 text-primary",
+);
+const CHAT_ASSISTANT_AVATAR_CLASSNAME = cn(
+  CHAT_AVATAR_BASE_CLASSNAME,
+  "border-border bg-muted text-muted-foreground",
+);
+const CHAT_ERROR_AVATAR_CLASSNAME = cn(
+  CHAT_AVATAR_BASE_CLASSNAME,
+  "border-destructive/20 bg-destructive/10 text-destructive dark:bg-destructive/20",
+);
 
 const CHAT_KEYCAP_CLASSNAME =
   "rounded border border-border/80 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-muted-foreground";
@@ -244,7 +259,7 @@ const CHAT_MARKDOWN_COMPONENTS: Components = {
     <a
       {...props}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       className="wrap-break-word text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
@@ -400,7 +415,7 @@ function ChatSession({
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = draft.trim();
     if (!content || busy) return;
@@ -514,14 +529,9 @@ function ChatSession({
         .join(" · ")
     : "";
   const contextTimestamp = sessionContext
-    ? `${new Intl.DateTimeFormat("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-        timeZone: "Asia/Jakarta",
-      }).format(
-        new Date(sessionContext.quoteTime ?? sessionContext.capturedAt),
-      )} WIB`
+    ? formatResearchTimestamp(
+        sessionContext.quoteTime ?? sessionContext.capturedAt,
+      )
     : "";
 
   return (
@@ -660,7 +670,13 @@ function ChatSession({
                         align={message.role === "user" ? "end" : "start"}
                         className="gap-2.5"
                       >
-                        <MessageAvatar className={CHAT_AVATAR_CLASSNAME}>
+                        <MessageAvatar
+                          className={
+                            message.role === "user"
+                              ? CHAT_USER_AVATAR_CLASSNAME
+                              : CHAT_ASSISTANT_AVATAR_CLASSNAME
+                          }
+                        >
                           {message.role === "user" ? (
                             <UserRoundIcon
                               className="size-3.5"
@@ -712,7 +728,10 @@ function ChatSession({
                                 aria-label={t("chat.copy")}
                                 title={t("chat.copy")}
                                 onClick={() =>
-                                  void copyResponse(message.id, message.content)
+                                  void copyResponse(
+                                    message.id,
+                                    message.content,
+                                  )
                                 }
                               >
                                 {copiedId === message.id ? (
@@ -756,7 +775,7 @@ function ChatSession({
                 {waitingForFirstToken ? (
                   <MessageScrollerItem>
                     <Message className="gap-2.5 px-1 py-1">
-                      <MessageAvatar className={CHAT_AVATAR_CLASSNAME}>
+                      <MessageAvatar className={CHAT_ASSISTANT_AVATAR_CLASSNAME}>
                         <BotIcon className="size-3.5" aria-hidden="true" />
                       </MessageAvatar>
                       <MessageContent className="w-fit">
@@ -776,7 +795,7 @@ function ChatSession({
                 {error ? (
                   <MessageScrollerItem>
                     <Message className="gap-2.5">
-                      <MessageAvatar className={CHAT_AVATAR_CLASSNAME}>
+                      <MessageAvatar className={CHAT_ERROR_AVATAR_CLASSNAME}>
                         <BotIcon className="size-3.5" aria-hidden="true" />
                       </MessageAvatar>
                       <MessageContent>
@@ -1091,7 +1110,7 @@ export function ResearchCopilot() {
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button asChild className="min-h-11">
+                  <Button asChild size="lg">
                     <Link to={loginPath}>{t("common.actions.login")}</Link>
                   </Button>
                 </EmptyContent>

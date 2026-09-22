@@ -85,8 +85,7 @@ export function UserPaymentDialog({ trigger }: UserPaymentDialogProps) {
                 </EmptyHeader>
                 <EmptyContent>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    size="lg"
                     onClick={() => void refetch()}
                     disabled={isFetching}
                     aria-busy={isFetching}
