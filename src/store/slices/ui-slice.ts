@@ -1,10 +1,14 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { TerminalResearchContext } from "@/features/chat/terminal-context";
+import type {
+  PageResearchContext,
+  TerminalResearchContext,
+} from "@/features/chat/terminal-context";
 
 interface UIState {
   // Global page loading (YouTube-style top bar)
   isPageLoading: boolean;
   activeResearchContext: TerminalResearchContext | null;
+  activePageContext: PageResearchContext | null;
   researchSessionId: number;
   researchCopilotRequestId: number;
 }
@@ -12,6 +16,7 @@ interface UIState {
 const initialState: UIState = {
   isPageLoading: false,
   activeResearchContext: null,
+  activePageContext: null,
   researchSessionId: 0,
   researchCopilotRequestId: 0,
 };
@@ -29,6 +34,12 @@ const uiSlice = createSlice({
     ) {
       state.activeResearchContext = action.payload;
     },
+    setPageResearchContext(
+      state,
+      action: PayloadAction<PageResearchContext | null>,
+    ) {
+      state.activePageContext = action.payload;
+    },
     openResearchCopilot(
       state,
       action: PayloadAction<TerminalResearchContext>,
@@ -39,6 +50,7 @@ const uiSlice = createSlice({
     },
     clearResearchContext(state) {
       state.activeResearchContext = null;
+      state.activePageContext = null;
     },
   },
 });

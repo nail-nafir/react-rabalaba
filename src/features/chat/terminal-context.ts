@@ -25,6 +25,69 @@ export type ResearchCandle = {
   timestamp: number;
 };
 
+export type PageResearchContext =
+  | {
+      kind: "calendar";
+      selectedDate: string | null;
+      filters: {
+        impact: string;
+        currency: string;
+        asset: string;
+        timeHorizon: string;
+        search: string;
+      };
+      events: Array<{
+        title: string;
+        country: string;
+        date: string;
+        time: string;
+        impact: string;
+        forecast?: string;
+        previous?: string;
+        actual?: string;
+        assetRelevance: string[];
+      }>;
+    }
+  | {
+      kind: "calculator";
+      currency: "USD" | "IDR";
+      direction: "long" | "short" | "invalid";
+      entry: number;
+      stopLoss: number;
+      target: number;
+      riskPercent: number;
+      riskRewardRatio: number;
+      stopPercentDistance: number;
+      targetPercentDistance: number;
+      breakevenWinrate: number;
+      isValid: boolean;
+    }
+  | {
+      kind: "learn";
+      activeTab: string;
+      category: string;
+      bias: string;
+      search: string;
+      topics: string[];
+    };
+
+export type MarketResearchContext = {
+  source: "Yahoo Finance";
+  symbol: string;
+  name: string;
+  assetType: string;
+  price: number;
+  changePercent: number;
+  quoteTime: number | null;
+  capturedAt: number;
+  stale: boolean;
+  timeframe: string;
+  signalStatus?: string;
+  outlook: unknown;
+  tradingPlan: unknown;
+  recentCandles: ResearchCandle[];
+};
+
 export type ResearchPosition = {
   id: string;
   signal: string;

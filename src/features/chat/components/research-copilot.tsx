@@ -1,4 +1,5 @@
 import {
+  Children,
   useCallback,
   useEffect,
   useMemo,
@@ -6,11 +7,22 @@ import {
   useState,
   type SubmitEvent,
   type KeyboardEvent,
+  isValidElement,
+  type ReactNode,
 } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -30,7 +42,6 @@ import {
   SquareIcon,
   TargetIcon,
   TrendingUpIcon,
-  UserRoundIcon,
   XIcon,
   ZapIcon,
 } from "lucide-react";
@@ -55,7 +66,6 @@ import {
 import { Marker, MarkerContent } from "@/components/ui/marker";
 import {
   Message,
-  MessageAvatar,
   MessageContent,
   MessageFooter,
 } from "@/components/ui/message";
@@ -87,8 +97,13 @@ import { BADGE } from "@/constants/taxonomy/palette";
 import { streamChat, type ChatMessage } from "@/features/chat/chat-stream";
 import {
   formatResearchTimestamp,
+  type MarketResearchContext,
+  type PageResearchContext,
   type TerminalResearchContext,
 } from "@/features/chat/terminal-context";
+import {
+  refreshMarketContext,
+} from "@/features/chat/market-context";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { uiActions } from "@/store/slices/ui-slice";
 
@@ -101,23 +116,11 @@ const TERMINAL_BADGE_CLASSNAME = cn(
   BADGE.accent.border,
 );
 
-const CHAT_AVATAR_BASE_CLASSNAME =
-  "size-8 shrink-0 self-end rounded-full border";
-const CHAT_USER_AVATAR_CLASSNAME = cn(
-  CHAT_AVATAR_BASE_CLASSNAME,
-  "border-primary/30 bg-primary/15 text-primary",
-);
-const CHAT_ASSISTANT_AVATAR_CLASSNAME = cn(
-  CHAT_AVATAR_BASE_CLASSNAME,
-  "border-border bg-muted text-muted-foreground",
-);
-const CHAT_ERROR_AVATAR_CLASSNAME = cn(
-  CHAT_AVATAR_BASE_CLASSNAME,
-  "border-destructive/20 bg-destructive/10 text-destructive dark:bg-destructive/20",
-);
-
 const CHAT_KEYCAP_CLASSNAME =
   "rounded border border-border/80 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none text-muted-foreground";
+
+const CHAT_GHOST_CONTROL_CLASSNAME =
+  "rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 motion-reduce:transition-none";
 
 const PROMPT_TEMPLATE_CONFIG = [
   {
@@ -196,7 +199,268 @@ const CHAT_MARKDOWN_ALLOWED_ELEMENTS = [
   "a",
 ] as const;
 
-const CHAT_MARKDOWN_COMPONENTS: Components = {
+function markdownText(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+      return isValidElement<{ children?: ReactNode }>(child)
+        ? markdownText(child.props.children)
+        : "";
+    })
+    .join("");
+}
+
+type ChartSpec = {
+  type: "price" | "relativePerformance";
+  symbols: string[];
+};
+
+function parseChartSpec(source: string): ChartSpec | null {
+  try {
+    const value: unknown = JSON.parse(source);
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      Array.isArray(value) ||
+      !("type" in value) ||
+      !("symbols" in value) ||
+      !["price", "relativePerformance"].includes(String(value.type)) ||
+      !Array.isArray(value.symbols) ||
+      value.symbols.length < (value.type === "price" ? 1 : 2) ||
+      (value.type === "price" && value.symbols.length !== 1) ||
+      value.symbols.length > 3 ||
+      !value.symbols.every(
+        (symbol) =>
+          typeof symbol === "string" && /^[A-Za-z0-9._^=-]{1,64}$/.test(symbol),
+      )
+    ) return null;
+    return value as ChartSpec;
+  } catch {
+    return null;
+  }
+}
+
+type ChartAsset = {
+  symbol: string;
+  timeframe: string;
+  stale: boolean;
+  recentCandles: TerminalResearchContext["recentCandles"];
+};
+
+function buildChartData(
+  spec: ChartSpec,
+  terminalContext: TerminalResearchContext | null,
+  marketContexts: MarketResearchContext[],
+) {
+  const assets: ChartAsset[] = [
+    ...(terminalContext
+      ? [{
+          ...terminalContext,
+          stale:
+            Date.now() - (terminalContext.quoteTime ?? terminalContext.capturedAt) >
+            (terminalContext.assetType === "crypto" ? 6 : 72) * 60 * 60_000,
+        }]
+      : []),
+    ...marketContexts,
+  ];
+  const selected = spec.symbols.map((symbol) =>
+    assets.find((asset) => asset.symbol.toUpperCase() === symbol.toUpperCase()),
+  );
+  if (selected.some((asset) => !asset || asset.recentCandles.length < 2)) {
+    return null;
+  }
+  const resolved = selected as ChartAsset[];
+  if (
+    spec.type === "relativePerformance" &&
+    new Set(resolved.map((asset) => asset.timeframe)).size !== 1
+  ) return null;
+
+  const closesByTimestamp = resolved.map(
+    (asset) => new Map(asset.recentCandles.map((candle) => [candle.timestamp, candle.close])),
+  );
+  const timestamps = resolved[0].recentCandles
+    .map((candle) => candle.timestamp)
+    .filter((timestamp) =>
+      spec.type === "price" || closesByTimestamp.every((series) => series.has(timestamp)),
+    );
+  if (timestamps.length < 2) return null;
+
+  const baselines = closesByTimestamp.map((series) => series.get(timestamps[0])!);
+  const data = timestamps.map((timestamp, index) => {
+    const point: Record<string, string | number> = {
+      index: index + 1,
+      time: formatResearchTimestamp(timestamp * 1_000),
+    };
+    resolved.forEach((asset, assetIndex) => {
+      const value = closesByTimestamp[assetIndex].get(timestamp)!;
+      point[asset.symbol] =
+        spec.type === "relativePerformance"
+          ? ((value / baselines[assetIndex]) - 1) * 100
+          : value;
+    });
+    return point;
+  });
+  return { assets: resolved, data, stale: resolved.some((asset) => asset.stale) };
+}
+
+function AssistantChart({
+  spec,
+  terminalContext,
+  marketContexts,
+}: {
+  spec: ChartSpec | null;
+  terminalContext: TerminalResearchContext | null;
+  marketContexts: MarketResearchContext[];
+}) {
+  const { t } = useTranslation();
+  const model = spec
+    ? buildChartData(spec, terminalContext, marketContexts)
+    : null;
+  if (!spec || !model) {
+    return (
+      <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+        {t("chat.chart_unavailable")}
+      </div>
+    );
+  }
+
+  const title =
+    spec.type === "price"
+      ? t("chat.chart_price")
+      : t("chat.chart_relative");
+  const colors = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)"];
+  const formatter = (value: number) =>
+    spec.type === "relativePerformance"
+      ? `${value > 0 ? "+" : ""}${value.toFixed(1)}%`
+      : new Intl.NumberFormat(undefined, { maximumSignificantDigits: 6 }).format(value);
+
+  return (
+    <figure className="min-w-0 overflow-hidden rounded-lg border border-border bg-background/50 p-3">
+      <figcaption className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
+        <span>{title}</span>
+        {model.stale ? (
+          <Badge variant="outline" className="border-amber-500/30 text-amber-500">
+            {t("chat.stale_data")}
+          </Badge>
+        ) : null}
+      </figcaption>
+      <div className="h-44 min-w-0 sm:h-52" role="img" aria-label={`${title}: ${spec.symbols.join(", ")}`}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <LineChart data={model.data} accessibilityLayer>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="time" minTickGap={28} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
+            <YAxis width={48} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickFormatter={(value) => formatter(Number(value))} />
+            <Tooltip formatter={(value) => formatter(Number(value))} labelFormatter={(_, payload) => String(payload?.[0]?.payload?.time ?? "")} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+            {model.assets.map((asset, index) => (
+              <Line
+                key={asset.symbol}
+                type="monotone"
+                dataKey={asset.symbol}
+                name={asset.symbol}
+                stroke={colors[index % colors.length]}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 3 }}
+                isAnimationActive={false}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        {model.assets.map((asset, index) => (
+          <span key={asset.symbol} className="inline-flex items-center gap-1.5">
+            <span className="size-2 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+            {asset.symbol}
+          </span>
+        ))}
+      </div>
+      <p className="sr-only">
+        {model.assets.map((asset) => {
+          const candle = asset.recentCandles.at(-1);
+          return `${asset.symbol}: ${candle?.close ?? ""}`;
+        }).join(". ")}
+      </p>
+    </figure>
+  );
+}
+
+function AssistantCodeBlock({
+  children,
+  terminalContext,
+  marketContexts,
+}: {
+  children: ReactNode;
+  terminalContext: TerminalResearchContext | null;
+  marketContexts: MarketResearchContext[];
+}) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const code = Children.toArray(children).find(isValidElement);
+  const props = code?.props as { className?: string; children?: ReactNode } | undefined;
+  const source = markdownText(props?.children ?? children).replace(/\n$/, "");
+  const language = props?.className?.match(/language-([\w-]+)/)?.[1] ?? "";
+  if (language === "chart") {
+    return (
+      <AssistantChart
+        spec={parseChartSpec(source)}
+        terminalContext={terminalContext}
+        marketContexts={marketContexts}
+      />
+    );
+  }
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(source);
+      setCopied(true);
+      toast.success(t("chat.copied"));
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(t("chat.copy_failed"));
+    }
+  }
+
+  return (
+    <div className="max-w-full overflow-hidden rounded-lg border border-border/60 bg-background/70">
+      <div className="flex min-h-11 items-center justify-between gap-2 border-b border-border/60 px-3">
+        <span className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {language === "diagram" ? t("chat.diagram") : language || t("chat.code")}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "min-h-11 min-w-11 shrink-0 gap-1.5 px-2 text-xs",
+            CHAT_GHOST_CONTROL_CLASSNAME,
+          )}
+          aria-label={t("chat.copy")}
+          onClick={() => void copyCode()}
+        >
+          {copied ? <CheckIcon className="size-3.5" aria-hidden="true" /> : <CopyIcon className="size-3.5" aria-hidden="true" />}
+          <span>{copied ? t("chat.copied") : t("chat.copy")}</span>
+        </Button>
+      </div>
+      <pre className="max-w-full overflow-x-auto p-3 text-[0.9em] leading-relaxed">
+        <code className="font-mono">{source}</code>
+      </pre>
+    </div>
+  );
+}
+
+function createChatMarkdownComponents(
+  terminalContext: TerminalResearchContext | null,
+  marketContexts: MarketResearchContext[],
+): Components {
+  const symbols = new Set(
+    [terminalContext?.symbol, ...marketContexts.map((context) => context.symbol)]
+      .filter(Boolean)
+      .map((symbol) => symbol!.toUpperCase()),
+  );
+  const flatComponents: Components = {
   h1: ({ children }) => (
     <h1 className="text-sm font-semibold leading-snug text-foreground">
       {children}
@@ -238,15 +502,35 @@ const CHAT_MARKDOWN_COMPONENTS: Components = {
     </blockquote>
   ),
   hr: () => <hr className="border-border" />,
-  code: ({ children }) => (
-    <code className="rounded bg-background/70 px-1 py-0.5 font-mono text-[0.9em]">
-      {children}
-    </code>
-  ),
+  code: ({ children, className }) => {
+    if (className) return <code className={className}>{children}</code>;
+    const value = markdownText(children).trim();
+    const normalized = value.replace(/^\$/, "").toUpperCase();
+    const isTicker = symbols.has(normalized);
+    const isStatus = /^(LONG|SHORT|BUY|SELL|TP\d*|SL|TIER [A-D]|BULLISH|BEARISH|OVERBOUGHT|OVERSOLD|SUPPORT|RESISTANCE)$/i.test(value);
+    if (isTicker || isStatus) {
+      const tone = /^(SHORT|SELL|BEARISH|SL|RESISTANCE)$/i.test(value)
+        ? "border-rose-500/30 bg-rose-500/10 text-rose-500"
+        : /OVERBOUGHT|OVERSOLD/i.test(value)
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
+          : /^(LONG|BUY|BULLISH|TP\d*)$/i.test(value)
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+            : "border-primary/30 bg-primary/10 text-primary";
+      return (
+        <Badge variant="outline" className={cn("mx-0.5 align-baseline font-mono text-[0.9em]", tone)}>
+          {children}
+        </Badge>
+      );
+    }
+    return <code className="rounded bg-background/70 px-1 py-0.5 font-mono text-[0.9em]">{children}</code>;
+  },
   pre: ({ children }) => (
-    <pre className="max-w-full overflow-x-auto rounded-lg border border-border/60 bg-background/70 p-3 text-[0.9em] leading-relaxed">
+    <AssistantCodeBlock
+      terminalContext={terminalContext}
+      marketContexts={marketContexts}
+    >
       {children}
-    </pre>
+    </AssistantCodeBlock>
   ),
   table: ({ children }) => (
     <div className="max-w-full overflow-x-auto rounded-lg border border-border/60">
@@ -265,7 +549,34 @@ const CHAT_MARKDOWN_COMPONENTS: Components = {
       {children}
     </a>
   ),
-};
+  };
+  return flatComponents;
+}
+
+function AssistantMarkdown({
+  content,
+  terminalContext,
+  marketContexts,
+}: {
+  content: string;
+  terminalContext: TerminalResearchContext | null;
+  marketContexts: MarketResearchContext[];
+}) {
+  const components = useMemo(
+    () => createChatMarkdownComponents(terminalContext, marketContexts),
+    [terminalContext, marketContexts],
+  );
+  return (
+    <ReactMarkdown
+      skipHtml
+      remarkPlugins={[remarkGfm]}
+      allowedElements={CHAT_MARKDOWN_ALLOWED_ELEMENTS}
+      components={components}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
 
 function randomPromptTemplates() {
   const accents = [
@@ -307,10 +618,12 @@ function errorKind(error: unknown): ChatError {
 function ChatSession({
   accessToken,
   terminalContext,
+  pageContext,
   sessionStore,
 }: {
   accessToken: string;
   terminalContext: TerminalResearchContext | null;
+  pageContext: PageResearchContext | null;
   sessionStore: ChatSessionStore;
 }) {
   const { t } = useTranslation();
@@ -329,6 +642,9 @@ function ChatSession({
     () => initialSnapshot?.failedUserId ?? null,
   );
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [hiddenContextKeys, setHiddenContextKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [promptTemplateConfig, setPromptTemplateConfig] = useState(
     () => initialSnapshot?.promptTemplateConfig ?? randomPromptTemplates(),
   );
@@ -364,24 +680,51 @@ function ChatSession({
   async function requestAssistant(history: ChatMessage[]) {
     const controller = new AbortController();
     const assistantId = crypto.randomUUID();
-    const failedId = history.findLast((message) => message.role === "user")?.id;
-    const requestContext =
-      history.find((message) => message.terminalContext !== undefined)
-        ?.terminalContext ?? null;
+    const userTurn = history.findLast((message) => message.role === "user");
+    const failedId = userTurn?.id;
     let receivedText = false;
 
     abortRef.current = controller;
     setBusy(true);
     setError(null);
     setFailedUserId(null);
-    setMessages([
-      ...history,
-      { id: assistantId, role: "assistant", content: "" },
-    ]);
+    setMessages([...history, { id: assistantId, role: "assistant", content: "" }]);
 
     try {
+      let requestHistory = history;
+      if (userTurn) {
+        const userTurnIndex = history.findLastIndex(
+          (message) => message.role === "user",
+        );
+        const inheritedContexts = userTurn.marketContexts ?? history
+          .slice(0, userTurnIndex)
+          .findLast(
+            (message) =>
+              message.role === "user" && message.marketContexts?.length,
+          )?.marketContexts ?? [];
+        const marketContexts = inheritedContexts
+          .filter((context) => !hiddenContextKeys.has(`market:${context.symbol}`))
+          .map(refreshMarketContext);
+        requestHistory = history.map((message) =>
+          message.id === userTurn.id ? { ...message, marketContexts } : message,
+        );
+      }
+      const requestTurn = requestHistory.findLast(
+        (message) => message.role === "user",
+      );
+      setMessages([
+        ...requestHistory,
+        {
+          id: assistantId,
+          role: "assistant",
+          content: "",
+          terminalContext: requestTurn?.terminalContext ?? null,
+          pageContext: requestTurn?.pageContext ?? null,
+          marketContexts: requestTurn?.marketContexts ?? [],
+        },
+      ]);
       await streamChat(
-        history,
+        requestHistory,
         accessToken,
         (text) => {
           receivedText = true;
@@ -394,7 +737,15 @@ function ChatSession({
           );
         },
         controller.signal,
-        requestContext,
+        (marketContexts) => {
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === requestTurn?.id || message.id === assistantId
+                ? { ...message, marketContexts }
+                : message,
+            ),
+          );
+        },
       );
       if (!receivedText) throw new Error("Empty chat response");
     } catch (requestError) {
@@ -426,10 +777,12 @@ function ChatSession({
         id: crypto.randomUUID(),
         role: "user" as const,
         content,
-        ...(messages.length === 0 ? { terminalContext } : {}),
+        ...(terminalContext ? { terminalContext } : {}),
+        ...(pageContext ? { pageContext } : {}),
       },
     ];
     setDraft("");
+    setHiddenContextKeys(new Set());
     void requestAssistant(history);
   }
 
@@ -458,6 +811,7 @@ function ChatSession({
     setError(null);
     setFailedUserId(null);
     setCopiedId(null);
+    setHiddenContextKeys(new Set());
     setPromptTemplateConfig(randomPromptTemplates());
     dispatch(uiActions.clearResearchContext());
     inputRef.current?.focus();
@@ -490,22 +844,24 @@ function ChatSession({
     inputRef.current?.focus();
   }
 
-  function clearContext() {
-    setMessages((current) =>
-      current.map((message) =>
-        message.terminalContext === undefined
-          ? message
-          : { ...message, terminalContext: null },
-      ),
+  function clearContext(kind: "terminal" | "page" | "market", symbol?: string) {
+    setHiddenContextKeys((current) =>
+      new Set(current).add(kind === "market" ? `market:${symbol}` : kind),
     );
-    dispatch(uiActions.clearResearchContext());
+    if (kind === "terminal") dispatch(uiActions.setResearchContext(null));
+    if (kind === "page") dispatch(uiActions.setPageResearchContext(null));
   }
 
+  const latestUserMessage = messages.findLast((message) => message.role === "user");
   const sessionContext =
-    messages.length === 0
-      ? terminalContext
-      : (messages.find((message) => message.terminalContext !== undefined)
-          ?.terminalContext ?? null);
+    terminalContext ??
+    (hiddenContextKeys.has("terminal")
+      ? null
+      : latestUserMessage?.terminalContext ?? null);
+  const sessionPageContext = hiddenContextKeys.has("page") ? null : pageContext;
+  const sessionMarketContexts = (latestUserMessage?.marketContexts ?? []).filter(
+    (context) => !hiddenContextKeys.has(`market:${context.symbol}`),
+  );
   const promptTemplates = promptTemplateConfig.map((template) => ({
     ...template,
     text: t(`chat.prompts.${template.key}`),
@@ -533,16 +889,20 @@ function ChatSession({
         sessionContext.quoteTime ?? sessionContext.capturedAt,
       )
     : "";
+  const pageContextSummary = sessionPageContext
+    ? sessionPageContext.kind === "calendar"
+      ? `${t("chat.context_pages.calendar")} · ${sessionPageContext.events.length}`
+      : sessionPageContext.kind === "calculator"
+        ? `${t("chat.context_pages.calculator")} · ${sessionPageContext.direction.toUpperCase()} ${sessionPageContext.currency}`
+        : `${t("chat.context_pages.learn")} · ${sessionPageContext.activeTab}`
+    : "";
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      {messages.length > 0 || sessionContext ? (
+      {messages.length > 0 || sessionContext || sessionPageContext || sessionMarketContexts.length ? (
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-muted/15 px-3 py-1.5 md:px-4 md:py-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span
-              className="size-1.5 rounded-full bg-primary"
-              aria-hidden="true"
-            />
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
             <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t("chat.messages_label")}
             </span>
@@ -557,37 +917,100 @@ function ChatSession({
                 aria-label={`${t("chat.context_label")}: ${contextSummary} · ${contextTimestamp}`}
               >
                 <span className="sr-only">{t("chat.context_label")}</span>
-                <span className="min-w-0 truncate uppercase">
-                  {contextSummary}
-                </span>
+                <span className="min-w-0 truncate uppercase">{contextSummary}</span>
                 <span className="shrink-0 whitespace-nowrap text-primary/70">
                   · {contextTimestamp}
                 </span>
-                <button
-                  type="button"
-                  className="ml-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-md text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={t("chat.clear_context")}
-                  title={t("chat.clear_context")}
-                  onClick={clearContext}
-                >
-                  <XIcon className="size-3" aria-hidden="true" />
-                </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className={cn(
+                      "ml-0.5 size-11 shrink-0 sm:size-5",
+                      CHAT_GHOST_CONTROL_CLASSNAME,
+                      "text-primary/70",
+                    )}
+                    aria-label={`${t("chat.clear_context")}: ${contextSummary}`}
+                    title={t("chat.clear_context")}
+                    onClick={() => clearContext("terminal")}
+                  >
+                    <XIcon className="size-3" aria-hidden="true" />
+                  </Button>
               </Badge>
             ) : null}
+            {sessionPageContext ? (
+              <Badge
+                variant="outline"
+                className={cn(
+                  TERMINAL_BADGE_CLASSNAME,
+                  "w-fit min-w-0 max-w-full shrink items-center gap-1.5",
+                )}
+                title={`${t("chat.context_label")}: ${pageContextSummary}`}
+                aria-label={`${t("chat.context_label")}: ${pageContextSummary}`}
+              >
+                <span className="sr-only">{t("chat.context_label")}</span>
+                <span className="min-w-0 truncate uppercase">{pageContextSummary}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className={cn(
+                      "ml-0.5 size-11 shrink-0 sm:size-5",
+                      CHAT_GHOST_CONTROL_CLASSNAME,
+                      "text-primary/70",
+                    )}
+                    aria-label={`${t("chat.clear_context")}: ${pageContextSummary}`}
+                    title={t("chat.clear_context")}
+                    onClick={() => clearContext("page")}
+                  >
+                    <XIcon className="size-3" aria-hidden="true" />
+                  </Button>
+              </Badge>
+            ) : null}
+            {sessionMarketContexts.map((context) => (
+              <Badge
+                key={context.symbol}
+                variant="outline"
+                className={cn(
+                  TERMINAL_BADGE_CLASSNAME,
+                  "w-fit min-w-0 max-w-full shrink items-center gap-1.5",
+                )}
+                title={`${t("chat.context_label")}: ${context.symbol} · ${context.timeframe}`}
+                aria-label={`${t("chat.context_label")}: ${context.symbol} · ${context.timeframe}`}
+              >
+                <span className="sr-only">{t("chat.context_label")}</span>
+                <span className="min-w-0 truncate uppercase">
+                  {context.symbol} · {context.timeframe}
+                </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className={cn(
+                      "ml-0.5 size-11 shrink-0 sm:size-5",
+                      CHAT_GHOST_CONTROL_CLASSNAME,
+                      "text-primary/70",
+                    )}
+                    aria-label={`${t("chat.clear_context")}: ${context.symbol}`}
+                    title={t("chat.clear_context")}
+                    onClick={() => clearContext("market", context.symbol)}
+                  >
+                    <XIcon className="size-3" aria-hidden="true" />
+                  </Button>
+              </Badge>
+            ))}
           </div>
-          {messages.length > 0 || sessionContext ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 min-h-7 shrink-0 gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-7"
-              disabled={busy}
-              onClick={newChat}
-            >
-              <PlusIcon className="size-3.5" aria-hidden="true" />
-              {t("chat.new_chat")}
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn("min-h-11 shrink-0 gap-1.5 px-2 text-xs sm:min-h-7", CHAT_GHOST_CONTROL_CLASSNAME)}
+            disabled={busy}
+            onClick={newChat}
+          >
+            <PlusIcon className="size-3.5" aria-hidden="true" />
+            {t("chat.new_chat")}
+          </Button>
         </div>
       ) : null}
 
@@ -621,7 +1044,7 @@ function ChatSession({
                             role="button"
                             tabIndex={0}
                             aria-label={template.text}
-                            className="group w-full cursor-pointer select-none rounded-lg border border-border py-0 transition-all duration-200 hover:border-primary hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none md:rounded-xl md:py-4"
+                            className="group w-full cursor-pointer select-none rounded-lg border border-border py-0 transition-colors duration-200 hover:border-primary hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none md:rounded-xl md:py-4"
                             onClick={() => applyPromptTemplate(template.text)}
                             onKeyDown={(event) => {
                               if (event.key === "Enter" || event.key === " ") {
@@ -666,65 +1089,41 @@ function ChatSession({
                       messageId={message.id}
                       scrollAnchor={message.role === "user"}
                     >
-                      <Message
-                        align={message.role === "user" ? "end" : "start"}
-                        className="gap-2.5"
-                      >
-                        <MessageAvatar
-                          className={
-                            message.role === "user"
-                              ? CHAT_USER_AVATAR_CLASSNAME
-                              : CHAT_ASSISTANT_AVATAR_CLASSNAME
-                          }
-                        >
-                          {message.role === "user" ? (
-                            <UserRoundIcon
-                              className="size-3.5"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <BotIcon className="size-3.5" aria-hidden="true" />
-                          )}
-                        </MessageAvatar>
+                    <Message
+                      align={message.role === "user" ? "end" : "start"}
+                      className="gap-2.5"
+                    >
                         <MessageContent
                           className={
-                            message.role === "assistant" ? "gap-0" : undefined
+                            message.role === "assistant"
+                              ? "w-full gap-0"
+                              : "w-fit max-w-[92%] sm:max-w-[80%]"
                           }
                         >
-                          <Bubble
-                            align={message.role === "user" ? "end" : "start"}
-                            variant={
-                              message.role === "user" ? "default" : "muted"
-                            }
-                          >
-                            <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
-                              {message.role === "assistant" ? (
-                                <div className="space-y-2 wrap-break-word">
-                                  <ReactMarkdown
-                                    skipHtml
-                                    remarkPlugins={[remarkGfm]}
-                                    allowedElements={
-                                      CHAT_MARKDOWN_ALLOWED_ELEMENTS
-                                    }
-                                    components={CHAT_MARKDOWN_COMPONENTS}
-                                  >
-                                    {message.content}
-                                  </ReactMarkdown>
-                                </div>
-                              ) : (
+                          {message.role === "assistant" ? (
+                            <div className="w-full space-y-2 wrap-break-word text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
+                              <AssistantMarkdown
+                                content={message.content}
+                                terminalContext={message.terminalContext ?? null}
+                                marketContexts={message.marketContexts ?? []}
+                              />
+                            </div>
+                          ) : (
+                            <Bubble align="end" variant="default" className="max-w-full">
+                              <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
                                 <span className="whitespace-pre-wrap wrap-break-word">
                                   {message.content}
                                 </span>
-                              )}
-                            </BubbleContent>
-                          </Bubble>
+                              </BubbleContent>
+                            </Bubble>
+                          )}
                           {message.role === "assistant" ? (
                             <MessageFooter className="gap-1 pt-1">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon-sm"
-                                className="size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:size-7"
+                                className={cn("size-11 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME)}
                                 aria-label={t("chat.copy")}
                                 title={t("chat.copy")}
                                 onClick={() =>
@@ -753,7 +1152,7 @@ function ChatSession({
                                   type="button"
                                   variant="ghost"
                                   size="icon-sm"
-                                  className="size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:size-7"
+                                  className={cn("size-11 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME)}
                                   aria-label={t("chat.retry")}
                                   title={t("chat.retry")}
                                   onClick={() => retryFrom(index)}
@@ -774,10 +1173,7 @@ function ChatSession({
 
                 {waitingForFirstToken ? (
                   <MessageScrollerItem>
-                    <Message className="gap-2.5 px-1 py-1">
-                      <MessageAvatar className={CHAT_ASSISTANT_AVATAR_CLASSNAME}>
-                        <BotIcon className="size-3.5" aria-hidden="true" />
-                      </MessageAvatar>
+                    <Message className="px-1 py-1">
                       <MessageContent className="w-fit">
                         <Marker
                           role="status"
@@ -794,10 +1190,7 @@ function ChatSession({
 
                 {error ? (
                   <MessageScrollerItem>
-                    <Message className="gap-2.5">
-                      <MessageAvatar className={CHAT_ERROR_AVATAR_CLASSNAME}>
-                        <BotIcon className="size-3.5" aria-hidden="true" />
-                      </MessageAvatar>
+                    <Message>
                       <MessageContent>
                         <div className="flex min-w-0 items-end gap-1.5">
                           <Bubble variant="destructive" role="alert">
@@ -810,7 +1203,7 @@ function ChatSession({
                               type="button"
                               variant="ghost"
                               size="icon-sm"
-                              className="size-7 shrink-0 rounded-md text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+                              className="size-11 shrink-0 rounded-md text-destructive transition-colors duration-200 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40 motion-reduce:transition-none sm:size-8"
                               aria-label={t("chat.retry")}
                               title={t("chat.retry")}
                               onClick={() => retryFrom(failedIndex)}
@@ -829,7 +1222,7 @@ function ChatSession({
               </MessageScrollerContent>
             </MessageScrollerViewport>
             <MessageScrollerButton
-              className="size-10 rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-xs sm:size-7"
+              className="size-11 rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-xs transition-colors duration-200 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 motion-reduce:transition-none sm:size-8"
               aria-label={t("chat.scroll_latest")}
             >
               <ArrowDownIcon aria-hidden="true" />
@@ -848,7 +1241,7 @@ function ChatSession({
             <FieldLabel htmlFor="research-copilot-input" className="sr-only">
               {t("chat.input_label")}
             </FieldLabel>
-            <InputGroup className="rounded-xl border border-border bg-card shadow-xs transition-all focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
+            <InputGroup className="rounded-xl border border-border bg-card shadow-xs transition-colors duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
               <InputGroupTextarea
                 ref={inputRef}
                 id="research-copilot-input"
@@ -881,7 +1274,7 @@ function ChatSession({
                   <InputGroupButton
                     type="button"
                     size="icon-sm"
-                    className="ml-auto flex size-8 items-center justify-center rounded-lg p-0 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground sm:size-8"
+                    className="ml-auto flex size-11 items-center justify-center rounded-md bg-destructive/10 p-0 text-destructive transition-colors duration-200 hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-destructive/40 motion-reduce:transition-none"
                     aria-label={t("chat.stop")}
                     title={t("chat.stop")}
                     onClick={stop}
@@ -893,7 +1286,7 @@ function ChatSession({
                     type="submit"
                     variant="default"
                     size="icon-sm"
-                    className="ml-auto flex size-8 items-center justify-center rounded-lg p-0 bg-primary text-primary-foreground shadow-xs transition-transform hover:bg-primary/90 active:scale-95 disabled:opacity-40 motion-reduce:transform-none sm:size-8"
+                    className="ml-auto flex size-11 items-center justify-center rounded-md bg-primary p-0 text-primary-foreground shadow-xs transition-colors duration-200 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-40 motion-reduce:transition-none"
                     disabled={!draft.trim()}
                     aria-label={t("chat.send")}
                     title={t("chat.send")}
@@ -918,6 +1311,9 @@ export function ResearchCopilot() {
   const activeResearchContext = useAppSelector(
     (state) => state.ui.activeResearchContext,
   );
+  const activePageContext = useAppSelector(
+    (state) => state.ui.activePageContext,
+  );
   const researchSessionId = useAppSelector(
     (state) => state.ui.researchSessionId,
   );
@@ -937,6 +1333,15 @@ export function ResearchCopilot() {
     location.search,
     location.hash,
   );
+  const currentPage = location.pathname.startsWith("/calendar")
+    ? "calendar"
+    : location.pathname.startsWith("/calculator")
+      ? "calculator"
+      : location.pathname.startsWith("/learn")
+        ? "learn"
+        : null;
+  const pageContext =
+    activePageContext?.kind === currentPage ? activePageContext : null;
 
   useEffect(() => {
     if (ready && !user) dispatch(uiActions.clearResearchContext());
@@ -985,7 +1390,7 @@ export function ResearchCopilot() {
           type="button"
           variant="ghost"
           size="lg"
-          className="group fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 mx-auto flex h-11 min-h-11 min-w-0 w-fit max-w-[calc(100vw-2rem)] cursor-pointer items-center justify-start gap-2 rounded-xl border border-border bg-card/45 px-3 py-0 text-card-foreground ring-1 ring-foreground/10 backdrop-blur-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-card/60 data-[state=open]:-translate-y-0.5 data-[state=open]:bg-card/60 active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none md:bottom-6 md:h-9 md:min-h-0 md:min-w-90 md:w-fit md:justify-start md:gap-2 md:rounded-xl md:px-3.5"
+          className="group fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 mx-auto flex h-11 min-h-11 min-w-0 w-fit max-w-[calc(100vw-2rem)] cursor-pointer items-center justify-start gap-2 rounded-xl border border-border bg-card/45 px-3 py-0 text-card-foreground ring-1 ring-foreground/10 backdrop-blur-xs transition-colors duration-200 hover:bg-card/60 data-[state=open]:bg-card/60 focus-visible:ring-2 focus-visible:ring-ring/50 motion-reduce:transition-none md:bottom-6 md:h-9 md:min-h-0 md:min-w-90 md:w-fit md:justify-start md:gap-2 md:rounded-xl md:px-3.5"
           aria-label={`${t("chat.open")}. ${shortcutHint}`}
           title={`${t("chat.open")} · ${shortcutHint}`}
           aria-keyshortcuts="Shift+/"
@@ -1073,7 +1478,7 @@ export function ResearchCopilot() {
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="size-8 shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className={cn("size-11 shrink-0 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME)}
                 aria-label={t("chat.close")}
                 title={t("chat.close")}
                 onClick={() => handleOpenChange(false)}
@@ -1096,6 +1501,7 @@ export function ResearchCopilot() {
                 key={`${user.id}:${researchSessionId}`}
                 accessToken={session.access_token}
                 terminalContext={activeResearchContext}
+                pageContext={pageContext}
                 sessionStore={chatSessionStore}
               />
             ) : (

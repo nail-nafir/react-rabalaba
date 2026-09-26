@@ -3568,9 +3568,14 @@
   },
   "chat": {
     "ask_sensei": "Bedah setup bareng Sensei",
-    "context_label": "Konteks Terminal",
+    "context_label": "Konteks riset",
     "context_snapshot": "Waktu snapshot",
-    "clear_context": "Hapus konteks Terminal",
+    "clear_context": "Hapus konteks",
+    "context_pages": {
+      "calendar": "Kalender",
+      "calculator": "Kalkulator",
+      "learn": "Belajar"
+    },
     "title": "RabaLaba Sensei",
     "description": "Copilot riset pasar kilat. Siap bedah setup trading.",
     "badge": "COPILOT AI",
@@ -3595,6 +3600,12 @@
     "copy": "Salin teks",
     "copied": "Teks tersalin",
     "copy_failed": "Gagal salin teks ini",
+    "code": "Teks",
+    "diagram": "Alur keputusan",
+    "chart_price": "Grafik harga",
+    "chart_relative": "Performa relatif",
+    "chart_unavailable": "Data chart tidak tersedia untuk simbol atau timeframe ini.",
+    "stale_data": "Snapshot mungkin sudah lama",
     "retry": "Coba lagi",
     "scroll_latest": "Lompat ke bawah",
     "prompts": {

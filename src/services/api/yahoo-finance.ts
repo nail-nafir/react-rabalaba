@@ -92,7 +92,9 @@ export async function fetchYahooChart(
     throw new Error(`Yahoo Finance chart error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as {
+    chart?: { result?: YahooChartResult[] | null };
+  } | null;
   return data?.chart?.result?.[0] ?? null;
 }
 
@@ -115,7 +117,9 @@ export async function fetchYahooChartPeriod(
     throw new Error(`Yahoo Finance chart error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as {
+    chart?: { result?: YahooChartResult[] | null };
+  } | null;
   return data?.chart?.result?.[0] ?? null;
 }
 
@@ -187,7 +191,9 @@ export async function fetchYahooQuoteSummary(
     return null; // network/CORS/proxy down → graceful
   }
   if (!response.ok) return null;
-  const data = await response.json().catch(() => null);
+  const data = (await response.json().catch(() => null)) as {
+    quoteSummary?: { result?: YahooQuoteSummaryResult[] | null };
+  } | null;
   return data?.quoteSummary?.result?.[0] ?? null;
 }
 
@@ -207,6 +213,6 @@ export async function searchYahooAssets(
     return [];
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as { quotes?: YahooSearchQuote[] } | null;
   return data?.quotes ?? [];
 }

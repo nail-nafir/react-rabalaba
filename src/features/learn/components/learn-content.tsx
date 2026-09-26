@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { Separator } from "@/components/ui/separator";
@@ -10,6 +10,8 @@ import { PatternCard } from "./pattern-card";
 import { StrategySection } from "./strategy-section";
 import { InteractiveQuiz } from "./interactive-quiz";
 import { Search, X } from "lucide-react";
+import { useAppDispatch } from "@/store/hooks";
+import { uiActions } from "@/store/slices/ui-slice";
 import {
   Empty,
   EmptyHeader,
@@ -23,6 +25,7 @@ type BiasFilter = "all" | "bullish" | "bearish" | "bilateral";
 
 export const LearnContent: React.FC = () => {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
 
   const [activeTab, setActiveTab] = useState<LearnTab>("patterns");
   const [patternCategory, setPatternCategory] =
@@ -94,6 +97,37 @@ export const LearnContent: React.FC = () => {
       return matchesSearch && matchesBias;
     });
   }, [patternCategory, biasFilter, searchQuery, t]);
+
+  const pageContext = useMemo(
+    () => ({
+      kind: "learn" as const,
+      activeTab,
+      category: patternCategory,
+      bias: biasFilter,
+      search: searchQuery.slice(0, 120),
+      topics:
+        activeTab === "patterns"
+          ? filteredPatterns.slice(0, 5).map((item) => {
+              const isCandle = item.category.startsWith("candlestick");
+              const group = isCandle ? "candlestick" : "chart";
+              const patternKey = `learn.patterns.${group}.${item.id}`;
+              return `${t(`${patternKey}.name`)}: ${t(`${patternKey}.description`)}`.slice(
+                0,
+                200,
+              );
+            })
+          : [],
+    }),
+    [activeTab, patternCategory, biasFilter, searchQuery, filteredPatterns, t],
+  );
+
+  useEffect(() => {
+    dispatch(uiActions.setPageResearchContext(pageContext));
+  }, [dispatch, pageContext]);
+
+  useEffect(() => () => {
+    dispatch(uiActions.setPageResearchContext(null));
+  }, [dispatch]);
 
   return (
     <div className="flex flex-col gap-8">

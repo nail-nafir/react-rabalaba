@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +17,9 @@ import { FilterGroup } from "@/components/shared/filter-group";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
 import { BarChart3, Calculator, RefreshCw, Target } from "lucide-react";
+import { useAppDispatch } from "@/store/hooks";
+import { uiActions } from "@/store/slices/ui-slice";
+import { calculateTradingMetrics } from "@/core/trade/trading-metrics";
 
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
@@ -31,6 +34,7 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
   onCurrencyChange,
 }) => {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
 
   const [internalCurrency, setInternalCurrency] = useState<"USD" | "IDR">(
     "USD",
@@ -180,59 +184,81 @@ export const RiskCalculator: React.FC<RiskCalculatorProps> = ({
 
   // Computations
   const stats = useMemo(() => {
-    const isLong = targetPrice >= entryPrice && stopLossPrice < entryPrice;
-    const isShort = targetPrice <= entryPrice && stopLossPrice > entryPrice;
-
-    const stopDistance = Math.abs(entryPrice - stopLossPrice);
-    const targetDistance = Math.abs(targetPrice - entryPrice);
-
-    const stopPercentDistance =
-      entryPrice > 0 ? (stopDistance / entryPrice) * 100 : 0;
-    const targetPercentDistance =
-      entryPrice > 0 ? (targetDistance / entryPrice) * 100 : 0;
-
     const maxRiskDollar = accountBalance * (riskPercent / 100);
-
-    const positionUnits = stopDistance > 0 ? maxRiskDollar / stopDistance : 0;
-    const totalPositionValue = positionUnits * entryPrice;
-
-    const potentialRewardDollar = positionUnits * targetDistance;
-    const riskRewardRatio =
-      stopDistance > 0 ? targetDistance / stopDistance : 0;
-
-    const isValidSetup =
-      stopDistance > 0 &&
-      entryPrice > 0 &&
-      ((entryPrice > stopLossPrice && targetPrice > entryPrice) ||
-        (entryPrice < stopLossPrice && targetPrice < entryPrice));
+    const metrics = calculateTradingMetrics({
+      entry: entryPrice,
+      stopLoss: stopLossPrice,
+      target: targetPrice,
+      riskBudget: maxRiskDollar,
+    });
 
     const capitalSizingRatio =
-      accountBalance > 0 ? totalPositionValue / accountBalance : 0;
+      accountBalance > 0 ? metrics.totalPositionValue / accountBalance : 0;
 
     let riskLevel: "safe" | "moderate" | "danger" = "safe";
     if (riskPercent > 3.0) riskLevel = "danger";
     else if (riskPercent > 2.0) riskLevel = "moderate";
-    const breakevenWinrate =
-      riskRewardRatio > 0 ? (1 / (1 + riskRewardRatio)) * 100 : 50;
 
     return {
-      isLong,
-      isShort,
-      stopDistance,
-      targetDistance,
-      stopPercentDistance,
-      targetPercentDistance,
       maxRiskDollar,
-      positionUnits,
-      totalPositionValue,
-      potentialRewardDollar,
-      riskRewardRatio,
-      isValidSetup,
       capitalSizingRatio,
       riskLevel,
-      breakevenWinrate,
+      potentialRewardDollar: metrics.potentialReward,
+      ...metrics,
     };
   }, [accountBalance, riskPercent, entryPrice, stopLossPrice, targetPrice]);
+
+  useEffect(() => {
+    const values = [
+      entryPrice,
+      stopLossPrice,
+      targetPrice,
+      riskPercent,
+      stats.riskRewardRatio,
+      stats.stopPercentDistance,
+      stats.targetPercentDistance,
+      stats.breakevenWinrate,
+    ];
+    if (!values.every(Number.isFinite)) {
+      dispatch(uiActions.setPageResearchContext(null));
+      return;
+    }
+
+    dispatch(
+      uiActions.setPageResearchContext({
+        kind: "calculator",
+        currency,
+        direction: stats.isLong ? "long" : stats.isShort ? "short" : "invalid",
+        entry: entryPrice,
+        stopLoss: stopLossPrice,
+        target: targetPrice,
+        riskPercent,
+        riskRewardRatio: stats.riskRewardRatio,
+        stopPercentDistance: stats.stopPercentDistance,
+        targetPercentDistance: stats.targetPercentDistance,
+        breakevenWinrate: stats.breakevenWinrate,
+        isValid: stats.isValidSetup,
+      }),
+    );
+  }, [
+    currency,
+    dispatch,
+    entryPrice,
+    stopLossPrice,
+    targetPrice,
+    riskPercent,
+    stats.isLong,
+    stats.isShort,
+    stats.isValidSetup,
+    stats.riskRewardRatio,
+    stats.stopPercentDistance,
+    stats.targetPercentDistance,
+    stats.breakevenWinrate,
+  ]);
+
+  useEffect(() => () => {
+    dispatch(uiActions.setPageResearchContext(null));
+  }, [dispatch]);
 
   const quickCapitalValues = isUSD
     ? [5000, 10000, 25000, 50000]

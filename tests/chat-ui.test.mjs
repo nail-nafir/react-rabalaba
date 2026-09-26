@@ -13,6 +13,15 @@ const terminalContext = readFileSync(
   join(root, "src/features/chat/terminal-context.ts"),
   "utf8",
 );
+const calculator = readFileSync(
+  join(root, "src/features/learn/components/risk-calculator.tsx"),
+  "utf8",
+);
+const calendar = readFileSync(join(root, "src/pages/calendar.tsx"), "utf8");
+const learnContent = readFileSync(
+  join(root, "src/features/learn/components/learn-content.tsx"),
+  "utf8",
+);
 const globalCss = readFileSync(join(root, "src/index.css"), "utf8");
 const landing = readFileSync(join(root, "src/pages/landing.tsx"), "utf8");
 const subscription = readFileSync(
@@ -78,7 +87,8 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /forceMount/);
   assert.match(widget, /modal=\{false\}/);
   assert.match(widget, /from ["']@\/components\/ui\/message["']/);
-  assert.match(widget, /MessageAvatar/);
+  assert.match(widget, /MessageContent/);
+  assert.doesNotMatch(widget, /MessageAvatar|UserRoundIcon/);
   assert.match(widget, /from ["']@\/components\/ui\/empty["']/);
   assert.match(widget, /<Empty\b/);
   assert.match(widget, /from ["']@\/components\/ui\/input-group["']/);
@@ -101,6 +111,26 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /from ["']react-markdown["']/);
   assert.match(widget, /from ["']remark-gfm["']/);
   assert.match(widget, /activeResearchContext/);
+  assert.match(widget, /activePageContext/);
+  assert.match(calendar, /setPageResearchContext\(pageContext\)/);
+  assert.match(calculator, /kind: "calculator"/);
+  assert.match(learnContent, /kind: "learn"/);
+  assert.doesNotMatch(terminalContext, /accountBalance|maxRiskDollar|positionUnits/);
+  const calculatorSnapshotStart = calculator.indexOf(
+    "uiActions.setPageResearchContext({",
+  );
+  const calculatorSnapshotEnd = calculator.indexOf(
+    "      }),",
+    calculatorSnapshotStart,
+  );
+  const calculatorSnapshot = calculator.slice(
+    calculatorSnapshotStart,
+    calculatorSnapshotEnd,
+  );
+  assert.doesNotMatch(
+    calculatorSnapshot,
+    /accountBalance|maxRiskDollar|positionUnits|totalPositionValue|potentialRewardDollar/,
+  );
   assert.match(widget, /researchCopilotRequestId/);
   assert.match(widget, /researchSessionId/);
   assert.match(widget, /const \[manualOpen, setManualOpen\] = useState\(false\)/);
@@ -130,12 +160,20 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   const contextBadgeEnd = widget.indexOf("</Badge>", contextBadgeStart);
   const contextBadge = widget.slice(contextBadgeStart, contextBadgeEnd);
   assert.match(contextBadge, /TERMINAL_BADGE_CLASSNAME/);
-  assert.match(contextBadge, /w-fit/);
-  assert.match(contextBadge, /max-w-full/);
-  assert.doesNotMatch(
+  assert.match(
     contextBadge,
-    /flex-1|py-1/,
-    "context badge must size to its content instead of filling the chat row",
+    /w-fit min-w-0 max-w-full shrink items-center gap-1\.5/,
+  );
+  assert.match(contextBadge, /max-w-full/);
+  assert.match(contextBadge, /size-11[\s\S]*sm:size-5/);
+  assert.match(widget, /onClick=\{\(\) => clearContext\("page"\)\}/);
+  assert.match(widget, /onClick=\{\(\) => clearContext\("market", context\.symbol\)\}/);
+  assert.match(widget, /sessionPageContext\s*\?\s*\([\s\S]*?TERMINAL_BADGE_CLASSNAME/);
+  assert.match(widget, /sessionMarketContexts\.map\([\s\S]*?TERMINAL_BADGE_CLASSNAME/);
+  assert.match(
+    widget,
+    /flex shrink-0 items-center justify-between gap-3 border-b border-border\/40 bg-muted\/15 px-3 py-1\.5 md:px-4 md:py-2/,
+    "chat header keeps its previous compact single-row shell",
   );
   assert.match(widget, /max-w-full/);
   assert.match(
@@ -338,10 +376,10 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /skipHtml/);
   assert.match(widget, /remarkPlugins=\{\[remarkGfm\]\}/);
   assert.match(widget, /allowedElements/);
-  assert.match(widget, /CHAT_MARKDOWN_COMPONENTS/);
-  assert.match(widget, /components=\{CHAT_MARKDOWN_COMPONENTS\}/);
+  assert.match(widget, /createChatMarkdownComponents/);
+  assert.match(widget, /components=\{components\}/);
   assert.doesNotMatch(widget, /normalizeAssistantMarkdown/);
-  assert.match(widget, /\{message\.content\}\s*<\/ReactMarkdown>/);
+  assert.match(widget, /\{content\}\s*<\/ReactMarkdown>/);
   assert.match(widget, /copyResponse\([\s\S]*message\.id,\s*message\.content,/);
   assert.match(widget, /rel="noopener noreferrer"/);
   assert.doesNotMatch(
@@ -385,6 +423,16 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /bg-background\/70/);
   assert.match(widget, /border border-border\/60/);
   assert.match(widget, /focus-visible:ring-2 focus-visible:ring-ring/);
+  assert.match(widget, /AssistantCodeBlock/);
+  assert.match(widget, /language === "chart"/);
+  assert.match(widget, /AssistantChart/);
+  assert.match(widget, /relativePerformance/);
+  assert.match(widget, /navigator\.clipboard\.writeText\(source\)/);
+  assert.match(widget, /marketContexts/);
+  assert.match(widget, /activePageContext/);
+  assert.match(widget, /refreshMarketContext/);
+  assert.match(widget, /onMarketContexts/);
+  assert.doesNotMatch(widget, /resolveMarketResearchContexts|isMarketContextFollowUp/);
   const messageRowsStart = widget.indexOf(
     "{messages.map((message, index) =>",
   );
@@ -398,58 +446,41 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /align=\{message\.role === "user" \? "end" : "start"\}/,
     "bubbles must follow the same alignment as their Message row",
   );
-  assert.match(messageRows, /variant=\{[\s\S]*message\.role/);
+  assert.match(messageRows, /<Bubble align="end" variant="default" className="max-w-full">/);
+  assert.doesNotMatch(messageRows, /Bubble variant="muted"[\s\S]*assistant/);
+  assert.doesNotMatch(messageRows, /MessageAvatar|UserRoundIcon|BotIcon/);
   assert.match(
     messageRows,
-    /<MessageAvatar[\s\S]*message\.role === "user"[\s\S]*CHAT_USER_AVATAR_CLASSNAME[\s\S]*CHAT_ASSISTANT_AVATAR_CLASSNAME/,
-    "senders must use role-based circular MessageAvatar styles",
+    /message\.role === "assistant"\s*\? "w-full gap-0"\s*:\s*"w-fit max-w-\[92%\] sm:max-w-\[80%\]"/,
+    "assistant answers use the available width while user messages stay compact",
   );
-  assert.match(
-    widget,
-    /const CHAT_AVATAR_BASE_CLASSNAME =\s*"size-8 shrink-0 self-end rounded-full border"/,
-  );
-  assert.equal(
-    widget.match(/<MessageAvatar className=\{CHAT_ASSISTANT_AVATAR_CLASSNAME\}>/g)
-      ?.length,
-    1,
-    "loading messages must reuse the assistant avatar class",
-  );
-  assert.match(widget, /border-primary\/30 bg-primary\/15 text-primary/);
-  assert.match(widget, /border-border bg-muted text-muted-foreground/);
-  assert.match(
-    widget,
-    /const CHAT_ERROR_AVATAR_CLASSNAME = cn\([\s\S]*border-destructive\/20 bg-destructive\/10 text-destructive dark:bg-destructive\/20/,
-  );
-  assert.match(messageRows, /UserRoundIcon/);
-  assert.match(messageRows, /BotIcon/);
-  assert.match(
-    messageRows,
-    /<MessageContent\s+className=\{\s*message\.role === "assistant" \? "gap-0" : undefined\s*\}/,
-    "assistant message content must remove the extra footer gap so its avatar aligns with the bubble",
-  );
+  assert.match(messageRows, /<AssistantMarkdown/);
+  assert.match(messageRows, /max-w-\[92%\] sm:max-w-\[80%\]/);
   assert.match(messageRows, /<MessageFooter className="gap-1 pt-1">/);
   assert.doesNotMatch(
     widget,
     /MessageHeader/,
     "chat rows should not render sender names",
   );
-  assert.doesNotMatch(
-    messageRows,
-    /message\.role === "assistant" \? \(\s*<MessageAvatar/,
-    "user messages must not omit their avatar",
+  const assistantRow = messageRows.slice(
+    messageRows.indexOf('{message.role === "assistant" ? ('),
+    messageRows.indexOf(") : (", messageRows.indexOf('{message.role === "assistant" ? (')),
   );
   assert.doesNotMatch(
+    assistantRow,
+    /<Bubble/,
+    "assistant answers stay flat rather than nesting rich content in a bubble",
+  );
+  assert.match(messageRows, /size-11 sm:size-8/);
+  assert.match(
     messageRows,
-    /rounded-lg|rounded-2xl|bg-muted\/60|backdrop-blur-xs|shadow-xs/,
-    "message bubbles must use the default Bubble surface instead of custom overrides",
+    /className=\{cn\("size-11 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME\)\}[\s\S]*aria-label=\{t\("chat\.retry"\)\}/,
+    "assistant retry uses the same visual and touch target as response copy",
   );
   const loadingStateEnd = widget.indexOf("{error ? (", waitingStateStart);
   const loadingState = widget.slice(waitingStateStart, loadingStateEnd);
-  assert.match(loadingState, /<Message className="gap-2\.5 px-1 py-1">/);
-  assert.match(
-    loadingState,
-    /<MessageAvatar className=\{CHAT_ASSISTANT_AVATAR_CLASSNAME\}>/,
-  );
+  assert.match(loadingState, /<Message className="px-1 py-1">/);
+  assert.doesNotMatch(loadingState, /MessageAvatar|BotIcon/);
   assert.match(loadingState, /<MessageContent className="w-fit">/);
   assert.match(loadingState, /<Marker[\s\S]*role="status"/);
   assert.match(
@@ -465,25 +496,12 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     loadingStateEnd,
     widget.indexOf("</MessageScrollerContent>", loadingStateEnd),
   );
-  assert.match(
-    errorState,
-    /<MessageAvatar className=\{CHAT_ERROR_AVATAR_CLASSNAME\}>/,
-    "error avatars must use the destructive avatar treatment",
-  );
-  const errorAvatarMarkup = errorState.slice(
-    errorState.indexOf("<MessageAvatar"),
-    errorState.indexOf("</MessageAvatar>") + "</MessageAvatar>".length,
-  );
-  assert.match(
-    errorAvatarMarkup,
-    /className=\{CHAT_ERROR_AVATAR_CLASSNAME\}/,
-    "error avatar must use the destructive avatar class",
-  );
+  assert.doesNotMatch(errorState, /MessageAvatar|BotIcon/);
   assert.doesNotMatch(errorState, /rounded-2xl/);
   assert.match(errorState, /<div className="flex min-w-0 items-end gap-1\.5">/);
   assert.match(
     errorState,
-    /<Bubble variant="destructive" role="alert">[\s\S]*<Button[\s\S]*size="icon-sm"[\s\S]*size-7 shrink-0[\s\S]*chat\.retry[\s\S]*RefreshCcwIcon/,
+    /<Bubble variant="destructive" role="alert">[\s\S]*<Button[\s\S]*size="icon-sm"[\s\S]*size-11 shrink-0[\s\S]*sm:size-8[\s\S]*chat\.retry[\s\S]*RefreshCcwIcon/,
     "error retry must be an icon button beside the destructive bubble",
   );
   assert.match(errorState, /aria-label=\{t\("chat\.retry"\)\}/);
@@ -599,7 +617,6 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /<span>\{t\("chat\.composer_newline"\)\}<\/span>/,
   );
   for (const openStateToken of [
-    "data-[state=open]:-translate-y-0.5",
     "data-[state=open]:bg-card/60",
   ]) {
     assert.ok(
@@ -607,6 +624,11 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
       `Sensei trigger must mirror hover styling while open: ${openStateToken}`,
     );
   }
+  assert.doesNotMatch(
+    trigger,
+    /(?:hover:|data-\[state=open\]:|active:)-?translate|scale-/,
+    "chat launcher interactions must not shift or resize on hover",
+  );
   assert.doesNotMatch(
     trigger,
     /rotate/,
@@ -651,7 +673,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(newChat, /setCopiedId\(null\)/);
   assert.match(newChat, /setPromptTemplateConfig\(randomPromptTemplates\(\)\)/);
   assert.match(newChat, /dispatch\(uiActions\.clearResearchContext\(\)\)/);
-  assert.match(widget, /\{messages\.length > 0 \|\| sessionContext \? \(/);
+  assert.match(widget, /\{messages\.length > 0 \|\| sessionContext \|\| sessionPageContext \|\| sessionMarketContexts\.length \? \(/);
   assert.match(widget, /onClick=\{newChat\}/);
   const requestAssistantStart = widget.indexOf(
     "async function requestAssistant",
@@ -708,7 +730,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.doesNotMatch(promptSection, /<Button\b/);
   assert.match(
     promptSection,
-    /group w-full cursor-pointer select-none rounded-lg border border-border py-0 transition-all duration-200/,
+    /group w-full cursor-pointer select-none rounded-lg border border-border py-0 transition-colors duration-200/,
   );
   assert.match(promptSection, /hover:border-primary hover:bg-muted\/50/);
   assert.match(promptSection, /role="button"/);

@@ -39,10 +39,13 @@ test("every application overlay root has a matching Trigger", () => {
   ]) {
     const roots = count(new RegExp(`<${primitive}(?=[\\s>])`, "g"));
     const triggers = count(new RegExp(`<${primitive}Trigger(?=[\\s>])`, "g"));
+    const nonPrimitiveRoots = primitive === "Tooltip"
+      ? count(/<Tooltip\s+formatter=\{/g)
+      : 0;
     const externallyTriggeredRoots = primitive === "AlertDialog" ? 1 : 0;
     assert.equal(
       triggers,
-      roots - externallyTriggeredRoots,
+      roots - externallyTriggeredRoots - nonPrimitiveRoots,
       `${primitive}: ${roots} roots, ${triggers} triggers`,
     );
   }

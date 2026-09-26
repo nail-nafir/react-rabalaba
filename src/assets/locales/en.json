@@ -3568,9 +3568,14 @@
   },
   "chat": {
     "ask_sensei": "Review setup with Sensei",
-    "context_label": "Terminal context",
+    "context_label": "Research context",
     "context_snapshot": "Snapshot time",
-    "clear_context": "Clear Terminal context",
+    "clear_context": "Remove context",
+    "context_pages": {
+      "calendar": "Calendar",
+      "calculator": "Calculator",
+      "learn": "Learn"
+    },
     "title": "RabaLaba Sensei",
     "description": "Fast market research copilot. Ready to breakdown setups.",
     "badge": "COPILOT AI",
@@ -3595,6 +3600,12 @@
     "copy": "Copy text",
     "copied": "Text copied",
     "copy_failed": "Failed to copy text",
+    "code": "Text",
+    "diagram": "Decision flow",
+    "chart_price": "Price chart",
+    "chart_relative": "Relative performance",
+    "chart_unavailable": "Chart data is unavailable for these symbols or timeframes.",
+    "stale_data": "Snapshot may be stale",
     "retry": "Try again",
     "scroll_latest": "Jump to bottom",
     "prompts": {

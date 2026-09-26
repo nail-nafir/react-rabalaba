@@ -37,6 +37,8 @@ import { CalendarDetailDialog } from "@/features/economic-calendar/components/ca
 import { Separator } from "@/components/ui/separator";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { BADGE } from "@/constants/taxonomy/palette";
+import { useAppDispatch } from "@/store/hooks";
+import { uiActions } from "@/store/slices/ui-slice";
 
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
@@ -107,6 +109,7 @@ const CURRENCY_COUNTRY_MAP: Record<string, string[]> = {
 
 export default function CalendarPage() {
   const { t, i18n } = useTranslation();
+  const dispatch = useAppDispatch();
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>("all");
   const [selectedCurrency, setSelectedCurrency] = useState<string>("ALL");
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
@@ -421,6 +424,48 @@ export default function CalendarPage() {
     assetFilter,
     searchQuery,
   ]);
+
+  const pageContext = useMemo(
+    () => ({
+      kind: "calendar" as const,
+      selectedDate,
+      filters: {
+        impact: impactFilter,
+        currency: selectedCurrency,
+        asset: assetFilter,
+        timeHorizon,
+        search: searchQuery.slice(0, 120),
+      },
+      events: filteredEvents.slice(0, 5).map((event) => ({
+        title: event.title,
+        country: event.country,
+        date: event.date,
+        time: event.time,
+        impact: event.impact,
+        ...(event.forecast ? { forecast: event.forecast } : {}),
+        ...(event.previous ? { previous: event.previous } : {}),
+        ...(event.actual ? { actual: event.actual } : {}),
+        assetRelevance: event.assetRelevance,
+      })),
+    }),
+    [
+      selectedDate,
+      impactFilter,
+      selectedCurrency,
+      assetFilter,
+      timeHorizon,
+      searchQuery,
+      filteredEvents,
+    ],
+  );
+
+  useEffect(() => {
+    dispatch(uiActions.setPageResearchContext(pageContext));
+  }, [dispatch, pageContext]);
+
+  useEffect(() => () => {
+    dispatch(uiActions.setPageResearchContext(null));
+  }, [dispatch]);
 
   // Group events by date
   const groupedEvents = useMemo(() => {

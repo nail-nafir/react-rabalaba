@@ -1,4 +1,8 @@
-import type { TerminalResearchContext } from "./terminal-context";
+import type {
+  MarketResearchContext,
+  PageResearchContext,
+  TerminalResearchContext,
+} from "./terminal-context";
 
 export type ChatRole = "user" | "assistant";
 
@@ -7,6 +11,8 @@ export type ChatMessage = {
   role: ChatRole;
   content: string;
   terminalContext?: TerminalResearchContext | null;
+  pageContext?: PageResearchContext | null;
+  marketContexts?: MarketResearchContext[];
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -22,7 +28,11 @@ function eventText(value: unknown): string {
   return typeof choice.delta.content === "string" ? choice.delta.content : "";
 }
 
-function parseEvent(frame: string, onText: (text: string) => void): boolean {
+function parseEvent(
+  frame: string,
+  onText: (text: string) => void,
+  onMarketContexts?: (contexts: MarketResearchContext[]) => void,
+): boolean {
   const data = frame
     .split(/\r?\n/)
     .filter((line) => line.startsWith("data:"))
@@ -32,7 +42,16 @@ function parseEvent(frame: string, onText: (text: string) => void): boolean {
   if (!data) return false;
   if (data === "[DONE]") return true;
 
-  const text = eventText(JSON.parse(data));
+  const value: unknown = JSON.parse(data);
+  if (
+    onMarketContexts &&
+    isRecord(value) &&
+    Array.isArray(value.marketContexts) &&
+    value.marketContexts.length <= 3
+  ) {
+    onMarketContexts(value.marketContexts as MarketResearchContext[]);
+  }
+  const text = eventText(value);
   if (text) onText(text);
   return false;
 }
@@ -40,6 +59,7 @@ function parseEvent(frame: string, onText: (text: string) => void): boolean {
 export async function readChatStream(
   stream: ReadableStream<Uint8Array>,
   onText: (text: string) => void,
+  onMarketContexts?: (contexts: MarketResearchContext[]) => void,
 ) {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
@@ -53,7 +73,7 @@ export async function readChatStream(
     while (separator) {
       const frame = buffer.slice(0, separator.index);
       buffer = buffer.slice(separator.index + separator[0].length);
-      if (parseEvent(frame, onText)) {
+      if (parseEvent(frame, onText, onMarketContexts)) {
         await reader.cancel();
         return;
       }
@@ -63,7 +83,7 @@ export async function readChatStream(
     if (result.done) break;
   }
 
-  if (buffer.trim()) parseEvent(buffer, onText);
+  if (buffer.trim()) parseEvent(buffer, onText, onMarketContexts);
 }
 
 function requestMessages(messages: ChatMessage[]) {
@@ -90,8 +110,9 @@ export async function streamChat(
   accessToken: string,
   onText: (text: string) => void,
   signal: AbortSignal,
-  terminalContext?: TerminalResearchContext | null,
+  onMarketContexts?: (contexts: MarketResearchContext[]) => void,
 ) {
+  const turn = messages.findLast((message) => message.role === "user");
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: {
@@ -101,7 +122,9 @@ export async function streamChat(
     },
     body: JSON.stringify({
       messages: requestMessages(messages),
-      ...(terminalContext ? { terminalContext } : {}),
+      ...(turn?.terminalContext ? { terminalContext: turn.terminalContext } : {}),
+      ...(turn?.pageContext ? { pageContext: turn.pageContext } : {}),
+      ...(turn?.marketContexts?.length ? { marketContexts: turn.marketContexts } : {}),
     }),
     signal,
   });
@@ -120,5 +143,5 @@ export async function streamChat(
   }
 
   if (!response.body) throw new Error("Chat response was empty");
-  await readChatStream(response.body, onText);
+  await readChatStream(response.body, onText, onMarketContexts);
 }
