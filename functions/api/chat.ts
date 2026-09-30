@@ -6,6 +6,11 @@ import {
 } from "../../src/features/chat/terminal-context";
 import { calculateTradingMetrics } from "../../src/core/trade/trading-metrics";
 import { lookupMarketData } from "./chat-market-data";
+import {
+  chatEventText,
+  readChatEvents,
+  type ChatStreamErrorCode,
+} from "../../src/features/chat/chat-stream";
 
 const MODEL = "@cf/google/gemma-4-26b-a4b-it";
 const MAX_BODY_BYTES = 32 * 1024;
@@ -95,6 +100,7 @@ const SYSTEM_PROMPT = `You are RabaLaba Research Copilot, an educational trading
 - Compare assets only when their attached snapshots use comparable timeframes. Treat a stale field set to true as an explicit freshness warning and report stale or missing data clearly. If a ticker/name is ambiguous or no matching market snapshot exists, ask which asset they mean or say the data could not be retrieved. Never invent prices, indicators, news, candle patterns, probabilities, or social sentiment.
 - No live social-media or hype feed is connected. If asked about hype/sentiment, say that live sentiment is unavailable and analyze only social posts or claims the user supplies.
 - Separate observed facts from inference. If data is missing, say so instead of filling the gap.
+- If a setup question has no identifiable asset or attached setup, ask one brief clarification for the symbol or setup. Do not pretend that an inference failure means the user's question was unclear.
 
 ## Tool selection
 - The calculate_trading_metrics and lookup_market_data tools are available on every turn. Choose a tool only when it is needed to answer accurately. Do not classify intent by a fixed phrase list.
@@ -107,9 +113,9 @@ const SYSTEM_PROMPT = `You are RabaLaba Research Copilot, an educational trading
 ## Response format
 - Output GitHub-Flavored Markdown supported by this chat renderer: paragraphs, headings h1-h4, bold, italic, strikethrough, inline or fenced code, lists, blockquotes, horizontal rules, compact tables, and links.
 - Never emit raw HTML, JSX, math delimiters, LaTeX commands, task-list syntax, or Markdown syntax outside that supported set. Do not use dollar signs to delimit math. For relations and simple calculations, use plain text or Unicode symbols such as →, ←, ↔, ≥, ≤, ×, and ±. If an expression cannot be written safely that way, explain it in words.
-- For a requested chart, emit an optional fenced block with language chart, containing JSON with only a chart type and symbols. Example: {"type":"price","symbols":["BTC-USD"]} or {"type":"relativePerformance","symbols":["BTC-USD","ETH-USD"]}. Only reference symbols present in the attached snapshots; never put price series or invented values in this block. If a required symbol or its candles are missing, do not emit a chart block; explain the limitation in prose.
+- When the user requests a setup confirmation chart and an identifiable asset has at least two OHLCV candles in the attached snapshots, include one fenced block with language chart containing only {"type":"setup","symbols":["BTC-USD"]}, replacing BTC-USD with that asset's exact symbol. For other requested single-asset price charts use {"type":"price","symbols":["BTC-USD"]}; for comparisons use {"type":"relativePerformance","symbols":["BTC-USD","ETH-USD"]}. These chart blocks are required when matching candles are available, not optional. Only reference symbols present in the attached snapshots; never put price series, SVG, annotations, or invented values in a chart block. If the symbol or candles are missing, use lookup_market_data when appropriate, otherwise explain the limitation without a chart block.
 - Use inline code sparingly for a source-backed ticker or key signal/level label when it improves scanning; the chat may render those labels as badges.
-- Use a fenced block marked diagram or text for a small readable decision flow when it materially helps. Never output programming source code unless explicitly asked.
+- Use a fenced block marked diagram or text for a small readable decision flow when it materially helps. Never use an ASCII or text diagram as a substitute for a requested price or setup chart. Never output programming source code unless explicitly asked.
 - Keep answers focused. For analysis, include the facts and risks that matter to the user's actual question, not a mandatory section checklist.
 
 ## Trading boundaries
@@ -691,67 +697,80 @@ function calculateToolResult(args: unknown, messages: ChatMessage[]) {
   };
 }
 
-function selectionResponseText(value: unknown) {
-  if (!isRecord(value)) return "";
-  if (typeof value.response === "string") return value.response;
-  const choice = Array.isArray(value.choices) ? value.choices[0] : null;
-  if (!isRecord(choice) || !isRecord(choice.message)) return "";
-  return typeof choice.message.content === "string" ? choice.message.content : "";
+type CompletionStats = {
+  finishReason: string | null;
+  usage?: Record<string, number>;
+};
+
+function streamError(code: ChatStreamErrorCode) {
+  return Object.assign(new Error("Chat generation failed"), { code });
 }
 
-function streamTextResponse(text: string) {
-  return new Response(
-    `data: ${JSON.stringify({ response: text })}\n\ndata: [DONE]\n\n`,
-    {
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "X-Content-Type-Options": "nosniff",
-      },
-    },
-  );
-}
-
-function eventStreamResponse(
-  stream: ReadableStream | ReadableStream<Uint8Array>,
-  marketContexts?: MarketResearchContext[],
-) {
-  const body = marketContexts === undefined
-    ? stream
-    : prependMarketContexts(stream as ReadableStream<Uint8Array>, marketContexts);
-  return new Response(body, {
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
-}
-
-function prependMarketContexts(
+async function* completionEvents(
   stream: ReadableStream<Uint8Array>,
-  marketContexts: MarketResearchContext[],
+  signal: AbortSignal,
+  stats: CompletionStats,
 ) {
-  const reader = stream.getReader();
-  const encoder = new TextEncoder();
-  let sentContexts = false;
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      if (!sentContexts) {
-        sentContexts = true;
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ marketContexts })}\n\n`),
-        );
-        return;
+  let content = "";
+  let finished = false;
+  const fragments = new Map<number, { id: string; function: { name: string; arguments: string } }>();
+  for await (const event of readChatEvents(stream, signal)) {
+    if (event === "[DONE]") { finished = true; break; }
+    if (!isRecord(event)) continue;
+    if (event.error) throw event.error;
+    if (isRecord(event.usage)) {
+      const details = event.usage.completion_tokens_details;
+      stats.usage = Object.fromEntries(Object.entries({
+        prompt_tokens: event.usage.prompt_tokens,
+        completion_tokens: event.usage.completion_tokens,
+        total_tokens: event.usage.total_tokens,
+        reasoning_tokens: isRecord(details) ? details.reasoning_tokens : undefined,
+      }).filter((entry): entry is [string, number] => typeof entry[1] === "number" && Number.isFinite(entry[1])));
+    }
+    const choice = Array.isArray(event.choices) ? event.choices[0] : null;
+    const delta = isRecord(choice) && isRecord(choice.delta) ? choice.delta : event;
+    if (isRecord(choice) && typeof choice.finish_reason === "string") {
+      stats.finishReason = choice.finish_reason;
+    }
+    if (Array.isArray(delta.tool_calls)) {
+      for (const [ordinal, call] of delta.tool_calls.entries()) {
+        if (!isRecord(call)) throw streamError("unavailable");
+        const index = call.index ?? ordinal;
+        if (typeof index !== "number" || !Number.isInteger(index) || index < 0 || index >= CHAT_TOOLS.length) {
+          throw streamError("unavailable");
+        }
+        const fn = isRecord(call.function) ? call.function : call;
+        const current = fragments.get(index) ?? { id: "", function: { name: "", arguments: "" } };
+        if (typeof call.id === "string") current.id = call.id;
+        if (typeof fn.name === "string") current.function.name += fn.name;
+        if (typeof fn.arguments === "string") current.function.arguments += fn.arguments;
+        else if (isRecord(fn.arguments)) current.function.arguments += JSON.stringify(fn.arguments);
+        if (current.id.length > 64 || current.function.name.length > 100 || current.function.arguments.length > MAX_BODY_BYTES) {
+          throw streamError("unavailable");
+        }
+        fragments.set(index, current);
       }
-      const result = await reader.read();
-      if (result.done) controller.close();
-      else controller.enqueue(result.value);
-    },
-    cancel(reason) {
-      return reader.cancel(reason);
-    },
-  });
+    }
+    const text = chatEventText(event);
+    if (text) {
+      content += text;
+      yield { response: text };
+    }
+  }
+  signal.throwIfAborted();
+  if (!finished || stats.finishReason === "length") throw streamError("incomplete");
+  if (stats.finishReason === "content_filter") throw streamError("unavailable");
+  const toolCalls = extractToolCalls({ tool_calls: [...fragments].sort(([a], [b]) => a - b).map(([, call]) => call) });
+  if (!toolCalls || (stats.finishReason === "tool_calls" && !toolCalls.length)) {
+    throw streamError("unavailable");
+  }
+  return { content, toolCalls };
+}
+
+function inferenceErrorCode(error: unknown): ChatStreamErrorCode {
+  const details = errorDetails(error);
+  if (details.status === 429 || /^(3036|3040)$/.test(details.code) || /\b(?:3036|3040)\b/.test(details.message)) return "rate";
+  return details.code === "incomplete" ? "incomplete" : "unavailable";
 }
 
 function errorDetails(error: unknown) {
@@ -821,123 +840,152 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const chatRequest = validRequest(body);
   if (!chatRequest) return jsonError("Invalid chat payload", 400);
 
+  const startedAt = performance.now();
+  const abort = new AbortController();
+  const signal = AbortSignal.any([context.request.signal, abort.signal]);
+  let firstTextMs: number | null = null;
+  let toolCallCount = 0;
+  const completions: CompletionStats[] = [];
+  const report = (outcome: string) => console.info(JSON.stringify({
+    event: "chat_inference",
+    model: MODEL,
+    thinking: false,
+    outcome,
+    firstTextMs,
+    durationMs: Math.round(performance.now() - startedAt),
+    toolCallCount,
+    completions,
+  }));
+  const inferenceOptions = {
+    max_completion_tokens: MAX_COMPLETION_TOKENS,
+    temperature: 0.4,
+    chat_template_kwargs: { enable_thinking: false },
+    store: false,
+    stream: true as const,
+    stream_options: { include_usage: true },
+  };
+  const run = (messages: ChatCompletionMessageParam[], withTools: boolean) => {
+    signal.throwIfAborted();
+    return context.env.AI.run(MODEL, {
+      messages,
+      ...inferenceOptions,
+      ...(withTools ? { tool_choice: "auto" as const, tools: CHAT_TOOLS } : {}),
+    }, { signal, tags: ["rabalaba:chat"] });
+  };
+
   try {
-    const messages: ChatCompletionMessageParam[] = [
-      { role: "system" as const, content: buildSystemPrompt(chatRequest) },
+    const firstStream = await run([
+      { role: "system", content: buildSystemPrompt(chatRequest) },
       ...chatRequest.messages,
-    ];
-    const inferenceOptions = {
-      max_completion_tokens: MAX_COMPLETION_TOKENS,
-      temperature: 0.4,
-      chat_template_kwargs: { enable_thinking: true },
-      store: false,
-    };
-    const aiOptions = {
-      signal: context.request.signal,
-      tags: ["rabalaba:chat"],
-    };
+    ], true);
 
-    const selection: unknown = await context.env.AI.run(
-      MODEL,
-      {
-        messages,
-        ...inferenceOptions,
-        stream: false,
-        tool_choice: "auto",
-        tools: CHAT_TOOLS,
-      },
-      aiOptions,
-    );
-    const toolCalls = extractToolCalls(selection);
-    if (!toolCalls?.length) {
-      const answer = selectionResponseText(selection);
-      return streamTextResponse(
-        answer || "Gue belum bisa menyusun jawaban dari data yang tersedia. Coba kirim pertanyaan trading yang lebih spesifik.",
-      );
-    }
-
-    const toolResults: unknown[] = [];
-    let marketContexts: MarketResearchContext[] | undefined;
-    const usedTools = new Set<string>();
-    for (const toolCall of toolCalls) {
-      if (usedTools.has(toolCall.name)) {
-        toolResults.push({ error: "Each available tool can be called once per turn." });
-      } else if (toolCall.name === TRADING_METRICS_TOOL.function.name) {
-        usedTools.add(toolCall.name);
-        toolResults.push(calculateToolResult(toolCall.args, chatRequest.messages));
-      } else if (toolCall.name === MARKET_DATA_TOOL.function.name) {
-        usedTools.add(toolCall.name);
-        const lookup = await lookupMarketData(
-          toolCall.args,
-          chatRequest.terminalContext?.timeframe,
-          context.request.signal,
-        );
-        marketContexts = validMarketContexts(lookup.contexts) ?? [];
-        toolResults.push(
-          lookup.contexts.length === marketContexts.length
-            ? lookup.result
-            : { error: "Yahoo data failed server-side market snapshot validation." },
-        );
-      } else {
-        toolResults.push({ error: "The requested tool is not available." });
+    async function* events(chatRequest: ChatRequest) {
+      let outcome: string | null = null;
+      try {
+        const firstStats: CompletionStats = { finishReason: null };
+        completions.push(firstStats);
+        const selection = yield* completionEvents(firstStream, signal, firstStats);
+        const toolCalls = selection.toolCalls;
+        toolCallCount = toolCalls.length;
+        if (toolCalls.length) {
+          const toolResults: unknown[] = [];
+          let marketContexts: MarketResearchContext[] | undefined;
+          const usedTools = new Set<string>();
+          for (const toolCall of toolCalls) {
+            signal.throwIfAborted();
+            if (usedTools.has(toolCall.name)) {
+              toolResults.push({ error: "Each available tool can be called once per turn." });
+            } else if (toolCall.name === TRADING_METRICS_TOOL.function.name) {
+              usedTools.add(toolCall.name);
+              toolResults.push(calculateToolResult(toolCall.args, chatRequest.messages));
+            } else if (toolCall.name === MARKET_DATA_TOOL.function.name) {
+              usedTools.add(toolCall.name);
+              const lookup = await lookupMarketData(toolCall.args, chatRequest.terminalContext?.timeframe, signal);
+              marketContexts = validMarketContexts(lookup.contexts) ?? [];
+              toolResults.push(lookup.contexts.length === marketContexts.length
+                ? lookup.result
+                : { error: "Yahoo data failed server-side market snapshot validation." });
+            } else {
+              toolResults.push({ error: "The requested tool is not available." });
+            }
+          }
+          signal.throwIfAborted();
+          if (marketContexts !== undefined) yield { marketContexts };
+          const finalRequest = marketContexts === undefined ? chatRequest : { ...chatRequest, marketContexts };
+          const followUpMessages: ChatCompletionMessageParam[] = [
+            { role: "system", content: buildSystemPrompt(finalRequest) },
+            ...chatRequest.messages,
+            {
+              role: "assistant",
+              content: selection.content || null,
+              tool_calls: toolCalls.map((call) => ({
+                id: call.id,
+                type: "function",
+                function: { name: call.name, arguments: JSON.stringify(call.args ?? {}) },
+              })),
+            },
+            ...toolCalls.map((call, index) => ({
+              role: "tool" as const,
+              tool_call_id: call.id,
+              content: JSON.stringify(toolResults[index]),
+            })),
+          ];
+          const finalStats: CompletionStats = { finishReason: null };
+          completions.push(finalStats);
+          const finalStream = await run(followUpMessages, false);
+          if (selection.content.trim()) yield { response: "\n\n" };
+          const answer = yield* completionEvents(finalStream, signal, finalStats);
+          if (!answer.content.trim() || answer.toolCalls.length) throw streamError("unavailable");
+        } else if (!selection.content.trim()) {
+          throw streamError("unavailable");
+        }
+        outcome = "complete";
+        yield "[DONE]";
+      } catch (error) {
+        if (!signal.aborted) {
+          const code = inferenceErrorCode(error);
+          outcome = code;
+          yield { error: { code } };
+          yield "[DONE]";
+        }
+      } finally {
+        report(outcome ?? "aborted");
       }
     }
 
-    const finalRequest = marketContexts === undefined
-      ? chatRequest
-      : { ...chatRequest, marketContexts };
-    const followUpMessages: ChatCompletionMessageParam[] = [
-      { role: "system", content: buildSystemPrompt(finalRequest) },
-      ...chatRequest.messages,
-      {
-        role: "assistant" as const,
-        content: null,
-        tool_calls: toolCalls.map((toolCall) => ({
-          id: toolCall.id,
-          type: "function" as const,
-          function: {
-            name: toolCall.name,
-            arguments: JSON.stringify(toolCall.args ?? {}),
-          },
-        })),
+    const iterator = events(chatRequest);
+    let cancelled = false;
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        const result = await iterator.next();
+        if (cancelled) return;
+        if (signal.aborted || result.done) { controller.close(); return; }
+        if (firstTextMs === null && isRecord(result.value) && "response" in result.value && typeof result.value.response === "string" && result.value.response.trim()) {
+          firstTextMs = Math.round(performance.now() - startedAt);
+        }
+        controller.enqueue(encoder.encode(`data: ${typeof result.value === "string" ? result.value : JSON.stringify(result.value)}\n\n`));
       },
-      ...toolCalls.map((toolCall, index) => ({
-        role: "tool" as const,
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(toolResults[index]),
-      })),
-    ];
-    const stream = await context.env.AI.run(
-      MODEL,
-      {
-        messages: followUpMessages,
-        ...inferenceOptions,
-        stream: true,
+      async cancel(reason) {
+        cancelled = true;
+        abort.abort(reason);
+        if (!firstStream.locked) await firstStream.cancel().catch(() => undefined);
+        await iterator.return();
       },
-      aiOptions,
-    );
-
-    return eventStreamResponse(stream, marketContexts);
+    });
+    return new Response(stream, {
+      headers: {
+        "Cache-Control": "no-store, no-transform",
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   } catch (error) {
-    const details = errorDetails(error);
-    if (
-      details.status === 429 ||
-      details.code === "3036" ||
-      details.code === "3040" ||
-      /\b(?:3036|3040)\b/.test(details.message)
-    ) {
-      return jsonError("AI quota is temporarily unavailable", 429);
-    }
-    if (context.request.signal.aborted) {
-      return jsonError("Request was aborted", 408);
-    }
-
-    console.error(
-      JSON.stringify({
-        event: "chat_inference_failed",
-        code: details.code || "unknown",
-      }),
-    );
-    return jsonError("AI service is unavailable", 503);
+    const code = inferenceErrorCode(error);
+    report(signal.aborted ? "aborted" : code);
+    if (signal.aborted) return jsonError("Request was aborted", 408);
+    return code === "rate"
+      ? jsonError("AI quota is temporarily unavailable", 429)
+      : jsonError("AI service is unavailable", 503);
   }
 };

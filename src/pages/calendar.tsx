@@ -7,7 +7,10 @@ import {
   getCurrencyName,
 } from "@/lib/country";
 import { CountryFlag } from "@/components/shared/country-flag";
-import { formatLocalDate } from "@/lib/formatters";
+import {
+  CALENDAR_SOURCES, availableCalendarData, calendarDate, calendarTime,
+  calendarWeekDates, filterCalendarEvents, nextCalendarCatalyst,
+} from "@/features/economic-calendar/model/calendar";
 import { IMPACT_LEVELS } from "@/constants/calendar";
 import {
   CalendarDays,
@@ -43,7 +46,7 @@ import { uiActions } from "@/store/slices/ui-slice";
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
 import type {
-  CalendarEvent,
+  CalendarData, CalendarEvent,
   EventAssetRelevance,
   EventImpact,
 } from "@/types/calendar";
@@ -52,38 +55,7 @@ type ImpactFilter = EventImpact | "all";
 type AssetFilter = EventAssetRelevance | "all";
 type TimeHorizon = "today" | "tomorrow" | "this_week" | "this_month" | "";
 
-function getEventTimestamp(event: CalendarEvent): number {
-  const parts = event.id.split("-");
-  if (parts.length >= 3) {
-    const ts = Number(parts[2]);
-    if (!isNaN(ts) && ts > 1000000000000) {
-      return ts;
-    }
-  }
-  const timePart = event.time.split(" ")[0];
-  const dateObj = new Date(
-    `${event.date}T${timePart.length === 5 ? timePart + ":00" : timePart}`,
-  );
-  if (!isNaN(dateObj.getTime())) {
-    return dateObj.getTime();
-  }
-  return new Date(`${event.date}T00:00:00`).getTime();
-}
-
-function formatEventTimeWIB(event: CalendarEvent): string {
-  const ts = getEventTimestamp(event);
-  if (ts > 0) {
-    return new Date(ts).toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "Asia/Jakarta",
-    });
-  }
-  return event.time.split(" ")[0];
-}
-
-function formatCountdown(ms: number): string {
+function formatCountdown(ms: number, language: string): string {
   if (ms <= 0) return "00:00:00";
   const totalSeconds = Math.floor(ms / 1000);
   const days = Math.floor(totalSeconds / 86400);
@@ -92,20 +64,12 @@ function formatCountdown(ms: number): string {
   const seconds = totalSeconds % 60;
 
   if (days > 0) {
-    return `${days}h ${hours.toString().padStart(2, "0")}j ${minutes.toString().padStart(2, "0")}m`;
+    return `${days}${language === "id" ? "h" : "d"} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   }
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-const CURRENCY_COUNTRY_MAP: Record<string, string[]> = {
-  USD: ["US"],
-  EUR: ["EU", "DE", "FR", "IT", "ES", "NL"],
-  GBP: ["GB", "UK"],
-  JPY: ["JP"],
-  AUD: ["AU"],
-  CNY: ["CN"],
-  IDR: ["ID"],
-};
+const EMPTY_CALENDAR: CalendarData = { events: [], sources: [] };
 
 export default function CalendarPage() {
   const { t, i18n } = useTranslation();
@@ -115,157 +79,49 @@ export default function CalendarPage() {
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("all");
   const [timeHorizon, setTimeHorizon] = useState<TimeHorizon>("today");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDate, setSelectedDate] = useState<string | null>(() =>
-    formatLocalDate(new Date()),
-  );
+  const [customDate, setCustomDate] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [ribbon, setRibbon] = useState({ week: "", offset: 0 });
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const {
-    data: allEvents = [],
-    isLoading,
-    isError,
-    refetch,
-    isRefetching,
-  } = useEconomicCalendar();
-
-  // Next key high-impact catalyst with live countdown
-  const nextMajorCatalyst = useMemo(() => {
-    const upcoming = allEvents
-      .filter((e) => e.impact === "high")
-      .map((e) => ({ event: e, timestamp: getEventTimestamp(e) }))
-      .filter((item) => item.timestamp >= now)
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    if (upcoming.length > 0) return upcoming[0];
-
-    // Fallback: Check high-impact events awaiting release
-    const pending = allEvents
-      .filter((e) => e.impact === "high" && (!e.actual || e.actual === "N/A"))
-      .map((e) => ({ event: e, timestamp: getEventTimestamp(e) }))
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    return pending[0] || null;
-  }, [allEvents, now]);
-
-  const countdownMs = nextMajorCatalyst
-    ? Math.max(0, nextMajorCatalyst.timestamp - now)
-    : 0;
-
-  const [ribbonOffset, setRibbonOffset] = useState<number>(0);
-
-  // Reference dates
-  const today = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => formatLocalDate(today), [today]);
-
-  // Horizontal Date Ribbon dates (7 days of active week)
-  const ribbonDates = useMemo(() => {
-    const base = new Date(today);
-    base.setDate(base.getDate() + ribbonOffset);
-    const dayOfWeek = (base.getDay() + 6) % 7; // Monday = 0
-    const monday = new Date(base);
-    monday.setDate(base.getDate() - dayOfWeek);
-
-    const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const dateStr = formatLocalDate(d);
-
-      const dayEvents = allEvents.filter((e) => e.date === dateStr);
-      const hasHigh = dayEvents.some((e) => e.impact === "high");
-      const hasMedium = dayEvents.some((e) => e.impact === "medium");
-      const hasLow = dayEvents.some((e) => e.impact === "low");
-      const highestImpact = hasHigh
-        ? "high"
-        : hasMedium
-          ? "medium"
-          : hasLow
-            ? "low"
-            : null;
-
-      dates.push({
-        date: d,
-        dateStr,
-        dayName: d.toLocaleDateString(
-          i18n.language === "id" ? "id-ID" : "en-US",
-          { weekday: "long" },
-        ),
-        dayNumber: d.getDate(),
-        monthName: d.toLocaleDateString(
-          i18n.language === "id" ? "id-ID" : "en-US",
-          { month: "long" },
-        ),
-        isToday: dateStr === todayStr,
-        eventCount: dayEvents.length,
-        highestImpact,
-      });
-    }
-    return dates;
-  }, [today, ribbonOffset, allEvents, i18n.language, todayStr]);
-
-  const monthStart = useMemo(() => {
-    const d = new Date(today.getFullYear(), today.getMonth(), 1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, [today]);
-
-  const monthEnd = useMemo(() => {
-    const d = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }, [today]);
-
-  const { canPrevWeek, canNextWeek } = useMemo(() => {
-    const base = new Date(today);
-    base.setDate(base.getDate() + ribbonOffset);
-    const dayOfWeek = (base.getDay() + 6) % 7; // Monday = 0
-    const currentMonday = new Date(base);
-    currentMonday.setDate(base.getDate() - dayOfWeek);
-    currentMonday.setHours(0, 0, 0, 0);
-
-    const prevSunday = new Date(currentMonday);
-    prevSunday.setDate(prevSunday.getDate() - 1);
-    prevSunday.setHours(23, 59, 59, 999);
-
-    const nextMonday = new Date(currentMonday);
-    nextMonday.setDate(nextMonday.getDate() + 7);
-    nextMonday.setHours(0, 0, 0, 0);
-
+  const todayStr = calendarDate(now);
+  const tomorrowStr = calendarDate(now + 86_400_000);
+  const currentWeek = useMemo(() => calendarWeekDates(todayStr), [todayStr]);
+  const selectedDate = timeHorizon === "today" ? todayStr : timeHorizon === "tomorrow" ? tomorrowStr : customDate;
+  const month = (selectedDate ?? todayStr).slice(0, 7);
+  const { data, isLoading, isError, refetch, isRefetching } = useEconomicCalendar(month);
+  const freshnessMinute = Math.floor(now / 60_000);
+  const { sources, events: allEvents } = useMemo(() => availableCalendarData(data ?? EMPTY_CALENDAR, freshnessMinute * 60_000), [data, freshnessMinute]);
+  const failed = isError || (sources.length > 0 && sources.every((source) => source.status === "unavailable"));
+  const incomplete = sources.some((source) => source.status !== "ok");
+  const stale = sources.some((source) => source.stale);
+  const matchingEvents = useMemo(() => filterCalendarEvents(allEvents, {
+    currency: selectedCurrency, impact: impactFilter, asset: assetFilter, search: searchQuery,
+  }), [allEvents, selectedCurrency, impactFilter, assetFilter, searchQuery]);
+  const catalyst = nextCalendarCatalyst(matchingEvents, now);
+  const nextMajorCatalyst = catalyst ? { event: catalyst, timestamp: catalyst.timestamp! } : null;
+  const countdownMs = nextMajorCatalyst ? nextMajorCatalyst.timestamp - now : 0;
+  const ribbonKey = `${todayStr.slice(0, 7)}:${currentWeek[0]}`;
+  const ribbonOffset = ribbon.week === ribbonKey ? ribbon.offset : 0;
+  const setRibbonOffset = (offset: number) => setRibbon({ week: ribbonKey, offset });
+  const locale = i18n.language === "id" ? "id-ID" : "en-US";
+  const ribbonDates = useMemo(() => calendarWeekDates(todayStr, ribbonOffset).map((dateStr) => {
+    const date = new Date(`${dateStr}T00:00:00+07:00`);
+    const dayEvents = matchingEvents.filter((event) => event.date === dateStr);
+    const highestImpact = (["high", "medium", "low"] as const).find((impact) => dayEvents.some((event) => event.impact === impact));
     return {
-      canPrevWeek: prevSunday >= monthStart,
-      canNextWeek: nextMonday <= monthEnd,
+      date, dateStr, dayName: date.toLocaleDateString(locale, { weekday: "long", timeZone: "Asia/Jakarta" }),
+      dayNumber: Number(dateStr.slice(-2)), monthName: date.toLocaleDateString(locale, { month: "long", timeZone: "Asia/Jakarta" }),
+      isToday: dateStr === todayStr, eventCount: dayEvents.length, highestImpact,
     };
-  }, [today, ribbonOffset, monthStart, monthEnd]);
-
-  const ribbonRangeLabel = useMemo(() => {
-    if (ribbonDates.length === 0) return "";
-    const first = ribbonDates[0].date;
-    const last = ribbonDates[ribbonDates.length - 1].date;
-    return `${first.toLocaleDateString(i18n.language === "id" ? "id-ID" : "en-US", { day: "numeric", month: "long" })} – ${last.toLocaleDateString(i18n.language === "id" ? "id-ID" : "en-US", { day: "numeric", month: "long", year: "numeric" })}`;
-  }, [ribbonDates, i18n.language]);
-  const tomorrowStr = useMemo(() => {
-    const tmr = new Date(today);
-    tmr.setDate(tmr.getDate() + 1);
-    return formatLocalDate(tmr);
-  }, [today]);
-
-  const weekRange = useMemo(() => {
-    const curr = new Date(today);
-    const firstDay = curr.getDate() - curr.getDay() + 1; // Monday
-    const monday = new Date(curr.setDate(firstDay));
-    const sunday = new Date(monday);
-    sunday.setDate(sunday.getDate() + 6);
-
-    return {
-      start: formatLocalDate(monday),
-      end: formatLocalDate(sunday),
-    };
-  }, [today]);
+  }), [todayStr, ribbonOffset, matchingEvents, locale]);
+  const canPrevWeek = ribbonDates[0].dateStr > `${todayStr.slice(0, 7)}-01`;
+  const canNextWeek = calendarDate(ribbonDates[6].date.getTime() + 86_400_000).slice(0, 7) === todayStr.slice(0, 7);
+  const ribbonRangeLabel = `${ribbonDates[0].date.toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "Asia/Jakarta" })} – ${ribbonDates[6].date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" })}`;
 
   // Filter options for FilterGroup in chronological order
   const timeHorizonOptions = useMemo(
@@ -279,32 +135,20 @@ export default function CalendarPage() {
     [t],
   );
 
-  // Synchronized date & horizon selection handlers
   const handleSelectRibbonDate = (dateStr: string) => {
     if (selectedDate === dateStr) {
-      setSelectedDate(null);
+      setCustomDate(null);
       setTimeHorizon("this_week");
     } else {
-      setSelectedDate(dateStr);
-      if (dateStr === todayStr) {
-        setTimeHorizon("today");
-      } else if (dateStr === tomorrowStr) {
-        setTimeHorizon("tomorrow");
-      } else {
-        setTimeHorizon("");
-      }
+      setCustomDate(dateStr);
+      setTimeHorizon(dateStr === todayStr ? "today" : dateStr === tomorrowStr ? "tomorrow" : "");
     }
   };
 
   const handleSelectTimeHorizon = (horizon: TimeHorizon) => {
     setTimeHorizon(horizon);
-    if (horizon === "today") {
-      setSelectedDate(todayStr);
-    } else if (horizon === "tomorrow") {
-      setSelectedDate(tomorrowStr);
-    } else {
-      setSelectedDate(null);
-    }
+    setCustomDate(null);
+    setRibbonOffset(0);
   };
 
   const handleResetFilters = () => {
@@ -312,7 +156,7 @@ export default function CalendarPage() {
     setSelectedCurrency("ALL");
     setImpactFilter("all");
     setAssetFilter("all");
-    setSelectedDate(todayStr);
+    setCustomDate(null);
     setTimeHorizon("today");
     setRibbonOffset(0);
   };
@@ -361,69 +205,11 @@ export default function CalendarPage() {
     [t],
   );
 
-  // Filter pipeline
-  const filteredEvents = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return allEvents.filter((e) => {
-      // 0. Visual Date filter (selectedDate takes precedence if explicitly set; otherwise timeHorizon)
-      if (selectedDate) {
-        if (e.date !== selectedDate) return false;
-      } else if (timeHorizon) {
-        if (timeHorizon === "today" && e.date !== todayStr) return false;
-        if (timeHorizon === "tomorrow" && e.date !== tomorrowStr) return false;
-        if (
-          timeHorizon === "this_week" &&
-          (e.date < weekRange.start || e.date > weekRange.end)
-        )
-          return false;
-        if (timeHorizon === "this_month") {
-          const [year, month] = e.date.split("-").map(Number);
-          if (month !== today.getMonth() + 1 || year !== today.getFullYear())
-            return false;
-        }
-      }
-
-      // 2. Impact filter
-      if (impactFilter !== "all" && e.impact !== impactFilter) return false;
-
-      // 3. Currency filter
-      if (selectedCurrency !== "ALL") {
-        const matchedCountries = CURRENCY_COUNTRY_MAP[selectedCurrency] || [
-          selectedCurrency,
-        ];
-        if (!matchedCountries.includes(e.country)) return false;
-      }
-
-      // 4. Asset relevance filter
-      if (assetFilter !== "all" && !e.assetRelevance.includes(assetFilter))
-        return false;
-
-      // 5. Search query
-      if (query) {
-        const matchesTitle = e.title.toLowerCase().includes(query);
-        const matchesCountry = e.country.toLowerCase().includes(query);
-        const matchesAsset = e.assetRelevance.some((a) =>
-          a.toLowerCase().includes(query),
-        );
-        if (!matchesTitle && !matchesCountry && !matchesAsset) return false;
-      }
-
-      return true;
-    });
-  }, [
-    allEvents,
-    selectedDate,
-    timeHorizon,
-    today,
-    todayStr,
-    tomorrowStr,
-    weekRange,
-    impactFilter,
-    selectedCurrency,
-    assetFilter,
-    searchQuery,
-  ]);
+  const filteredEvents = useMemo(() => matchingEvents.filter((event) => {
+    if (selectedDate) return event.date === selectedDate;
+    if (timeHorizon === "this_week") return event.date >= currentWeek[0] && event.date <= currentWeek[6];
+    return event.date.startsWith(`${month}-`);
+  }), [matchingEvents, selectedDate, timeHorizon, currentWeek, month]);
 
   const pageContext = useMemo(
     () => ({
@@ -440,7 +226,7 @@ export default function CalendarPage() {
         title: event.title,
         country: event.country,
         date: event.date,
-        time: event.time,
+        time: event.time || t("calendar.time_unannounced"),
         impact: event.impact,
         ...(event.forecast ? { forecast: event.forecast } : {}),
         ...(event.previous ? { previous: event.previous } : {}),
@@ -456,6 +242,7 @@ export default function CalendarPage() {
       timeHorizon,
       searchQuery,
       filteredEvents,
+      t,
     ],
   );
 
@@ -493,6 +280,20 @@ export default function CalendarPage() {
 
         </div>
 
+        <div role="status" className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs">
+          <p className="font-medium">{t(isLoading ? "calendar.sources_loading" : failed ? "calendar.sources_failed" : incomplete ? "calendar.coverage_partial" : stale ? "calendar.coverage_stale" : "calendar.coverage_ready")}</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground">
+            {sources.map((source) => (
+              <span key={source.source}>
+                <a href={CALENDAR_SOURCES[source.source].url} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">{CALENDAR_SOURCES[source.source].name}</a>
+                {" · "}{t(`calendar.source_status.${source.status}`)}{source.stale && source.status !== "unavailable" ? ` · ${t("calendar.source_status.stale")}` : ""}
+                {source.checkedAt !== null && <span className="block">{t("calendar.checked_at", { time: `${calendarDate(source.checkedAt)} ${calendarTime(source.checkedAt)}` })}</span>}
+              </span>
+            ))}
+          </div>
+          <p className="text-muted-foreground">{t("calendar.schedule_only")}</p>
+        </div>
+
         <Separator />
 
         {/* SECTION 1: NEXT MAJOR CATALYST */}
@@ -504,7 +305,7 @@ export default function CalendarPage() {
             </h2>
           </div>
 
-          {nextMajorCatalyst ? (
+          {isLoading ? <Skeleton className="h-48 w-full" /> : nextMajorCatalyst ? (
             <Card className="border border-border p-4 sm:p-5 flex flex-col gap-3.5 transition-all">
               {/* Top Row: Meta Badges (left) & Live Countdown (right) */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -599,7 +400,7 @@ export default function CalendarPage() {
                       {t("calendar.countdown_prefix")}:
                     </span>
                     <span className="font-mono text-xs font-bold tracking-tight text-primary">
-                      {formatCountdown(countdownMs)}
+                      {formatCountdown(countdownMs, i18n.language)}
                     </span>
                   </Badge>
                 </div>
@@ -625,12 +426,13 @@ export default function CalendarPage() {
                 <div className="flex items-center gap-3 sm:gap-4 text-muted-foreground flex-wrap">
                   <div className="flex items-center gap-1.5 font-medium text-foreground">
                     <span>
-                      {formatEventTimeWIB(nextMajorCatalyst.event)} WIB •{" "}
+                      {nextMajorCatalyst.event.time} •{" "}
                       {new Date(
-                        nextMajorCatalyst.event.date + "T00:00:00",
+                        nextMajorCatalyst.event.date + "T00:00:00+07:00",
                       ).toLocaleDateString(
                         i18n.language === "id" ? "id-ID" : "en-US",
                         {
+                          timeZone: "Asia/Jakarta",
                           weekday: "long",
                           day: "numeric",
                           month: "long",
@@ -640,7 +442,7 @@ export default function CalendarPage() {
                     </span>
                   </div>
 
-                  <div className="hidden sm:block text-border">•</div>
+                  <a href={nextMajorCatalyst.event.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">{CALENDAR_SOURCES[nextMajorCatalyst.event.source].name}</a>
 
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground">
@@ -650,7 +452,7 @@ export default function CalendarPage() {
                       {nextMajorCatalyst.event.forecast &&
                       nextMajorCatalyst.event.forecast !== "N/A"
                         ? nextMajorCatalyst.event.forecast
-                        : "—"}
+                        : t("calendar.value_unavailable")}
                     </span>
                   </div>
 
@@ -664,7 +466,7 @@ export default function CalendarPage() {
                       {nextMajorCatalyst.event.previous &&
                       nextMajorCatalyst.event.previous !== "N/A"
                         ? nextMajorCatalyst.event.previous
-                        : "—"}
+                        : t("calendar.value_unavailable")}
                     </span>
                   </div>
                 </div>
@@ -693,10 +495,10 @@ export default function CalendarPage() {
                     <CalendarDays aria-hidden="true" />
                   </EmptyMedia>
                   <EmptyTitle className="text-sm sm:text-base">
-                  {t("calendar.no_upcoming_catalyst")}
+                  {t(failed ? "common.load_error_title" : "calendar.no_upcoming_catalyst")}
                   </EmptyTitle>
                   <EmptyDescription>
-                  {t("calendar.no_events_desc")}
+                  {t(incomplete || failed ? "calendar.coverage_partial" : "calendar.catalyst_empty_desc")}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -854,8 +656,8 @@ export default function CalendarPage() {
           </div>
 
           {/* Footer Bar: Date Range Info on Left & Navigation Buttons on Right (matching DataTablePagination) */}
-          <div className="flex items-center justify-between gap-3 text-xs select-none pt-1">
-            <div className="flex items-center gap-1.5 text-muted-foreground whitespace-nowrap">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs select-none pt-1">
+            <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
               <span>{t("calendar.period")}</span>
               <span className="font-semibold text-foreground">
                 {ribbonRangeLabel}
@@ -869,7 +671,7 @@ export default function CalendarPage() {
                 size="icon"
                 disabled={!canPrevWeek}
                 onClick={() => {
-                  if (canPrevWeek) setRibbonOffset((prev) => prev - 7);
+                  if (canPrevWeek) setRibbonOffset(ribbonOffset - 7);
                 }}
                 className="cursor-pointer"
                 aria-label={t("calendar.prev_week")}
@@ -883,7 +685,7 @@ export default function CalendarPage() {
                 size="icon"
                 disabled={!canNextWeek}
                 onClick={() => {
-                  if (canNextWeek) setRibbonOffset((prev) => prev + 7);
+                  if (canNextWeek) setRibbonOffset(ribbonOffset + 7);
                 }}
                 className="cursor-pointer"
                 aria-label={t("calendar.next_week")}
@@ -942,14 +744,16 @@ export default function CalendarPage() {
                 value={timeHorizon}
                 options={timeHorizonOptions}
                 onChange={(val) => handleSelectTimeHorizon(val as TimeHorizon)}
-                className="flex-1 md:flex-none shrink-0 min-w-0 sm:w-fit"
+                aria-label={t("calendar.period")}
+                className="flex-1 min-w-36 sm:flex-none sm:min-w-0 sm:w-fit"
               />
 
-              <Separator orientation="vertical" className="mx-1" />
+              <Separator orientation="vertical" className="hidden sm:block mx-1" />
 
               <FilterGroup
                 value={assetFilter}
                 options={assetOptions}
+                aria-label={t("calendar.asset.all")}
                 onChange={(v) => setAssetFilter(v as AssetFilter)}
                 variant="select"
                 className="flex-1 sm:flex-none"
@@ -958,6 +762,7 @@ export default function CalendarPage() {
               <FilterGroup
                 value={selectedCurrency}
                 options={currencyOptions}
+                aria-label={t("calendar.all_currencies")}
                 onChange={(v) => setSelectedCurrency(v)}
                 variant="select"
                 className="flex-1 sm:flex-none"
@@ -966,6 +771,7 @@ export default function CalendarPage() {
               <FilterGroup
                 value={impactFilter}
                 options={impactOptions}
+                aria-label={t("calendar.impact.all")}
                 onChange={(v) => setImpactFilter(v as ImpactFilter)}
                 variant="select"
                 className="flex-1 sm:flex-none"
@@ -980,6 +786,7 @@ export default function CalendarPage() {
                 <Input
                   type="text"
                   placeholder={t("calendar.search_placeholder")}
+                  aria-label={t("calendar.search_placeholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 pr-9 text-sm placeholder:text-sm"
@@ -1049,7 +856,7 @@ export default function CalendarPage() {
                 </div>
               </div>
             </div>
-          ) : isError && allEvents.length === 0 ? (
+          ) : failed ? (
             <Card className="border border-border">
               <Empty role="alert" className="min-h-56 border-0">
                 <EmptyHeader>
@@ -1081,9 +888,9 @@ export default function CalendarPage() {
                   <EmptyMedia variant="icon">
                     <CalendarDays aria-hidden="true" />
                   </EmptyMedia>
-                  <EmptyTitle>{t("calendar.no_events")}</EmptyTitle>
+                  <EmptyTitle>{t(incomplete ? "calendar.no_loaded_events" : "calendar.no_events")}</EmptyTitle>
                   <EmptyDescription>
-                    {t("calendar.no_events_desc")}
+                    {t(incomplete ? "calendar.coverage_partial" : "calendar.no_events_desc")}
                   </EmptyDescription>
                 </EmptyHeader>
                 {hasActiveFilters && (
@@ -1111,10 +918,11 @@ export default function CalendarPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm font-semibold text-foreground uppercase tracking-wider truncate">
-                          {new Date(date).toLocaleDateString(
+                          {new Date(`${date}T00:00:00+07:00`).toLocaleDateString(
                             i18n.language === "id" ? "id-ID" : "en-US",
                             {
-                              weekday: "long",
+                              timeZone: "Asia/Jakarta",
+                          weekday: "long",
                               day: "numeric",
                               month: "long",
                               year: "numeric",
@@ -1150,7 +958,7 @@ export default function CalendarPage() {
                         event={event}
                         trigger={
                           <div
-                            className="group px-4 py-4 flex flex-row items-center justify-between gap-4 text-left transition-colors hover:bg-muted/30 cursor-pointer select-none"
+                            className="group px-4 py-4 flex flex-row items-center justify-between gap-4 text-left transition-colors hover:bg-muted/30 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                             role="button"
                             tabIndex={0}
                             aria-label={event.title}
@@ -1164,7 +972,7 @@ export default function CalendarPage() {
                             {/* Sisi Kiri: Avatar Bendera + Badge Jam + Judul & Subtitle Mata Uang */}
                             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                               {/* Avatar Box Bendera (Identik dengan Style Card Konteks Pasar: bg-muted/50 border ring-1) */}
-                              <div className="w-7 h-7 sm:w-8 sm:h-8 border border-border rounded-lg ring-1 ring-foreground/10 bg-muted/50 flex items-center justify-center shrink-0">
+                              <div className="size-8 border border-border rounded-lg ring-1 ring-foreground/10 bg-muted/50 hidden sm:flex items-center justify-center shrink-0">
                                 <CountryFlag
                                   countryCode={event.country}
                                   className="w-4.5 h-3 sm:w-5 sm:h-3.5 rounded-[2px]"
@@ -1179,18 +987,18 @@ export default function CalendarPage() {
                                   BADGE.neutral.bg,
                                   BADGE.neutral.text,
                                   BADGE.neutral.border,
-                                  "shrink-0",
+                                  "shrink-0 max-w-24 whitespace-normal text-center",
                                 )}
                               >
-                                {formatEventTimeWIB(event)} WIB
+                                {event.time || t("calendar.time_unannounced")}
                               </Badge>
 
                               {/* Judul & Subtitle: Mata Uang • Nama Negara */}
                               <div className="space-y-0.5 min-w-0 flex-1">
-                                <CardTitle className="text-xs sm:text-sm font-bold tracking-tight uppercase text-foreground group-hover:text-primary transition-colors truncate block">
+                                <CardTitle className="text-xs sm:text-sm font-bold tracking-tight uppercase text-foreground group-hover:text-primary transition-colors line-clamp-3 sm:line-clamp-2">
                                   {event.title}
                                 </CardTitle>
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium truncate">
+                                <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground font-medium">
                                   <span className="text-[10px] font-bold text-foreground/80 uppercase tracking-wider">
                                     {getCurrencyCode(event.country)}
                                   </span>
@@ -1203,6 +1011,7 @@ export default function CalendarPage() {
                                       i18n.language,
                                     )}
                                   </span>
+                                  <span>· {CALENDAR_SOURCES[event.source].name}</span>
                                 </div>
                               </div>
                             </div>

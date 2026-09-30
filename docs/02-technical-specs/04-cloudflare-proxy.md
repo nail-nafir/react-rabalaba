@@ -3,7 +3,7 @@
 > Status: Kanonis
 > Terverifikasi: 2026-09-16
 > Tanggal: 2026-09-16
-> Cakupan: Engine cache, 3 route, split browser dan cron
+> Cakupan: Engine cache, market routes, official calendar, split browser dan cron
 
 [Bahasa Indonesia](#bagian-id) · [English](#english-part)
 
@@ -11,7 +11,7 @@
 
 ### Ringkasan
 - Proxy merupakan tier JSON caching di Pages Functions. Desain sat-set.
-- Satu engine plus 3 route melayani Yahoo, Binance, CoinGecko.
+- Engine yang sama melayani Yahoo, Binance, CoinGecko, dan kalender resmi AS.
 - Browser direct untuk global dan derivatives, cron via proxy.
 
 ### Engine Cache
@@ -33,15 +33,16 @@ flowchart TD
 
 - Engine berada di `proxy.ts › proxyJsonGet` dengan coalescing internal.
 - Policy mencakup fresh TTL, stale TTL, error TTL, dan bypass params.
-- Header diagnostik mencakup proxy, cache, upstream, stale reason.
+- Header diagnostik mencakup proxy, cache, upstream, stale reason, dan `X-Rabalaba-Checked-At` (waktu pemeriksaan yang tetap saat cache hit/stale).
 - Timeout default 8000ms dengan CORS terbuka dan UA kanonis.
 
-### Tiga Route
+### Route
 | Route | Upstream Dan Cache | Catatan |
 |---|---|---|
 | `coingecko › proxy` | Host demo plus fresh 1800s | Dipakai cron trending |
 | `binance › proxy` | Futures plus fresh 300-1800s | Dipakai cron ticker |
 | `yahoo › proxy` | Chart plus quote plus search | Crumb untuk quoteSummary |
+| `calendar/[source]` | BLS/BEA/Fed; fresh 1800s + stale 21600s | GET allowlist, validasi sebelum cache; BLS masih 403 di Cloudflare, rilis ditahan |
 
 - Yahoo memakai auth crumb dan cookie dengan refresh saat 401.
 - CoinGecko menyuntik demo key dari server tanpa ekspos browser.
@@ -79,7 +80,7 @@ flowchart TD
 
 ### Overview
 - Proxy is a JSON caching tier on Pages Functions. Design deep-dive.
-- One engine plus 3 routes serves Yahoo, Binance, CoinGecko.
+- The same engine serves Yahoo, Binance, CoinGecko and official US calendars.
 - Browser stays direct for global and derivatives, cron via proxy.
 
 ### Cache Engine
@@ -101,15 +102,16 @@ flowchart TD
 
 - Engine lives in `proxy.ts › proxyJsonGet` with internal coalescing.
 - Policy covers fresh TTL, stale TTL, error TTL, and bypass params.
-- Diagnostic headers cover proxy, cache, upstream, stale reason.
+- Diagnostic headers cover proxy, cache, upstream, stale reason, and `X-Rabalaba-Checked-At` (preserved on cache hit/stale).
 - Default timeout is 8000ms with open CORS and canonical UA.
 
-### Three Routes
+### Routes
 | Route | Upstream And Cache | Notes |
 |---|---|---|
 | `coingecko › proxy` | Demo host plus fresh 1800s | Used by trending cron |
 | `binance › proxy` | Futures plus fresh 300-1800s | Used by ticker cron |
 | `yahoo › proxy` | Chart plus quote plus search | Crumb for quoteSummary |
+| `calendar/[source]` | BLS/BEA/Fed; fresh 1800s + stale 21600s | GET allowlist, validate before caching; BLS returns 403 in Cloudflare, rollout held |
 
 - Yahoo uses crumb and cookie auth with refresh on 401.
 - CoinGecko injects server demo key without browser exposure.

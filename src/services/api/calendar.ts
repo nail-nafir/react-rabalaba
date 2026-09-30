@@ -1,99 +1,63 @@
-import { apiClient } from './client';
-import type { CalendarEvent, EventImpact } from '@/types/calendar';
+import { z } from "zod";
+import {
+  CALENDAR_MAX_AGE_MS, CALENDAR_SOURCES, calendarDate, calendarMonthRange,
+  calendarTime, calendarWeekDates, mergeCalendarEvents, normalizeYahooCalendar,
+} from "@/features/economic-calendar/model/calendar";
+import type { CalendarData, CalendarSource, CalendarSourceResponse, CalendarSourceState } from "@/types/calendar";
 
-/**
- * Economic Calendar API service via Yahoo Finance (Unofficial internal endpoint).
- * Proxy: /api/yahoo/* → https://query1.finance.yahoo.com/*
- */
+const officialResponse = z.object({
+  checkedAt: z.number().int().positive(),
+  events: z.array(z.object({
+    id: z.string().min(1), title: z.string().min(1), country: z.literal("US"),
+    date: z.iso.date(), time: z.string(), timestamp: z.number().int().positive().max(8.64e15).nullable(),
+    source: z.enum(["bls", "bea", "fed"]), sourceUrl: z.string(),
+    impact: z.enum(["high", "medium", "low"]), category: z.literal("Economic"),
+    assetRelevance: z.array(z.enum(["stocks", "crypto", "commodities"])),
+  })),
+});
 
-const BASE_URL = '/api/yahoo/ws/screeners/v1/finance/calendar-events';
-
-interface YahooEconomicRecord {
-  event: string;
-  countryCode: string;
-  eventTime: number; // ms
-  actual?: string;
-  prior?: string;
-  description?: string;
-}
-
-interface YahooEconomicDaily {
-  records: YahooEconomicRecord[];
-}
-
-interface YahooCalendarResponse {
-  finance: {
-    result: {
-      economicEvents: YahooEconomicDaily[];
+/** Each source fails independently; an unavailable source is never an empty success. */
+export async function fetchEconomicCalendar(month = calendarDate(Date.now()).slice(0, 7)): Promise<CalendarData> {
+  const { startMs, endMs } = calendarMonthRange(month);
+  // Include the edge weeks so Sunday/next-month dates in the ribbon remain usable.
+  const firstDate = calendarWeekDates(calendarDate(startMs))[0];
+  const lastDate = calendarWeekDates(calendarDate(endMs - 1))[6];
+  const params = new URLSearchParams({
+    modules: "economicEvents", startDate: String(Date.parse(`${firstDate}T00:00:00+07:00`)),
+    endDate: String(Date.parse(`${lastDate}T23:59:59.999+07:00`)),
+    countPerDay: "100", economicEventsHighImportanceOnly: "false",
+  });
+  const sources = Object.keys(CALENDAR_SOURCES) as CalendarSource[];
+  const results = await Promise.allSettled(sources.map(async (source) => {
+    const url = source === "yahoo" ? `/api/yahoo/ws/screeners/v1/finance/calendar-events?${params}` : `/api/calendar/${source}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+    if (!response.ok) throw new Error(`${source} returned ${response.status}`);
+    const payload: unknown = await response.json();
+    let data: CalendarSourceResponse;
+    let partial = false;
+    if (source === "yahoo") {
+      const normalized = normalizeYahooCalendar(payload);
+      partial = normalized.partial;
+      data = { events: normalized.events, checkedAt: Number(response.headers.get("X-Rabalaba-Checked-At")) || Date.now() };
+    } else {
+      data = officialResponse.parse(payload);
+      if (data.events.some((event) => event.source !== source || event.sourceUrl !== CALENDAR_SOURCES[source].url ||
+        event.time !== calendarTime(event.timestamp) || (event.timestamp !== null && event.date !== calendarDate(event.timestamp)))) {
+        throw new Error("Invalid official calendar event");
+      }
+    }
+    if (Date.now() - data.checkedAt > CALENDAR_MAX_AGE_MS || data.checkedAt > Date.now() + 60_000) throw new Error("Expired calendar data");
+    const events = data.events.filter((event) => event.date >= firstDate && event.date <= lastDate);
+    const state: CalendarSourceState = {
+      source, status: partial ? "partial" : "ok", checkedAt: data.checkedAt,
+      stale: response.headers.get("X-Rabalaba-Cache") === "stale",
     };
+    return { events, state };
+  }));
+  return {
+    events: mergeCalendarEvents(results.flatMap((result) => result.status === "fulfilled" ? result.value.events : [])),
+    sources: results.map((result, index) => result.status === "fulfilled" ? result.value.state : {
+      source: sources[index], status: "unavailable", stale: false, checkedAt: null,
+    }),
   };
-}
-
-/**
- * Fetch economic calendar events from Yahoo Finance.
- * Defaults to the current month.
- */
-export async function fetchEconomicCalendar(): Promise<CalendarEvent[]> {
-  try {
-    // Calculate current month range
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    firstDay.setHours(0, 0, 0, 0);
-    
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    lastDay.setHours(23, 59, 59, 999);
-
-    const params = new URLSearchParams({
-      modules: 'economicEvents',
-      startDate: firstDay.getTime().toString(),
-      endDate: lastDay.getTime().toString(),
-    });
-
-    const response = await apiClient.get<YahooCalendarResponse>(`${BASE_URL}?${params.toString()}`);
-    
-    const dailyGroups = response.finance.result?.economicEvents ?? [];
-    const flattenedEvents: CalendarEvent[] = [];
-
-    dailyGroups.forEach((group) => {
-      group.records.forEach((event, index) => {
-        const eventDate = new Date(event.eventTime);
-        const dateStr = eventDate.toISOString().split('T')[0];
-        const timeStr = eventDate.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit', 
-          hour12: false,
-          timeZoneName: 'short' 
-        });
-
-        // Auto impact logic
-        let impact: EventImpact = 'medium';
-        const titleLower = event.event.toLowerCase();
-        if (titleLower.includes('gdp') || titleLower.includes('cpi') || titleLower.includes('interest rate') || titleLower.includes('fed')) {
-          impact = 'high';
-        } else if (titleLower.includes('sentiment') || titleLower.includes('sales') || titleLower.includes('pmi')) {
-          impact = 'low';
-        }
-
-        flattenedEvents.push({
-          id: `yh-${index}-${event.eventTime}-${event.countryCode}`,
-          title: event.event,
-          country: event.countryCode, // Use raw 2-letter code from API
-          date: dateStr,
-          time: timeStr,
-          impact: impact,
-          category: 'Economic',
-          forecast: 'N/A',
-          previous: event.prior || 'N/A',
-          actual: event.actual || 'N/A',
-          assetRelevance: ['stocks', 'crypto', 'commodities'],
-          description: event.description || `Economic data release for ${event.countryCode}: ${event.event}`,
-        });
-      });
-    });
-    
-    return flattenedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  } catch (error) {
-    console.error('Failed to fetch Yahoo economic calendar:', error);
-    return [];
-  }
 }

@@ -1,65 +1,60 @@
-# FSD 05 — Economic Calendar / Economic Calendar
+# FSD 05 — Economic Calendar
 
-> Status: Aktif / Active | Terverifikasi / Verified: Ya / Yes | Tanggal / Date: 2026-09-16 | Cakupan / Scope: Event Bulanan, Impact Badge, Dialog Detail
+> Implementasi: 2026-09-27. **Rilis integrasi BLS ditahan**: HTTP 403 juga terjadi dari preview Cloudflare Workers. BEA dan Fed berhasil (HTTP 200). Belum dideploy ke produksi.
 
-[Bahasa Indonesia](#bagian-id) · [English](#english-part)
+## Bahasa Indonesia
 
-<a id="bagian-id"></a>
+`/calendar` tetap publik. Jadwal resmi AS dan Yahoo diambil paralel; kegagalan satu sumber tidak menghapus event sumber lain. Tidak ada database, API key baru, atau dependensi baru.
 
-## 🇮🇩 Ringkasan
+| Sumber | Feed resmi | Cakupan |
+|---|---|---|
+| BLS | [ICS](https://www.bls.gov/schedule/news_release/bls.ics) | Jadwal publikasi termasuk CPI, Employment Situation/NFP, PPI, JOLTS; akses runtime masih 403 |
+| BEA | [JSON publik](https://apps.bea.gov/API/signup/release_dates.json) | GDP, Personal Income and Outlays/PCE, dan publikasi BEA lainnya |
+| Federal Reserve | [JSON kalender](https://www.federalreserve.gov/json/calendar.json) | FOMC meeting/keputusan, press conference, minutes |
+| Yahoo Finance | `/api/yahoo/ws/screeners/v1/finance/calendar-events` | Pelengkap global, dengan `countPerDay=100` |
 
-Halaman /calendar publik tanpa guard. Menarik event ekonomi bulan berjalan dari endpoint Yahoo screener calendar via proxy. Klasifikasi impact otomatis: high untuk GDP/CPI/rate, low untuk sentiment/sales/PMI. Tampilan sat-set memakai mini-calendar plus dialog detail.
+### Data dan batas cakupan
 
-Hook memakai `use-calendar-data.ts › useEconomicCalendar` queryKey economic-calendar, staleTime/refetchInterval 30 menit, poll auto-stop saat unmount. Return list kosong bila gagal.
+- `functions/api/calendar/[source].ts` menerima GET untuk `bls`, `bea`, `fed` saja. Host upstream tetap; query dan method lain ditolak. Respons dinormalisasi dan divalidasi sebelum masuk cache proyek: fresh 30 menit, stale tambahan 6 jam, timeout 8 detik termasuk pembacaan body. HTTP 403/429/5xx atau respons rusak dapat memakai cadangan terakhir; tidak ada jadwal tebakan.
+- `CalendarEvent` membawa `timestamp` UTC dalam milidetik (`null` bila jam tidak diumumkan), `source`, `sourceUrl`, serta `date` dan `time` WIB. Jadwal dengan tanggal saja mempertahankan tanggal yang diumumkan sumber dan menampilkan “Jam belum diumumkan”; tanggal WIB tepatnya belum dapat ditentukan tanpa jam.
+- BLS parser mendukung event eksplisit UTC/TZID, date-only, line folding, UID/revisi/cancellation. Floating time dan recurrence ditolak. Parser diuji memakai contoh sintetis dengan tanggal rujukan resmi; format feed BLS aktual belum terverifikasi karena 403. Jangan meluncurkan BLS sebelum feed asli berhasil diparse di Cloudflare.
+- BEA membuang tanggal duplikat dalam satu publikasi. Fed memakai hari keputusan dan jam yang diterbitkan, bukan menebak jam dari tanggal awal rapat dua hari. Konversi Eastern Time menggunakan `America/New_York` agar DST benar.
+- Publikasi resmi menggantikan seri Yahoo untuk keluarga yang dikenal dan bulan rilis AS yang sama: CPI, employment, PPI, JOLTS, GDP, PCE, corporate profits, international transactions, FOMC. Ini juga menyingkirkan jadwal Yahoo lama jika tanggal resmi berubah dalam bulan yang sama. Publikasi negara bagian, ADP, dan Dallas Fed tidak digabung. Alias publikasi lain yang belum dikenal tetap terpisah.
+- Actual/forecast/previous Yahoo tidak ditempelkan ke publikasi resmi. BEA/BLS/Fed adalah sumber jadwal; ketiga nilainya kosong. Yahoo menyediakan actual/prior bila ada, tanpa forecast. Nilai `0` dipertahankan; nilai hilang ditulis “Tidak tersedia dari sumber”. Label impact dan relevansi aset adalah heuristik aplikasi, bukan metadata resmi.
+- Yahoo ditandai parsial bila `records.length < totalCount` di salah satu kelompok harian. Menaikkan cap tidak menjamin kelengkapan historis atau global.
 
-## 🇮🇩 Tampilan Kalender
+### Tampilan dan query
 
-Tampilan kalender dan kontrol tanggal berada langsung pada CalendarPage. Grid bulan memakai titik event, nav prev/next bulan, judul locale-aware id-ID/en-US via i18n.language, callback date-click. Pure presentational tanpa logika bisnis.
+`useEconomicCalendar(month)` memakai key `['economic-calendar', month]`, staleTime/refetchInterval 30 menit. Request mencakup bulan WIB dan minggu di kedua tepinya agar minggu lintas bulan/besok tetap tersedia. Filter Bulan Ini membatasi ke bulan aktif.
 
-| Elemen | Perilaku |
-|---|---|
-| Grid bulan | Titik event per tanggal |
-| Navigasi | Prev/next bulan plus judul locale |
+Agenda, jumlah mingguan, dan katalis menggunakan filter mata uang/impact/aset/pencarian yang sama. Katalis hanya memilih high-impact dengan timestamp mendatang. Hari Ini/Besok mengikuti pergantian hari WIB; minggu dimulai Senin, termasuk saat hari Minggu; posisi ribbon direset ketika minggu atau bulan berganti. Tanggal manual tetap pilihan pengguna.
 
-## 🇮🇩 Dialog Detail dan Sumber
+Status sumber membedakan tersedia, hasil terbatas, tidak tersedia, dan data lama, dengan tautan serta waktu pemeriksaan. Jika semua sumber gagal, tampil error/retry; jika sebagian gagal, data yang berhasil tetap muncul beserta peringatan cakupan. Cadangan lewat batas umur tidak ditampilkan. Dialog, clipboard, pengelompokan, serta countdown memakai tanggal/jam yang sama. Kontrak konteks chatbot tetap: maksimal lima event dengan field lama dan tanggal/jam ternormalisasi; sumber/timestamp tidak menambah field wire.
 
-Dialog memakai `calendar-detail-dialog.tsx › CalendarDetailDialog`. Detail event: flag emoji negara, badge impact, actual/forecast/previous, quote market-context, badge relevance aset stocks/crypto/commodities. Tipe dari types/calendar.
+### Verifikasi dan pengembangan
 
-Fetch memakai `calendar.ts › fetchEconomicCalendar` endpoint Yahoo screener calendar-events modules economicEvents dengan startDate dan endDate via proxy. Flatten daily group menjadi CalendarEvent, auto-klasifikasi impact, sort ascending. Return list kosong bila gagal.
+Jalankan `npm run wrangler` untuk Vite + Pages Functions di port 8888, atau `npm run build` lalu `npx wrangler pages dev dist --port 8888`. Vite saja (`npm run dev`) tidak menyediakan route resmi Pages.
 
-## 🇮🇩 Tautan Terkait
+```sh
+node --test tests/calendar.test.mjs tests/proxy.test.mjs tests/chat.test.mjs tests/chat-ui.test.mjs tests/empty-state.test.mjs tests/i18n.test.mjs
+npm run lint
+npm run build
+```
 
-- Overview: docs/01-functional-specs/00-overview.md
-- Proxy: docs/02-technical-specs/04-cloudflare-proxy.md
-- Testing: docs/03-testing/
+Rujukan tanggal pada [kalender BLS September 2026](https://www.bls.gov/schedule/2026/09_sched.htm): Employment Situation 4 Sep 08:30 ET → 19:30 WIB; CPI 11 Sep 08:30 ET → 19:30 WIB; JOLTS 1 dan 29 Sep 10:00 ET → 21:00 WIB. Ini verifikasi jadwal sumber, **bukan** bukti feed BLS berhasil diintegrasikan. Tidak ada tanggal ini yang ditanam ke aplikasi.
 
----
+Preview Cloudflare 27 Sep 2026: BEA memuat 136 jadwal, termasuk GDP dan Personal Income and Outlays 30 Sep 19:30 WIB; Fed memuat 135 jadwal FOMC, termasuk keputusan 17 Sep 01:00 WIB dan press conference 01:30 WIB. BLS tetap 403. Ulangi preflight BLS sebelum rilis, verifikasi feed asli dan parser, dan pertahankan status cakupan parsial selama belum tersedia.
 
-<a id="english-part"></a>
+## English
 
-## 🇺🇸 Summary
+The public calendar combines official US schedules with Yahoo global events. The allowlisted `/api/calendar/:source` Pages route normalizes BLS ICS, BEA JSON and Fed JSON, using the existing proxy cache (30 minutes fresh plus 6 hours stale) and an 8-second timeout. No database, new dependencies or API keys are required.
 
-The /calendar page remains public without guard. Pulls current-month economic events from Yahoo screener calendar endpoint via proxy. Automatic impact classification: high for GDP/CPI/rates, low for sentiment/sales/PMI. Deep-dive view uses mini-calendar plus detail dialog.
+Events carry explicit UTC milliseconds, source and source link. WIB dates/times are consistent across filtering, grouping, dialogs and countdowns. Eastern times use IANA DST rules. Date-only releases preserve the announced source date, display “Time not announced” and never start a countdown. They cannot be assigned an exact WIB day until a time is published.
 
-Hook uses `use-calendar-data.ts › useEconomicCalendar` with economic-calendar queryKey, 30-minute staleTime/refetchInterval, poll auto-stop at unmount. Returns empty list at failure.
+Known official publication families replace Yahoo series in the same US release month, including within-month reschedules. Different numeric series are never merged into an official publication. Official feeds supply schedules without actual/consensus/prior values; Yahoo actual/prior are used only when present. Missing values are explicit, and impact/asset labels are app estimates.
 
-## 🇺🇸 Calendar View
+The month is part of the query key. Edge weeks are included; the current-month preset filters them back out. The weekly ribbon, agenda and next catalyst share currency/impact/asset/search filters. The catalyst requires a future timestamp. WIB midnight, Sunday, month and year boundaries are covered. The existing five-event chatbot context schema stays unchanged.
 
-Calendar view plus date controls live directly in CalendarPage. Month grid uses event dots, prev/next month nav, locale-aware id-ID/en-US title via i18n.language, date-click callback. Pure presentational without business logic.
+Source status, check time and links distinguish empty, failed, partial and stale data. Yahoo requests 100 events per day and compares each returned group with its total; this does not guarantee full coverage. All-source failures show retry; successful sources remain usable when another fails. Expired cache entries are hidden.
 
-| Element | Behavior |
-|---|---|
-| Month grid | Event dots per date |
-| Navigation | Prev/next month plus locale title |
-
-## 🇺🇸 Detail Dialog and Source
-
-Dialog uses `calendar-detail-dialog.tsx › CalendarDetailDialog`. Event detail: country flag emoji, impact badge, actual/forecast/previous, market-context quote, asset relevance badge stocks/crypto/commodities. Types from types/calendar.
-
-Fetch uses `calendar.ts › fetchEconomicCalendar` with Yahoo screener calendar-events modules economicEvents plus startDate plus endDate via proxy. Flatten daily groups into CalendarEvent list, auto-classify impact, sort ascending. Return empty list at failure.
-
-## 🇺🇸 Related Links
-
-- Overview: docs/01-functional-specs/00-overview.md
-- Proxy: docs/02-technical-specs/04-cloudflare-proxy.md
-- Testing: docs/03-testing/
+**Release gate:** the 2026-09-27 Cloudflare remote preview returned BEA/Fed 200 and BLS 403. BLS parser tests use synthetic ICS and independently checked official schedule dates; its live ICS format is still unverified. Hold the BLS rollout, repeat the actual Cloudflare fetch/parser check before release, and never claim complete US coverage or substitute guessed dates. No production deployment was performed. Local full-stack development and regression commands are listed above.

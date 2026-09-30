@@ -9,6 +9,10 @@ const widgetPath = join(
   "src/features/chat/components/research-copilot.tsx",
 );
 const widget = readFileSync(widgetPath, "utf8");
+const assetSignalTable = readFileSync(
+  join(root, "src/features/market/components/asset-signal-table.tsx"),
+  "utf8",
+);
 const terminalContext = readFileSync(
   join(root, "src/features/chat/terminal-context.ts"),
   "utf8",
@@ -75,6 +79,17 @@ function stringValues(value) {
   if (!value || typeof value !== "object") return [];
   return Object.values(value).flatMap(stringValues);
 }
+
+test("Sensei loading copy has three localized messages ending in five periods", () => {
+  const keys = ["thinking", "thinking_1", "thinking_2"];
+  for (const locale of [en.chat, id.chat]) {
+    assert.deepEqual(
+      Object.keys(locale).filter((key) => /^thinking(?:_\d+)?$/.test(key)),
+      keys,
+    );
+    for (const key of keys) assert.match(locale[key], /[^.]\.{5}$/);
+  }
+});
 
 test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.equal(
@@ -154,26 +169,57 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /sessionContext/);
   assert.match(widget, /context_label/);
   assert.match(widget, /clear_context/);
-  const contextBadgeStart = widget.indexOf(
-    "{sessionContext ? (",
-  );
-  const contextBadgeEnd = widget.indexOf("</Badge>", contextBadgeStart);
-  const contextBadge = widget.slice(contextBadgeStart, contextBadgeEnd);
-  assert.match(contextBadge, /TERMINAL_BADGE_CLASSNAME/);
+  assert.match(widget, /new ResizeObserver/);
+  assert.match(widget, /visibleContextCount/);
+  assert.match(widget, /chat\.more_contexts/);
+  assert.match(widget, /<ContextBadges items=\{contextItems\}/);
   assert.match(
-    contextBadge,
-    /w-fit min-w-0 max-w-full shrink items-center gap-1\.5/,
+    assetSignalTable,
+    /const COMPACT_SIGNAL_BADGE_CLASSNAME\s*=\s*\n?\s*"rounded-md text-\[10px\] font-bold uppercase tracking-wider"/,
   );
-  assert.match(contextBadge, /max-w-full/);
-  assert.match(contextBadge, /size-11[\s\S]*sm:size-5/);
-  assert.match(widget, /onClick=\{\(\) => clearContext\("page"\)\}/);
-  assert.match(widget, /onClick=\{\(\) => clearContext\("market", context\.symbol\)\}/);
-  assert.match(widget, /sessionPageContext\s*\?\s*\([\s\S]*?TERMINAL_BADGE_CLASSNAME/);
-  assert.match(widget, /sessionMarketContexts\.map\([\s\S]*?TERMINAL_BADGE_CLASSNAME/);
+  assert.match(
+    widget,
+    /const TERMINAL_BADGE_CLASSNAME = cn\(\s*"rounded-md text-\[10px\] font-bold uppercase tracking-wider",\s*BADGE\.accent\.bg,\s*BADGE\.accent\.text,\s*BADGE\.accent\.border,/,
+  );
+  const contextChip = widget.slice(
+    widget.indexOf("function ContextChip"),
+    widget.indexOf("function ContextBadges"),
+  );
+  assert.match(contextChip, /TERMINAL_BADGE_CLASSNAME/);
+  assert.match(contextChip, /min-h-5[\s\S]*pr-11 sm:pr-5/);
+  assert.match(contextChip, /size-11[\s\S]*sm:size-5/);
+  assert.match(contextChip, /wrap-anywhere/);
+  const contextBadges = widget.slice(
+    widget.indexOf("function ContextBadges"),
+    widget.indexOf("function ChatSession"),
+  );
+  assert.match(
+    contextBadges,
+    /TERMINAL_BADGE_CLASSNAME[\s\S]*<PopoverTrigger asChild>[\s\S]*TERMINAL_BADGE_CLASSNAME/,
+    "overflow trigger uses the same compact purple badge style as Sensei",
+  );
+  assert.match(
+    contextBadges,
+    /ref=\{moreRef\}[\s\S]*h-11 min-h-11 min-w-11 w-fit[\s\S]*sm:h-5 sm:min-h-5 sm:min-w-5/,
+    "overflow measurement includes the trigger's actual responsive hit target",
+  );
+  assert.match(
+    contextBadges,
+    /h-11 min-h-11 min-w-11 w-fit p-0[\s\S]*sm:h-5 sm:min-h-5 sm:min-w-5/,
+    "overflow trigger keeps a 44px mobile target and compact desktop target",
+  );
+  assert.match(widget, /remove: \(\) => clearContext\("terminal"\)/);
+  assert.match(widget, /remove: \(\) => clearContext\("page"\)/);
+  assert.match(widget, /remove: \(\) => clearContext\("market", context\.symbol\)/);
   assert.match(
     widget,
     /flex shrink-0 items-center justify-between gap-3 border-b border-border\/40 bg-muted\/15 px-3 py-1\.5 md:px-4 md:py-2/,
-    "chat header keeps its previous compact single-row shell",
+    "chat toolbar keeps messages, contexts, and new chat in one compact shell",
+  );
+  assert.match(
+    widget,
+    /flex min-w-0 flex-1 flex-wrap items-center gap-2[\s\S]*?<ContextBadges items=\{contextItems\} disabled=\{busy\}[\s\S]*?<Button[\s\S]*?onClick=\{newChat\}/,
+    "contexts wrap beside the message label while new chat keeps its own space",
   );
   assert.match(widget, /max-w-full/);
   assert.match(
@@ -201,7 +247,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /<DialogContent className="sm:max-w-2xl max-h-\[85vh\]/,
     "Trade detail dialog is the height source of truth",
   );
-  const popoverContentStart = widget.indexOf("<PopoverContent");
+  const popoverContentStart = widget.indexOf("<PopoverContent", widget.indexOf("export function ResearchCopilot"));
   const panelCardStart = widget.indexOf("<Card", popoverContentStart);
   const popoverShell = widget.slice(popoverContentStart, panelCardStart);
   const panelCard = widget.slice(
@@ -380,7 +426,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(widget, /components=\{components\}/);
   assert.doesNotMatch(widget, /normalizeAssistantMarkdown/);
   assert.match(widget, /\{content\}\s*<\/ReactMarkdown>/);
-  assert.match(widget, /copyResponse\([\s\S]*message\.id,\s*message\.content,/);
+  assert.match(widget, /copyResponse\([\s\S]*message\.id,\s*message\.content\)/);
   assert.match(widget, /rel="noopener noreferrer"/);
   assert.doesNotMatch(
     widget,
@@ -446,7 +492,10 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /align=\{message\.role === "user" \? "end" : "start"\}/,
     "bubbles must follow the same alignment as their Message row",
   );
-  assert.match(messageRows, /<Bubble align="end" variant="default" className="max-w-full">/);
+  assert.match(
+    messageRows,
+    /<Bubble\s+align="end"\s+variant="default"\s+className="max-w-full"\s*>/,
+  );
   assert.doesNotMatch(messageRows, /Bubble variant="muted"[\s\S]*assistant/);
   assert.doesNotMatch(messageRows, /MessageAvatar|UserRoundIcon|BotIcon/);
   assert.match(
@@ -474,24 +523,19 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(messageRows, /size-11 sm:size-8/);
   assert.match(
     messageRows,
-    /className=\{cn\("size-11 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME\)\}[\s\S]*aria-label=\{t\("chat\.retry"\)\}/,
+    /className=\{cn\(\s*"size-11 sm:size-8",\s*CHAT_GHOST_CONTROL_CLASSNAME,\s*\)\}[\s\S]*aria-label=\{t\("chat\.retry"\)\}/,
     "assistant retry uses the same visual and touch target as response copy",
   );
   const loadingStateEnd = widget.indexOf("{error ? (", waitingStateStart);
   const loadingState = widget.slice(waitingStateStart, loadingStateEnd);
-  assert.match(loadingState, /<Message className="px-1 py-1">/);
-  assert.doesNotMatch(loadingState, /MessageAvatar|BotIcon/);
-  assert.match(loadingState, /<MessageContent className="w-fit">/);
-  assert.match(loadingState, /<Marker[\s\S]*role="status"/);
-  assert.match(
-    loadingState,
-    /<MarkerContent className="inline-block shimmer rounded-md px-1 text-xs font-medium">/,
-    "thinking state must use the official shadcn shimmer treatment",
-  );
-  assert.doesNotMatch(loadingState, /animate-pulse/);
-  assert.doesNotMatch(loadingState, /animate-shimmer/);
-  assert.doesNotMatch(loadingState, /<Spinner|<MarkerIcon/);
-  assert.match(loadingState, /t\("chat\.thinking"\)/);
+  assert.match(loadingState, /<ThinkingStatus key=\{lastMessage.id\}/);
+  const thinking = widget.slice(widget.indexOf("function ThinkingStatus"), widget.indexOf("type ContextBadgeItem"));
+  assert.match(thinking, /<Marker role="status"/);
+  assert.match(thinking, /shimmer/);
+  assert.match(thinking, /prefers-reduced-motion/);
+  assert.match(thinking, /clearInterval\(timer\)/);
+  assert.match(thinking, /aria-hidden="true"/);
+  assert.doesNotMatch(thinking, /<Bubble|bg-muted|border-border|rounded/);
   const errorState = widget.slice(
     loadingStateEnd,
     widget.indexOf("</MessageScrollerContent>", loadingStateEnd),
@@ -517,7 +561,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     />\s*\{t\("chat\.retry"\)\}\s*<\/Button>/,
     "error retry must not render a visible text label",
   );
-  const triggerStart = widget.indexOf("<PopoverTrigger asChild>");
+  const triggerStart = widget.indexOf("<PopoverTrigger asChild>", widget.indexOf("export function ResearchCopilot"));
   const triggerEnd = widget.indexOf("</PopoverTrigger>", triggerStart);
   const trigger = widget.slice(triggerStart, triggerEnd);
   assert.match(trigger, /<Button\b/);
@@ -673,7 +717,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(newChat, /setCopiedId\(null\)/);
   assert.match(newChat, /setPromptTemplateConfig\(randomPromptTemplates\(\)\)/);
   assert.match(newChat, /dispatch\(uiActions\.clearResearchContext\(\)\)/);
-  assert.match(widget, /\{messages\.length > 0 \|\| sessionContext \|\| sessionPageContext \|\| sessionMarketContexts\.length \? \(/);
+  assert.match(widget, /\{messages\.length > 0 \|\| contextItems\.length > 0 \? \(/);
   assert.match(widget, /onClick=\{newChat\}/);
   const requestAssistantStart = widget.indexOf(
     "async function requestAssistant",
@@ -820,8 +864,8 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.equal(id.chat.composer_send, "kirim");
   assert.equal(en.chat.composer_newline, "new line");
   assert.equal(id.chat.composer_newline, "baris baru");
-  assert.equal(en.chat.thinking, "Sensei is cooking up some insights…");
-  assert.equal(id.chat.thinking, "Sensei lagi ngeracik data…");
+  assert.equal(en.chat.thinking, "Sensei is brewing data.....");
+  assert.equal(id.chat.thinking, "Sensei lagi ngeracik data.....");
   assert.equal(en.chat.shortcut_hint, "Shift + /");
   assert.equal(id.chat.shortcut_hint, "Shift + /");
 

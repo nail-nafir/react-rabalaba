@@ -94,20 +94,31 @@ import {
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { buildLoginRedirect } from "@/lib/auth-redirect";
 import { BADGE } from "@/constants/taxonomy/palette";
-import { streamChat, type ChatMessage } from "@/features/chat/chat-stream";
+import {
+  streamChat,
+  type ChatMessage,
+  type ChatStreamErrorCode,
+} from "@/features/chat/chat-stream";
+import { visibleContextCount } from "@/features/chat/context-overflow";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   formatResearchTimestamp,
   type MarketResearchContext,
   type PageResearchContext,
   type TerminalResearchContext,
 } from "@/features/chat/terminal-context";
+import { refreshMarketContext } from "@/features/chat/market-context";
+import { AssistantSetupChart } from "@/features/chat/components/assistant-setup-chart";
 import {
-  refreshMarketContext,
-} from "@/features/chat/market-context";
+  buildChartData,
+  buildSetupChartModel,
+  parseChartSpec,
+  type ChartSpec,
+} from "@/features/chat/chart-model";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { uiActions } from "@/store/slices/ui-slice";
 
-type ChatError = "auth" | "input" | "rate" | "unavailable";
+type ChatError = "auth" | "input" | ChatStreamErrorCode;
 
 const TERMINAL_BADGE_CLASSNAME = cn(
   "rounded-md text-[10px] font-bold uppercase tracking-wider",
@@ -212,99 +223,6 @@ function markdownText(children: ReactNode): string {
     .join("");
 }
 
-type ChartSpec = {
-  type: "price" | "relativePerformance";
-  symbols: string[];
-};
-
-function parseChartSpec(source: string): ChartSpec | null {
-  try {
-    const value: unknown = JSON.parse(source);
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      Array.isArray(value) ||
-      !("type" in value) ||
-      !("symbols" in value) ||
-      !["price", "relativePerformance"].includes(String(value.type)) ||
-      !Array.isArray(value.symbols) ||
-      value.symbols.length < (value.type === "price" ? 1 : 2) ||
-      (value.type === "price" && value.symbols.length !== 1) ||
-      value.symbols.length > 3 ||
-      !value.symbols.every(
-        (symbol) =>
-          typeof symbol === "string" && /^[A-Za-z0-9._^=-]{1,64}$/.test(symbol),
-      )
-    ) return null;
-    return value as ChartSpec;
-  } catch {
-    return null;
-  }
-}
-
-type ChartAsset = {
-  symbol: string;
-  timeframe: string;
-  stale: boolean;
-  recentCandles: TerminalResearchContext["recentCandles"];
-};
-
-function buildChartData(
-  spec: ChartSpec,
-  terminalContext: TerminalResearchContext | null,
-  marketContexts: MarketResearchContext[],
-) {
-  const assets: ChartAsset[] = [
-    ...(terminalContext
-      ? [{
-          ...terminalContext,
-          stale:
-            Date.now() - (terminalContext.quoteTime ?? terminalContext.capturedAt) >
-            (terminalContext.assetType === "crypto" ? 6 : 72) * 60 * 60_000,
-        }]
-      : []),
-    ...marketContexts,
-  ];
-  const selected = spec.symbols.map((symbol) =>
-    assets.find((asset) => asset.symbol.toUpperCase() === symbol.toUpperCase()),
-  );
-  if (selected.some((asset) => !asset || asset.recentCandles.length < 2)) {
-    return null;
-  }
-  const resolved = selected as ChartAsset[];
-  if (
-    spec.type === "relativePerformance" &&
-    new Set(resolved.map((asset) => asset.timeframe)).size !== 1
-  ) return null;
-
-  const closesByTimestamp = resolved.map(
-    (asset) => new Map(asset.recentCandles.map((candle) => [candle.timestamp, candle.close])),
-  );
-  const timestamps = resolved[0].recentCandles
-    .map((candle) => candle.timestamp)
-    .filter((timestamp) =>
-      spec.type === "price" || closesByTimestamp.every((series) => series.has(timestamp)),
-    );
-  if (timestamps.length < 2) return null;
-
-  const baselines = closesByTimestamp.map((series) => series.get(timestamps[0])!);
-  const data = timestamps.map((timestamp, index) => {
-    const point: Record<string, string | number> = {
-      index: index + 1,
-      time: formatResearchTimestamp(timestamp * 1_000),
-    };
-    resolved.forEach((asset, assetIndex) => {
-      const value = closesByTimestamp[assetIndex].get(timestamp)!;
-      point[asset.symbol] =
-        spec.type === "relativePerformance"
-          ? ((value / baselines[assetIndex]) - 1) * 100
-          : value;
-    });
-    return point;
-  });
-  return { assets: resolved, data, stale: resolved.some((asset) => asset.stale) };
-}
-
 function AssistantChart({
   spec,
   terminalContext,
@@ -315,44 +233,88 @@ function AssistantChart({
   marketContexts: MarketResearchContext[];
 }) {
   const { t } = useTranslation();
-  const model = spec
-    ? buildChartData(spec, terminalContext, marketContexts)
-    : null;
-  if (!spec || !model) {
-    return (
-      <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        {t("chat.chart_unavailable")}
-      </div>
+  const unavailable = (
+    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+      {t("chat.chart_unavailable")}
+    </div>
+  );
+  if (!spec) return unavailable;
+  if (spec.type === "setup") {
+    const setup = buildSetupChartModel(
+      spec.symbols[0],
+      terminalContext,
+      marketContexts,
     );
+    return setup ? <AssistantSetupChart model={setup} /> : unavailable;
   }
+  const model = buildChartData(spec, terminalContext, marketContexts);
+  if (!model) return unavailable;
 
   const title =
-    spec.type === "price"
-      ? t("chat.chart_price")
-      : t("chat.chart_relative");
-  const colors = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)"];
+    spec.type === "price" ? t("chat.chart_price") : t("chat.chart_relative");
+  const colors = [
+    "var(--color-chart-1)",
+    "var(--color-chart-2)",
+    "var(--color-chart-3)",
+  ];
   const formatter = (value: number) =>
     spec.type === "relativePerformance"
       ? `${value > 0 ? "+" : ""}${value.toFixed(1)}%`
-      : new Intl.NumberFormat(undefined, { maximumSignificantDigits: 6 }).format(value);
+      : new Intl.NumberFormat(undefined, {
+          maximumSignificantDigits: 6,
+        }).format(value);
 
   return (
     <figure className="min-w-0 overflow-hidden rounded-lg border border-border bg-background/50 p-3">
       <figcaption className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
         <span>{title}</span>
         {model.stale ? (
-          <Badge variant="outline" className="border-amber-500/30 text-amber-500">
+          <Badge
+            variant="outline"
+            className="border-amber-500/30 text-amber-500"
+          >
             {t("chat.stale_data")}
           </Badge>
         ) : null}
       </figcaption>
-      <div className="h-44 min-w-0 sm:h-52" role="img" aria-label={`${title}: ${spec.symbols.join(", ")}`}>
+      <div
+        className="h-44 min-w-0 sm:h-52"
+        role="img"
+        aria-label={`${title}: ${spec.symbols.join(", ")}`}
+      >
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart data={model.data} accessibilityLayer>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="time" minTickGap={28} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
-            <YAxis width={48} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickFormatter={(value) => formatter(Number(value))} />
-            <Tooltip formatter={(value) => formatter(Number(value))} labelFormatter={(_, payload) => String(payload?.[0]?.payload?.time ?? "")} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--border)"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="time"
+              minTickGap={28}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+            />
+            <YAxis
+              width={48}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+              tickFormatter={(value) => formatter(Number(value))}
+            />
+            <Tooltip
+              formatter={(value) => formatter(Number(value))}
+              labelFormatter={(_, payload) =>
+                String(payload?.[0]?.payload?.time ?? "")
+              }
+              contentStyle={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
             {model.assets.map((asset, index) => (
               <Line
                 key={asset.symbol}
@@ -372,16 +334,21 @@ function AssistantChart({
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
         {model.assets.map((asset, index) => (
           <span key={asset.symbol} className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: colors[index % colors.length] }}
+            />
             {asset.symbol}
           </span>
         ))}
       </div>
       <p className="sr-only">
-        {model.assets.map((asset) => {
-          const candle = asset.recentCandles.at(-1);
-          return `${asset.symbol}: ${candle?.close ?? ""}`;
-        }).join(". ")}
+        {model.assets
+          .map((asset) => {
+            const candle = asset.recentCandles.at(-1);
+            return `${asset.symbol}: ${candle?.close ?? ""}`;
+          })
+          .join(". ")}
       </p>
     </figure>
   );
@@ -391,21 +358,36 @@ function AssistantCodeBlock({
   children,
   terminalContext,
   marketContexts,
+  streaming,
 }: {
   children: ReactNode;
   terminalContext: TerminalResearchContext | null;
   marketContexts: MarketResearchContext[];
+  streaming: boolean;
 }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const code = Children.toArray(children).find(isValidElement);
-  const props = code?.props as { className?: string; children?: ReactNode } | undefined;
+  const props = code?.props as
+    | { className?: string; children?: ReactNode }
+    | undefined;
   const source = markdownText(props?.children ?? children).replace(/\n$/, "");
   const language = props?.className?.match(/language-([\w-]+)/)?.[1] ?? "";
   if (language === "chart") {
+    const spec = parseChartSpec(source);
+    if (streaming && !spec) {
+      return (
+        <div
+          role="status"
+          className="flex h-44 items-center justify-center text-xs text-muted-foreground sm:h-52"
+        >
+          {t("chat.chart_loading")}
+        </div>
+      );
+    }
     return (
       <AssistantChart
-        spec={parseChartSpec(source)}
+        spec={spec}
         terminalContext={terminalContext}
         marketContexts={marketContexts}
       />
@@ -427,7 +409,9 @@ function AssistantCodeBlock({
     <div className="max-w-full overflow-hidden rounded-lg border border-border/60 bg-background/70">
       <div className="flex min-h-11 items-center justify-between gap-2 border-b border-border/60 px-3">
         <span className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {language === "diagram" ? t("chat.diagram") : language || t("chat.code")}
+          {language === "diagram"
+            ? t("chat.diagram")
+            : language || t("chat.code")}
         </span>
         <Button
           type="button"
@@ -440,7 +424,11 @@ function AssistantCodeBlock({
           aria-label={t("chat.copy")}
           onClick={() => void copyCode()}
         >
-          {copied ? <CheckIcon className="size-3.5" aria-hidden="true" /> : <CopyIcon className="size-3.5" aria-hidden="true" />}
+          {copied ? (
+            <CheckIcon className="size-3.5" aria-hidden="true" />
+          ) : (
+            <CopyIcon className="size-3.5" aria-hidden="true" />
+          )}
           <span>{copied ? t("chat.copied") : t("chat.copy")}</span>
         </Button>
       </div>
@@ -454,101 +442,116 @@ function AssistantCodeBlock({
 function createChatMarkdownComponents(
   terminalContext: TerminalResearchContext | null,
   marketContexts: MarketResearchContext[],
+  streaming: boolean,
 ): Components {
   const symbols = new Set(
-    [terminalContext?.symbol, ...marketContexts.map((context) => context.symbol)]
+    [
+      terminalContext?.symbol,
+      ...marketContexts.map((context) => context.symbol),
+    ]
       .filter(Boolean)
       .map((symbol) => symbol!.toUpperCase()),
   );
   const flatComponents: Components = {
-  h1: ({ children }) => (
-    <h1 className="text-sm font-semibold leading-snug text-foreground">
-      {children}
-    </h1>
-  ),
-  h2: ({ children }) => (
-    <h2 className="text-sm font-semibold leading-snug text-foreground">
-      {children}
-    </h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="text-sm font-semibold leading-snug text-foreground">
-      {children}
-    </h3>
-  ),
-  h4: ({ children }) => (
-    <h4 className="text-xs font-semibold leading-snug text-foreground">
-      {children}
-    </h4>
-  ),
-  p: ({ children }) => <p className="leading-relaxed">{children}</p>,
-  ul: ({ children }) => (
-    <ul className="list-disc space-y-1.5 pl-5">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="list-decimal space-y-1.5 pl-5">{children}</ol>
-  ),
-  li: ({ children }) => <li>{children}</li>,
-  strong: ({ children }) => (
-    <strong className="font-semibold">{children}</strong>
-  ),
-  em: ({ children }) => <em className="italic">{children}</em>,
-  del: ({ children }) => (
-    <del className="text-muted-foreground line-through">{children}</del>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-primary/50 pl-3 text-muted-foreground">
-      {children}
-    </blockquote>
-  ),
-  hr: () => <hr className="border-border" />,
-  code: ({ children, className }) => {
-    if (className) return <code className={className}>{children}</code>;
-    const value = markdownText(children).trim();
-    const normalized = value.replace(/^\$/, "").toUpperCase();
-    const isTicker = symbols.has(normalized);
-    const isStatus = /^(LONG|SHORT|BUY|SELL|TP\d*|SL|TIER [A-D]|BULLISH|BEARISH|OVERBOUGHT|OVERSOLD|SUPPORT|RESISTANCE)$/i.test(value);
-    if (isTicker || isStatus) {
-      const tone = /^(SHORT|SELL|BEARISH|SL|RESISTANCE)$/i.test(value)
-        ? "border-rose-500/30 bg-rose-500/10 text-rose-500"
-        : /OVERBOUGHT|OVERSOLD/i.test(value)
-          ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
-          : /^(LONG|BUY|BULLISH|TP\d*)$/i.test(value)
-            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-            : "border-primary/30 bg-primary/10 text-primary";
-      return (
-        <Badge variant="outline" className={cn("mx-0.5 align-baseline font-mono text-[0.9em]", tone)}>
-          {children}
-        </Badge>
-      );
-    }
-    return <code className="rounded bg-background/70 px-1 py-0.5 font-mono text-[0.9em]">{children}</code>;
-  },
-  pre: ({ children }) => (
-    <AssistantCodeBlock
-      terminalContext={terminalContext}
-      marketContexts={marketContexts}
-    >
-      {children}
-    </AssistantCodeBlock>
-  ),
-  table: ({ children }) => (
-    <div className="max-w-full overflow-x-auto rounded-lg border border-border/60">
-      <table className="min-w-md w-full border-collapse text-left text-[0.9em] [&_td]:border-t [&_td]:border-border/60 [&_td]:px-3 [&_td]:py-2 [&_th]:border-b [&_th]:border-border [&_th]:bg-background/60 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold">
+    h1: ({ children }) => (
+      <h1 className="text-sm font-semibold leading-snug text-foreground">
         {children}
-      </table>
-    </div>
-  ),
-  a: ({ children, ...props }) => (
-    <a
-      {...props}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="wrap-break-word text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {children}
-    </a>
-  ),
+      </h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="text-sm font-semibold leading-snug text-foreground">
+        {children}
+      </h2>
+    ),
+    h3: ({ children }) => (
+      <h3 className="text-sm font-semibold leading-snug text-foreground">
+        {children}
+      </h3>
+    ),
+    h4: ({ children }) => (
+      <h4 className="text-xs font-semibold leading-snug text-foreground">
+        {children}
+      </h4>
+    ),
+    p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+    ul: ({ children }) => (
+      <ul className="list-disc space-y-1.5 pl-5">{children}</ul>
+    ),
+    ol: ({ children }) => (
+      <ol className="list-decimal space-y-1.5 pl-5">{children}</ol>
+    ),
+    li: ({ children }) => <li>{children}</li>,
+    strong: ({ children }) => (
+      <strong className="font-semibold">{children}</strong>
+    ),
+    em: ({ children }) => <em className="italic">{children}</em>,
+    del: ({ children }) => (
+      <del className="text-muted-foreground line-through">{children}</del>
+    ),
+    blockquote: ({ children }) => (
+      <blockquote className="border-l-2 border-primary/50 pl-3 text-muted-foreground">
+        {children}
+      </blockquote>
+    ),
+    hr: () => <hr className="border-border" />,
+    code: ({ children, className }) => {
+      if (className) return <code className={className}>{children}</code>;
+      const value = markdownText(children).trim();
+      const normalized = value.replace(/^\$/, "").toUpperCase();
+      const isTicker = symbols.has(normalized);
+      const isStatus =
+        /^(LONG|SHORT|BUY|SELL|TP\d*|SL|TIER [A-D]|BULLISH|BEARISH|OVERBOUGHT|OVERSOLD|SUPPORT|RESISTANCE)$/i.test(
+          value,
+        );
+      if (isTicker || isStatus) {
+        const tone = /^(SHORT|SELL|BEARISH|SL|RESISTANCE)$/i.test(value)
+          ? "border-rose-500/30 bg-rose-500/10 text-rose-500"
+          : /OVERBOUGHT|OVERSOLD/i.test(value)
+            ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
+            : /^(LONG|BUY|BULLISH|TP\d*)$/i.test(value)
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+              : "border-primary/30 bg-primary/10 text-primary";
+        return (
+          <Badge
+            variant="outline"
+            className={cn("mx-0.5 align-baseline font-mono text-[0.9em]", tone)}
+          >
+            {children}
+          </Badge>
+        );
+      }
+      return (
+        <code className="rounded bg-background/70 px-1 py-0.5 font-mono text-[0.9em]">
+          {children}
+        </code>
+      );
+    },
+    pre: ({ children }) => (
+      <AssistantCodeBlock
+        terminalContext={terminalContext}
+        marketContexts={marketContexts}
+        streaming={streaming}
+      >
+        {children}
+      </AssistantCodeBlock>
+    ),
+    table: ({ children }) => (
+      <div className="max-w-full overflow-x-auto rounded-lg border border-border/60">
+        <table className="min-w-md w-full border-collapse text-left text-[0.9em] [&_td]:border-t [&_td]:border-border/60 [&_td]:px-3 [&_td]:py-2 [&_th]:border-b [&_th]:border-border [&_th]:bg-background/60 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold">
+          {children}
+        </table>
+      </div>
+    ),
+    a: ({ children, ...props }) => (
+      <a
+        {...props}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="wrap-break-word text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {children}
+      </a>
+    ),
   };
   return flatComponents;
 }
@@ -557,14 +560,17 @@ function AssistantMarkdown({
   content,
   terminalContext,
   marketContexts,
+  streaming,
 }: {
   content: string;
   terminalContext: TerminalResearchContext | null;
   marketContexts: MarketResearchContext[];
+  streaming: boolean;
 }) {
   const components = useMemo(
-    () => createChatMarkdownComponents(terminalContext, marketContexts),
-    [terminalContext, marketContexts],
+    () =>
+      createChatMarkdownComponents(terminalContext, marketContexts, streaming),
+    [terminalContext, marketContexts, streaming],
   );
   return (
     <ReactMarkdown
@@ -605,6 +611,14 @@ type ChatSessionStore = {
 };
 
 function errorKind(error: unknown): ChatError {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    if (
+      error.code === "rate" ||
+      error.code === "unavailable" ||
+      error.code === "incomplete"
+    )
+      return error.code;
+  }
   const status =
     typeof error === "object" && error !== null && "status" in error
       ? Number(error.status)
@@ -613,6 +627,201 @@ function errorKind(error: unknown): ChatError {
   if (status === 400 || status === 413 || status === 415) return "input";
   if (status === 429) return "rate";
   return "unavailable";
+}
+
+function ThinkingStatus() {
+  const { t } = useTranslation();
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    if (reducedMotion) return;
+    const timer = setInterval(
+      () => setStep((current) => (current + 1) % 3),
+      3_000,
+    );
+    return () => clearInterval(timer);
+  }, [reducedMotion]);
+  const keys = ["thinking", "thinking_1", "thinking_2"] as const;
+  return (
+    <Marker role="status" className="min-h-10 text-xs">
+      <span className="sr-only">{t("chat.thinking")}</span>
+      <MarkerContent
+        aria-hidden="true"
+        className={cn("text-xs font-medium", !reducedMotion && "shimmer")}
+      >
+        {t(`chat.${keys[reducedMotion ? 0 : step]}`)}
+      </MarkerContent>
+    </Marker>
+  );
+}
+
+type ContextBadgeItem = { key: string; label: string; remove: () => void };
+
+function ContextChip({
+  item,
+  primary = false,
+  disabled = false,
+}: {
+  item: ContextBadgeItem;
+  primary?: boolean;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={cn(
+        "relative inline-flex min-h-11 min-w-0 items-center sm:min-h-5",
+        primary ? "shrink" : "shrink-0",
+      )}
+    >
+      <Badge
+        variant="outline"
+        className={cn(
+          TERMINAL_BADGE_CLASSNAME,
+          "relative h-auto min-h-5 w-fit min-w-0 max-w-full justify-start overflow-visible pr-11 sm:pr-5",
+          primary ? "whitespace-normal" : "whitespace-nowrap",
+        )}
+      >
+        <span className={primary ? "min-w-0 wrap-anywhere" : undefined}>
+          {item.label}
+        </span>
+        <XIcon
+          className="pointer-events-none absolute right-4 top-1/2 size-3 -translate-y-1/2 sm:right-1"
+          aria-hidden="true"
+        />
+      </Badge>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        disabled={disabled}
+        className="absolute right-0 top-1/2 size-11 -translate-y-1/2 p-0 hover:bg-transparent focus-visible:ring-2 focus-visible:ring-ring/50 sm:size-5"
+        aria-label={`${t("chat.clear_context")}: ${item.label}`}
+        onClick={item.remove}
+      />
+    </span>
+  );
+}
+
+function ContextBadges({
+  items,
+  disabled,
+}: {
+  items: ContextBadgeItem[];
+  disabled: boolean;
+}) {
+  const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(1);
+  const measurementKey = items
+    .map((item) => `${item.key}:${item.label}`)
+    .join("|");
+  useEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    const more = moreRef.current;
+    if (!container || !measure || !more) return;
+    const observer = new ResizeObserver(() => {
+      const widths = Array.from(
+        measure.children,
+        (badge) => badge.getBoundingClientRect().width,
+      );
+      setVisible(
+        visibleContextCount(
+          container.clientWidth,
+          widths,
+          more.getBoundingClientRect().width,
+        ),
+      );
+    });
+    observer.observe(container);
+    observer.observe(measure);
+    observer.observe(more);
+    return () => observer.disconnect();
+  }, [measurementKey]);
+  const hidden = items.slice(visible);
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex min-w-0 items-start gap-2"
+      aria-label={t("chat.context_label")}
+    >
+      <div
+        aria-hidden="true"
+        inert
+        className="pointer-events-none absolute inset-0 overflow-hidden invisible"
+      >
+        <div className="flex w-max items-center gap-2">
+          <div ref={measureRef} className="flex w-max gap-2">
+            {items.map((item) => (
+              <ContextChip key={item.key} item={item} />
+            ))}
+          </div>
+          <span
+            ref={moreRef}
+            className="inline-flex h-11 min-h-11 min-w-11 w-fit shrink-0 items-center justify-center sm:h-5 sm:min-h-5 sm:min-w-5"
+          >
+            <Badge
+              variant="outline"
+              className={cn(TERMINAL_BADGE_CLASSNAME, "pointer-events-none tabular-nums")}
+            >
+              +{items.length}
+            </Badge>
+          </span>
+        </div>
+      </div>
+      {items.slice(0, visible).map((item, index) => (
+        <ContextChip
+          key={item.key}
+          item={item}
+          primary={index === 0}
+          disabled={disabled}
+        />
+      ))}
+      {hidden.length > 0 ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className="h-11 min-h-11 min-w-11 w-fit p-0 hover:bg-transparent focus-visible:ring-2 focus-visible:ring-ring/50 sm:h-5 sm:min-h-5 sm:min-w-5"
+              aria-label={t("chat.more_contexts", { count: hidden.length })}
+            >
+              <Badge
+                variant="outline"
+                className={cn(TERMINAL_BADGE_CLASSNAME, "pointer-events-none tabular-nums")}
+              >
+                +{hidden.length}
+              </Badge>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            sideOffset={8}
+            aria-label={t("chat.context_label")}
+            className="w-72 max-w-[calc(100vw-2rem)]"
+          >
+            <p className="px-1 text-xs font-medium text-muted-foreground">
+              {t("chat.context_label")}
+            </p>
+            <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+              {hidden.map((item) => (
+                <ContextChip
+                  key={item.key}
+                  item={item}
+                  primary
+                  disabled={disabled}
+                />
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : null}
+    </div>
+  );
 }
 
 function ChatSession({
@@ -688,27 +897,27 @@ function ChatSession({
     setBusy(true);
     setError(null);
     setFailedUserId(null);
-    setMessages([...history, { id: assistantId, role: "assistant", content: "" }]);
 
     try {
-      let requestHistory = history;
-      if (userTurn) {
-        const userTurnIndex = history.findLastIndex(
-          (message) => message.role === "user",
-        );
-        const inheritedContexts = userTurn.marketContexts ?? history
-          .slice(0, userTurnIndex)
-          .findLast(
-            (message) =>
-              message.role === "user" && message.marketContexts?.length,
-          )?.marketContexts ?? [];
-        const marketContexts = inheritedContexts
-          .filter((context) => !hiddenContextKeys.has(`market:${context.symbol}`))
-          .map(refreshMarketContext);
-        requestHistory = history.map((message) =>
-          message.id === userTurn.id ? { ...message, marketContexts } : message,
-        );
-      }
+      const requestHistory = history.map((message) =>
+        message.id === userTurn?.id
+          ? {
+              ...message,
+              terminalContext: hiddenContextKeys.has("terminal")
+                ? null
+                : message.terminalContext,
+              pageContext: hiddenContextKeys.has("page")
+                ? null
+                : message.pageContext,
+              marketContexts: (message.marketContexts ?? [])
+                .filter(
+                  (context) =>
+                    !hiddenContextKeys.has(`market:${context.symbol}`),
+                )
+                .map(refreshMarketContext),
+            }
+          : message,
+      );
       const requestTurn = requestHistory.findLast(
         (message) => message.role === "user",
       );
@@ -727,6 +936,8 @@ function ChatSession({
         requestHistory,
         accessToken,
         (text) => {
+          if (abortRef.current !== controller || controller.signal.aborted)
+            return;
           receivedText = true;
           setMessages((current) =>
             current.map((message) =>
@@ -738,6 +949,8 @@ function ChatSession({
         },
         controller.signal,
         (marketContexts) => {
+          if (abortRef.current !== controller || controller.signal.aborted)
+            return;
           setMessages((current) =>
             current.map((message) =>
               message.id === requestTurn?.id || message.id === assistantId
@@ -749,15 +962,14 @@ function ChatSession({
       );
       if (!receivedText) throw new Error("Empty chat response");
     } catch (requestError) {
+      if (abortRef.current !== controller || controller.signal.aborted) return;
       setMessages((current) =>
         current.filter(
           (message) => message.id !== assistantId || message.content,
         ),
       );
-      if (!controller.signal.aborted) {
-        setError(errorKind(requestError));
-        setFailedUserId(failedId ?? null);
-      }
+      setError(errorKind(requestError));
+      setFailedUserId(failedId ?? null);
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -777,8 +989,9 @@ function ChatSession({
         id: crypto.randomUUID(),
         role: "user" as const,
         content,
-        ...(terminalContext ? { terminalContext } : {}),
-        ...(pageContext ? { pageContext } : {}),
+        terminalContext: sessionContext,
+        pageContext: sessionPageContext,
+        marketContexts: sessionMarketContexts,
       },
     ];
     setDraft("");
@@ -801,6 +1014,9 @@ function ChatSession({
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
+    setMessages((current) =>
+      current.filter((message) => message.role === "user" || message.content),
+    );
   }
 
   function newChat() {
@@ -852,16 +1068,18 @@ function ChatSession({
     if (kind === "page") dispatch(uiActions.setPageResearchContext(null));
   }
 
-  const latestUserMessage = messages.findLast((message) => message.role === "user");
+  const latestUserMessage = messages.findLast(
+    (message) => message.role === "user",
+  );
   const sessionContext =
     terminalContext ??
     (hiddenContextKeys.has("terminal")
       ? null
-      : latestUserMessage?.terminalContext ?? null);
+      : (latestUserMessage?.terminalContext ?? null));
   const sessionPageContext = hiddenContextKeys.has("page") ? null : pageContext;
-  const sessionMarketContexts = (latestUserMessage?.marketContexts ?? []).filter(
-    (context) => !hiddenContextKeys.has(`market:${context.symbol}`),
-  );
+  const sessionMarketContexts = (
+    latestUserMessage?.marketContexts ?? []
+  ).filter((context) => !hiddenContextKeys.has(`market:${context.symbol}`));
   const promptTemplates = promptTemplateConfig.map((template) => ({
     ...template,
     text: t(`chat.prompts.${template.key}`),
@@ -897,118 +1115,69 @@ function ChatSession({
         : `${t("chat.context_pages.learn")} · ${sessionPageContext.activeTab}`
     : "";
 
+  const contextItems: ContextBadgeItem[] = [
+    ...(sessionContext
+      ? [
+          {
+            key: "terminal",
+            label: [contextSummary, contextTimestamp]
+              .filter(Boolean)
+              .join(" · "),
+            remove: () => clearContext("terminal"),
+          },
+        ]
+      : []),
+    ...(sessionPageContext
+      ? [
+          {
+            key: "page",
+            label: pageContextSummary,
+            remove: () => clearContext("page"),
+          },
+        ]
+      : []),
+    ...sessionMarketContexts.map((context) => ({
+      key: `market:${context.symbol}`,
+      label: [
+        context.symbol,
+        context.signalStatus,
+        context.timeframe,
+        formatResearchTimestamp(context.quoteTime ?? context.capturedAt),
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      remove: () => clearContext("market", context.symbol),
+    })),
+  ];
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      {messages.length > 0 || sessionContext || sessionPageContext || sessionMarketContexts.length ? (
+      {messages.length > 0 || contextItems.length > 0 ? (
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/40 bg-muted/15 px-3 py-1.5 md:px-4 md:py-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+            <span
+              className="size-1.5 shrink-0 rounded-full bg-primary"
+              aria-hidden="true"
+            />
             <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t("chat.messages_label")}
             </span>
-            {sessionContext ? (
-              <Badge
-                variant="outline"
-                className={cn(
-                  TERMINAL_BADGE_CLASSNAME,
-                  "w-fit min-w-0 max-w-full shrink items-center gap-1.5",
-                )}
-                title={`${t("chat.context_label")}: ${contextSummary} · ${contextTimestamp}`}
-                aria-label={`${t("chat.context_label")}: ${contextSummary} · ${contextTimestamp}`}
-              >
-                <span className="sr-only">{t("chat.context_label")}</span>
-                <span className="min-w-0 truncate uppercase">{contextSummary}</span>
-                <span className="shrink-0 whitespace-nowrap text-primary/70">
-                  · {contextTimestamp}
-                </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className={cn(
-                      "ml-0.5 size-11 shrink-0 sm:size-5",
-                      CHAT_GHOST_CONTROL_CLASSNAME,
-                      "text-primary/70",
-                    )}
-                    aria-label={`${t("chat.clear_context")}: ${contextSummary}`}
-                    title={t("chat.clear_context")}
-                    onClick={() => clearContext("terminal")}
-                  >
-                    <XIcon className="size-3" aria-hidden="true" />
-                  </Button>
-              </Badge>
+            {contextItems.length > 0 ? (
+              <ContextBadges items={contextItems} disabled={busy} />
             ) : null}
-            {sessionPageContext ? (
-              <Badge
-                variant="outline"
-                className={cn(
-                  TERMINAL_BADGE_CLASSNAME,
-                  "w-fit min-w-0 max-w-full shrink items-center gap-1.5",
-                )}
-                title={`${t("chat.context_label")}: ${pageContextSummary}`}
-                aria-label={`${t("chat.context_label")}: ${pageContextSummary}`}
-              >
-                <span className="sr-only">{t("chat.context_label")}</span>
-                <span className="min-w-0 truncate uppercase">{pageContextSummary}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className={cn(
-                      "ml-0.5 size-11 shrink-0 sm:size-5",
-                      CHAT_GHOST_CONTROL_CLASSNAME,
-                      "text-primary/70",
-                    )}
-                    aria-label={`${t("chat.clear_context")}: ${pageContextSummary}`}
-                    title={t("chat.clear_context")}
-                    onClick={() => clearContext("page")}
-                  >
-                    <XIcon className="size-3" aria-hidden="true" />
-                  </Button>
-              </Badge>
-            ) : null}
-            {sessionMarketContexts.map((context) => (
-              <Badge
-                key={context.symbol}
-                variant="outline"
-                className={cn(
-                  TERMINAL_BADGE_CLASSNAME,
-                  "w-fit min-w-0 max-w-full shrink items-center gap-1.5",
-                )}
-                title={`${t("chat.context_label")}: ${context.symbol} · ${context.timeframe}`}
-                aria-label={`${t("chat.context_label")}: ${context.symbol} · ${context.timeframe}`}
-              >
-                <span className="sr-only">{t("chat.context_label")}</span>
-                <span className="min-w-0 truncate uppercase">
-                  {context.symbol} · {context.timeframe}
-                </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className={cn(
-                      "ml-0.5 size-11 shrink-0 sm:size-5",
-                      CHAT_GHOST_CONTROL_CLASSNAME,
-                      "text-primary/70",
-                    )}
-                    aria-label={`${t("chat.clear_context")}: ${context.symbol}`}
-                    title={t("chat.clear_context")}
-                    onClick={() => clearContext("market", context.symbol)}
-                  >
-                    <XIcon className="size-3" aria-hidden="true" />
-                  </Button>
-              </Badge>
-            ))}
           </div>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className={cn("min-h-11 shrink-0 gap-1.5 px-2 text-xs sm:min-h-7", CHAT_GHOST_CONTROL_CLASSNAME)}
+            className={cn(
+              "min-h-11 shrink-0 gap-1.5 px-2 text-xs sm:min-h-8",
+              CHAT_GHOST_CONTROL_CLASSNAME,
+            )}
             disabled={busy}
             onClick={newChat}
           >
-            <PlusIcon className="size-3.5" aria-hidden="true" />
+            <PlusIcon data-icon="inline-start" aria-hidden="true" />
             {t("chat.new_chat")}
           </Button>
         </div>
@@ -1089,10 +1258,10 @@ function ChatSession({
                       messageId={message.id}
                       scrollAnchor={message.role === "user"}
                     >
-                    <Message
-                      align={message.role === "user" ? "end" : "start"}
-                      className="gap-2.5"
-                    >
+                      <Message
+                        align={message.role === "user" ? "end" : "start"}
+                        className="gap-2.5"
+                      >
                         <MessageContent
                           className={
                             message.role === "assistant"
@@ -1104,12 +1273,21 @@ function ChatSession({
                             <div className="w-full space-y-2 wrap-break-word text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
                               <AssistantMarkdown
                                 content={message.content}
-                                terminalContext={message.terminalContext ?? null}
+                                streaming={
+                                  busy && index === messages.length - 1
+                                }
+                                terminalContext={
+                                  message.terminalContext ?? null
+                                }
                                 marketContexts={message.marketContexts ?? []}
                               />
                             </div>
                           ) : (
-                            <Bubble align="end" variant="default" className="max-w-full">
+                            <Bubble
+                              align="end"
+                              variant="default"
+                              className="max-w-full"
+                            >
                               <BubbleContent className="px-3.5 py-2.5 text-xs leading-relaxed sm:text-sm sm:leading-relaxed">
                                 <span className="whitespace-pre-wrap wrap-break-word">
                                   {message.content}
@@ -1123,14 +1301,14 @@ function ChatSession({
                                 type="button"
                                 variant="ghost"
                                 size="icon-sm"
-                                className={cn("size-11 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME)}
+                                className={cn(
+                                  "size-11 sm:size-8",
+                                  CHAT_GHOST_CONTROL_CLASSNAME,
+                                )}
                                 aria-label={t("chat.copy")}
                                 title={t("chat.copy")}
                                 onClick={() =>
-                                  void copyResponse(
-                                    message.id,
-                                    message.content,
-                                  )
+                                  void copyResponse(message.id, message.content)
                                 }
                               >
                                 {copiedId === message.id ? (
@@ -1152,7 +1330,10 @@ function ChatSession({
                                   type="button"
                                   variant="ghost"
                                   size="icon-sm"
-                                  className={cn("size-11 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME)}
+                                  className={cn(
+                                    "size-11 sm:size-8",
+                                    CHAT_GHOST_CONTROL_CLASSNAME,
+                                  )}
                                   aria-label={t("chat.retry")}
                                   title={t("chat.retry")}
                                   onClick={() => retryFrom(index)}
@@ -1173,16 +1354,9 @@ function ChatSession({
 
                 {waitingForFirstToken ? (
                   <MessageScrollerItem>
-                    <Message className="px-1 py-1">
-                      <MessageContent className="w-fit">
-                        <Marker
-                          role="status"
-                          className="w-fit rounded-xl border border-border/50 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
-                        >
-                          <MarkerContent className="inline-block shimmer rounded-md px-1 text-xs font-medium">
-                            {t("chat.thinking")}
-                          </MarkerContent>
-                        </Marker>
+                    <Message className="py-1">
+                      <MessageContent className="w-full">
+                        <ThinkingStatus key={lastMessage.id} />
                       </MessageContent>
                     </Message>
                   </MessageScrollerItem>
@@ -1478,7 +1652,10 @@ export function ResearchCopilot() {
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className={cn("size-11 shrink-0 sm:size-8", CHAT_GHOST_CONTROL_CLASSNAME)}
+                className={cn(
+                  "size-11 shrink-0 sm:size-8",
+                  CHAT_GHOST_CONTROL_CLASSNAME,
+                )}
                 aria-label={t("chat.close")}
                 title={t("chat.close")}
                 onClick={() => handleOpenChange(false)}

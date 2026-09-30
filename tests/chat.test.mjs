@@ -32,7 +32,15 @@ function context(chatRequest, ai) {
   return {
     request: chatRequest,
     env: {
-      AI: ai,
+      AI: {
+        async run(...args) {
+          const value = await ai.run(...args);
+          if (value instanceof ReadableStream) return value;
+          const message = value.choices?.[0]?.message;
+          const event = message ? { choices: [{ delta: message, finish_reason: message.tool_calls?.length ? "tool_calls" : "stop" }] } : value;
+          return stream(`data: ${JSON.stringify(event)}\n\n`, "data: [DONE]\n\n");
+        },
+      },
       VITE_SUPABASE_URL: "https://project.supabase.co",
       VITE_SUPABASE_PUBLISHABLE_KEY: "publishable-key",
     },
@@ -163,7 +171,7 @@ test("chat rejects an invalid payload", async () => {
   assert.deepEqual(await response.json(), { error: "Invalid chat payload" });
 });
 
-test("chat offers both tools and returns a normal answer as one complete SSE event", async () => {
+test("chat offers both tools with streaming and thinking disabled", async () => {
   let authRequest;
   let inference;
   globalThis.fetch = async (input, init) => {
@@ -191,7 +199,7 @@ test("chat offers both tools and returns a normal answer as one complete SSE eve
   assert.equal(authRequest.init.headers.apikey, "publishable-key");
   assert.equal(authRequest.init.headers.Authorization, "Bearer test-token");
   assert.equal(inference.model, "@cf/google/gemma-4-26b-a4b-it");
-  assert.equal(inference.input.stream, false);
+  assert.equal(inference.input.stream, true);
   assert.equal(inference.input.tool_choice, "auto");
   assert.deepEqual(
     inference.input.tools.map((tool) => tool.function.name),
@@ -267,7 +275,11 @@ test("chat offers both tools and returns a normal answer as one complete SSE eve
   );
   assert.match(
     inference.input.messages[0].content,
-    /fenced block with language chart, containing JSON with only a chart type and symbols/,
+    /include one fenced block with language chart containing only.*"type":"setup"/,
+  );
+  assert.match(
+    inference.input.messages[0].content,
+    /Never use an ASCII or text diagram as a substitute for a requested price or setup chart/,
   );
   for (const guidance of [
     "OHLCV",
@@ -283,7 +295,7 @@ test("chat offers both tools and returns a normal answer as one complete SSE eve
     content: "Harga BTC berapa sekarang?",
   });
   assert.deepEqual(inference.input.chat_template_kwargs, {
-    enable_thinking: true,
+    enable_thinking: false,
   });
   assert.equal(inference.input.max_completion_tokens, 1_200);
   assert.equal(inference.input.temperature, 0.4);
@@ -344,7 +356,7 @@ test("explicit calculation requests use one validated tool call then stream the 
   const ai = {
     async run(model, input, options) {
       calls.push({ model, input, options });
-      if (!input.stream) {
+      if (input.tools) {
         return {
           choices: [{
             message: {
@@ -379,17 +391,19 @@ test("explicit calculation requests use one validated tool call then stream the 
     ),
   );
 
+  const body = await response.text();
+
   assert.equal(response.status, 200);
   assert.equal(calls.length, 2);
-  assert.equal(calls[0].input.stream, false);
-  assert.equal(calls[0].input.chat_template_kwargs.enable_thinking, true);
+  assert.equal(calls[0].input.stream, true);
+  assert.equal(calls[0].input.chat_template_kwargs.enable_thinking, false);
   assert.equal(calls[0].input.tools[0].function.name, "calculate_trading_metrics");
   assert.equal(calls[1].input.stream, true);
   assert.equal(calls[1].input.messages.at(-2).tool_calls[0].id, "call_metrics_1");
   assert.equal(calls[1].input.messages.at(-1).tool_call_id, "call_metrics_1");
   assert.match(calls[1].input.messages.at(-1).content, /"riskRewardRatio":3/);
   assert.match(calls[1].input.messages.at(-1).content, /"positionUnits":10/);
-  assert.match(await response.text(), /RR tiga banding satu/);
+  assert.match(body, /RR tiga banding satu/);
 });
 
 test("model-selected short calculations use the shared validated metrics helper", async () => {
@@ -397,7 +411,7 @@ test("model-selected short calculations use the shared validated metrics helper"
   let followUp;
   const ai = {
     async run(_model, input) {
-      if (!input.stream) {
+      if (input.tools) {
         return { tool_calls: [{
           name: "calculate_trading_metrics",
           arguments: { direction: "short", entry: 100, stopLoss: 105, target: 85 },
@@ -412,9 +426,11 @@ test("model-selected short calculations use the shared validated metrics helper"
     context(request({ messages: [{ role: "user", content: "Cek rasio short, entry 100, SL 105, TP 85" }] }), ai),
   );
 
+  const body = await response.text();
+
   assert.match(followUp.messages.at(-1).content, /"direction":"short"/);
   assert.match(followUp.messages.at(-1).content, /"riskRewardRatio":3/);
-  assert.match(await response.text(), /Short RR tiga banding satu/);
+  assert.match(body, /Short RR tiga banding satu/);
 });
 
 test("market and calculation tool schemas reject invalid or incomplete arguments server-side", async () => {
@@ -437,7 +453,7 @@ test("market and calculation tool schemas reject invalid or incomplete arguments
     let followUp;
     const ai = {
       async run(_model, input) {
-        if (!input.stream) return { tool_calls: [toolCall] };
+        if (input.tools) return { tool_calls: [toolCall] };
         followUp = input;
         return stream('data: {"response":"Input tidak valid."}\n\n', "data: [DONE]\n\n");
       },
@@ -446,12 +462,12 @@ test("market and calculation tool schemas reject invalid or incomplete arguments
     const response = await onRequestPost(
       context(request({ messages: [{ role: "user", content: "Tolong hitung dan cari aset" }] }), ai),
     );
+    await response.text();
     const result = followUp.messages.at(-1).content;
     assert.match(result, /error|Market lookup/i);
     if (toolCall.name === "lookup_market_data") {
       assert.match(result, /one to three valid asset names or symbols/);
     }
-    await response.text();
   }
 });
 
@@ -460,7 +476,7 @@ test("position sizing rejects risk inferred from a percentage and account balanc
   let finalInput;
   const ai = {
     async run(_model, input) {
-      if (!input.stream) {
+      if (input.tools) {
         return {
           tool_calls: [{
             name: "calculate_trading_metrics",
@@ -479,13 +495,14 @@ test("position sizing rejects risk inferred from a percentage and account balanc
     },
   };
   const { onRequestPost } = await loadModule("/functions/api/chat.ts");
-  await onRequestPost(
+  const response = await onRequestPost(
     context(
       request({ messages: [{ role: "user", content: "Hitung ukuran posisi dari risk 2% dan modal Rp 50.000.000" }] }),
       ai,
     ),
   );
 
+  await response.text();
   assert.match(finalInput.messages.at(-1).content, /not explicitly provided by the user/);
   assert.doesNotMatch(finalInput.messages.at(-1).content, /"positionUnits"/);
 });
@@ -495,7 +512,7 @@ test("trading metrics tool rejects direction that conflicts with the price level
   let finalInput;
   const ai = {
     async run(_model, input) {
-      if (!input.stream) {
+      if (input.tools) {
         return {
           choices: [{
             message: {
@@ -522,22 +539,23 @@ test("trading metrics tool rejects direction that conflicts with the price level
     },
   };
   const { onRequestPost } = await loadModule("/functions/api/chat.ts");
-  await onRequestPost(
+  const response = await onRequestPost(
     context(
       request({ messages: [{ role: "user", content: "Calculate RR for entry 100, SL 95, TP 115" }] }),
       ai,
     ),
   );
 
+  await response.text();
   assert.match(finalInput.messages.at(-1).content, /do not form a valid long or short setup/);
   assert.doesNotMatch(finalInput.messages.at(-1).content, /"riskRewardRatio"/);
 });
 
-test("a model clarification without a tool call is returned as one complete SSE event", async () => {
+test("a model clarification without a tool call is streamed directly", async () => {
   globalThis.fetch = async () => Response.json({ id: "user-1" });
   const ai = {
     async run(_model, input) {
-      assert.equal(input.stream, false);
+      assert.equal(input.stream, true);
       return { response: "Kirim entry, stop loss, dan targetnya dulu." };
     },
   };
@@ -784,7 +802,7 @@ test("model-selected Yahoo lookup returns comparable chart snapshots over SSE", 
   const ai = {
     async run(model, input) {
       calls.push({ model, input });
-      if (!input.stream) {
+      if (input.tools) {
         return {
           choices: [{ message: { tool_calls: [{
             id: "call_market_1",
@@ -841,7 +859,7 @@ test("Yahoo ambiguity is passed to the model for clarification without a chart",
   let finalInput;
   const ai = {
     async run(_model, input) {
-      if (!input.stream) {
+      if (input.tools) {
         return { tool_calls: [{
           name: "lookup_market_data",
           arguments: { queries: ["Apple"] },
@@ -876,7 +894,7 @@ test("Yahoo lookup reports unavailable symbols without inventing chart data", as
   let finalInput;
   const ai = {
     async run(_model, input) {
-      if (!input.stream) {
+      if (input.tools) {
         return { tool_calls: [{
           name: "lookup_market_data",
           arguments: { queries: ["UNKNOWNASSET"] },
@@ -913,7 +931,7 @@ test("Yahoo snapshots flag stale quotes and live hype never triggers a social-da
   const ai = {
     async run(_model, input) {
       callCount += 1;
-      if (!input.stream) {
+      if (input.tools) {
         return { tool_calls: [{
           name: "lookup_market_data",
           arguments: { queries: ["BTC"] },
@@ -934,7 +952,7 @@ test("Yahoo snapshots flag stale quotes and live hype never triggers a social-da
 
   const hypeAi = {
     async run(_model, input) {
-      assert.equal(input.stream, false);
+      assert.equal(input.stream, true);
       assert.equal(input.tools[1].function.name, "lookup_market_data");
       return { response: "Data hype live tidak tersedia. Kirim postingan yang mau dianalisis." };
     },
@@ -1000,4 +1018,156 @@ test("SSE parser handles fragmented chunks and DONE", async () => {
 
   assert.equal(output, "Hello!");
   assert.deepEqual(marketContexts, [{ symbol: "ETH-USD" }]);
+});
+
+test("a visible delta reaches the browser before the model finishes", { timeout: 2_000 }, async () => {
+  globalThis.fetch = async () => Response.json({ id: "user-1" });
+  let upstream;
+  const encoder = new TextEncoder();
+  const { onRequestPost } = await loadModule("/functions/api/chat.ts");
+  const response = await onRequestPost(context(request({ messages: [{ role: "user", content: "Explain this setup" }] }), {
+    run(_model, input) {
+      assert.equal(input.stream, true);
+      assert.equal(input.chat_template_kwargs.enable_thinking, false);
+      return new ReadableStream({ start(controller) { upstream = controller; } });
+    },
+  }));
+  const reader = response.body.getReader();
+  try {
+    upstream.enqueue(encoder.encode('data: {"choices":[{"delta":{"reasoning_content":"private reasoning"}}]}\n\ndata: {"choices":[{"delta":{"content":"First words"}}]}\n\n'));
+    const first = new TextDecoder().decode((await reader.read()).value);
+    assert.match(first, /First words/);
+    assert.doesNotMatch(first, /private reasoning|DONE/);
+    upstream.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":" arrive early."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'));
+    upstream.close();
+    let rest = "";
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      rest += new TextDecoder().decode(chunk.value);
+    }
+    assert.match(rest, /arrive early/);
+    assert.equal((rest.match(/\[DONE\]/g) ?? []).length, 1);
+  } finally { await reader.cancel(); }
+});
+
+test("streamed tool fragments are assembled once and inference logs contain only metadata", async () => {
+  globalThis.fetch = async () => Response.json({ id: "user-1" });
+  const calls = [];
+  const logs = [];
+  const originalInfo = console.info;
+  console.info = (value) => logs.push(JSON.parse(value));
+  try {
+    const { onRequestPost } = await loadModule("/functions/api/chat.ts");
+    const response = await onRequestPost(context(request({ messages: [{ role: "user", content: "private question: entry 100, SL 95, target 115" }] }), {
+      run(_model, input) {
+        calls.push(input);
+        if (input.tools) return stream(
+          'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"metrics","function":{"name":"calculate_","arguments":"{\\"direction\\":\\"long\\","}}]}}]}\n\n',
+          'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"trading_metrics","arguments":"\\"entry\\":100,\\"stopLoss\\":95,\\"target\\":115}"}}]},"finish_reason":"tool_calls"}]}\n\n',
+          'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30,"completion_tokens_details":{"reasoning_tokens":0},"private":"do not log"}}\n\ndata: [DONE]\n\n',
+        );
+        return stream('data: {"choices":[{"delta":{"content":"RR = 3"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
+      },
+    }));
+    const body = await response.text();
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((input) => input.stream && !input.chat_template_kwargs.enable_thinking));
+    assert.equal(calls[1].tools, undefined);
+    assert.equal(calls[1].messages.at(-1).tool_call_id, "metrics");
+    assert.equal(JSON.parse(calls[1].messages.at(-1).content).riskRewardRatio, 3);
+    assert.match(body, /RR = 3/);
+    assert.doesNotMatch(body, /arguments|tool_calls|private/);
+    assert.equal((body.match(/\[DONE\]/g) ?? []).length, 1);
+    assert.equal(logs[0].outcome, "complete");
+    assert.equal(logs[0].toolCallCount, 1);
+    assert.equal(logs[0].completions[0].usage.reasoning_tokens, 0);
+    assert.equal(typeof logs[0].firstTextMs, "number");
+    assert.doesNotMatch(JSON.stringify(logs), /private|do not log|RR = 3/);
+  } finally { console.info = originalInfo; }
+});
+
+test("empty, truncated and failed streams report localized error codes without fake answers or retries", async () => {
+  globalThis.fetch = async () => Response.json({ id: "user-1" });
+  const { onRequestPost } = await loadModule("/functions/api/chat.ts");
+  const { readChatStream } = await loadModule("/src/features/chat/chat-stream.ts");
+  const cases = [
+    ["unavailable", 'data: {"choices":[{"delta":{"reasoning_content":"secret thoughts"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', ""],
+    ["unavailable", 'data: [DONE]\n\n', ""],
+    ["incomplete", 'data: {"choices":[{"delta":{"content":"Partial answer"},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n', "Partial answer"],
+    ["incomplete", 'data: {"response":"Partial answer"}\n\n', "Partial answer"],
+    ["rate", 'data: {"response":"Partial answer"}\n\ndata: {"error":{"code":3036}}\n\n', "Partial answer"],
+    ["unavailable", 'data: {"response":"Partial answer"}\n\ndata: {broken}\n\n', "Partial answer"],
+    ["incomplete", 'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"lookup_market_data","arguments":"{\\"queries\\":"}}]},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n', ""],
+  ];
+  for (const [code, chunks, expected] of cases) {
+    let calls = 0;
+    const response = await onRequestPost(context(request({ messages: [{ role: "user", content: "Explain the setup" }] }), {
+      run() { calls += 1; return stream(chunks); },
+    }));
+    let answer = "";
+    await assert.rejects(readChatStream(response.body, (text) => { answer += text; }), { code });
+    assert.equal(answer, expected);
+    assert.equal(calls, 1);
+  }
+});
+
+test("cancelling a pending model stream cancels upstream and prevents a follow-up", { timeout: 2_000 }, async () => {
+  globalThis.fetch = async () => Response.json({ id: "user-1" });
+  const { onRequestPost } = await loadModule("/functions/api/chat.ts");
+  let cancelled = false;
+  let signal;
+  let calls = 0;
+  const response = await onRequestPost(context(request({ messages: [{ role: "user", content: "Explain" }] }), {
+    run(_model, _input, options) {
+      calls += 1;
+      signal = options.signal;
+      return new ReadableStream({ cancel() { cancelled = true; } });
+    },
+  }));
+  const reader = response.body.getReader();
+  const pending = reader.read();
+  await reader.cancel();
+  assert.equal((await pending).done, true);
+  assert.equal(cancelled, true);
+  assert.equal(signal.aborted, true);
+  assert.equal(calls, 1);
+});
+
+test("SSE handles byte-split UTF-8 and rejects premature EOF while releasing readers", async () => {
+  const { readChatStream } = await loadModule("/src/features/chat/chat-stream.ts");
+  const bytes = new TextEncoder().encode('data: {"response":"Café → naik"}\r\n\r\ndata: [DONE]\r\n\r\n');
+  const source = new ReadableStream({ start(controller) { for (const byte of bytes) controller.enqueue(Uint8Array.of(byte)); controller.close(); } });
+  let output = "";
+  await readChatStream(source, (text) => { output += text; });
+  assert.equal(output, "Café → naik");
+  assert.equal(source.locked, false);
+  const truncated = stream('data: {"response":"unfinished"}\n\n');
+  await assert.rejects(readChatStream(truncated, () => {}), { code: "incomplete" });
+  assert.equal(truncated.locked, false);
+});
+
+test("chat sends all selected contexts independently of their badge visibility", async () => {
+  const { streamChat } = await loadModule("/src/features/chat/chat-stream.ts");
+  let payload;
+  globalThis.fetch = async (_url, init) => {
+    payload = JSON.parse(init.body);
+    return new Response(stream('data: {"response":"OK"}\n\ndata: [DONE]\n\n'));
+  };
+  const contexts = ["BTC-USD", "ETH-USD", "SOL-USD"].map((symbol) => ({ symbol }));
+  await streamChat([{ id: "user", role: "user", content: "Compare", terminalContext: terminalContext(), marketContexts: contexts }], "test-token", () => {}, new AbortController().signal);
+  assert.equal(payload.terminalContext.symbol, "BTC-USD");
+  assert.deepEqual(payload.marketContexts, contexts);
+});
+
+test("context overflow reserves +N only when needed and never hides the primary context", async () => {
+  const { visibleContextCount: fit } = await loadModule("/src/features/chat/context-overflow.ts");
+  assert.equal(fit(300, [], 44), 0);
+  assert.equal(fit(50, [400], 44), 1);
+  assert.equal(fit(188, [100, 80], 44), 2);
+  assert.equal(fit(187, [100, 80], 44), 1);
+  assert.equal(fit(240, [100, 80, 80], 44), 2);
+  assert.equal(fit(239, [100, 80, 80], 44), 1);
+  assert.equal(fit(300, [400, 80, 80], 44), 1);
+  assert.equal(fit(276, [100, 80, 80], 44), 3);
 });

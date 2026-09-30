@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { CalendarEvent } from "@/types/calendar";
+import { CALENDAR_SOURCES } from "@/features/economic-calendar/model/calendar";
 
 const COMPACT_SIGNAL_BADGE_CLASSNAME =
   "rounded-md text-[10px] font-bold uppercase tracking-wider";
@@ -47,24 +48,30 @@ export function CalendarDetailDialog({
 }: CalendarDetailDialogProps) {
   const { t, i18n } = useTranslation();
 
-  const handleCopyDetails = () => {
+  const handleCopyDetails = async () => {
     const text = [
       `📅 ${event.title} (${event.country})`,
-      `⏰ ${event.date} • ${event.time}`,
-      `📊 ${t("calendar.actual")}: ${event.actual || "N/A"} | ${t("calendar.forecast")}: ${event.forecast || "N/A"} | ${t("calendar.previous")}: ${event.previous || "N/A"}`,
+      `⏰ ${event.date} • ${event.time || t("calendar.time_unannounced")}`,
+      `📊 ${t("calendar.actual")}: ${event.actual || t("calendar.value_unavailable")} | ${t("calendar.forecast")}: ${event.forecast || t("calendar.value_unavailable")} | ${t("calendar.previous")}: ${event.previous || t("calendar.value_unavailable")}`,
       `⚡ ${t("calendar.market_volatility")}: ${t(IMPACT_LEVELS[event.impact].labelKey)}`,
       event.description ? `📝 ${event.description}` : "",
+      `${CALENDAR_SOURCES[event.source].name}: ${event.sourceUrl}`,
     ]
       .filter(Boolean)
       .join("\n");
 
-    navigator.clipboard.writeText(text);
-    toast.success(t("calendar.copied_toast"));
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(t("calendar.copied_toast"));
+    } catch {
+      toast.error(t("calendar.copy_failed"));
+    }
   };
 
-  const formattedDate = new Date(event.date).toLocaleDateString(
+  const formattedDate = new Date(`${event.date}T00:00:00+07:00`).toLocaleDateString(
     i18n.language === "id" ? "id-ID" : "en-US",
     {
+      timeZone: "Asia/Jakarta",
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -75,10 +82,7 @@ export function CalendarDetailDialog({
   const deviation = (() => {
     if (!event.actual || event.actual === "N/A" || event.actual === "—")
       return "neutral";
-    const benchmark =
-      event.forecast && event.forecast !== "N/A" && event.forecast !== "—"
-        ? event.forecast
-        : event.previous;
+    const benchmark = event.forecast;
     if (!benchmark || benchmark === "N/A" || benchmark === "—")
       return "neutral";
 
@@ -119,7 +123,7 @@ export function CalendarDetailDialog({
 
           <div className="space-y-0.5 mt-1">
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              {formattedDate} • {event.time}
+              {formattedDate} • {event.time || t("calendar.time_unannounced")}
             </DialogDescription>
           </div>
 
@@ -171,6 +175,12 @@ export function CalendarDetailDialog({
 
         {/* Scrollable Content Body */}
         <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+            <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="w-fit font-medium text-foreground underline underline-offset-4">
+              {t("calendar.source_link", { source: CALENDAR_SOURCES[event.source].name })}
+            </a>
+            <p>{t(event.source === "yahoo" ? "calendar.yahoo_values" : "calendar.official_values")}</p>
+          </div>
           {/* Section: Historical Comparison */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -224,8 +234,8 @@ export function CalendarDetailDialog({
                         ? t("calendar.actual_beat")
                         : deviation === "miss"
                           ? t("calendar.actual_miss")
-                          : t("calendar.scheduled_event")
-                      : t("calendar.not_released")}
+                          : t("calendar.reported_value")
+                      : t("calendar.value_unavailable")}
                   </p>
                 </CardContent>
               </Card>
@@ -242,7 +252,7 @@ export function CalendarDetailDialog({
                       : "—"}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-snug">
-                    {t("calendar.market_consensus")}
+                    {t(event.forecast ? "calendar.market_consensus" : "calendar.value_unavailable")}
                   </p>
                 </CardContent>
               </Card>
@@ -259,7 +269,7 @@ export function CalendarDetailDialog({
                       : "—"}
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-snug">
-                    {t("calendar.previous_period")}
+                    {t(event.previous ? "calendar.previous_period" : "calendar.value_unavailable")}
                   </p>
                 </CardContent>
               </Card>

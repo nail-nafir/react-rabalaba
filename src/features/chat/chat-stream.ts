@@ -5,6 +5,7 @@ import type {
 } from "./terminal-context";
 
 export type ChatRole = "user" | "assistant";
+export type ChatStreamErrorCode = "rate" | "unavailable" | "incomplete";
 
 export type ChatMessage = {
   id: string;
@@ -19,7 +20,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function eventText(value: unknown): string {
+export function chatEventText(value: unknown): string {
   if (!isRecord(value)) return "";
   if (typeof value.response === "string") return value.response;
 
@@ -28,62 +29,79 @@ function eventText(value: unknown): string {
   return typeof choice.delta.content === "string" ? choice.delta.content : "";
 }
 
-function parseEvent(
-  frame: string,
-  onText: (text: string) => void,
-  onMarketContexts?: (contexts: MarketResearchContext[]) => void,
-): boolean {
+function parseEvent(frame: string): unknown {
   const data = frame
     .split(/\r?\n/)
     .filter((line) => line.startsWith("data:"))
     .map((line) => line.slice(5).replace(/^ /, ""))
     .join("\n");
 
-  if (!data) return false;
-  if (data === "[DONE]") return true;
+  if (!data) return undefined;
+  return data === "[DONE]" ? data : JSON.parse(data);
+}
 
-  const value: unknown = JSON.parse(data);
-  if (
-    onMarketContexts &&
-    isRecord(value) &&
-    Array.isArray(value.marketContexts) &&
-    value.marketContexts.length <= 3
-  ) {
-    onMarketContexts(value.marketContexts as MarketResearchContext[]);
+export async function* readChatEvents(
+  stream: ReadableStream<Uint8Array>,
+  signal?: AbortSignal,
+) {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const cancel = () => { void reader.cancel(signal?.reason).catch(() => undefined); };
+  signal?.addEventListener("abort", cancel, { once: true });
+  try {
+    while (true) {
+      signal?.throwIfAborted();
+      const result = await reader.read();
+      signal?.throwIfAborted();
+      buffer += decoder.decode(result.value, { stream: !result.done });
+
+      let separator = /\r?\n\r?\n/.exec(buffer);
+      while (separator) {
+        if (separator.index > 256 * 1024) throw new Error("Chat event is too large");
+        const value = parseEvent(buffer.slice(0, separator.index));
+        buffer = buffer.slice(separator.index + separator[0].length);
+        if (value !== undefined) yield value;
+        if (value === "[DONE]") return;
+        separator = /\r?\n\r?\n/.exec(buffer);
+      }
+
+      if (buffer.length > 256 * 1024) throw new Error("Chat event is too large");
+      if (result.done) break;
+    }
+
+    if (buffer.trim()) {
+      const value = parseEvent(buffer);
+      if (value !== undefined) yield value;
+    }
+  } finally {
+    signal?.removeEventListener("abort", cancel);
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
   }
-  const text = eventText(value);
-  if (text) onText(text);
-  return false;
 }
 
 export async function readChatStream(
   stream: ReadableStream<Uint8Array>,
   onText: (text: string) => void,
   onMarketContexts?: (contexts: MarketResearchContext[]) => void,
+  signal?: AbortSignal,
 ) {
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const result = await reader.read();
-    buffer += decoder.decode(result.value, { stream: !result.done });
-
-    let separator = /\r?\n\r?\n/.exec(buffer);
-    while (separator) {
-      const frame = buffer.slice(0, separator.index);
-      buffer = buffer.slice(separator.index + separator[0].length);
-      if (parseEvent(frame, onText, onMarketContexts)) {
-        await reader.cancel();
-        return;
-      }
-      separator = /\r?\n\r?\n/.exec(buffer);
+  for await (const value of readChatEvents(stream, signal)) {
+    if (value === "[DONE]") return;
+    if (!isRecord(value)) continue;
+    if (value.error) {
+      const code = isRecord(value.error) ? value.error.code : "unavailable";
+      throw Object.assign(new Error("Chat stream failed"), { code });
     }
-
-    if (result.done) break;
+    if (Array.isArray(value.marketContexts) && value.marketContexts.length <= 3) {
+      onMarketContexts?.(value.marketContexts as MarketResearchContext[]);
+    }
+    const text = chatEventText(value);
+    if (text) onText(text);
   }
-
-  if (buffer.trim()) parseEvent(buffer, onText, onMarketContexts);
+  throw Object.assign(new Error("Chat stream ended early"), { code: "incomplete" });
 }
 
 function requestMessages(messages: ChatMessage[]) {
@@ -143,5 +161,5 @@ export async function streamChat(
   }
 
   if (!response.body) throw new Error("Chat response was empty");
-  await readChatStream(response.body, onText, onMarketContexts);
+  await readChatStream(response.body, onText, onMarketContexts, signal);
 }

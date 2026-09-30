@@ -199,13 +199,8 @@ export async function fetchWithTimeout(
   init: RequestInit = {},
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return fetch(input, { ...init, signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
 }
 
 export async function cleanProxyResponse(
@@ -214,10 +209,12 @@ export async function cleanProxyResponse(
   diagnostics?: Parameters<typeof responseHeaders>[2],
 ) {
   const body = await upstream.text();
+  const headers = responseHeaders(upstream, cacheTtlSeconds, diagnostics);
+  headers.set("X-Rabalaba-Checked-At", String(Date.now()));
   return new Response(body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: responseHeaders(upstream, cacheTtlSeconds, diagnostics),
+    headers,
   });
 }
 
@@ -354,6 +351,8 @@ function withCacheDiagnostics(
   } else if (diagnostics.cacheStatus === "error-hit") {
     headers.set("Cache-Control", "no-store");
   }
+  const checkedAt = headers.get("X-Rabalaba-Checked-At") ?? headers.get("X-Rabalaba-Cached-At");
+  if (checkedAt) headers.set("X-Rabalaba-Checked-At", checkedAt);
   headers.delete("X-Rabalaba-Cache-Kind");
   headers.delete("X-Rabalaba-Cached-At");
   addDiagnostics(headers, diagnostics);

@@ -238,3 +238,22 @@ test("proxyJsonGet pins double-slash paths to the configured upstream origin", a
   assert.equal(fetchedUrl.origin, "https://upstream.example");
   assert.equal(fetchedUrl.pathname, "/attacker.example/path");
 });
+
+test("proxy cache preserves check time and upgrades entries created before the diagnostic header existed", async () => {
+  const cache = installCache();
+  globalThis.fetch = async () => Response.json({ ok: true });
+  const { proxyJsonGet } = await loadModule("/functions/api/_shared/proxy.ts");
+  const first = context("https://rabalaba.pages.dev/api/test/check-time");
+  const response = await proxyJsonGet(first, options());
+  assert.ok(Number(response.headers.get("X-Rabalaba-Checked-At")) > 0);
+  await first.flush();
+  const hit = await proxyJsonGet(context(first.request.url), options());
+  assert.equal(hit.headers.get("X-Rabalaba-Checked-At"), response.headers.get("X-Rabalaba-Checked-At"));
+  const oldCheckTime = String(Date.now() - 20_000);
+  for (const cached of cache.map.values()) {
+    cached.headers.delete("X-Rabalaba-Checked-At");
+    cached.headers.set("X-Rabalaba-Cached-At", oldCheckTime);
+  }
+  const legacyHit = await proxyJsonGet(context(first.request.url), options());
+  assert.equal(legacyHit.headers.get("X-Rabalaba-Checked-At"), oldCheckTime);
+});
