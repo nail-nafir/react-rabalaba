@@ -159,6 +159,7 @@ interface TradeRow {
   stop_loss: number;
   take_profits: number[] | null;
   highest_tp_reached: number;
+  engine_version: string | null;
   close_price: number | null;
   opened_at: string;
   closed_at: string | null;
@@ -266,7 +267,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Shared state: open positions + live prices, fetched ONCE per tick ──
   const cols =
-    "id,symbol,signal,grade,status,reversed,entry_price,stop_loss,take_profits,highest_tp_reached,close_price,opened_at,closed_at";
+    "id,symbol,signal,grade,status,reversed,entry_price,stop_loss,take_profits,highest_tp_reached,engine_version,close_price,opened_at,closed_at";
   const { data: openRows } = await db
     .from("journal_trades")
     .select(cols)
@@ -286,11 +287,17 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Scale-out legs (engine-v7+) need the TP ladder, progress and version.
+  const pnlInput = (r: TradeRow) => ({
+    signal: r.signal,
+    entryPrice: r.entry_price,
+    stopLoss: r.stop_loss,
+    takeProfits: r.take_profits ?? [],
+    highestTpReached: r.highest_tp_reached,
+    engineVersion: r.engine_version ?? undefined,
+  });
   const realizedPct = (r: TradeRow): number =>
-    computePnl(
-      { signal: r.signal, entryPrice: r.entry_price, stopLoss: r.stop_loss },
-      r.close_price ?? r.entry_price,
-    ).pct;
+    computePnl(pnlInput(r), r.close_price ?? r.entry_price).pct;
 
   const openInput = openT.map((r) => {
     const price = priceBySymbol.get(r.symbol);
@@ -299,16 +306,7 @@ Deno.serve(async (req: Request) => {
       signal: r.signal,
       grade: r.grade,
       floatingPct:
-        price != null
-          ? computePnl(
-              {
-                signal: r.signal,
-                entryPrice: r.entry_price,
-                stopLoss: r.stop_loss,
-              },
-              price,
-            ).pct
-          : undefined,
+        price != null ? computePnl(pnlInput(r), price).pct : undefined,
     };
   });
 

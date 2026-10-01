@@ -85,6 +85,8 @@ export function computeSignal(input: SignalInput): Outlook {
     periodLow,
     assetType,
     timeframe = "swing",
+    higherTimeframeEma200,
+    dailyEma50,
   } = input;
   const higherTimeframeTrend = input.higherTimeframeTrend ?? "sideways";
   const higherTimeframeReady =
@@ -589,6 +591,26 @@ export function computeSignal(input: SignalInput): Outlook {
       reasons.warnings.push(
         "Chop/no-trade filter active: low-volatility squeeze — staying flat until volatility expands.",
       );
+    }
+  }
+
+  // ─── Multi-timeframe trend gate (engine-v7) ──────────────
+  // Walk-forward validated: trade only on the side of every long-horizon
+  // anchor the window can support. ema200 falls back to the last close when
+  // fewer than 200 candles exist, so a missing anchor never blocks.
+  if (signal !== "neutral") {
+    const againstTrend = [ema200, higherTimeframeEma200, dailyEma50].some(
+      (anchor) =>
+        anchor != null &&
+        anchor > 0 &&
+        (signal === "long" ? close < anchor : close > anchor),
+    );
+    if (againstTrend) {
+      reasons.warnings.push(
+        "Trend gate: price is on the wrong side of a long-horizon EMA (EMA200, higher-timeframe EMA200 or daily EMA50); signal held to NEUTRAL.",
+      );
+      signal = "neutral";
+      suppressed = true;
     }
   }
 

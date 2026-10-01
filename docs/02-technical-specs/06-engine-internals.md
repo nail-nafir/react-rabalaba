@@ -47,6 +47,7 @@ flowchart LR
 - Threshold RSI 30 dan 70, spike 1.5x, ADX 25 dan 20, Bollinger 20 dan 2.
 - HTF konfirmasi boost bila selaras dan downgrade bila konflik.
 - Counter-trend guard memaksa netral kecuali override 0.6.
+- Gate tren MTF (v7) memaksa netral bila close di sisi salah EMA200 sinyal, EMA200 HTF, atau EMA50 harian; anchor dari `candles › deriveTrendAnchors`.
 
 ### Konteks Dan Enrichment
 - Tiga konteks melakukan de-rate top-down tanpa flip atau hide.
@@ -68,7 +69,7 @@ flowchart LR
 
 ### Backtest Dan Kalibrasi
 - Backtest single posisi, entry open bar berikut, tanpa lookahead.
-- Mode default progresif dengan TP1 ke entry dan TP2 ke TP1.
+- Mode default progresif dengan TP1 ke entry dan TP2 ke TP1; dialog memakai scaleOut 50/30/20 dengan ratchet yang sama (v7).
 - Biaya crypto 0.0004 plus slippage 0.0006 per sisi.
 - Kalibrasi memakai `MIN_CALIBRATION_SAMPLE=30`; di bawah itu null.
 
@@ -124,6 +125,7 @@ flowchart LR
 - Thresholds are RSI 30 and 70, spike 1.5x, ADX 25 and 20, Bollinger 20 and 2.
 - HTF confirmation boosts on align and downgrades on conflict.
 - Counter-trend guard forces neutral except 0.6 override.
+- MTF trend gate (v7) forces neutral when close sits on the wrong side of the signal EMA200, HTF EMA200, or daily EMA50; anchors come from `candles › deriveTrendAnchors`.
 
 ### Contexts And Enrichment
 - Three contexts apply top-down de-rate without flip or hide.
@@ -145,7 +147,7 @@ flowchart LR
 
 ### Backtest And Calibration
 - Backtest uses single position, next-bar open entry, no lookahead.
-- Default progressive mode moves TP1 to entry and TP2 to TP1.
+- Default progressive mode moves TP1 to entry and TP2 to TP1; the dialog uses scaleOut 50/30/20 with the same ratchet (v7).
 - Crypto cost is 0.0004 plus 0.0006 slippage per side.
 - Calibration uses `MIN_CALIBRATION_SAMPLE=30`; below that returns null.
 

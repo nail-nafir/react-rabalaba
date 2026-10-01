@@ -39,58 +39,43 @@ test("binancePerpBase: strips USDT quote and 1000x multipliers, keeps 1INCH", as
 
 // ── rankCryptoCandidates ───────────────────────────────────────────────────
 
-const cgCoin = (symbol, rank, extra = {}) => ({
-  symbol,
-  name: extra.name ?? symbol,
-  marketCapRank: rank,
-  priceUsd: extra.priceUsd ?? null,
-});
-
-test("rankCryptoCandidates: trending first, denylists + rank gate applied, deduped", async () => {
+test("rankCryptoCandidates: volume-ranked, denylists applied, per-coin source price", async () => {
   const { rankCryptoCandidates } = await loadModule(SRC);
   const out = rankCryptoCandidates({
-    cgTrending: [
-      cgCoin("USDT", 3), // stablecoin → out
-      cgCoin("WBTC", 12), // wrapped → out
-      cgCoin("SHEB", 4603), // wash-trade micro cap → out (rank > 300)
-      cgCoin("RSPCX", null), // fake coin, no rank → out
-      cgCoin("PEPE", 25, { priceUsd: 0.0000012 }),
-    ],
     binance24h: [
-      { symbol: "BTCUSDT", quoteVolume: 900 },
-      { symbol: "1000PEPEUSDT", quoteVolume: 800 }, // dup of trending PEPE
+      { symbol: "SOLUSDT", quoteVolume: 600, lastPrice: 150 },
+      { symbol: "BTCUSDT", quoteVolume: 900, lastPrice: 60000 },
+      { symbol: "1000PEPEUSDT", quoteVolume: 800, lastPrice: 0.012 },
       { symbol: "USDCUSDT", quoteVolume: 700 }, // stablecoin base → out
-      { symbol: "SOLUSDT", quoteVolume: 600 },
+      { symbol: "WBTCUSDT", quoteVolume: 650 }, // wrapped → out
       { symbol: "ETHUSDT_260327", quoteVolume: 999 }, // delivery → out
+      { symbol: "1MBABYDOGEUSDT", quoteVolume: 500, lastPrice: 1.5 },
+      { symbol: "TAOUSDT", quoteVolume: 400 }, // no last price → no source price
     ],
-    shortlist: 10,
   });
   assert.deepEqual(
     out.map((c) => c.query),
-    ["PEPE", "BTC", "SOL"],
-    "trending first, then volume-ranked, deduped",
+    ["BTC", "PEPE", "SOL", "BABYDOGE", "TAO"],
+    "quote volume order, denylisted and delivery contracts dropped",
   );
-  assert.equal(out[0].reason, "coingecko-trending", "first reason wins the dup");
-  assert.equal(out[0].sourcePriceUsd, 0.0000012);
-  assert.equal(out[1].reason, "binance-volume");
+  assert.ok(out.every((c) => c.reason === "binance-volume"));
+  assert.equal(out[0].sourcePriceUsd, 60000);
+  assert.ok(Math.abs(out[1].sourcePriceUsd - 0.000012) < 1e-15, "1000× perp → per coin");
+  assert.ok(Math.abs(out[3].sourcePriceUsd - 0.0000015) < 1e-15, "1M× perp → per coin");
+  assert.equal(out[4].sourcePriceUsd, undefined);
 });
 
-test("rankCryptoCandidates: tolerates null feeds and honors shortlist", async () => {
+test("rankCryptoCandidates: tolerates a null feed and returns the full ranking", async () => {
   const { rankCryptoCandidates } = await loadModule(SRC);
-  assert.deepEqual(
-    rankCryptoCandidates({ cgTrending: null, binance24h: null, shortlist: 5 }),
-    [],
-  );
+  assert.deepEqual(rankCryptoCandidates({ binance24h: null }), []);
   const out = rankCryptoCandidates({
-    cgTrending: null,
     binance24h: [
       { symbol: "BTCUSDT", quoteVolume: 3 },
       { symbol: "ETHUSDT", quoteVolume: 2 },
       { symbol: "SOLUSDT", quoteVolume: 1 },
     ],
-    shortlist: 2,
   });
-  assert.deepEqual(out.map((c) => c.query), ["BTC", "ETH"]);
+  assert.deepEqual(out.map((c) => c.query), ["BTC", "ETH", "SOL"]);
 });
 
 // ── pickYahooCryptoSymbol ──────────────────────────────────────────────────
@@ -147,21 +132,21 @@ const usQuote = (symbol, extra = {}) => ({
   regularMarketVolume: extra.volume ?? 1e7,
 });
 
-test("rankUsCandidates: EQUITY only, floors applied, gainers before actives", async () => {
+test("rankUsCandidates: most actives only, EQUITY only, floors applied", async () => {
   const { rankUsCandidates } = await loadModule(SRC);
   const out = rankUsCandidates({
-    dayGainers: [
+    mostActives: [
       usQuote("SOXL", { quoteType: "ETF" }), // leveraged ETF → out
       usQuote("PUMP", { marketCap: 2e8 }), // micro cap → out
       usQuote("PNNY", { price: 2.5 }), // penny → out
       usQuote("OPEN"),
+      usQuote("NVDA"),
+      usQuote("OPEN"), // duplicate → once
     ],
-    mostActives: [usQuote("OPEN"), usQuote("NVDA")],
-    shortlist: 10,
   });
   assert.deepEqual(out.map((c) => c.query), ["OPEN", "NVDA"]);
-  assert.equal(out[0].reason, "yahoo-day-gainers", "gainers ranked first");
-  assert.equal(out[1].reason, "yahoo-most-actives");
+  assert.ok(out.every((c) => c.reason === "yahoo-most-actives"));
+  assert.deepEqual(rankUsCandidates({ mostActives: null }), []);
 });
 
 // ── rankIdCandidates ───────────────────────────────────────────────────────
@@ -180,7 +165,6 @@ test("rankIdCandidates: .JK only, turnover ordering demotes gocap churn", async 
       usQuote("BBRI.JK", { price: 5000, volume: 1e8 }),
       usQuote("AAPL", { price: 5000, volume: 1e9 }), // not .JK → out
     ],
-    shortlist: 10,
   });
   assert.deepEqual(out.map((c) => c.query), ["BBRI.JK", "BUMI.JK"]);
   assert.equal(out[0].reason, "idx-most-actives");
@@ -212,7 +196,7 @@ test("dedupeCandidates: admin dropped, auto routed to refresh/reactivate, new va
       rawCand("crypto", "PEPE"), // exists as auto+active PEPE24478-USD → refresh
       rawCand("crypto", "BONK"), // exists as auto+INACTIVE → reactivate
       rawCand("crypto", "TAIKO"), // brand new → validate
-      rawCand("us-stock", "OPEN", { reason: "yahoo-day-gainers" }), // new
+      rawCand("us-stock", "OPEN", { reason: "yahoo-most-actives" }), // new
       rawCand("us-stock", "AAPL"), // exists as ADMIN us-stock → dropped
     ],
     existing: [
@@ -222,6 +206,7 @@ test("dedupeCandidates: admin dropped, auto routed to refresh/reactivate, new va
       existingRow("AAPL", { source: "admin", asset_type: "us-stock" }),
     ],
     maxPerMarket: 5,
+    shortlist: 20,
   });
   assert.deepEqual(toValidate.map((c) => c.query), ["TAIKO", "OPEN"]);
   assert.deepEqual(refresh, ["PEPE24478-USD"], "crypto matched via BASE(\\d+)?-USD");
@@ -237,9 +222,37 @@ test("dedupeCandidates: toValidate capped at 2× maxPerMarket per market", async
     raw,
     existing: [],
     maxPerMarket: 2,
+    shortlist: 8,
   });
   assert.equal(toValidate.length, 4, "2 × cap shortlist");
   assert.deepEqual(toValidate.map((c) => c.query), ["NEW0", "NEW1", "NEW2", "NEW3"]);
+});
+
+test("dedupeCandidates: admin majors never consume the shortlist window", async () => {
+  const { dedupeCandidates } = await loadModule(SRC);
+  const { toValidate, refresh } = dedupeCandidates({
+    raw: [
+      rawCand("crypto", "BTC"), // admin-owned, tops every volume feed
+      rawCand("crypto", "ETH"), // admin-owned
+      rawCand("crypto", "SOL"), // admin-owned
+      rawCand("crypto", "TAIKO"), // window slot 1 → validate
+      rawCand("crypto", "PEPE"), // window slot 2 → auto row refreshed
+      rawCand("crypto", "BONK"), // window slot 3 → validate
+      rawCand("crypto", "WIF"), // beyond the window → ignored
+      rawCand("crypto", "JUP"), // auto row beyond the window → NOT refreshed
+    ],
+    existing: [
+      existingRow("BTC-USD", { source: "admin" }),
+      existingRow("ETH-USD", { source: "admin" }),
+      existingRow("SOL-USD", { source: "admin" }),
+      existingRow("PEPE24478-USD", { active: true }),
+      existingRow("JUP29210-USD", { active: true }),
+    ],
+    maxPerMarket: 5,
+    shortlist: 3,
+  });
+  assert.deepEqual(toValidate.map((c) => c.query), ["TAIKO", "BONK"]);
+  assert.deepEqual(refresh, ["PEPE24478-USD"]);
 });
 
 // ── planDiscovery ──────────────────────────────────────────────────────────
@@ -422,37 +435,19 @@ test("formatDiscoveryForDiscord: null on no-news, sections + cap otherwise", asy
 // ── feed parsers ───────────────────────────────────────────────────────────
 
 test("parsers: normalize real envelopes, null on malformed payloads", async () => {
-  const { parseCgTrending, parseBinance24h, parseYahooScreener, parseYahooSearch } =
+  const { parseBinance24h, parseYahooScreener, parseYahooSearch } =
     await loadModule(SRC);
 
   assert.deepEqual(
-    parseCgTrending({
-      coins: [
-        {
-          item: {
-            symbol: "PEPE",
-            name: "Pepe",
-            market_cap_rank: 25,
-            data: { price: 0.0000012 },
-          },
-        },
-        { item: { symbol: "OK", name: "OKB", market_cap_rank: null } },
-        { broken: true },
-      ],
-    }),
-    [
-      { symbol: "PEPE", name: "Pepe", marketCapRank: 25, priceUsd: 0.0000012 },
-      { symbol: "OK", name: "OKB", marketCapRank: null, priceUsd: null },
-    ],
-  );
-  assert.equal(parseCgTrending({ error: "rate limited" }), null);
-
-  assert.deepEqual(
     parseBinance24h([
-      { symbol: "BTCUSDT", quoteVolume: "123.45" },
+      { symbol: "BTCUSDT", quoteVolume: "123.45", lastPrice: "60000.5" },
+      { symbol: "SOLUSDT", quoteVolume: "9", lastPrice: "0" },
       { symbol: "ETHUSDT", quoteVolume: "not-a-number" },
     ]),
-    [{ symbol: "BTCUSDT", quoteVolume: 123.45 }],
+    [
+      { symbol: "BTCUSDT", quoteVolume: 123.45, lastPrice: 60000.5 },
+      { symbol: "SOLUSDT", quoteVolume: 9 },
+    ],
   );
   assert.equal(parseBinance24h({ code: -1121 }), null);
 

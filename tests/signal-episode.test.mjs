@@ -403,3 +403,30 @@ test("the documented 50/100/200/300 example uses progressive stops without chang
     assert.equal(trade.stopLoss, 20);
   }
 });
+
+const terminalRow = (symbol, signalStatus, strength) => ({
+  symbol,
+  signalStatus,
+  outlook: { strength },
+});
+
+test("screener order puts published signals first and strength only breaks ties", () => {
+  const rows = [
+    terminalRow("PANI.JK", "blocked", 82),
+    terminalRow("LIT-USD", "pending", 78),
+    terminalRow("XYZ", "unavailable", 90),
+    terminalRow("SM", "active", 73),
+    terminalRow("AAPL", "neutral", 70),
+    terminalRow("NVDA", "active", 60),
+    terminalRow("GOTO.JK", "pending", 76),
+    terminalRow("BBCA.JK", "neutral", 12),
+  ];
+  assert.deepEqual(
+    // The screener sorts this comparator descending (header arrow ↓).
+    [...rows]
+      .sort((a, b) => -episode.compareTerminalSignal(a, b))
+      .map((row) => row.symbol),
+    ["SM", "NVDA", "LIT-USD", "GOTO.JK", "PANI.JK", "AAPL", "BBCA.JK", "XYZ"],
+    "active → pending → finished/neutral → unavailable, strength desc inside",
+  );
+});

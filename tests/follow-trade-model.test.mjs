@@ -70,6 +70,64 @@ test("computePnl: short sign flips", async () => {
   assert.ok(computePnl(t, 110).r < 0);
 });
 
+const near = (actual, expected, label) =>
+  assert.ok(Math.abs(actual - expected) < 1e-9, `${label}: ${actual} vs ${expected}`);
+
+test("computePnl: engine-v7 banks 50% at TP1 and 30% at TP2, legacy rows exit whole", async () => {
+  const { computePnl } = await loadModule(SRC);
+  // entry 100, risk 20, TPs 120/130/150 (see longTrade)
+  const v7 = (o = {}) => longTrade({ engineVersion: "engine-v7", ...o });
+  near(computePnl(v7(), 80).r, -1, "stop before TP1 loses the full 1R");
+  near(computePnl(v7({ highestTpReached: 1 }), 100).r, 0.5, "TP1 then breakeven stop");
+  near(computePnl(v7({ highestTpReached: 1 }), 100).pct, 10, "pct blends the same legs");
+  near(computePnl(v7({ highestTpReached: 2 }), 120).r, 1.15, "TP2 then stop at TP1");
+  near(computePnl(v7({ highestTpReached: 3 }), 150).r, 1.45, "final TP3");
+  near(computePnl(v7({ highestTpReached: 1 }), 110).r, 0.75, "reversal after TP1");
+  near(computePnl(v7({ highestTpReached: 1 }), 90).r, 0.25, "gap through the entry stop");
+  near(computePnl(v7({ highestTpReached: 1 }), 120).r, 1, "floating: open after TP1");
+  const shortV7 = shortTrade({ engineVersion: "engine-v7", highestTpReached: 1 });
+  near(computePnl(shortV7, 100).r, 0.5, "short mirrors the banked leg");
+  assert.equal(
+    computePnl(longTrade({ engineVersion: "engine-v5", highestTpReached: 1 }), 100).r,
+    0,
+    "pre-v7 rows keep whole-position accounting",
+  );
+  assert.equal(
+    computePnl(longTrade({ engineVersion: "engine-v6", highestTpReached: 2 }), 120).r,
+    1,
+  );
+});
+
+test("computePnl: float noise around entry snaps to breakeven", async () => {
+  const { computePnl, tradeOutcomeBucket } = await loadModule(SRC);
+  assert.equal(computePnl(longTrade(), 100 + 1e-13).r, 0);
+  assert.equal(computePnl(shortTrade(), 100 - 1e-13).pct, 0);
+  assert.equal(
+    tradeOutcomeBucket(
+      longTrade({
+        status: "sl",
+        exitReason: "breakeven_stop",
+        highestTpReached: 1,
+        closePrice: 100.00000000000001,
+      }),
+    ),
+    "breakeven",
+  );
+});
+
+test("engine-v7 breakeven stop after TP1 is a secured TP win", async () => {
+  const { tradeOutcomeBucket, deriveFollowProgress } = await loadModule(SRC);
+  const closed = longTrade({
+    engineVersion: "engine-v7",
+    status: "sl",
+    exitReason: "breakeven_stop",
+    highestTpReached: 1,
+    closePrice: 100,
+  });
+  assert.equal(tradeOutcomeBucket(closed), "tp");
+  assert.equal(deriveFollowProgress(closed, 100).tpSecured, 1);
+});
+
 test("countTakeProfitsAtPrice mirrors secured TP levels for long and short", async () => {
   const { countTakeProfitsAtPrice } = await loadModule(SRC);
   assert.equal(countTakeProfitsAtPrice(longTrade(), 120), 1);

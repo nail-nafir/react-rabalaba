@@ -8,7 +8,12 @@ import type { CategoryKey } from "@/constants/taxonomy/category";
 import type { MarketRegime } from "@/constants/taxonomy/regime";
 
 /** Persisted with every new journal decision so behavior cohorts never mix silently. */
-export const ENGINE_VERSION = "engine-v5";
+export const ENGINE_VERSION = "engine-v7";
+
+/** engine-v7+ banks these position fractions at TP1 / TP2 / TP3. The stop
+ *  ladder is unchanged (TP1 → entry, TP2 → TP1); the last fraction rides to
+ *  TP3 or the active stop. Shared by journal P&L and the backtest. */
+export const SCALE_OUT_FRACTIONS = [0.5, 0.3, 0.2];
 
 /** Weighted scoring — each indicator contributes differently based on reliability */
 export const SIGNAL_WEIGHTS = {

@@ -275,6 +275,28 @@ export function resampleCandlesToDaily(
 }
 
 /**
+ * Long-horizon anchors for the engine's trend gate, built from the SAME window
+ * the signal sees (no extra fetch): EMA200 of the higher-timeframe resample and
+ * EMA50 of completed daily closes (the running day is dropped). An anchor the
+ * window is too short for stays undefined and the gate skips it.
+ */
+export function deriveTrendAnchors(
+  candles: NormalizedYahooCandle[],
+  htfFactor: number,
+): { higherTimeframeEma200?: number; dailyEma50?: number } {
+  const htf = resampleCandles(candles, htfFactor, {
+    includeTrailingPartial: false,
+  }).map((c) => c.close);
+  const daily = resampleCandlesToDaily(candles)
+    .slice(0, -1)
+    .map((c) => c.close);
+  return {
+    higherTimeframeEma200: htf.length >= 200 ? calculateEMA(htf, 200) : undefined,
+    dailyEma50: daily.length >= 50 ? calculateEMA(daily, 50) : undefined,
+  };
+}
+
+/**
  * Derive a coarse trend direction from a candle series using EMA alignment and
  * DMI sign — the same logic the engine uses for its own trend, applied to a
  * higher timeframe for multi-timeframe confirmation.

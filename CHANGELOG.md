@@ -7,6 +7,37 @@
 
 ## [Unreleased]
 
+### Changed (Alert Discord, 2026-10-01)
+
+- **Checkpoint TP1/TP2 di Discord**: trade yang masih open dan menyentuh TP mengirim blok `📍 CHECKPOINT` berisi TP yang kena, PARTIAL (leg yang ditutup, contoh `TP1 50%`), dan SL BARU (entry setelah TP1, TP sebelumnya setelah TP2). Alert baru terkirim setelah milestone tersimpan, jadi cron yang mengulang tidak mengirim dobel. (`src/core/automation/alerts.ts`, `src/core/automation/auto-journal-core.ts`, `supabase/functions/auto-journal/index.ts`)
+- **HASIL trade v7 memakai PARTIAL, bukan SEMPAT**, jadi persen akhir yang lebih kecil dari pergerakan harga terlihat jelas asalnya; trade lama tanpa partial tetap memakai SEMPAT. (`src/core/automation/alerts.ts`)
+- **TP1/TP2 checkpoints on Discord**: a still-open trade that reaches a TP sends a `📍 CHECKPOINT` block with the TP hit, PARTIAL (legs closed, e.g. `TP1 50%`), and SL BARU (entry after TP1, the previous TP after TP2). The alert goes out only after the milestone is saved, so a retried cron never double-sends. (`src/core/automation/alerts.ts`, `src/core/automation/auto-journal-core.ts`, `supabase/functions/auto-journal/index.ts`)
+- **v7 RESULT lines use PARTIAL instead of SEMPAT**, so a final percent smaller than the price move shows where it came from; older trades without partials keep SEMPAT. (`src/core/automation/alerts.ts`)
+
+### Fixed (Alert Discord, 2026-10-01)
+
+- **`TP n/3` di Discord sama dengan dashboard**: alert close memakai `deriveFollowProgress` seperti badge dashboard, jadi trade v7 yang kena stop di entry setelah TP1 tertulis `TP 1/3`, bukan `TP 0/3`; tangga SL dipakai bersama lewat `activeStopFor`. (`src/core/automation/auto-journal-core.ts`, `src/core/trade/follow-trade-model.ts`)
+- **Discord `TP n/3` matches the dashboard**: close alerts use `deriveFollowProgress` like the dashboard badge, so a v7 trade stopped at entry after TP1 reads `TP 1/3`, not `TP 0/3`; the stop ladder is shared through `activeStopFor`. (`src/core/automation/auto-journal-core.ts`, `src/core/trade/follow-trade-model.ts`)
+
+### Changed (Pemindai Aset, 2026-10-01)
+
+- **Urutan default tabel mendahulukan sinyal yang bisa ditindaklanjuti**: LONG/SHORT aktif paling atas, lalu kandidat yang menunggu candle eksekusi, lalu netral lain, terakhir Tidak tersedia; kekuatan besar ke kecil mengurutkan isi tiap grup (panah Sinyal ↓) dan klik header Kekuatan tetap memberi urutan murni kekuatan. (`src/features/market/components/asset-signal-table.tsx`, `src/core/automation/signal-episode.ts › compareTerminalSignal`)
+- **Default table order puts actionable signals first**: active LONG/SHORT on top, then candidates awaiting the execution candle, then other neutral rows, then Unavailable; strength from high to low orders each group (Signal arrow ↓) and clicking the Strength header still gives a pure strength order. (`src/features/market/components/asset-signal-table.tsx`, `src/core/automation/signal-episode.ts › compareTerminalSignal`)
+
+### Changed (engine v7, 2026-09-30)
+
+- **Gate tren multi-timeframe**: LONG/SHORT hanya terbit di sisi yang sama dengan EMA200 candle sinyal, EMA200 timeframe atas, dan EMA50 harian (dari jendela 60d yang sama, tanpa fetch tambahan). Riset walk-forward holdout: expectancy −0,108R → +0,006R, reversal whipsaw 25% → ~6%. (`src/core/engine/signals.ts`, `src/core/market/candles.ts › deriveTrendAnchors`)
+- **Partial TP 50/30/20 untuk trade v7**: tangga stop sama, akuntansi `computePnl` + SQL win rate publik memblend leg yang sudah terjual; backtest dialog memakai exit `scaleOut` yang sama. (`src/core/trade/follow-trade-model.ts`, `supabase/migrations/20260930000001_scale_out_public_win_rate.sql`)
+- **Discovery mengikuti volume**: Binance quote volume (dengan cek harga per koin) dan Yahoo most-actives; CoinGecko trending dan day gainers dipensiunkan; baris admin tidak lagi memakan jendela shortlist. (`src/core/automation/asset-discovery-core.ts`, `supabase/functions/asset-discovery/index.ts`)
+- **Multi-timeframe trend gate**: LONG/SHORT only publish on the same side as the signal-candle EMA200, higher-timeframe EMA200, and daily EMA50 (from the same 60d window, no extra fetch). Walk-forward holdout: expectancy −0.108R → +0.006R, reversal whipsaws 25% → ~6%. (`src/core/engine/signals.ts`, `src/core/market/candles.ts › deriveTrendAnchors`)
+- **50/30/20 partial take profit for v7 trades**: same stop ladder; `computePnl` plus the public win-rate SQL blend the sold legs; the dialog backtest uses the same `scaleOut` exit. (`src/core/trade/follow-trade-model.ts`, `supabase/migrations/20260930000001_scale_out_public_win_rate.sql`)
+- **Volume-led discovery**: Binance quote volume (with a per-coin price check) and Yahoo most-actives; CoinGecko trending and day gainers are retired; admin rows no longer consume the shortlist window. (`src/core/automation/asset-discovery-core.ts`, `supabase/functions/asset-discovery/index.ts`)
+
+### Fixed (engine v7, 2026-09-30)
+
+- **Replay jurnal dimulai dari candle yang memuat entry** (toleransi 5 menit), jadi SL/TP jam pertama tidak lagi terlewat; **IDX dan komoditas bisa entry lagi** lewat jendela 45 menit untuk feed Yahoo yang terlambat; **impas memakai toleransi 1e-9** di satu tempat; **mapping perp Binance** membuang suffix angka Yahoo (`PEPE24478-USD` → `1000PEPEUSDT`); copy keberhasilan tidak lagi menyebut impas dihitung. (`src/core/automation/auto-journal-core.ts`, `src/services/api/binance.ts`, `src/assets/locales/{en,id}.json`)
+- **Journal replay starts at the candle holding the entry** (5-minute tolerance), so first-hour SL/TP hits are no longer skipped; **IDX and commodities can enter again** through a 45-minute window for lagging Yahoo feeds; **breakeven uses a 1e-9 tolerance** in one place; **Binance perp mapping** drops Yahoo numeric suffixes (`PEPE24478-USD` → `1000PEPEUSDT`); success-rate copy no longer claims breakeven counts. (`src/core/automation/auto-journal-core.ts`, `src/services/api/binance.ts`, `src/assets/locales/{en,id}.json`)
+
 ### Added
 
 - **Overhaul dokumentasi profesional (2026-09-16)**: struktur rename deskriptif bernomor (`docs/01-fsd-spesifikasi-fungsional/`, `02-tsd-spesifikasi-teknis/`, `03-testing-pengujian/`, `04-ops-operasional/`, `05-penjelasan-explainer/`), pola bilingual sekuensial ID-penuh-lalu-EN-penuh dengan panjang setara, gaya Gen-Z santai tanpa pronomina standalone, diagram Mermaid di 14 file (arsitektur, data-flow, ER schema, cache proxy, sequence 3 cron, trust boundary, pie coverage, flowchart metodologi), dan rewrite total SDD auto-journal mengikuti engine v5 + episodes + progressive exit v4.

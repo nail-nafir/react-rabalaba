@@ -53,6 +53,11 @@ test("yahooToBinancePerp maps USD crypto, handles 1000x, rejects non-crypto", as
   assert.equal(yahooToBinancePerp("BTC-USD"), "BTCUSDT");
   assert.equal(yahooToBinancePerp("SOL-USD"), "SOLUSDT");
   assert.equal(yahooToBinancePerp("PEPE-USD"), "1000PEPEUSDT");
+  // Yahoo's numeric collision suffix is dropped; short real digits stay.
+  assert.equal(yahooToBinancePerp("PEPE24478-USD"), "1000PEPEUSDT");
+  assert.equal(yahooToBinancePerp("HYPE32196-USD"), "HYPEUSDT");
+  assert.equal(yahooToBinancePerp("S32684-USD"), "SUSDT");
+  assert.equal(yahooToBinancePerp("C98-USD"), "C98USDT");
   assert.equal(yahooToBinancePerp("AAPL"), null);
   assert.equal(yahooToBinancePerp("EURUSD=X"), null);
 });

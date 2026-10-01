@@ -1,6 +1,6 @@
 # Metodologi Trading — Trading Methodology
 
-Status verifikasi: 2026-09-16 | Verification status: 2026-09-16 — engine v5, episode `journal_signal_states`, progressive exit v4, impas dikecualikan dari win rate publik | breakeven excluded from public win rate, MIN_CALIBRATION_SAMPLE=30, proyek react-rabalaba.
+Status verifikasi: 2026-09-30 | Verification status: 2026-09-30 — engine v7 (gate tren multi-timeframe | multi-timeframe trend gate, partial TP 50/30/20), episode `journal_signal_states`, tangga SL progresif | progressive stop ladder, impas dikecualikan dari win rate publik | breakeven excluded from public win rate, MIN_CALIBRATION_SAMPLE=30, proyek react-rabalaba.
 
 [Bahasa Indonesia](#bagian-id) · [English](#english-part)
 
@@ -55,6 +55,7 @@ Sumber implementasi: [engine sinyal](../../src/core/engine/signals.ts), [adapter
 - Snapshot baru memakai tiga TP; snapshot lama dua TP tetap didukung; LONG wajib memenuhi `SL < entry < TP1 < TP2 < TP3`, SHORT kebalikannya.
 - Field yang hilang tidak diganti dengan level turunan harga terkini.
 - Kandidat belum tercatat, arah terblokir, dan analisis mentah netral berbagi label Netral; status internal membedakan alasan untuk penjelasan dialog.
+- Urutan default tabel: status dulu (`active`, lalu `pending`, lalu `blocked`/`neutral`, lalu `unavailable`), kemudian kekuatan besar ke kecil (panah Sinyal ↓); klik header Kekuatan memberi urutan murni kekuatan.
 - Pembacaan terbaru yang gagal menahan publikasi walaupun cache episode lama tersedia.
 - **Kasus NBIS/EQPT (ILUSTRASI, bukan sinyal real):** pada pemeriksaan 8 September 2026, arah analisis LONG berkekuatan sekitar 71% tercatat tanpa candle entry berikutnya maupun trade aktif; label terminal Netral tanpa setup terbit.
 
@@ -94,6 +95,7 @@ Sumber implementasi: [engine sinyal](../../src/core/engine/signals.ts), [adapter
 - Regime diperiksa berurutan sehingga squeeze didahulukan sebelum tren dan volatilitas tinggi.
 - Skor akhir adalah rata-rata tertimbang kategori setelah pengali regime dan konfirmasi timeframe; skor ≥ambang menghasilkan kandidat LONG, ≤−ambang kandidat SHORT.
 - Kandidat melawan tren ditahan kecuali divergensi RSI mendukung arah kandidat atau `|skor| ≥0,60`.
+- **Gate tren multi-timeframe (engine v7):** LONG hanya terbit bila close ≥ EMA200 candle sinyal, ≥ EMA200 timeframe atas (resample 4 candle), dan ≥ EMA50 close harian yang sudah selesai; SHORT kebalikannya. Semua anchor dihitung dari jendela yang sama dengan sinyal (tanpa fetch tambahan); anchor yang datanya kurang (misal saham dengan <50 hari selesai) dilewati. Kandidat yang gagal gate menjadi Netral dengan status ditahan ("tren besar lagi berlawanan"). Validasi walk-forward: expectancy holdout naik dari −0,108R ke +0,006R, reversal whipsaw turun dari 25% ke ~6%.
 - Kekuatan = `round(|skor| × 100)`; tier A ≥80, B ≥60, C di bawahnya.
 - Konteks benchmark BTC/IHSG/S&P dapat menurunkan skor dan kekuatan berlawanan menjadi 60% lalu menghitung tier ulang; penurunan tersebut tidak membalik atau menyembunyikan arah mentah.
 - Smart money, fundamental, akumulasi, dan relative strength pada jalur utama sebagai informasi tambahan, bukan pemicu entry.
@@ -106,7 +108,7 @@ Server memeriksa syarat berikut sebelum mencatat trade baru:
 
 1. Aset termasuk universe scan aktif dan sesuai pengaturan jam pasar; robot tidak sedang dijeda.
 2. Quote memiliki timestamp, usia maksimal 90 menit, dan tidak lebih dari 5 menit ke depan.
-3. Candle keputusan sudah selesai dan berusia 0–15 menit pada waktu scan.
+3. Candle keputusan sudah selesai dan berusia 0–15 menit pada waktu scan; saham IDX dan komoditas memakai batas 45 menit karena feed Yahoo keduanya terlambat ~10 menit sehingga candle eksekusi baru muncul pada tick :30.
 4. Candle eksekusi nyata tersedia setelah candle keputusan; entry memakai open candle eksekusi, bukan harga spot saat browser dibuka; timestamp eksekusi tidak mendahului close keputusan atau melebihi 5 menit ke depan.
 5. Arah dan setup tersedia, tidak ada trade open lain untuk simbol/timeframe tersebut, dan arah tidak diblokir episode sebelumnya.
 
@@ -119,28 +121,29 @@ Server memeriksa syarat berikut sebelum mencatat trade baru:
   - R:R memakai jarak struktur lawan dibagi `r` jika ≥1 dan dibatasi maksimal 4; fallback ADX >30 → 2, >25 → 1,75, selain itu 1,5.
   - LONG: `TP1 = entry + r×RR`, `TP2 = entry + r×(RR+1)`, `TP3 = entry + r×(RR+2)`; SHORT memakai pengurangan setara.
 - Setelah pencatatan, entry, TP, SL awal, dan R:R tersimpan sebagai snapshot; harga baru tidak menghitung ulang setup trade aktif.
-- Jurnal menyimpan versi engine v5 dan waktu candle keputusan untuk audit kelompok aturan.
+- Jurnal menyimpan versi engine v7 dan waktu candle keputusan untuk audit kelompok aturan.
 
 ### 5. Setup tetap dan SL progresif
 
-- SL awal sebagai bagian setup tetap dan denominator R; SL aktif mengikuti milestone tertinggi: sebelum TP1 = SL awal, setelah TP1 = entry, setelah TP2 = TP1; TP3 menutup seluruh posisi; TP1/TP2 tanpa penjualan sebagian.
+- SL awal sebagai bagian setup tetap dan denominator R; SL aktif mengikuti milestone tertinggi: sebelum TP1 = SL awal, setelah TP1 = entry, setelah TP2 = TP1; TP3 menutup sisa posisi.
+- **Partial TP engine v7:** 50% posisi terjual di TP1, 30% di TP2, sisa 20% berjalan ke TP3 atau SL aktif (`SCALE_OUT_FRACTIONS`). Tangga SL tidak berubah; yang berubah hanya hasil yang dibukukan. Trade sebelum v7 tetap tanpa penjualan sebagian.
 - Mekanik progressive exit v4 bergerak monoton dan tidak pernah mundur.
-- Contoh mekanik LONG (ILUSTRASI, bukan sinyal real): entry 50, TP 100/200/300, SL awal 20.
+- Contoh mekanik LONG engine v7 (ILUSTRASI, bukan sinyal real): entry 50, TP 100/200/300, SL awal 20 (risiko 30 per unit).
 
 | Perjalanan harga | Setup tersimpan | SL aktif / hasil |
 |---|---|---|
 | Entry tercatat di 50 | Entry 50, SL awal 20, TP 100/200/300 | SL aktif 20 |
 | Harga naik ke 80; browser dibuka ulang | Tetap sama | SL aktif 20; belum ada exit |
-| TP1 100 tersentuh | Tetap sama | SL aktif naik ke 50 |
-| Setelah TP1 harga kembali ke 50 | Tetap sama untuk audit | Tutup di 50, impas sebelum biaya |
-| TP2 200 tersentuh | Tetap sama | SL aktif naik ke 100 |
-| Setelah TP2 harga kembali ke 100 | Tetap sama untuk audit | Tutup di 100, profit; exit `progressive_stop` |
-| TP3 300 tersentuh sebelum stop | Tetap sama untuk audit | Tutup di 300; exit `final_take_profit` |
+| TP1 100 tersentuh | Tetap sama | 50% terjual di 100; SL aktif naik ke 50 |
+| Setelah TP1 harga kembali ke 50 | Tetap sama untuk audit | Sisa 50% tutup di 50; hasil +25 per unit (+0,83R) sebelum biaya, tercatat profit |
+| TP2 200 tersentuh | Tetap sama | 30% terjual di 200; SL aktif naik ke 100 |
+| Setelah TP2 harga kembali ke 100 | Tetap sama untuk audit | Sisa 20% tutup di 100; hasil +80 per unit (+2,67R); exit `progressive_stop` |
+| TP3 300 tersentuh sebelum stop | Tetap sama untuk audit | Sisa 20% tutup di 300; hasil +120 per unit (+4R); exit `final_take_profit` |
 
-- Contoh SHORT mengikuti pola rumus target (ILUSTRASI, bukan sinyal real): entry 100, SL awal 108, R:R 1,5, TP 88/80/72; penurunan ke 95 tidak mengubah setup; TP1 88 memindahkan SL aktif ke 100; TP2 80 ke 88; TP3 72 menutup seluruh posisi; rebound ke 88 setelah TP2 menghasilkan 12 per unit atau `12/8 = 1,5R` sebelum biaya.
-- Gross R LONG `(exit − entry) / |entry − SL awal|`; SHORT `(entry − exit) / |entry − SL awal|`; denominator tidak mengecil saat SL aktif bergerak.
+- Contoh SHORT mengikuti pola rumus target (ILUSTRASI, bukan sinyal real): entry 100, SL awal 108, R:R 1,5, TP 88/80/72; penurunan ke 95 tidak mengubah setup; TP1 88 memindahkan SL aktif ke 100; TP2 80 ke 88; TP3 72 menutup seluruh posisi; rebound ke 88 setelah TP2 menghasilkan `0,5×12 + 0,3×20 + 0,2×12 = 14,4` per unit atau `14,4/8 = 1,8R` sebelum biaya (trade sebelum v7 tanpa partial: `12/8 = 1,5R`).
+- Gross R LONG `(exit − entry) / |entry − SL awal|`; SHORT `(entry − exit) / |entry − SL awal|`; engine v7 menjumlahkan leg yang sudah terjual (`fraksi × (TP − entry)`) dengan sisa posisi di exit; denominator tidak mengecil saat SL aktif bergerak. Satu sumber hitung: `computePnl` di `src/core/trade/follow-trade-model.ts` (SQL win rate publik memakai rumus yang sama).
 - Dialog market menampilkan SL awal; perjalanan SL aktif dan milestone mengikuti jurnal.
-- Hasil impas dikecualikan dari win rate publik; metrik all-time memakai `win / (win + loss)`.
+- Hasil impas dikecualikan dari win rate publik; metrik all-time memakai `win / (win + loss)`. Impas memakai toleransi 1e-9 dari harga entry agar sisa pembulatan float tidak terbaca untung atau rugi; pada v7, SL di entry setelah TP1 tetap profit karena 50% posisi sudah terkunci.
 
 ### 6. Wick, candle ambigu, dan gap
 
@@ -152,6 +155,7 @@ Server memeriksa syarat berikut sebelum mencatat trade baru:
 - Contoh LONG entry 50, SL awal 20, TP1 100 (ILUSTRASI, bukan sinyal real): candle `O50 H110 L40 C90` mencapai TP1 sehingga SL aktif menjadi 50; low 40 saja tidak membuktikan sentuhan stop baru setelah TP1; jika candle selesai berakhir di 45, retracement terkonfirmasi dan exit di 50; candle `O50 H110 L15 C90` menghasilkan exit SL awal 20 menurut aturan stop-first.
 - Setelah SL aktif LONG di 50, candle berikutnya dibuka di 45 → exit 45, bukan 50; pada SHORT berslot SL aktif 100 dan open berikutnya 105 → exit 105; gap dapat mengubah stop breakeven menjadi kerugian nyata.
 - Server memutuskan exit berdasarkan candle bertimestamp sejak entry; harga spot sesaat tidak cukup.
+- Replay dimulai dari candle yang memuat entry: entry tercatat di open candle eksekusi atau beberapa detik sesudahnya saat titik live Yahoo menjadi candle itu (toleransi 5 menit, `ENTRY_BAR_TOLERANCE_MS`); entry lama di tengah candle tetap tidak membaca wick sebelum entry.
 - Replay histori default mencakup rolling 60 hari; milestone trade yang lebih tua tidak selalu dapat direkonstruksi waktu sentuhnya secara lengkap.
 
 ### 7. Exit, blokir arah lama, dan reversal
@@ -171,7 +175,7 @@ Server memeriksa syarat berikut sebelum mencatat trade baru:
 | Kekuatan / tier | Keselarasan kategori teknikal terkini, konfirmasi timeframe, dan penurunan conviction benchmark | 71% bukan peluang menang 71% dan bukan bukti entry tercatat. |
 | Keberhasilan tabel market | Agregat jurnal all-time per simbol: `win / (win + loss)`; impas dikecualikan | Mengukur trade server selesai; angka identik untuk free dan premium. |
 | Statistik jurnal | Trade simulasi tersimpan dalam filter/periode dashboard; hasil memakai entry/SL awal dan exit tercatat | Periode dan populasi trade dapat berbeda dari angka all-time. |
-| Backtest dan kalibrasi dialog | Simulasi walk-forward pada histori tersedia; kalibrasi tier/regime memerlukan MIN_CALIBRATION_SAMPLE=30 | Beda jendela, populasi, biaya, dan mekanik eksekusi reversal dari jurnal live. |
+| Backtest dan kalibrasi dialog | Simulasi walk-forward pada histori tersedia dengan exit `scaleOut` yang sama seperti jurnal v7; kalibrasi tier/regime memerlukan MIN_CALIBRATION_SAMPLE=30 | Beda jendela, populasi, biaya, dan mekanik eksekusi reversal dari jurnal live. |
 
 - Backtest mengambil keputusan pada candle selesai dan entry di open berikutnya; reversal backtest dieksekusi di open berikutnya, sedangkan jurnal produksi memakai close candle terkoroborasi; backtest dapat menutup trade di akhir data.
 - Biaya per sisi: kripto fee 0,04% + slippage 0,06%; lainnya 0,02% + 0,03%; nilai net backtest tidak identik dengan gross P&L jurnal.
@@ -258,6 +262,7 @@ Implementation sources: [signal engine](../../src/core/engine/signals.ts), [Yaho
 - New snapshots use three TPs; legacy two-TP snapshots remain supported; LONG requires `SL < entry < TP1 < TP2 < TP3`, SHORT reverses the inequalities.
 - Missing fields receive no replacement levels derived from the current price.
 - Unrecorded candidates, blocked directions, and raw neutrality share Neutral; internal states separate the reasons for dialog explanations.
+- Default table order: status first (`active`, then `pending`, then `blocked`/`neutral`, then `unavailable`), then strength from high to low (Signal arrow ↓); clicking the Strength header gives a pure strength order.
 - A failed latest read withholds publication even when an older episode cache exists.
 - **NBIS/EQPT case (ILLUSTRATION, not a real signal):** on the 8 September 2026 check, LONG analysis near 71% strength appeared with no next execution candle and no active trade; the terminal label stayed Neutral with no published setup.
 
@@ -297,6 +302,7 @@ Implementation sources: [signal engine](../../src/core/engine/signals.ts), [Yaho
 - Regimes evaluate in order so squeeze precedes trend and high volatility.
 - The final score is the regime-weighted category average plus timeframe confirmation; score ≥ threshold gives LONG, ≤ negative threshold gives SHORT.
 - Counter-trend candidates stay withheld unless RSI divergence supports the candidate or `|score| ≥0.60`.
+- **Multi-timeframe trend gate (engine v7):** LONG publishes only when close ≥ the signal-candle EMA200, ≥ the higher-timeframe EMA200 (4-candle resample), and ≥ the EMA50 of completed daily closes; SHORT reverses the inequalities. Every anchor comes from the same window as the signal (no extra fetch); an anchor the window cannot support (for example stocks with <50 finished days) is skipped. A candidate failing the gate turns Neutral and is marked held ("big trend is against it"). Walk-forward validation: holdout expectancy rose from −0.108R to +0.006R and reversal whipsaws fell from 25% to ~6%.
 - Strength is `round(|score| × 100)`; tier A ≥80, B ≥60, C below.
 - BTC/IHSG/S&P benchmark context can reduce opposing score and strength to 60% and recalculate tier; the reduction never reverses or hides raw direction.
 - Smart money, fundamentals, accumulation, and relative strength on the canonical path provide supporting information, not entry triggers.
@@ -309,7 +315,7 @@ Before recording a trade, the server checks:
 
 1. The asset belongs to the active scan universe and market-hour settings permit it; the robot is not paused.
 2. The quote has a timestamp no more than 90 minutes old and no more than 5 minutes in the future.
-3. The decision candle is complete and 0–15 minutes old at scan time.
+3. The decision candle is complete and 0–15 minutes old at scan time; IDX stocks and commodities allow 45 minutes because their Yahoo feeds lag ~10 minutes, so the execution candle only appears at the :30 tick.
 4. A real execution candle exists after the decision candle; entry uses that candle open, not the spot price at browser open; execution timestamp neither precedes decision close nor exceeds 5 minutes ahead.
 5. Direction and setup exist, no other open trade covers the symbol/timeframe, and the previous episode blocks no such direction.
 
@@ -322,28 +328,29 @@ Before recording a trade, the server checks:
   - R:R from opposing-structure distance divided by `r` when ≥1, capped at 4; fallback ADX >30 → 2, >25 → 1.75, otherwise 1.5.
   - LONG targets: `TP1 = entry + r×RR`, `TP2 = entry + r×(RR+1)`, `TP3 = entry + r×(RR+2)`; SHORT subtracts the same distances.
 - After recording, entry, TPs, initial SL, and R:R become a saved snapshot; later prices never recalculate the active setup.
-- The journal stores engine v5 version and decision-candle time for rule-cohort audit.
+- The journal stores engine v7 version and decision-candle time for rule-cohort audit.
 
 ### 5. Fixed setup and progressive SL
 
-- Initial SL stays fixed as the R denominator; active SL follows the highest milestone: initial SL before TP1, entry after TP1, TP1 after TP2; TP3 closes the whole position; TP1/TP2 sell no fraction.
+- Initial SL stays fixed as the R denominator; active SL follows the highest milestone: initial SL before TP1, entry after TP1, TP1 after TP2; TP3 closes the remaining position.
+- **Engine v7 partial take profit:** 50% of the position sells at TP1, 30% at TP2, and the last 20% rides to TP3 or the active SL (`SCALE_OUT_FRACTIONS`). The stop ladder is unchanged; only the booked result changes. Trades before v7 keep selling no fraction.
 - Progressive exit v4 moves monotonically and never steps back.
-- Illustrative LONG mechanics (ILLUSTRATION, not a real signal): entry 50, TPs 100/200/300, initial SL 20.
+- Illustrative engine v7 LONG mechanics (ILLUSTRATION, not a real signal): entry 50, TPs 100/200/300, initial SL 20 (30 risk per unit).
 
 | Price journey | Saved setup | Active SL / outcome |
 |---|---|---|
 | Entry recorded at 50 | Entry 50, initial SL 20, TPs 100/200/300 | Active SL 20 |
 | Price reaches 80; browser reopens | Unchanged | Active SL 20; no exit |
-| TP1 at 100 touched | Unchanged | Active SL moves to 50 |
-| Price returns to 50 after TP1 | Retained for audit | Exit at 50, breakeven before costs |
-| TP2 at 200 touched | Unchanged | Active SL moves to 100 |
-| Price returns to 100 after TP2 | Retained for audit | Exit at 100, profit; `progressive_stop` |
-| TP3 at 300 touched before stop | Retained for audit | Exit at 300; `final_take_profit` |
+| TP1 at 100 touched | Unchanged | 50% sells at 100; active SL moves to 50 |
+| Price returns to 50 after TP1 | Retained for audit | Remaining 50% exits at 50; +25 per unit (+0.83R) before costs, recorded as profit |
+| TP2 at 200 touched | Unchanged | 30% sells at 200; active SL moves to 100 |
+| Price returns to 100 after TP2 | Retained for audit | Remaining 20% exits at 100; +80 per unit (+2.67R); `progressive_stop` |
+| TP3 at 300 touched before stop | Retained for audit | Remaining 20% exits at 300; +120 per unit (+4R); `final_take_profit` |
 
-- SHORT following the target formula (ILLUSTRATION, not a real signal): entry 100, initial SL 108, R:R 1.5, TPs 88/80/72; a decline to 95 changes no level; TP1 at 88 moves active SL to 100; TP2 at 80 moves it to 88; TP3 at 72 closes the whole position; a rebound to 88 after TP2 yields 12 per unit or `12/8 = 1.5R` before costs.
-- Gross R is `(exit − entry) / |entry − initial SL|` for LONG and `(entry − exit) / |entry − initial SL|` for SHORT; the denominator never shrinks as active SL moves.
+- SHORT following the target formula (ILLUSTRATION, not a real signal): entry 100, initial SL 108, R:R 1.5, TPs 88/80/72; a decline to 95 changes no level; TP1 at 88 moves active SL to 100; TP2 at 80 moves it to 88; TP3 at 72 closes the whole position; a rebound to 88 after TP2 yields `0.5×12 + 0.3×20 + 0.2×12 = 14.4` per unit or `14.4/8 = 1.8R` before costs (pre-v7 trades without partials: `12/8 = 1.5R`).
+- Gross R is `(exit − entry) / |entry − initial SL|` for LONG and `(entry − exit) / |entry − initial SL|` for SHORT; engine v7 adds the sold legs (`fraction × (TP − entry)`) to the remaining position at exit; the denominator never shrinks as active SL moves. One calculation source: `computePnl` in `src/core/trade/follow-trade-model.ts` (the public win-rate SQL mirrors it).
 - The market dialog shows initial SL; the journal tracks active-stop progression and milestones.
-- Breakeven results stay excluded from the public win rate; the all-time metric uses `wins / (wins + losses)`.
+- Breakeven results stay excluded from the public win rate; the all-time metric uses `wins / (wins + losses)`. Breakeven uses a 1e-9-of-entry tolerance so float rounding never reads as profit or loss; in v7 an entry stop after TP1 stays a profit because 50% is already banked.
 
 ### 6. Wicks, ambiguous candles, and gaps
 
@@ -355,6 +362,7 @@ Before recording a trade, the server checks:
 - LONG entry 50, initial SL 20, TP1 100 (ILLUSTRATION, not a real signal): candle `O50 H110 L40 C90` reaches TP1 and moves active SL to 50; low 40 alone never proves a post-TP1 stop touch; when that completed candle ends at 45, retracement confirms and exit lands at 50; candle `O50 H110 L15 C90` exits at initial SL 20 under stop-first evaluation.
 - With LONG active SL at 50, the next candle opening at 45 exits at 45, not 50; SHORT with active SL 100 and next open 105 exits at 105; gaps can turn a breakeven stop into a realized loss.
 - The server decides exits from timestamped candles since entry; momentary spot quotes never suffice.
+- Replay starts at the candle holding the entry: entries record the execution-candle open, or a few seconds later when Yahoo's live point stands in for that candle (5-minute tolerance, `ENTRY_BAR_TOLERANCE_MS`); a legacy mid-candle entry still never reads pre-entry wicks.
 - Default replay history covers a rolling 60 days; exact touch times for older milestones cannot always be fully reconstructed.
 
 ### 7. Exit, old-direction block, and reversal
@@ -374,7 +382,7 @@ Before recording a trade, the server checks:
 | Strength / tier | Current technical-category alignment, timeframe confirmation, and benchmark conviction reduction | 71% is no 71% win probability and no proof of a recorded entry. |
 | Market-table success | All-time journal aggregate per symbol: `wins / (wins + losses)`; breakeven excluded | Completed server trades; identical numbers for free and premium. |
 | Journal statistics | Stored simulated trades in dashboard filters/period; outcome uses recorded entry/initial SL/exit | Period and trade population can differ from all-time aggregates. |
-| Dialog backtest / calibration | Walk-forward simulation over available history; tier/regime calibration needs MIN_CALIBRATION_SAMPLE=30 | Window, population, costs, and reversal execution differ from the live journal. |
+| Dialog backtest / calibration | Walk-forward simulation over available history with the same `scaleOut` exits as the v7 journal; tier/regime calibration needs MIN_CALIBRATION_SAMPLE=30 | Window, population, costs, and reversal execution differ from the live journal. |
 
 - Backtest decides on completed candles with entries at the next open; backtest reversal also executes at the next open, while the production journal uses a corroborated candle close; backtest can close a trade at end of data.
 - Per-side costs are crypto fee 0.04% + slippage 0.06%; otherwise 0.02% + 0.03%; net backtest values never equal gross journal P&L.

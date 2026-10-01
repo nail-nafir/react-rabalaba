@@ -26,7 +26,7 @@ Entry memakai `signals.ts › computeSignal` dari SignalInput menjadi Outlook. V
 
 Kategori Momentum memakai RSI plus StochRSI plus divergence. Kategori Volatility memakai Bollinger plus Fib. Kategori Volume memakai OBV plus spike. Layer 5 menggabung 4 kategori via REGIME_WEIGHT_MULTIPLIERS menjadi directionScore.
 
-Strength dihitung via round dari nilai absolut directionScore dikali 100. Strength berarti alignment teknikal, bukan probabilitas menang. Empat kategori mencegah indikator berkorelasi dihitung dobel. HTF confirmation memberi boost atau downgrade. Counter-trend guard plus tier A/B/C menutup layer.
+Strength dihitung via round dari nilai absolut directionScore dikali 100. Strength berarti alignment teknikal, bukan probabilitas menang. Empat kategori mencegah indikator berkorelasi dihitung dobel. HTF confirmation memberi boost atau downgrade. Counter-trend guard, gate tren multi-timeframe engine v7 (LONG hanya bila close ≥ EMA200 candle sinyal, EMA200 timeframe atas, dan EMA50 harian selesai; SHORT kebalikannya; anchor tanpa data cukup dilewati), plus tier A/B/C menutup layer.
 
 ## 🇮🇩 Regime Layer 1
 
@@ -63,10 +63,10 @@ Honesty gate accumulation: zero-volume di atas 30 persen menjadi null. Helper ek
 
 ## 🇮🇩 Backtest dan Kalibrasi
 
-Backtest memakai `backtest.ts › runBacktest` walk-forward tanpa lookahead. Keputusan candle i dieksekusi di open i+1. Reversal ditutup di open sebelum high/low diproses. Mode default progressive memindah stop ke entry setelah TP1, lalu ke TP1 setelah TP2. Gap melewati stop aktif mengisi di open aktual.
+Backtest memakai `backtest.ts › runBacktest` walk-forward tanpa lookahead. Keputusan candle i dieksekusi di open i+1. Reversal ditutup di open sebelum high/low diproses. Mode default progressive memindah stop ke entry setelah TP1, lalu ke TP1 setelah TP2. Dialog memakai mode scaleOut yang sama dengan jurnal engine v7: 50/30/20 di TP1/TP2/TP3 dengan tangga stop yang sama. Gap melewati stop aktif mengisi di open aktual.
 
 - Gross plus net R, fee/slippage, timestamp keputusan/entry/exit tercatat.
-- Mode terminal, secured, scale-out, dan TP1 tersedia sebagai pembanding riset.
+- Mode terminal, secured, dan TP1 tersedia sebagai pembanding riset; scale-out menjadi exit produksi v7.
 - Invariant corrupt future candle tidak mengubah entry masa lalu.
 
 Kalibrasi memakai `calibration.ts › calibrateConfidence` dari metrik ke hit-rate historis per tier plus regime. Return null bila sampel di bawah MIN_CALIBRATION_SAMPLE = 30. Overlay browser tidak boleh mengganti cohort kalibrasi. Basis uji kanonis: 45 file dengan 422 kasus.
@@ -110,7 +110,7 @@ Entry uses `signals.ts › computeSignal` from SignalInput to Outlook. Volume ga
 
 Momentum category uses RSI plus StochRSI plus divergence. Volatility category uses Bollinger plus Fib. Volume category uses OBV plus spike. Layer 5 combines 4 categories via REGIME_WEIGHT_MULTIPLIERS into directionScore.
 
-Strength equals round of absolute directionScore times 100. Strength means technical alignment, not win probability. Four categories prevent correlated indicators from double counting. HTF confirmation adds boost or downgrade. Counter-trend guard plus A/B/C tiers close the layer.
+Strength equals round of absolute directionScore times 100. Strength means technical alignment, not win probability. Four categories prevent correlated indicators from double counting. HTF confirmation adds boost or downgrade. Counter-trend guard, the engine v7 multi-timeframe trend gate (LONG only when close ≥ the signal-candle EMA200, higher-timeframe EMA200, and completed daily EMA50; SHORT reversed; anchors without enough data are skipped), plus A/B/C tiers close the layer.
 
 ## 🇺🇸 Layer 1 Regime
 
@@ -147,10 +147,10 @@ Accumulation honesty gate: above-30-percent zero-volume becomes null. Experiment
 
 ## 🇺🇸 Backtest and Calibration
 
-Backtest uses `backtest.ts › runBacktest` walk-forward without lookahead. Candle i decisions execute at open i+1. Reversals close at open before high/low handling. Default progressive mode moves stop to entry after TP1, then to TP1 after TP2. Gaps through active stops fill at actual open.
+Backtest uses `backtest.ts › runBacktest` walk-forward without lookahead. Candle i decisions execute at open i+1. Reversals close at open before high/low handling. Default progressive mode moves stop to entry after TP1, then to TP1 after TP2. The dialog uses the same scaleOut mode as the engine v7 journal: 50/30/20 at TP1/TP2/TP3 on the same stop ladder. Gaps through active stops fill at actual open.
 
 - Gross plus net R, fee/slippage, decision/entry/exit timestamps recorded.
-- Terminal, secured, scale-out, plus TP1 modes serve as research comparisons.
+- Terminal, secured, plus TP1 modes serve as research comparisons; scale-out is the v7 production exit.
 - Corrupt-future-candle invariant preserves past entries.
 
 Calibration uses `calibration.ts › calibrateConfidence` from metrics to historical hit-rate per tier plus regime. Returns null when sample falls below MIN_CALIBRATION_SAMPLE = 30. Browser overlays never replace calibration cohorts. Canonical test basis: 45 files with 422 cases.

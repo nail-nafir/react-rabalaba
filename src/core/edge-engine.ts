@@ -57,7 +57,6 @@ export type { JournalTradeRow } from "@/types/journal";
 // Asset auto-discovery: the pure ranking/mapping/plan/format core the daily
 // asset-discovery cron wires fetch + DB around (same split as auto-journal).
 export {
-  parseCgTrending,
   parseBinance24h,
   parseYahooScreener,
   parseYahooSearch,

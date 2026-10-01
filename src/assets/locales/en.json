@@ -542,7 +542,7 @@
     "trend": "Trend",
     "signal": "Signal",
     "successrate": "Success Rate",
-    "successrate_methodology": "Winning or breakeven trade ratio for this symbol.",
+    "successrate_methodology": "Winning trade ratio for this symbol. Breakeven trades are excluded.",
     "successrate_summary": "{{percent}}% successful: {{wins}} of {{total}} closed trades.",
     "successrate_sample": "{{wins}}/{{total}}",
     "successrate_new_data": "New Data",

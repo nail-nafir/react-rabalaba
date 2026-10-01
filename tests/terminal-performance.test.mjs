@@ -182,9 +182,13 @@ test("worker runs the same engine and preserves metrics across the message bound
     ]) {
       const message = once(worker, "message");
       worker.postMessage({ candles, assetType, timeframe: "swing" });
+      // The dialog backtest mirrors the live journal's engine-v7 scale-out exits.
       assert.deepEqual((await message)[0], {
-        metrics: runBacktest(candles, { assetType, timeframe: "swing" })
-          .metrics,
+        metrics: runBacktest(candles, {
+          assetType,
+          timeframe: "swing",
+          exitMode: "scaleOut",
+        }).metrics,
       });
     }
     const message = once(worker, "message");

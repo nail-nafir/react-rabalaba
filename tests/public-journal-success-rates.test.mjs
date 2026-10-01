@@ -130,3 +130,36 @@ test("latest success-rate migration excludes breakeven from the denominator", ()
     /grant execute on function public\.get_public_journal_success_rates\(\)[\s\S]*to anon, authenticated/i,
   );
 });
+
+test("engine-v7 success-rate migration blends scale-out legs with a breakeven tolerance", () => {
+  const sql = readFileSync(
+    new URL(
+      "../supabase/migrations/20260930000001_scale_out_public_win_rate.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(sql, /create or replace function public\.get_public_journal_success_rates\(\)/i);
+  assert.match(sql, /returns table \(symbol text, wins bigint, total bigint\)/i);
+  assert.match(sql, /security definer/i);
+  assert.match(sql, /set search_path = ''/i);
+  assert.match(sql, /from public\.journal_trades as jt/i);
+  assert.match(sql, /where jt\.status <> 'open'/i);
+  // Only engine-v7+ rows bank the 50% / 30% legs (mirrors computePnl).
+  assert.match(sql, /substring\(jt\.engine_version from '\^engine-v\(\\d\+\)\$'\)::int, 0\) >= 7/i);
+  assert.match(sql, /0\.5 \* \(take_profits\[1\] - entry_price\)/i);
+  assert.match(sql, /0\.3 \* \(take_profits\[2\] - entry_price\)/i);
+  // Float noise inside 1e-9 of entry stays breakeven (out of the sample).
+  assert.match(sql, /filter \(where move > entry_price \* 1e-9\)/i);
+  assert.match(sql, /filter \(where abs\(move\) > entry_price \* 1e-9\)/i);
+  assert.match(
+    sql,
+    /revoke all on function public\.get_public_journal_success_rates\(\) from public/i,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.get_public_journal_success_rates\(\)[\s\S]*to anon, authenticated/i,
+  );
+  assert.doesNotMatch(sql, /create policy/i);
+});

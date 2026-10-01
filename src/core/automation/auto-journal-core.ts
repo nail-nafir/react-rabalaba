@@ -8,9 +8,12 @@
 import type { UnifiedAsset } from "@/types/asset";
 import {
   buildFollowedTrade,
+  activeStopFor,
   applyPriceSync,
   computePnl,
-  countTakeProfitsAtPrice,
+  deriveFollowProgress,
+  scaleOutLegs,
+  ENTRY_BAR_TOLERANCE_MS,
   type FollowCandle,
   type ExitReason,
 } from "@/core/trade/follow-trade-model";
@@ -47,8 +50,12 @@ export interface JournalClosure {
   /** Total TP levels the plan had — lets a reversal alert retain its TP progress
    *  vs "no TP", mirroring the trade-detail badge. NOT persisted. */
   tp_total?: number;
-  /** TP levels secured by the realized close price. NOT persisted. */
+  /** TP levels secured at the close, by the same rule as the dashboard badge
+   *  (`deriveFollowProgress`). NOT persisted. */
   secured_tp_level?: number;
+  /** Scale-out legs already banked (engine-v7+, 0 for older rows). NOT
+   *  persisted — drives the Discord PARTIAL line. */
+  partial_legs?: number;
   /** True only for a SIGNAL-REVERSAL close (legacy audit compatibility). */
   reversed?: boolean;
   /** Realized P&L % at the close price. NOT persisted (DB UPDATE ignores it) —
@@ -68,9 +75,22 @@ export interface AutoJournalPlan {
   signalStateUpdates: JournalSignalStateUpsert[];
 }
 
+/** A TP milestone reached by a still-open trade. Only `highest_tp_reached` is
+ *  persisted; the rest is carried for the Discord checkpoint alert. */
 export interface JournalProgressUpdate {
   id: string;
   highest_tp_reached: number;
+  /** Stored milestone before this run; the checkpoint covers the levels above. */
+  from_tp_reached: number;
+  symbol: string;
+  signal: "long" | "short";
+  grade: string | null;
+  entry_price: number;
+  take_profits: number[];
+  /** Stop after the ladder moved: entry after TP1, one rung behind after. */
+  stop_loss: number;
+  /** Scale-out legs banked so far (engine-v7+, 0 for older rows). */
+  partial_legs: number;
 }
 
 export interface RunAutoJournalOptions {
@@ -89,6 +109,9 @@ export interface RunAutoJournalOptions {
  *  prices (wrong direction, wrong entry, or a phantom TP/SL). ~1.5× the 1h candle. */
 const QUOTE_MAX_AGE_MS = 90 * 60 * 1000;
 const ENTRY_MAX_AGE_MS = 15 * 60 * 1000;
+/** Yahoo serves IDX and futures ~10 minutes late, so their execution bar only
+ *  appears after the :00 tick; the next :30 tick must still accept it. */
+const DELAYED_ENTRY_MAX_AGE_MS = 45 * 60 * 1000;
 
 /** Stale-quote guard for ALL asset types (not just crypto): a stale price in any
  *  market can manufacture a phantom TP/SL on sync or a wrong-direction emit. When a
@@ -120,7 +143,11 @@ function hasFreshDecision(asset: UnifiedAsset, now: number): boolean {
     return false;
   }
   const age = now - closedAt;
-  return age >= 0 && age <= ENTRY_MAX_AGE_MS;
+  const maxAge =
+    asset.assetType === "id-stock" || asset.assetType === "commodity"
+      ? DELAYED_ENTRY_MAX_AGE_MS
+      : ENTRY_MAX_AGE_MS;
+  return age >= 0 && age <= maxAge;
 }
 
 export function runAutoJournal(
@@ -188,7 +215,9 @@ export function runAutoJournal(
           requirePhysical: true,
         })
       : [];
-    const since = candles.filter((c) => c.timestamp * 1000 >= t.followedAt);
+    const since = candles.filter(
+      (c) => c.timestamp * 1000 >= t.followedAt - ENTRY_BAR_TOLERANCE_MS,
+    );
     // Evaluate ONLY off the timestamped candle record, NEVER the raw spot price:
     // Yahoo's regularMarketPrice (esp. forex) is flaky/forward-filled and a single
     // bad print can manufacture a phantom TP/SL. No candle since entry → skip this
@@ -228,7 +257,9 @@ export function runAutoJournal(
       t.exitReason ??
       (t.status === "sl" ? "initial_stop" : "final_take_profit"),
     tp_total: t.takeProfits.length,
-    secured_tp_level: countTakeProfitsAtPrice(t, t.closePrice),
+    secured_tp_level: deriveFollowProgress(t, t.closePrice ?? t.entryPrice)
+      .tpSecured,
+    partial_legs: scaleOutLegs(t),
     pnl_pct: computePnl(t, t.closePrice ?? t.entryPrice).pct,
     duration_ms: Math.max(0, (t.closedAt ?? now) - t.followedAt),
     signal: t.signal,
@@ -237,6 +268,15 @@ export function runAutoJournal(
   const progressUpdates: JournalProgressUpdate[] = progressed.map((trade) => ({
     id: trade.id,
     highest_tp_reached: trade.highestTpReached,
+    from_tp_reached:
+      openRows.find((row) => row.id === trade.id)?.highest_tp_reached ?? 0,
+    symbol: trade.symbol,
+    signal: trade.signal,
+    grade: trade.grade ?? null,
+    entry_price: trade.entryPrice,
+    take_profits: trade.takeProfits,
+    stop_loss: activeStopFor(trade, trade.highestTpReached),
+    partial_legs: scaleOutLegs(trade),
   }));
 
   // Close 2 — signal REVERSAL (long↔short). Neutral does not close: conviction
@@ -268,7 +308,16 @@ export function runAutoJournal(
       closed_at: new Date(now).toISOString(),
       highest_tp_reached: reachedTp,
       tp_total: t.takeProfits.length,
-      secured_tp_level: countTakeProfitsAtPrice(t, close_price),
+      secured_tp_level: deriveFollowProgress(
+        {
+          ...t,
+          status: "reversed",
+          exitReason: "reversal",
+          closePrice: close_price,
+        },
+        close_price,
+      ).tpSecured,
+      partial_legs: scaleOutLegs(t),
       reversed: true,
       pnl_pct: computePnl(t, close_price).pct,
       duration_ms: Math.max(0, now - t.followedAt),

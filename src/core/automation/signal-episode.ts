@@ -19,6 +19,32 @@ export interface TerminalAsset extends UnifiedAsset {
   signalStatus: TerminalSignalStatus;
 }
 
+type TerminalSignalView = Pick<TerminalAsset, "signalStatus" | "outlook">;
+
+/** Higher = more actionable: a published signal, then a candidate waiting for
+ *  its execution candle, then rows without an entry, then unverifiable rows. */
+const STATUS_PRIORITY: Record<TerminalSignalStatus, number> = {
+  active: 3,
+  pending: 2,
+  blocked: 1,
+  neutral: 1,
+  unavailable: 0,
+};
+
+/** Ascending by priority, then raw strength (the value itself is never
+ *  altered). The screener sorts it descending, so the most actionable and
+ *  strongest rows lead and the header arrow points down like every other
+ *  "biggest first" column. */
+export function compareTerminalSignal(
+  a: TerminalSignalView,
+  b: TerminalSignalView,
+): number {
+  return (
+    STATUS_PRIORITY[a.signalStatus] - STATUS_PRIORITY[b.signalStatus] ||
+    (a.outlook?.strength ?? 0) - (b.outlook?.strength ?? 0)
+  );
+}
+
 export function signalEpisodeKey(symbol: string, timeframe?: string): string {
   return `${symbol}|${canonicalTimeframe(timeframe)}`;
 }

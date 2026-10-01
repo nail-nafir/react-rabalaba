@@ -3,9 +3,9 @@
  *
  * Triggered by pg_cron once a day (see schedule-asset-discovery.sql), or on
  * demand from the admin UI with { force: true }:
- *   1. fetch the trending / high-volume feeds: CoinGecko trending, Binance
- *      futures 24h volume, Yahoo day_gainers + most_actives, and the Yahoo
- *      custom screener for IDX most-actives
+ *   1. fetch the high-volume feeds: Binance futures 24h quote volume, Yahoo
+ *      most_actives, and the Yahoo custom screener for IDX most-actives
+ *      (attention feeds — CoinGecko trending, day_gainers — are retired)
  *   2. rank/filter/dedup via the PURE, unit-tested core
  *      (src/core/automation/asset-discovery-core) — crypto bases are resolved to REAL
  *      Yahoo tickers via search + name match (PEPE-USD is PEPEGOLD; the real
@@ -26,7 +26,6 @@ import { authorizeCronRequest } from "../_shared/cron-auth.ts";
 import {
   adaptYahooChart,
   normalizeYahooCandles,
-  parseCgTrending,
   parseBinance24h,
   parseYahooScreener,
   parseYahooSearch,
@@ -43,7 +42,7 @@ const RANGE = "60d";
 const INTERVAL = "1h";
 const FETCH_TIMEOUT_MS = 12_000;
 // Broader than auto-journal's YAHOO_PROXY_BASE: discovery goes through the
-// app's Cloudflare proxies for ALL THREE upstreams (yahoo/coingecko/binance),
+// app's Cloudflare proxies for BOTH upstreams (yahoo/binance),
 // same edge + caching + crumb handling the browser uses. Override for a
 // graceful fallback if the proxy is down.
 const PROXY_BASE =
@@ -290,17 +289,11 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Fetch the source feeds (each independently fault-tolerant) ──
-  const [cgTrending, binance24h, dayGainers, mostActives, idxActives] =
+  const [binance24h, mostActives, idxActives] =
     await Promise.all([
-      fetchJson(`${PROXY_BASE}/coingecko/api/v3/search/trending`).then(
-        parseCgTrending,
-      ),
       fetchJson(`${PROXY_BASE}/binance/fapi/v1/ticker/24hr`).then(
         parseBinance24h,
       ),
-      fetchJson(
-        `${PROXY_BASE}/yahoo/v1/finance/screener/predefined/saved?scrIds=day_gainers&count=${FEED_COUNT}`,
-      ).then(parseYahooScreener),
       fetchJson(
         `${PROXY_BASE}/yahoo/v1/finance/screener/predefined/saved?scrIds=most_actives&count=${FEED_COUNT}`,
       ).then(parseYahooScreener),
@@ -317,8 +310,8 @@ Deno.serve(async (req: Request) => {
   // A market whose feeds ALL failed is excluded from pruning this run — a
   // dead feed must not slowly drain that market's book.
   const marketFailed: Record<DiscoveryMarket, boolean> = {
-    crypto: cgTrending == null && binance24h == null,
-    "us-stock": dayGainers == null && mostActives == null,
+    crypto: binance24h == null,
+    "us-stock": mostActives == null,
     "id-stock": idxActives == null,
   };
   const prunableMarkets = (
@@ -354,18 +347,19 @@ Deno.serve(async (req: Request) => {
   ];
 
   // ── Rank (pure) → dedup vs universe (pure) → resolve + validate (I/O) ──
-  // rank* gets a generous shortlist (4× cap) so dedup attrition doesn't
-  // starve validation; dedupeCandidates then caps toValidate at 2× cap.
-  const shortlist = maxPerMarket * 4;
+  // rank* returns the full ranking; dedupeCandidates keeps a generous window
+  // (4× cap) of NON-admin candidates per market so admin-owned majors don't
+  // starve discovery, then caps toValidate at 2× cap.
   const raw: RawCandidateLite[] = [
-    ...rankCryptoCandidates({ cgTrending, binance24h, shortlist }),
-    ...rankUsCandidates({ dayGainers, mostActives, shortlist }),
-    ...rankIdCandidates({ mostActives: idxActives, shortlist }),
+    ...rankCryptoCandidates({ binance24h }),
+    ...rankUsCandidates({ mostActives }),
+    ...rankIdCandidates({ mostActives: idxActives }),
   ];
   const { toValidate, refresh, reactivate } = dedupeCandidates({
     raw,
     existing,
     maxPerMarket,
+    shortlist: maxPerMarket * 4,
   });
 
   const markets: DiscoveryMarket[] = ["crypto", "us-stock", "id-stock"];

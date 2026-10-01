@@ -1,6 +1,6 @@
 # FSD 03 — Auto-Journal Robot / Auto-Journal Robot
 
-> Status: Aktif / Active | Terverifikasi / Verified: Ya / Yes | Tanggal / Date: 2026-09-16 | Cakupan / Scope: Cron 30 Menit, Emit/Close, Phantom Guard, Discord, Discovery, Rekap
+> Status: Aktif / Active | Terverifikasi / Verified: Ya / Yes | Tanggal / Date: 2026-09-30 | Cakupan / Scope: Cron 30 Menit, Emit/Close, Phantom Guard, Discord, Discovery, Rekap
 
 [Bahasa Indonesia](#bagian-id) · [English](#english-part)
 
@@ -33,7 +33,7 @@ Context top-down BTC/IHSG/S&P dibangun via buildEngineContexts. Keputusan murni 
 
 ## 🇮🇩 Inti Keputusan
 
-Emit melewati quote tanpa timestamp. Emit melewati quote stale di atas 90 menit atau di atas 5 menit masa depan. Candle keputusan entry wajib selesai dengan usia 0-15 menit. Enrich memakai context own-index agar strength/tier sama dengan screener. Context tidak menyembunyikan sinyal.
+Emit melewati quote tanpa timestamp. Emit melewati quote stale di atas 90 menit atau di atas 5 menit masa depan. Candle keputusan entry wajib selesai dengan usia 0-15 menit; saham IDX dan komoditas 0-45 menit karena feed Yahoo keduanya terlambat sekitar 10 menit, jadi candle eksekusi baru muncul di tick :30. Enrich memakai context own-index agar strength/tier sama dengan screener. Context tidak menyembunyikan sinyal.
 
 - Entry memakai open candle eksekusi pertama setelah candle keputusan selesai.
 - Kandidat LONG/SHORT fresh plus plan tercatat bila executable dan episode mengizinkan.
@@ -41,7 +41,7 @@ Emit melewati quote tanpa timestamp. Emit melewati quote stale di atas 90 menit 
 - Setelah TP/SL, arah sama diblokir sampai raw signal lewat netral; reversal boleh flip langsung.
 - Snapshot simpan engine_version, decision_candle_open_at, decision_candle_closed_at, regime, HTF trend, direction score.
 
-Close me-replay candle sejak entry per trade. Close progressive: TP1 pindah stop aktif ke entry; TP2 pindah ke TP1; TP final tutup posisi. Final close kembali lewat stop baru menutup di level stop pada candle selesai capai TP baru; wick saja tidak. Gap pada stop aktif mengisi di open aktual. Reversal long-short exit di close candle terkoroborasi tanpa perfect-fill sintetis.
+Close me-replay candle sejak candle yang memuat entry per trade (toleransi 5 menit untuk entry yang tercap beberapa detik setelah open candle). Close progressive: TP1 pindah stop aktif ke entry; TP2 pindah ke TP1; TP final tutup posisi. Engine v7 membukukan 50% posisi di TP1 dan 30% di TP2 (akuntansi saja, tangga stop sama), jadi stop di entry setelah TP1 tetap profit. Final close kembali lewat stop baru menutup di level stop pada candle selesai capai TP baru; wick saja tidak. Gap pada stop aktif mengisi di open aktual. Reversal long-short exit di close candle terkoroborasi tanpa perfect-fill sintetis.
 
 Phantom guard: hanya candle timestamped memutuskan TP/SL. Spot price di atas SL diabaikan sebagai anti phantom close dari quote transient. Trade lama engine-v3 tertutup di ratchet non-final tidak ditulis ulang. Migrasi v4 hanya pindah trade open ke kontrak progressive plus exit_reason initial_stop, breakeven_stop, progressive_stop, final_take_profit, reversal.
 
@@ -55,11 +55,11 @@ Singleton journal_settings mengendalikan robot tanpa redeploy. Interval clock-al
 | interval_minutes | Clock-aligned plus dedup |
 | market_hours_only | Skip simbol bursa tutup |
 
-Alert memakai `alerts.ts › buildAutoJournalAlerts` plus format batch Discord. Insert sukses menjadi new_long atau new_short memakai snapshot entry, TP, SL awal jurnal. Tulis DB gagal tidak membuat alert. Closure menjadi tp_hit, sl_hit, protected_stop, atau reversed berdasar exit_reason. Format SINYAL lalu HASIL, persen direction-aware dari entry, label durasi Indonesia. DISCORD_MAX 1900 per batch; blok alert tidak dipotong. HTTP 429 menghormati Retry-After dan retry sekali dalam budget function. Gagal webhook tidak membatalkan jurnal.
+Alert memakai `alerts.ts › buildAutoJournalAlerts` plus format batch Discord. Insert sukses menjadi new_long atau new_short memakai snapshot entry, TP, SL awal jurnal. Tulis DB gagal tidak membuat alert. Milestone TP trade yang masih open menjadi tp_checkpoint setelah update `highest_tp_reached` benar benar tersimpan, jadi run ulang tidak mengirim dobel; trade yang close di run yang sama cukup muncul di HASIL. Closure menjadi tp_hit, sl_hit, protected_stop, atau reversed berdasar exit_reason. Format SINYAL, CHECKPOINT, lalu HASIL, persen direction-aware dari entry, label durasi Indonesia. Checkpoint berisi TP yang kena, PARTIAL (leg yang ditutup, contoh `TP1 50%`), dan SL BARU (entry setelah TP1, TP sebelumnya setelah TP2). Trade engine v7 menampilkan PARTIAL di HASIL, menggantikan SEMPAT yang tetap dipakai trade lama tanpa partial; `TP n/3` di HASIL memakai aturan yang sama dengan badge dashboard (`deriveFollowProgress`). DISCORD_MAX 1900 per batch; blok alert tidak dipotong. HTTP 429 menghormati Retry-After dan retry sekali dalam budget function. Gagal webhook tidak membatalkan jurnal.
 
 ## 🇮🇩 Discovery dan Rekap
 
-Discovery bukan bagian auto-journal, tetapi mengisi universe yang dibaca auto-journal. Cron daily 30 22 UTC atau 05.30 WIB harian. Core murni asset-discovery-core plus function asset-discovery. Fetch feed trending CoinGecko, Binance 24h, Yahoo gainers plus most-actives, IDX most-actives. Rank dan dedup via pure core. Validasi tiap kandidat round-trip chart minimal 120 bar. INSERT, refresh, reactivate, prune journal_assets. Baris source admin tidak pernah disentuh.
+Discovery bukan bagian auto-journal, tetapi mengisi universe yang dibaca auto-journal. Cron daily 30 22 UTC atau 05.30 WIB harian. Core murni asset-discovery-core plus function asset-discovery. Fetch feed volume: Binance futures 24h quote volume (plus harga terakhir per koin untuk cek koin salah), Yahoo most-actives, IDX most-actives; CoinGecko trending dan Yahoo day gainers dipensiunkan karena cohort paling rugi di jurnal. Rank dan dedup via pure core; jendela shortlist 4× cap hanya menghitung kandidat non admin. Validasi tiap kandidat round-trip chart minimal 120 bar. INSERT, refresh, reactivate, prune journal_assets. Baris source admin tidak pernah disentuh.
 
 Rekap memakai function daily-summary cron hourly dengan self-gate per hari/minggu/bulan WIB. Scoreboard Discord: TOTAL, TERBAIK, TERBURUK, SINYAL BARU, MASIH TERBUKA, SUDAH DITUTUP, RASIO LABA RUGI. Atomic send-once per kind via stamp kolom.
 
@@ -101,7 +101,7 @@ Top-down BTC/IHSG/S&P contexts build via buildEngineContexts. Pure decisions run
 
 ## 🇺🇸 Decision Core
 
-Emit skips quotes without timestamps. Emit skips stale quotes above 90 minutes or above 5 minutes in future. Decision entry candles must finish with 0-15 minute age. Enrichment uses own-index context so strength/tier match screener. Context never hides signals.
+Emit skips quotes without timestamps. Emit skips stale quotes above 90 minutes or above 5 minutes in future. Decision entry candles must finish with 0-15 minute age; IDX stocks and commodities allow 0-45 minutes because both Yahoo feeds lag about 10 minutes, so the execution candle only appears at the :30 tick. Enrichment uses own-index context so strength/tier match screener. Context never hides signals.
 
 - Entry uses first execution-candle open after decision candle finishes.
 - Fresh LONG/SHORT candidates plus plans record when executable plus episodes allow.
@@ -109,7 +109,7 @@ Emit skips quotes without timestamps. Emit skips stale quotes above 90 minutes o
 - After TP/SL, same direction blocks until raw signal passes neutral; reversal may flip directly.
 - Snapshots store engine_version, decision_candle_open_at, decision_candle_closed_at, regime, HTF trend, direction score.
 
-Close replays candles from entry per trade. Progressive close: TP1 moves active stop to entry; TP2 moves to TP1; final TP closes position. Final close back through fresh stop closes at stop level on finished candles reaching fresh TP; wick alone never closes. Gaps at active stops fill at actual open. Long-short reversal exits at corroborated candle close without synthetic perfect-fill.
+Close replays candles from the candle holding the entry per trade (5-minute tolerance for entries stamped seconds after the candle open). Progressive close: TP1 moves active stop to entry; TP2 moves to TP1; final TP closes position. Engine v7 books 50% of the position at TP1 and 30% at TP2 (accounting only, same stop ladder), so an entry stop after TP1 stays a profit. Final close back through fresh stop closes at stop level on finished candles reaching fresh TP; wick alone never closes. Gaps at active stops fill at actual open. Long-short reversal exits at corroborated candle close without synthetic perfect-fill.
 
 Phantom guard: only timestamped candles decide TP/SL. Spot price above SL ignores as anti phantom close from transient quotes. Old engine-v3 trades closed at non-final ratchet never rewrite. V4 migration only moves open trades to progressive contract plus exit_reason initial_stop, breakeven_stop, progressive_stop, final_take_profit, reversal.
 
@@ -123,11 +123,11 @@ Singleton journal_settings controls robot without redeploys. Interval clock-alig
 | interval_minutes | Clock alignment plus dedup |
 | market_hours_only | Skip closed-exchange symbols |
 
-Alerts use `alerts.ts › buildAutoJournalAlerts` plus Discord batch format. Successful inserts become new_long or new_short with journal entry, TP, initial SL snapshots. Failed DB writes create no alerts. Closures become tp_hit, sl_hit, protected_stop, or reversed from exit_reason. Format SIGNAL then RESULT, direction-aware percent from entry, Indonesia duration label. DISCORD_MAX 1900 per batch; alert blocks never split. HTTP 429 respects Retry-After plus one retry inside function budget. Webhook failure never cancels journal.
+Alerts use `alerts.ts › buildAutoJournalAlerts` plus Discord batch format. Successful inserts become new_long or new_short with journal entry, TP, initial SL snapshots. Failed DB writes create no alerts. TP milestones of still-open trades become tp_checkpoint once the `highest_tp_reached` update actually lands, so reruns never double-send; a trade closing in the same run only appears under RESULT. Closures become tp_hit, sl_hit, protected_stop, or reversed from exit_reason. Format SIGNAL, CHECKPOINT, then RESULT, direction-aware percent from entry, Indonesia duration label. A checkpoint carries the TP hit, PARTIAL (legs closed, e.g. `TP1 50%`), and SL BARU (entry after TP1, the previous TP after TP2). Engine v7 trades show PARTIAL under RESULT, replacing SEMPAT, which older trades without partials keep; `TP n/3` under RESULT uses the same rule as the dashboard badge (`deriveFollowProgress`). DISCORD_MAX 1900 per batch; alert blocks never split. HTTP 429 respects Retry-After plus one retry inside function budget. Webhook failure never cancels journal.
 
 ## 🇺🇸 Discovery and Recap
 
-Discovery remains outside auto-journal, but fills universe read at auto-journal. Daily cron at 30 22 UTC or 05.30 WIB daily. Pure core asset-discovery-core plus asset-discovery function. Trending feeds fetch CoinGecko, Binance 24h, Yahoo gainers plus most-actives, IDX most-actives. Rank plus dedup run via pure core. Each candidate validates round-trip charts at minimum 120 bars. INSERT, refresh, reactivate, prune journal_assets. Admin-source rows never touched.
+Discovery remains outside auto-journal, but fills universe read at auto-journal. Daily cron at 30 22 UTC or 05.30 WIB daily. Pure core asset-discovery-core plus asset-discovery function. Volume feeds fetch Binance futures 24h quote volume (plus per-coin last price for wrong-coin checks), Yahoo most-actives, IDX most-actives; CoinGecko trending and Yahoo day gainers are retired as the worst journal cohorts. Rank plus dedup run via pure core; the 4× cap shortlist window counts only non-admin candidates. Each candidate validates round-trip charts at minimum 120 bars. INSERT, refresh, reactivate, prune journal_assets. Admin-source rows never touched.
 
 Recap uses daily-summary function hourly cron with self-gate per WIB day/week/month. Discord scoreboard: TOTAL, BEST, WORST, FRESH SIGNALS, STILL OPEN, CLOSED, PROFIT-LOSS RATIO. Atomic send-once per kind via stamp columns.
 

@@ -49,19 +49,19 @@ Total 45 file / 422 case terdistribusi ke 7 area. Konsentrasi terbesar berada di
 | `indicators-edge-cases.test.mjs` | Edge numerik RSI/EMA/MACD/Bollinger/StochRSI/DMI/ATR/OBV/MFI |
 | `regime-engine.test.mjs` | 4 regime, collapsed-band, prioritas squeeze |
 | `relative-strength.test.mjs` | Excess return, leader/laggard, cap conviction |
-| `signal-engine.test.mjs` | Closed-candle gate, regime, parity production/backtest, gross/net R |
+| `signal-engine.test.mjs` | Closed-candle gate, regime, gate tren MTF v7 dan anchor, parity production/backtest, ratchet scaleOut, gross/net R |
 | `signal-episode.test.mjs` | Episode sinyal v5, blok episode, re-arm |
 | `signal-suppressed.test.mjs` | Flag suppressed, invariant suppressed-menuju-neutral |
-| `smart-money.test.mjs` | Mapping perp, positioning OI/funding, nudge bounded |
+| `smart-money.test.mjs` | Mapping perp (termasuk suffix angka Yahoo), positioning OI/funding, nudge bounded |
 | `us-context.test.mjs` | Risk state S&P/VIX/DXY, de-rate counter-trend |
 
 #### automation (6 file)
 
 | File | Fokus |
 |---|---|
-| `alerts.test.mjs` | Mapping exit reason, section Discord, split multi-message |
-| `asset-discovery-core.test.mjs` | Base perp, ranking kandidat, dedup, plan discovery, parser feed |
-| `auto-journal-core.test.mjs` | Entry, replay candle, exit progresif/TP/final/reversal, retry, phantom guard |
+| `alerts.test.mjs` | Mapping exit reason, section Discord (SINYAL, CHECKPOINT, HASIL), checkpoint TP1/TP2 dengan PARTIAL dan SL BARU, PARTIAL vs SEMPAT, split multi-message |
+| `asset-discovery-core.test.mjs` | Base perp, ranking volume dan harga per koin, dedup dengan jendela non admin, plan discovery, parser feed |
+| `auto-journal-core.test.mjs` | Entry, jendela 45 menit feed delay IDX/komoditas, replay dari candle entry, exit progresif/TP/final/reversal, data checkpoint milestone, TP aman v7 sama dengan dashboard, retry, phantom guard |
 | `daily-summary.test.mjs` | Scoreboard recap, empty day, window harian/mingguan/bulanan |
 | `journal-assets-management.test.mjs` | Kurasi universe, active/source, batas auto |
 | `journal-period.test.mjs` | Konfigurasi periode jurnal, bulan aktif, rollover |
@@ -70,9 +70,9 @@ Total 45 file / 422 case terdistribusi ke 7 area. Konsentrasi terbesar berada di
 
 | File | Fokus |
 |---|---|
-| `follow-trade-model.test.mjs` | P&L/R direction-aware, replay progressive-stop, exit reasons, bucket outcome |
+| `follow-trade-model.test.mjs` | P&L/R direction-aware, akuntansi scale-out v7, toleransi impas, replay progressive-stop, exit reasons, bucket outcome |
 | `journal-performance.test.mjs` | Agregat performa, kurva ekuitas, guard performa |
-| `public-journal-success-rates.test.mjs` | Normalisasi bigint, RPC agregat-only, denominator tanpa impas |
+| `public-journal-success-rates.test.mjs` | Normalisasi bigint, RPC agregat-only, denominator tanpa impas, blend scale-out v7 |
 | `trade-setup-model.test.mjs` | Domain chart, R-multiples, tick mapping, marker-candle |
 
 #### market (4 file)
@@ -105,7 +105,7 @@ Total 45 file / 422 case terdistribusi ke 7 area. Konsentrasi terbesar berada di
 | `overlay-composition.test.mjs` | Komposisi Dialog/AlertDialog/Popover/Sheet/Select/DropdownMenu/Tooltip |
 | `seo-preview.test.mjs` | Meta tag, preview card |
 | `skeleton-loading.test.mjs` | Skeleton versus konten final |
-| `terminal-performance.test.mjs` | Guard render terminal, worker, query observer |
+| `terminal-performance.test.mjs` | Guard render terminal, worker backtest (exit scaleOut), query observer |
 | `toast-copy.test.mjs` | Helper notifikasi, parity locale, single-language copy |
 
 #### edge/proxy (1 file)
@@ -179,19 +179,19 @@ The total of 45 files / 422 cases spreads across 7 areas. The largest concentrat
 | `indicators-edge-cases.test.mjs` | Numeric edges for RSI/EMA/MACD/Bollinger/StochRSI/DMI/ATR/OBV/MFI |
 | `regime-engine.test.mjs` | 4 regimes, collapsed band, squeeze priority |
 | `relative-strength.test.mjs` | Excess return, leader/laggard, conviction cap |
-| `signal-engine.test.mjs` | Closed-candle gates, regime, production/backtest parity, gross/net R |
+| `signal-engine.test.mjs` | Closed-candle gates, regime, v7 MTF trend gate plus anchors, production/backtest parity, scaleOut ratchet, gross/net R |
 | `signal-episode.test.mjs` | Signal episodes v5, episode blocks, re-arm |
 | `signal-suppressed.test.mjs` | Suppressed flag, suppressed-to-neutral invariant |
-| `smart-money.test.mjs` | Perp mapping, OI/funding positioning, bounded nudge |
+| `smart-money.test.mjs` | Perp mapping (including Yahoo numeric suffixes), OI/funding positioning, bounded nudge |
 | `us-context.test.mjs` | S&P/VIX/DXY risk state, counter-trend de-rate |
 
 #### automation (6 files)
 
 | File | Focus |
 |---|---|
-| `alerts.test.mjs` | Exit-reason mapping, Discord sections, multi-message splits |
-| `asset-discovery-core.test.mjs` | Perp base, candidate ranking, dedup, discovery plan, feed parsers |
-| `auto-journal-core.test.mjs` | Entries, candle replay, progressive/TP/final/reversal exits, retry, phantom guards |
+| `alerts.test.mjs` | Exit-reason mapping, Discord sections (SINYAL, CHECKPOINT, HASIL), TP1/TP2 checkpoints with PARTIAL and SL BARU, PARTIAL vs SEMPAT, multi-message splits |
+| `asset-discovery-core.test.mjs` | Perp base, volume ranking plus per-coin price, dedup with a non-admin window, discovery plan, feed parsers |
+| `auto-journal-core.test.mjs` | Entries, 45-minute delayed-feed window for IDX/commodities, replay from the entry candle, progressive/TP/final/reversal exits, milestone checkpoint data, v7 secured TP matching the dashboard, retry, phantom guards |
 | `daily-summary.test.mjs` | Scoreboard recap, empty days, daily/weekly/monthly windows |
 | `journal-assets-management.test.mjs` | Universe curation, active/source states, auto caps |
 | `journal-period.test.mjs` | Journal period configuration, active months, rollover |
@@ -200,9 +200,9 @@ The total of 45 files / 422 cases spreads across 7 areas. The largest concentrat
 
 | File | Focus |
 |---|---|
-| `follow-trade-model.test.mjs` | Direction-aware P&L/R, progressive-stop replay, exit reasons, outcome buckets |
+| `follow-trade-model.test.mjs` | Direction-aware P&L/R, v7 scale-out accounting, breakeven tolerance, progressive-stop replay, exit reasons, outcome buckets |
 | `journal-performance.test.mjs` | Performance aggregates, equity curve, performance guards |
-| `public-journal-success-rates.test.mjs` | Bigint normalization, aggregate-only RPC, ex-breakeven denominator |
+| `public-journal-success-rates.test.mjs` | Bigint normalization, aggregate-only RPC, ex-breakeven denominator, v7 scale-out blend |
 | `trade-setup-model.test.mjs` | Chart domain, R-multiples, tick mapping, marker-candle alignment |
 
 #### market (4 files)
@@ -235,7 +235,7 @@ The total of 45 files / 422 cases spreads across 7 areas. The largest concentrat
 | `overlay-composition.test.mjs` | Dialog/AlertDialog/Popover/Sheet/Select/DropdownMenu/Tooltip composition |
 | `seo-preview.test.mjs` | Meta tags, preview cards |
 | `skeleton-loading.test.mjs` | Skeletons versus final content |
-| `terminal-performance.test.mjs` | Terminal render guards, workers, query observers |
+| `terminal-performance.test.mjs` | Terminal render guards, backtest worker (scaleOut exits), query observers |
 | `toast-copy.test.mjs` | Notification helpers, locale parity, single-language copy |
 
 #### edge/proxy (1 file)

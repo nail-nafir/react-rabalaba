@@ -23,7 +23,9 @@ const PERP_OVERRIDES: Record<string, string> = {
 export function yahooToBinancePerp(symbol: string): string | null {
   const s = symbol.toUpperCase();
   if (!s.endsWith("-USD")) return null;
-  const base = s.slice(0, -4);
+  // Yahoo suffixes colliding tickers with a numeric id (PEPE24478-USD is the
+  // real Pepe); real bases never end in 4+ digits (C98 stays C98).
+  const base = s.slice(0, -4).replace(/\d{4,}$/, "");
   if (!base) return null;
   return `${PERP_OVERRIDES[base] ?? base}USDT`;
 }

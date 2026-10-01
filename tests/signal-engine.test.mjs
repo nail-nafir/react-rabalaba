@@ -270,6 +270,53 @@ test("clean bearish trend returns SHORT with ready data", async () => {
   assert.ok(result.categoryScores.trend < 0);
 });
 
+test("trend gate holds a LONG under a long-horizon anchor (engine-v7)", async () => {
+  // Clean uptrend ends at 229; an anchor above that price blocks the long.
+  const candles = makeTrendCandles({ count: 130, step: 1, volumeSpikeAtEnd: true });
+  for (const anchor of [{ dailyEma50: 300 }, { higherTimeframeEma200: 300 }]) {
+    const held = await computeFromCandles(candles, anchor);
+    assert.equal(held.signal, "neutral");
+    assert.equal(held.suppressed, true);
+    assert.ok(held.reasons.warnings.some((w) => w.startsWith("Trend gate")));
+  }
+  const allowed = await computeFromCandles(candles, {
+    dailyEma50: 150,
+    higherTimeframeEma200: 200,
+  });
+  assert.equal(allowed.signal, "long", "anchors below price keep the long");
+  assert.equal(allowed.suppressed, false);
+});
+
+test("trend gate holds a SHORT above a long-horizon anchor (engine-v7)", async () => {
+  // Clean downtrend ends at 151; a daily anchor below that price blocks it.
+  const candles = makeTrendCandles({ count: 130, start: 280, step: -1, volumeSpikeAtEnd: true });
+  const held = await computeFromCandles(candles, { dailyEma50: 100 });
+  assert.equal(held.signal, "neutral");
+  assert.equal(held.suppressed, true);
+  const allowed = await computeFromCandles(candles, { dailyEma50: 200 });
+  assert.equal(allowed.signal, "short");
+});
+
+test("deriveTrendAnchors skips anchors the window is too short for", async () => {
+  const { deriveTrendAnchors } = await loadModule("/src/core/market/candles.ts");
+  const hour = 3600;
+  const hourly = (count) =>
+    Array.from({ length: count }, (_, i) => ({
+      open: 100 + i,
+      high: 101 + i,
+      low: 99 + i,
+      close: 100 + i,
+      volume: 1_000,
+      timestamp: 1_700_000_000 + i * hour,
+    }));
+  const short = deriveTrendAnchors(hourly(300), 4);
+  assert.equal(short.higherTimeframeEma200, undefined, "75 HTF bars < 200");
+  assert.equal(short.dailyEma50, undefined, "12 days < 50");
+  const long = deriveTrendAnchors(hourly(24 * 60), 4);
+  assert.ok(long.higherTimeframeEma200 > 0, "360 HTF bars");
+  assert.ok(long.dailyEma50 > 0, "60 days of hours → 50+ finished days");
+});
+
 test("strong uptrend overbought RSI does not auto-short", async () => {
   const result = await computeFromCandles(
     makeTrendCandles({ count: 80, step: 1 }),
@@ -531,6 +578,38 @@ test("backtest defaults to progressive exits while alternatives stay explicit", 
   assert.equal(terminal.trades[0].exitReason, "final_take_profit");
   assert.equal(secured.trades[0].exitReason, "progressive_stop");
   assert.ok(terminal.trades[0].exitIndex > secured.trades[0].exitIndex);
+});
+
+test("backtest scaleOut ratchets the stop to TP1 after the second leg like production", async () => {
+  const { replayDecisionSeries } = await loadModule("/src/core/engine/backtest.ts");
+  const bar = (open, high, low, close, i) => ({ open, high, low, close, volume: 1_000, timestamp: 1_000 + i });
+  // Entry 100, ATR 4 → stop 94 (6 risk), fallback RR 1.5 → TP 109 / 115 / 121.
+  const candles = [
+    bar(99, 100, 98, 100, 0),
+    bar(100, 116, 99.5, 114, 1), // TP1 + TP2 fill in the entry bar
+    bar(113, 113.5, 108, 108.5, 2), // dips through TP1 → ratcheted stop
+    bar(108.5, 109, 108, 108.5, 3),
+  ];
+  const outlook = (signal) => ({
+    signal,
+    regime: "trending",
+    tier: "B",
+    indicators: { atr: 4, support: 0, resistance: 0, adx: 0, recentSwingHigh: 0, recentSwingLow: 0 },
+  });
+  const decisions = [
+    { barIndex: 0, timestamp: 1_000, outlook: outlook("long"), previousSignal: "neutral" },
+    { barIndex: 1, timestamp: 1_001, outlook: outlook("neutral"), previousSignal: "long" },
+    { barIndex: 2, timestamp: 1_002, outlook: outlook("neutral"), previousSignal: "neutral" },
+  ];
+  const { trades } = replayDecisionSeries(candles, decisions, {
+    assetType: "crypto",
+    exitMode: "scaleOut",
+  });
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].exitReason, "progressive_stop");
+  assert.equal(trades[0].exitIndex, 2);
+  // 50% @109 + 30% @115 + 20% @109 → 0.75R + 0.75R + 0.3R
+  assert.ok(Math.abs(trades[0].grossR - 1.8) < 1e-9, `grossR ${trades[0].grossR}`);
 });
 
 test("backtest has no lookahead: future candles do not change past entries", async () => {

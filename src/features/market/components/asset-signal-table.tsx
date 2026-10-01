@@ -88,6 +88,7 @@ import {
 } from "@/features/market/hooks/use-signal-episode-states";
 import {
   applySignalEpisode,
+  compareTerminalSignal,
   signalEpisodeKey,
   type TerminalAsset,
 } from "@/core/automation/signal-episode";
@@ -118,8 +119,11 @@ function SortIcon<TData extends UnifiedAsset>({
 export function AssetSignalTable() {
   "use no memo";
   const { t } = useTranslation();
+  // Actionable first (descending, like every "biggest first" column): published
+  // LONG/SHORT, then candidates waiting for their execution candle, then rows
+  // without an entry; strength orders each group.
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "strength", desc: true },
+    { id: "signal", desc: true },
   ]);
   // Actions only — no UI-state subscription — so this expensive screener never
   // re-renders on unrelated UI changes (e.g. license-dialog open/close). That
@@ -592,11 +596,19 @@ export function AssetSignalTable() {
       },
 
       {
-        accessorKey: "signal",
-        header: () => (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("table.signal")}
-          </span>
+        id: "signal",
+        accessorFn: (row) => row.signalStatus,
+        sortingFn: (a, b) => compareTerminalSignal(a.original, b.original),
+        // A string accessor would start ascending; the header cycle is ↓ → ↑ → off.
+        sortDescFirst: true,
+        header: ({ column }) => (
+          <Button
+            variant="link"
+            onClick={() => column.toggleSorting()}
+            className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors p-0 hover:no-underline h-auto"
+          >
+            {t("table.signal")} <SortIcon column={column} />
+          </Button>
         ),
         cell: ({ row }) => {
           if (!row.original.outlook) return "-";

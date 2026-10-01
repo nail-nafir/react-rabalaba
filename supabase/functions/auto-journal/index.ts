@@ -311,8 +311,10 @@ Deno.serve(async (req: Request) => {
 
   let emitError: string | null = null;
   // Persist TP milestones even while a trade remains open. The conditional
-  // update keeps progress monotonic across concurrent/retried runs.
+  // update keeps progress monotonic across concurrent/retried runs, and only
+  // an applied milestone earns a checkpoint alert, so retries never resend.
   let progressed = 0;
+  const appliedProgress = [] as typeof progressUpdates;
   for (const update of progressUpdates) {
     const { data, error } = await db
       .from("journal_trades")
@@ -322,8 +324,10 @@ Deno.serve(async (req: Request) => {
       .lt("highest_tp_reached", update.highest_tp_reached)
       .select("id")
       .maybeSingle();
-    if (!error && data) progressed++;
-    else if (error && !emitError) emitError = error.message;
+    if (!error && data) {
+      progressed++;
+      appliedProgress.push(update);
+    } else if (error && !emitError) emitError = error.message;
   }
 
   // Apply CLOSEs.
@@ -423,7 +427,7 @@ Deno.serve(async (req: Request) => {
     if (error && !emitError) emitError = error.message;
   }
 
-  // Broadcast alerts to Discord (GoTrade-style: new signal / TP / SL). Best
+  // Broadcast alerts to Discord (new signal / TP checkpoint / outcome). Best
   // effort — a webhook failure must NEVER fail the journal run, and an unset
   // DISCORD_WEBHOOK_URL simply means alerts are off (no-op).
   let alerted = 0;
@@ -432,6 +436,7 @@ Deno.serve(async (req: Request) => {
     const alerts = buildAutoJournalAlerts({
       inserts: inserted,
       closures: appliedClosures,
+      progressUpdates: appliedProgress,
     });
     alertsTotal = alerts.length;
     for (const batch of formatAlertBatchesForDiscord(alerts)) {

@@ -45,7 +45,7 @@ sequenceDiagram
   Edge->>Edge: Fetch Yahoo paralel + adaptYahooChart
   Edge->>Edge: runAutoJournal murni: inserts + closures + progress + episode
   Edge->>DB: UPDATE closures + INSERT trades + upsert signal states
-  Edge->>DC: Alert entry/exit best-effort dari event tulis berhasil
+  Edge->>DC: Alert entry/checkpoint/exit best-effort dari event tulis berhasil
   Edge->>DB: Stamp last_run_at + ringkasan JSON
   Web->>DB: Poll jurnal + episode via publishable key (RLS)
 ```
@@ -179,7 +179,7 @@ sequenceDiagram
   Edge->>Edge: Parallel Yahoo fetch + adaptYahooChart
   Edge->>Edge: Pure runAutoJournal: inserts + closures + progress + episode
   Edge->>DB: UPDATE closures + INSERT trades + upsert signal states
-  Edge->>DC: Best-effort entry/exit alerts from successful write events
+  Edge->>DC: Best-effort entry/checkpoint/exit alerts from successful write events
   Edge->>DB: Stamp last_run_at + JSON summary
   Web->>DB: Poll journal + episode via publishable key (RLS)
 ```

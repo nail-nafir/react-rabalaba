@@ -10,7 +10,7 @@ import {
   type ExitReason,
   type PnlFilter,
 } from "@/constants/taxonomy/status";
-import { ENGINE_VERSION } from "@/constants/signals";
+import { ENGINE_VERSION, SCALE_OUT_FRACTIONS } from "@/constants/signals";
 import type { MarketRegime, TrendDirection } from "@/types/market";
 
 // Re-export the followed-trade status taxonomy so existing imports of these
@@ -58,14 +58,50 @@ export interface FollowedTrade {
   closedAt?: number;
 }
 
-/** Direction-aware floating/realized P&L. risk = |entry - stopLoss|. */
+/** Entries are stamped at the execution bar open, or a few seconds after it
+ *  when Yahoo's live point stood in for that bar. Replays start from the bar
+ *  containing the entry; a mid-bar legacy entry still skips pre-entry wicks. */
+export const ENTRY_BAR_TOLERANCE_MS = 5 * 60 * 1000;
+
+type ScaleOutFields = Partial<
+  Pick<FollowedTrade, "takeProfits" | "highestTpReached" | "engineVersion">
+>;
+
+/** TP legs already banked: engine-v7+ rows scale out at TP1/TP2 (the last
+ *  fraction is the remainder), older rows always exit the whole position. */
+export function scaleOutLegs(trade: ScaleOutFields): number {
+  const version = Number(/^engine-v(\d+)$/.exec(trade.engineVersion ?? "")?.[1]);
+  if (!(version >= 7)) return 0;
+  return Math.max(
+    0,
+    Math.min(
+      trade.highestTpReached ?? 0,
+      (trade.takeProfits?.length ?? 0) - 1,
+      SCALE_OUT_FRACTIONS.length - 1,
+    ),
+  );
+}
+
+/** Direction-aware floating/realized P&L. risk = |entry - initial stop|.
+ *  engine-v7+ blends the banked TP legs with the remainder at `price`. Float
+ *  noise below 1e-9 of entry snaps to 0 so breakeven stays breakeven. */
 export function computePnl(
-  trade: Pick<FollowedTrade, "signal" | "entryPrice" | "stopLoss">,
+  trade: Pick<FollowedTrade, "signal" | "entryPrice" | "stopLoss"> &
+    ScaleOutFields,
   price: number,
 ): { pct: number; r: number } {
   const { signal, entryPrice, stopLoss } = trade;
+  const direction = signal === "long" ? 1 : -1;
   const risk = Math.abs(entryPrice - stopLoss);
-  const move = signal === "long" ? price - entryPrice : entryPrice - price;
+  const legs = scaleOutLegs(trade);
+  let move = 0;
+  let remaining = 1;
+  for (let i = 0; i < legs; i++) {
+    move += SCALE_OUT_FRACTIONS[i] * direction * (trade.takeProfits![i] - entryPrice);
+    remaining -= SCALE_OUT_FRACTIONS[i];
+  }
+  move += remaining * direction * (price - entryPrice);
+  if (Math.abs(move) <= entryPrice * 1e-9) move = 0;
   return {
     pct: entryPrice > 0 ? (move / entryPrice) * 100 : 0,
     r: risk > 0 ? move / risk : 0,
@@ -232,6 +268,17 @@ export interface FollowCandle {
   isClosed?: boolean;
 }
 
+/** Progressive stop ladder: the initial stop, entry after TP1, then one rung
+ *  behind the highest TP reached. */
+export function activeStopFor(
+  trade: Pick<FollowedTrade, "stopLoss" | "entryPrice" | "takeProfits">,
+  milestone: number,
+): number {
+  if (milestone <= 0) return trade.stopLoss;
+  if (milestone === 1) return trade.entryPrice;
+  return trade.takeProfits[milestone - 2] ?? trade.entryPrice;
+}
+
 /**
  * Evaluate a trade against the candle history since it was followed (+ the live
  * price), REPLAYED IN ORDER so the outcome respects sequence:
@@ -256,14 +303,9 @@ export function evaluateFollow(
   price: number,
   candles?: FollowCandle[],
 ): FollowEvaluation {
-  const { signal, stopLoss, takeProfits } = trade;
+  const { signal, takeProfits } = trade;
   const finalIndex = takeProfits.length;
   const hasCandles = !!candles && candles.length > 0;
-  const activeStopFor = (milestone: number) => {
-    if (milestone <= 0) return stopLoss;
-    if (milestone === 1) return trade.entryPrice;
-    return takeProfits[milestone - 2] ?? trade.entryPrice;
-  };
   const isLong = signal === "long";
 
   // A timestamped range is replayed from scratch so a persisted milestone does
@@ -302,7 +344,7 @@ export function evaluateFollow(
   }
 
   for (const step of steps) {
-    const activeStop = activeStopFor(highestTpReached);
+    const activeStop = activeStopFor(trade, highestTpReached);
     const gapThroughStop =
       typeof step.open === "number" &&
       Number.isFinite(step.open) &&
@@ -349,7 +391,7 @@ export function evaluateFollow(
       typeof step.close === "number" &&
       Number.isFinite(step.close)
     ) {
-      const raisedStop = activeStopFor(highestTpReached);
+      const raisedStop = activeStopFor(trade, highestTpReached);
       const closeConfirmed = isLong
         ? step.close <= raisedStop
         : step.close >= raisedStop;
@@ -420,10 +462,12 @@ export function deriveFollowProgress(
         : exitReason === "progressive_stop"
           ? Math.max(0, trade.highestTpReached - 1)
           : 0;
-    const tpSecured =
+    const tpSecured = Math.max(
       typeof trade.closePrice === "number" && Number.isFinite(trade.closePrice)
         ? countTakeProfitsAtPrice(trade, trade.closePrice)
-        : fallbackSecured;
+        : fallbackSecured,
+      scaleOutLegs(trade),
+    );
     return {
       lifecycle: "closed",
       tpReached: trade.highestTpReached,
@@ -437,7 +481,9 @@ export function deriveFollowProgress(
     };
   }
   const since = rawCandles
-    ?.filter((c) => c.timestamp * 1000 >= trade.followedAt)
+    ?.filter(
+      (c) => c.timestamp * 1000 >= trade.followedAt - ENTRY_BAR_TOLERANCE_MS,
+    )
     .map<FollowCandle>((c) => ({
       high: c.high,
       low: c.low,

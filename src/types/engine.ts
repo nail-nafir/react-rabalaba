@@ -26,6 +26,12 @@ export interface SignalInput {
   higherTimeframeTrend?: TrendDirection;
   /** Whether the higher-timeframe sample is deep and complete enough to score. */
   higherTimeframeReady?: boolean;
+  /** Trend-gate anchor: EMA200 of the higher-timeframe resample. Undefined
+   *  when the window holds fewer than 200 higher-timeframe bars. */
+  higherTimeframeEma200?: number;
+  /** Trend-gate anchor: EMA50 of completed daily closes. Undefined when the
+   *  window holds fewer than 50 finished days. */
+  dailyEma50?: number;
 }
 
 export interface SignalReasons {

@@ -32,7 +32,7 @@ BTC Dominance hanya konteks informatif. Formula donut kripto tidak memakai BTC D
 
 ## 🇮🇩 Tabel Screener
 
-Tabel memakai TanStack Table dengan pageSize 10. Sort default strength descending. Filter tipe, filter sinyal, search debounced 100ms, toggle favorit, add-ticker, dan refresh tersedia.
+Tabel memakai TanStack Table dengan pageSize 10. Sort default memakai status sinyal (aktif, kandidat menunggu candle eksekusi, netral lain, tidak tersedia) lalu strength descending di dalam grup, dengan panah Sinyal ↓; klik header Kekuatan memberi urutan murni strength. Filter tipe, filter sinyal, search debounced 100ms, toggle favorit, add-ticker, dan refresh tersedia.
 
 | Area | Sumber | Perilaku |
 |---|---|---|
@@ -123,7 +123,7 @@ BTC Dominance remains informative context only. Crypto donut formula excludes BT
 
 ## 🇺🇸 Screener Table
 
-Table uses TanStack Table with pageSize 10. Default sort remains strength descending. Type filter, signal filter, 100ms debounced search, favorites toggle, add-ticker, plus refresh remain available.
+Table uses TanStack Table with pageSize 10. Default sort uses signal status (active, candidates awaiting the execution candle, other neutral, unavailable) then strength descending within each group, with the Signal arrow ↓; clicking the Strength header gives a pure strength order. Type filter, signal filter, 100ms debounced search, favorites toggle, add-ticker, plus refresh remain available.
 
 | Area | Source | Behavior |
 |---|---|---|

@@ -259,3 +259,167 @@ test("formatAlertBatchesForDiscord keeps every alert once without truncation", a
     assert.equal(allContent.split(marker).length - 1, 1, `${insert.symbol} once`);
   }
 });
+
+/** A still-open engine-v7 long that just crossed TP1 (entry 100, TP 102/104/106). */
+const CHECKPOINT = {
+  id: "cp",
+  highest_tp_reached: 1,
+  from_tp_reached: 0,
+  symbol: "SOL-USD",
+  signal: "long",
+  grade: "A",
+  entry_price: 100,
+  take_profits: [102, 104, 106],
+  stop_loss: 100,
+  partial_legs: 1,
+};
+
+function renderCheckpoints(module, progressUpdates, closures = []) {
+  const alerts = module.buildAutoJournalAlerts({
+    inserts: [],
+    closures,
+    progressUpdates,
+  });
+  return module.formatAlertBatchesForDiscord(alerts).map((b) => b.content).join("\n");
+}
+
+test("checkpoint: v7 TP1 banks 50% and moves the stop to entry", async () => {
+  const module = await loadModule(ALERTS);
+  assert.equal(
+    renderCheckpoints(module, [CHECKPOINT]),
+    "📍 CHECKPOINT:\n\n✅ **SOL-USD** • LONG • A\n↳ TP1: `@102` `(+2%)`\n↳ PARTIAL: `TP1 50%`\n↳ SL BARU: `@100` `(ENTRY)`",
+  );
+});
+
+test("checkpoint: short TP2, a two-level jump, and a legacy row without partial", async () => {
+  const module = await loadModule(ALERTS);
+  const short = renderCheckpoints(module, [
+    {
+      ...CHECKPOINT,
+      symbol: "ETH-USD",
+      signal: "short",
+      grade: "B",
+      take_profits: [95, 90, 85],
+      highest_tp_reached: 2,
+      from_tp_reached: 1,
+      stop_loss: 95,
+      partial_legs: 2,
+    },
+  ]);
+  assert.ok(
+    short.includes(
+      "✅ **ETH-USD** • SHORT • B\n↳ TP2: `@90` `(+10%)`\n↳ PARTIAL: `TP2 30%`\n↳ SL BARU: `@95` `(TP1)`",
+    ),
+  );
+
+  const jump = renderCheckpoints(module, [
+    { ...CHECKPOINT, highest_tp_reached: 2, stop_loss: 102, partial_legs: 2 },
+  ]);
+  assert.ok(
+    jump.includes(
+      "↳ TP2: `@104` `(+4%)`\n↳ PARTIAL: `TP1 50% + TP2 30%`\n↳ SL BARU: `@102` `(TP1)`",
+    ),
+  );
+
+  const legacy = renderCheckpoints(module, [
+    { ...CHECKPOINT, symbol: "BTC-USD", grade: null, partial_legs: 0 },
+  ]);
+  assert.ok(
+    legacy.includes(
+      "✅ **BTC-USD** • LONG\n↳ TP1: `@102` `(+2%)`\n↳ SL BARU: `@100` `(ENTRY)`",
+    ),
+  );
+  assert.equal(legacy.includes("PARTIAL"), false);
+});
+
+test("checkpoint: a trade that also closed this run reports only its outcome", async () => {
+  const module = await loadModule(ALERTS);
+  const msg = renderCheckpoints(
+    module,
+    [CHECKPOINT],
+    [
+      {
+        id: "cp",
+        symbol: "SOL-USD",
+        status: "sl",
+        close_price: 100,
+        closed_at: "2026-10-01T00:00:00Z",
+        highest_tp_reached: 1,
+        secured_tp_level: 1,
+        tp_total: 3,
+        exit_reason: "breakeven_stop",
+        pnl_pct: 1,
+        signal: "long",
+        grade: "A",
+        partial_legs: 1,
+      },
+    ],
+  );
+  assert.equal(msg.includes("📍 CHECKPOINT:"), false);
+  assert.equal(msg.split("**SOL-USD**").length - 1, 1);
+});
+
+test("sections render SINYAL, then CHECKPOINT, then HASIL", async () => {
+  const { buildAutoJournalAlerts, formatAlertBatchesForDiscord } =
+    await loadModule(ALERTS);
+  const [{ content: msg }] = formatAlertBatchesForDiscord(
+    buildAutoJournalAlerts({ ...PLAN, progressUpdates: [CHECKPOINT] }),
+  );
+  const order = ["🚨 SINYAL:", "📍 CHECKPOINT:", "📢 HASIL:"].map((title) =>
+    msg.indexOf(title),
+  );
+  assert.ok(order.every((index) => index >= 0), "all three sections render");
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+});
+
+test("v7 outcomes name the banked legs as PARTIAL instead of SEMPAT", async () => {
+  const { buildAutoJournalAlerts, formatAlertBatchesForDiscord } =
+    await loadModule(ALERTS);
+  const base = {
+    symbol: "SOL-USD",
+    closed_at: "2026-10-01T00:00:00Z",
+    tp_total: 3,
+    signal: "long",
+    grade: "A",
+  };
+  const [{ content: msg }] = formatAlertBatchesForDiscord(
+    buildAutoJournalAlerts({
+      inserts: [],
+      closures: [
+        {
+          ...base,
+          id: "be",
+          status: "sl",
+          close_price: 100,
+          highest_tp_reached: 1,
+          secured_tp_level: 1,
+          exit_reason: "breakeven_stop",
+          pnl_pct: 1,
+          partial_legs: 1,
+        },
+        {
+          ...base,
+          id: "tp3",
+          status: "tp3",
+          close_price: 106,
+          highest_tp_reached: 3,
+          secured_tp_level: 3,
+          exit_reason: "final_take_profit",
+          pnl_pct: 3.4,
+          partial_legs: 2,
+        },
+      ],
+    }),
+  );
+  assert.ok(
+    msg.includes(
+      "🛡️ **SOL-USD** • LONG • A\n↳ TP 1/3: `@100` `(+1%)`\n↳ PARTIAL: `TP1 50%`",
+    ),
+  );
+  assert.ok(
+    msg.includes(
+      "🎯 **SOL-USD** • LONG • A\n↳ TP 3/3: `@106` `(+3.4%)`\n↳ PARTIAL: `TP1 50% + TP2 30%`",
+    ),
+  );
+  assert.equal(msg.includes("SEMPAT"), false);
+});

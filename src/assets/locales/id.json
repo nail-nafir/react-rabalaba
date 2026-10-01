@@ -542,7 +542,7 @@
     "trend": "Tren",
     "signal": "Sinyal",
     "successrate": "Keberhasilan",
-    "successrate_methodology": "Rasio transaksi untung atau impas buat simbol ini.",
+    "successrate_methodology": "Rasio transaksi untung buat simbol ini. Transaksi impas nggak dihitung.",
     "successrate_summary": "{{percent}}% berhasil: {{wins}} dari {{total}} trade tertutup.",
     "successrate_sample": "{{wins}}/{{total}}",
     "successrate_new_data": "Baru",

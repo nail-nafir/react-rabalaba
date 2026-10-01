@@ -149,7 +149,7 @@ test("runAutoJournal: emits long/short with a plan, skips neutral", async () => 
   assert.equal(inserts.find((i) => i.symbol === "AAA").signal, "long");
   assert.equal(inserts.find((i) => i.symbol === "CCC").signal, "short");
   assert.equal(inserts[0].status, "open");
-  assert.equal(inserts[0].engine_version, "engine-v5");
+  assert.equal(inserts[0].engine_version, "engine-v7");
   assert.equal(inserts[0].regime, "trending");
   assert.ok(inserts[0].decision_candle_open_at);
   assert.ok(inserts[0].decision_candle_closed_at);
@@ -296,7 +296,18 @@ test("runAutoJournal persists a reached TP milestone before the final exit", asy
 
   assert.equal(closures.length, 0);
   assert.deepEqual(progressUpdates, [
-    { id: "AAA-id", highest_tp_reached: 1 },
+    {
+      id: "AAA-id",
+      highest_tp_reached: 1,
+      from_tp_reached: 0,
+      symbol: "AAA",
+      signal: "long",
+      grade: "B",
+      entry_price: 100,
+      take_profits: [110, 120],
+      stop_loss: 100,
+      partial_legs: 0,
+    },
   ]);
 });
 
@@ -326,7 +337,18 @@ test("runAutoJournal raises a short stop one rung behind after TP2", async () =>
   const first = runAutoJournal([retraced], openRows);
   assert.equal(first.closures.length, 0);
   assert.deepEqual(first.progressUpdates, [
-    { id: "PRL-USD-id", highest_tp_reached: 2 },
+    {
+      id: "PRL-USD-id",
+      highest_tp_reached: 2,
+      from_tp_reached: 0,
+      symbol: "PRL-USD",
+      signal: "short",
+      grade: "B",
+      entry_price: 100,
+      take_profits: [90, 80, 70],
+      stop_loss: 90,
+      partial_legs: 0,
+    },
   ]);
 
   const stopped = makeCandleAsset({
@@ -346,6 +368,71 @@ test("runAutoJournal raises a short stop one rung behind after TP2", async () =>
   assert.equal(second.closures[0].close_price, 90);
   assert.equal(second.closures[0].exit_reason, "progressive_stop");
   assert.equal(second.closures[0].secured_tp_level, 1);
+});
+
+test("runAutoJournal: secured TP after a v7 partial matches the dashboard badge", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const { deriveFollowProgress } = await loadModule(
+    "/src/core/trade/follow-trade-model.ts",
+  );
+  const { rowToFollowedTrade } = await loadModule(
+    "/src/core/trade/journal-mapper.ts",
+  );
+  const openedAtMs = Date.UTC(2024, 0, 1);
+  // TP1 (110) prints on bar 1, then bar 2 retraces through the raised stop.
+  const bars = { price: 105, openedAtMs, highs: [111, 105], lows: [101, 99], closes: [109, 100] };
+  for (const [engine_version, secured, legs, pnl] of [
+    ["engine-v7", 1, 1, 5],
+    ["engine-v4", 0, 0, 0],
+  ]) {
+    const row = {
+      ...makeRow({ symbol: "AAA", entry: 100, stop: 90, tps: [110, 120, 130], openedAtMs }),
+      engine_version,
+    };
+    const { closures } = runAutoJournal(
+      [makeCandleAsset({ symbol: "AAA", ...bars })],
+      [row],
+    );
+    assert.equal(closures.length, 1, engine_version);
+    const [c] = closures;
+    assert.equal(c.exit_reason, "breakeven_stop");
+    assert.equal(c.close_price, 100);
+    assert.equal(c.secured_tp_level, secured, engine_version);
+    assert.equal(c.partial_legs, legs, engine_version);
+    assert.equal(c.pnl_pct, pnl, engine_version);
+    const dashboard = deriveFollowProgress(
+      rowToFollowedTrade({
+        ...row,
+        status: c.status,
+        exit_reason: c.exit_reason,
+        close_price: c.close_price,
+        closed_at: c.closed_at,
+        highest_tp_reached: c.highest_tp_reached,
+      }),
+      c.close_price,
+    );
+    assert.equal(c.secured_tp_level, dashboard.tpSecured, `${engine_version}: Discord = dashboard`);
+  }
+});
+
+test("runAutoJournal: a v7 milestone carries the checkpoint alert data", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const openedAtMs = Date.UTC(2024, 0, 1);
+  const row = {
+    ...makeRow({ symbol: "AAA", entry: 100, stop: 90, tps: [110, 120, 130], openedAtMs }),
+    engine_version: "engine-v7",
+  };
+  const { closures, progressUpdates } = runAutoJournal(
+    [makeCandleAsset({ symbol: "AAA", price: 105, openedAtMs, highs: [111], lows: [101], closes: [109] })],
+    [row],
+  );
+
+  assert.equal(closures.length, 0);
+  assert.equal(progressUpdates.length, 1);
+  assert.equal(progressUpdates[0].highest_tp_reached, 1);
+  assert.equal(progressUpdates[0].from_tp_reached, 0);
+  assert.equal(progressUpdates[0].partial_legs, 1);
+  assert.equal(progressUpdates[0].stop_loss, 100, "SL moves to entry after TP1");
 });
 
 test("runAutoJournal: closes a long reversal and opens the current short in the same scan", async () => {
@@ -460,6 +547,56 @@ test("runAutoJournal: accepts entries only during the 15-minute post-close windo
   const { inserts } = runAutoJournal([fresh, staleDecision], [], { now });
 
   assert.deepEqual(inserts.map((item) => item.symbol), ["FRESH"]);
+});
+
+test("runAutoJournal: delayed IDX/commodity feeds keep a 45-minute entry window", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const now = Date.UTC(2024, 0, 2, 3, 30, 0);
+  // Yahoo serves .JK and futures ~10 min late: the :00 tick never sees the
+  // execution bar, so the :30 tick must still accept the :00 decision.
+  const make = (symbol, assetType, ageMin) =>
+    makeAsset({
+      symbol,
+      signal: "long",
+      assetType,
+      quoteTime: now,
+      decisionCandleClosedAt: now - ageMin * 60 * 1000,
+    });
+
+  const { inserts } = runAutoJournal(
+    [
+      make("BBRI.JK", "id-stock", 30),
+      make("GC=F", "commodity", 30),
+      make("TLKM.JK", "id-stock", 46),
+      make("SOL-USD", "crypto", 30),
+    ],
+    [],
+    { now },
+  );
+
+  assert.deepEqual(
+    inserts.map((item) => item.symbol).sort(),
+    ["BBRI.JK", "GC=F"],
+    "delayed feeds get 45 min; real-time feeds keep 15 min",
+  );
+});
+
+test("runAutoJournal: replay includes the bar holding an entry stamped seconds after its open", async () => {
+  const { runAutoJournal } = await loadModule(CORE);
+  const barOpenMs = Date.UTC(2024, 0, 1, 10, 0, 0);
+  // Yahoo's live point served as the execution bar → entry stamped 10:00:05,
+  // while the real 10:00 bar (low 85) later hits the 90 stop.
+  const candles = { symbol: "AAA", price: 100, openedAtMs: barOpenMs, highs: [104, 105], lows: [85, 95], closes: [96, 100] };
+  const onBar = makeRow({ symbol: "AAA", entry: 100, stop: 90, tps: [110], openedAtMs: barOpenMs + 5_000 });
+  const { closures } = runAutoJournal([makeCandleAsset(candles)], [onBar]);
+  assert.equal(closures.length, 1, "first-hour stop is no longer skipped");
+  assert.equal(closures[0].exit_reason, "initial_stop");
+  assert.equal(closures[0].close_price, 90);
+
+  // A legacy mid-bar entry (10:30) must not read that bar's pre-entry wick.
+  const midBar = makeRow({ symbol: "AAA", entry: 100, stop: 90, tps: [110], openedAtMs: barOpenMs + 30 * 60_000 });
+  const legacy = runAutoJournal([makeCandleAsset(candles)], [midBar]);
+  assert.equal(legacy.closures.length, 0);
 });
 
 test("signal episode: TP blocks retry, neutral re-arms, next long opens once", async () => {

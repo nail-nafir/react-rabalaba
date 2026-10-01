@@ -1,34 +1,45 @@
 /**
  * Pure alert derivation for the auto-journal cron. Turns the decision core's
- * plan (new emissions + closures) into event alerts and a single in-character
- * "RabaLaba Sensei" Discord broadcast (new signals + TP/SL/reversal outcomes).
+ * plan (new emissions + TP milestones + closures) into event alerts and a
+ * single in-character "RabaLaba Sensei" Discord broadcast (new signals, TP
+ * checkpoints, then TP/SL/reversal outcomes).
  *
  * PURE: no fetch, no DB, no Date — the edge function does the actual HTTP POST.
  * Bundled into the edge engine so the app and cron share one source.
  */
-import type { AutoJournalPlan } from "./auto-journal-core";
+import type {
+  AutoJournalPlan,
+  JournalProgressUpdate,
+} from "./auto-journal-core";
 import type { ExitReason } from "@/constants/taxonomy/status";
+import { SCALE_OUT_FRACTIONS } from "@/constants/signals";
 
 export interface JournalAlert {
   kind:
     | "new_long"
     | "new_short"
+    | "tp_checkpoint"
     | "tp_hit"
     | "sl_hit"
     | "protected_stop"
     | "reversed";
   symbol: string;
   grade?: string | null;
-  /** Entry price for a new signal. */
+  /** Entry price for a new signal or checkpoint. */
   entry?: number;
-  /** TP target prices (TP1..TP3) for a new signal. */
+  /** TP target prices (TP1..TP3) for a new signal or checkpoint. */
   takeProfits?: number[];
-  /** Stop-loss price for a new signal. */
+  /** Initial stop for a new signal; the raised stop for a checkpoint. */
   stopLoss?: number;
   /** Close price for an outcome (TP/SL/reversal). */
   price?: number | null;
-  /** Highest TP milestone touched before the outcome. */
+  /** Highest TP milestone touched before the outcome (or reached now, for a
+   *  checkpoint). */
   tpLevel?: number;
+  /** Milestone stored before a checkpoint; it covers the levels above. */
+  fromTpLevel?: number;
+  /** Scale-out legs banked (engine-v7+); drives the PARTIAL line. */
+  partialLegs?: number;
   /** TP levels secured by the realized close price. */
   securedTpLevel?: number;
   /** Total TP levels the plan had. */
@@ -43,10 +54,15 @@ export interface JournalAlert {
 
 /**
  * Map an auto-journal plan into discrete alert events. New emissions become
- * new_long / new_short (carrying grade + entry); closures become tp_hit /
- * sl_hit / reversed based on the recorded status.
+ * new_long / new_short (carrying grade + entry); applied TP milestones of
+ * still-open trades become tp_checkpoint; closures become tp_hit / sl_hit /
+ * protected_stop / reversed based on the recorded exit.
  */
-export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
+export function buildAutoJournalAlerts(
+  plan: Pick<AutoJournalPlan, "inserts" | "closures"> & {
+    progressUpdates?: JournalProgressUpdate[];
+  },
+): JournalAlert[] {
   const alerts: JournalAlert[] = [];
 
   for (const ins of plan.inserts) {
@@ -57,6 +73,24 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
       entry: ins.entry_price,
       takeProfits: ins.take_profits,
       stopLoss: ins.stop_loss,
+    });
+  }
+
+  // A trade that also closed this run reports once, in its outcome.
+  const closedIds = new Set(plan.closures.map((c) => c.id));
+  for (const p of plan.progressUpdates ?? []) {
+    if (closedIds.has(p.id)) continue;
+    alerts.push({
+      kind: "tp_checkpoint",
+      symbol: p.symbol,
+      signal: p.signal,
+      grade: p.grade,
+      entry: p.entry_price,
+      takeProfits: p.take_profits,
+      stopLoss: p.stop_loss,
+      tpLevel: p.highest_tp_reached,
+      fromTpLevel: p.from_tp_reached,
+      partialLegs: p.partial_legs,
     });
   }
 
@@ -79,6 +113,7 @@ export function buildAutoJournalAlerts(plan: AutoJournalPlan): JournalAlert[] {
       tpLevel: c.highest_tp_reached ?? 0,
       securedTpLevel: c.secured_tp_level,
       tpTotal: c.tp_total,
+      partialLegs: c.partial_legs,
     };
     if (reason === "reversal") {
       alerts.push({ kind: "reversed", ...base });
@@ -169,9 +204,26 @@ function pctFrom(entry: number, target: number, isLong: boolean): number {
 }
 
 type DiscordAlertBlock = {
-  section: "signal" | "outcome";
+  section: "signal" | "checkpoint" | "outcome";
   content: string;
 };
+
+/** "<emoji> **SYMBOL** • LONG • A" header shared by checkpoints and outcomes. */
+function headline(emoji: string, alert: JournalAlert): string {
+  const head = [`**${alert.symbol}**`];
+  if (alert.signal) head.push(alert.signal.toUpperCase());
+  if (alert.grade) head.push(alert.grade);
+  return `${emoji} ${head.join(" • ")}`;
+}
+
+/** Banked scale-out legs above `from`, e.g. "TP1 50% + TP2 30%" ("" if none). */
+function partialLabel(to = 0, from = 0): string {
+  const legs: string[] = [];
+  for (let i = from; i < to; i++) {
+    legs.push(`TP${i + 1} ${Math.round(SCALE_OUT_FRACTIONS[i] * 100)}%`);
+  }
+  return legs.join(" + ");
+}
 
 function renderSignal(a: JournalAlert): string {
   const isLong = a.kind === "new_long";
@@ -192,19 +244,40 @@ function renderSignal(a: JournalAlert): string {
   return lines.join("\n");
 }
 
+/** A still-open trade crossed a TP: the legs banked now and the raised stop. */
+function renderCheckpoint(alert: JournalAlert): string {
+  const level = alert.tpLevel ?? 0;
+  const tp = alert.takeProfits?.[level - 1];
+  const pnl =
+    alert.entry != null && tp != null
+      ? pctFrom(alert.entry, tp, alert.signal !== "short")
+      : undefined;
+  const lines = [
+    headline("✅", alert),
+    `↳ TP${level}:${atPrice(tp)}${pctSuffix(pnl)}`,
+  ];
+  const partial = partialLabel(alert.partialLegs, alert.fromTpLevel);
+  if (partial) lines.push(`↳ PARTIAL: \`${partial}\``);
+  const rung = level === 1 ? "ENTRY" : `TP${level - 1}`;
+  lines.push(`↳ SL BARU:${atPrice(alert.stopLoss)} \`(${rung})\``);
+  return lines.join("\n");
+}
+
 function renderOutcome(
   emoji: string,
   alert: JournalAlert,
   result: string,
 ): string {
-  const head = [`**${alert.symbol}**`];
-  if (alert.signal) head.push(alert.signal.toUpperCase());
-  if (alert.grade) head.push(alert.grade);
   const lines = [
-    `${emoji} ${head.join(" • ")}`,
+    headline(emoji, alert),
     `↳ ${result}:${atPrice(alert.price)}${pctSuffix(alert.pnlPct)}`,
   ];
-  if ((alert.tpLevel ?? 0) > 0 && alert.kind !== "tp_hit") {
+  // engine-v7 rows name the legs already closed; older rows keep the TP the
+  // price only touched before a non-final exit.
+  const partial = partialLabel(alert.partialLegs);
+  if (partial) {
+    lines.push(`↳ PARTIAL: \`${partial}\``);
+  } else if ((alert.tpLevel ?? 0) > 0 && alert.kind !== "tp_hit") {
     lines.push(`↳ SEMPAT: \`TP${alert.tpLevel}\``);
   }
   const duration = formatDuration(alert.durationMs);
@@ -224,24 +297,26 @@ function protectedResultLabel(alert: JournalAlert): string {
   return tpResultLabel(alert);
 }
 
+const SECTION_TITLES: [DiscordAlertBlock["section"], string][] = [
+  ["signal", "🚨 SINYAL:"],
+  ["checkpoint", "📍 CHECKPOINT:"],
+  ["outcome", "📢 HASIL:"],
+];
+
 function renderAlertBatch(blocks: DiscordAlertBlock[]): string {
-  const signalBody = blocks
-    .filter((block) => block.section === "signal")
-    .map((block) => block.content)
-    .join("\n\n");
-  const outcomeBody = blocks
-    .filter((block) => block.section === "outcome")
-    .map((block) => block.content)
-    .join("\n\n");
-  const sections: string[] = [];
-  if (signalBody) sections.push("🚨 SINYAL:\n\n" + signalBody);
-  if (outcomeBody) sections.push("📢 HASIL:\n\n" + outcomeBody);
-  return sections.join(`\n\n${DIVIDER}\n\n`);
+  return SECTION_TITLES.flatMap(([section, title]) => {
+    const body = blocks
+      .filter((block) => block.section === section)
+      .map((block) => block.content)
+      .join("\n\n");
+    return body ? [`${title}\n\n${body}`] : [];
+  }).join(`\n\n${DIVIDER}\n\n`);
 }
 
 /**
- * Render every alert without truncation, packing complete signal/outcome blocks
- * into Discord-safe messages. LONG precedes SHORT; TP precedes SL/reversal.
+ * Render every alert without truncation, packing complete blocks into
+ * Discord-safe messages: signals, then checkpoints, then outcomes. LONG
+ * precedes SHORT; TP precedes SL/reversal.
  */
 export function formatAlertBatchesForDiscord(
   alerts: JournalAlert[],
@@ -253,6 +328,12 @@ export function formatAlertBatchesForDiscord(
     ...alerts
       .filter((alert) => alert.kind === "new_short")
       .map((alert) => ({ section: "signal" as const, content: renderSignal(alert) })),
+    ...alerts
+      .filter((alert) => alert.kind === "tp_checkpoint")
+      .map((alert) => ({
+        section: "checkpoint" as const,
+        content: renderCheckpoint(alert),
+      })),
     ...alerts
       .filter((alert) => alert.kind === "tp_hit")
       .map((alert) => ({

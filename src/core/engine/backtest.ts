@@ -6,6 +6,7 @@ import { computeTradingPlan } from "./trading-plan";
 import {
   buildSignalSeriesFromCandles,
   deriveCandleTrendState,
+  deriveTrendAnchors,
   resampleCandles,
   resampleCandlesToDaily,
 } from "@/core/market/candles";
@@ -16,7 +17,7 @@ import {
   HIGHER_TIMEFRAME_FACTOR,
   type TimeframePresetKey,
 } from "@/constants/timeframes";
-import { BACKTEST_COSTS } from "@/constants/signals";
+import { BACKTEST_COSTS, SCALE_OUT_FRACTIONS } from "@/constants/signals";
 import type { ExitReason } from "@/core/trade/follow-trade-model";
 
 /**
@@ -26,7 +27,8 @@ import type { ExitReason } from "@/core/trade/follow-trade-model";
  * - "terminal": partial targets are progress; stop stays at its original level.
  * - "secured": research comparison that ratchets the full-position stop to
  *   every reached TP until the final target exits.
- * - "scaleOut": legacy partial-fill model, retained for comparison only.
+ * - "scaleOut": engine-v7 production model — SCALE_OUT_FRACTIONS fill at
+ *   TP1/TP2/TP3 while the stop ratchets like "progressive".
  * - "tp1": legacy single full exit at TP1. Kept for comparison.
  */
 export type ExitMode =
@@ -39,11 +41,10 @@ export type ExitMode =
 
 export type BacktestExitReason = ExitReason | "end_of_data";
 
-const SCALE_OUT_LEGS: { tpIndex: number; fraction: number }[] = [
-  { tpIndex: 0, fraction: 0.5 },
-  { tpIndex: 1, fraction: 0.3 },
-  { tpIndex: 2, fraction: 0.2 },
-];
+const SCALE_OUT_LEGS = SCALE_OUT_FRACTIONS.map((fraction, tpIndex) => ({
+  tpIndex,
+  fraction,
+}));
 
 export interface BacktestTrade {
   direction: Exclude<SignalDirection, "neutral">;
@@ -291,13 +292,12 @@ function stepBar(
     trade.weightedExit += leg.price * fillFraction;
     trade.remaining -= fillFraction;
 
-    // Lock in the trade after the first target: move stop to breakeven.
-    if (
-      trade.nextLeg === 0 &&
-      exitMode === "scaleOut" &&
-      trade.legs.length > 1
-    ) {
-      trade.stop = trade.entryPrice;
+    // Ratchet like production: TP1 → entry, TP2 → TP1.
+    if (exitMode === "scaleOut") {
+      trade.stop =
+        trade.nextLeg === 0
+          ? trade.entryPrice
+          : trade.legs[trade.nextLeg - 1].price;
     }
     trade.nextLeg += 1;
 
@@ -401,6 +401,7 @@ export function buildDecisionSeries(
       timeframe,
       higherTimeframeTrend: higherTimeframe.trend,
       higherTimeframeReady: higherTimeframe.ready,
+      ...deriveTrendAnchors(decisionCandles, HIGHER_TIMEFRAME_FACTOR[timeframe]),
     });
     const decision: SignalDecision = {
       barIndex: i,

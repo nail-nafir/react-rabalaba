@@ -1,6 +1,6 @@
 /**
- * Pure decision core for the asset-discovery cron. Given the raw trending /
- * high-volume feeds (CoinGecko, Binance futures, Yahoo screeners) and the
+ * Pure decision core for the asset-discovery cron. Given the raw high-volume
+ * feeds (Binance futures quote volume, Yahoo most-actives screeners) and the
  * current journal_assets rows, it decides what to INSERT (new auto assets),
  * REACTIVATE / REFRESH (rediscovered auto rows) and PRUNE (stale auto rows) —
  * NO fetch, NO DB, NO Date.now (the caller passes `nowIso`), so it is fully
@@ -14,6 +14,8 @@ import { DISCORD_MAX, DIVIDER } from "./alerts";
 
 export type DiscoveryMarket = "crypto" | "us-stock" | "id-stock";
 
+/** "coingecko-trending" / "yahoo-day-gainers" are retired attention sources
+ *  (worst journal cohorts); kept only so historical rows still label. */
 export type DiscoveryReason =
   | "coingecko-trending"
   | "binance-volume"
@@ -31,8 +33,9 @@ export interface RawCandidate {
   /** Position within its source list (0 = hottest) — candidates are consumed
    *  in array order, so ranking IS the order rank* functions emit. */
   rank: number;
-  /** Source USD price when the feed provides one (CoinGecko) — cross-checked
-   *  against the resolved Yahoo chart to catch a wrong-coin resolution. */
+  /** Source USD price when the feed provides one (Binance last price, per
+   *  unit) — cross-checked against the resolved Yahoo chart to catch a
+   *  wrong-coin resolution. */
   sourcePriceUsd?: number;
 }
 
@@ -41,37 +44,11 @@ export interface RawCandidate {
  * (a malformed/changed payload → null, which marks the source as failed
  * upstream instead of throwing mid-run). Kept here so they're unit-tested. */
 
-export interface CgTrendingCoin {
-  symbol: string;
-  name: string | null;
-  marketCapRank: number | null;
-  priceUsd: number | null;
-}
-
-/** CoinGecko /api/v3/search/trending → lite coins (null = unusable payload). */
-export function parseCgTrending(json: unknown): CgTrendingCoin[] | null {
-  const coins = (json as { coins?: unknown })?.coins;
-  if (!Array.isArray(coins)) return null;
-  const out: CgTrendingCoin[] = [];
-  for (const entry of coins) {
-    const item = (entry as { item?: Record<string, unknown> })?.item;
-    if (!item || typeof item.symbol !== "string") continue;
-    const price = (item.data as { price?: unknown } | undefined)?.price;
-    const priceNum = typeof price === "number" ? price : Number(price);
-    out.push({
-      symbol: item.symbol,
-      name: typeof item.name === "string" ? item.name : null,
-      marketCapRank:
-        typeof item.market_cap_rank === "number" ? item.market_cap_rank : null,
-      priceUsd: Number.isFinite(priceNum) ? priceNum : null,
-    });
-  }
-  return out;
-}
-
 export interface BinanceTicker24h {
   symbol: string;
   quoteVolume: number;
+  /** Last trade price of the contract (a 1000× perp quotes 1000 units). */
+  lastPrice?: number;
 }
 
 /** Binance /fapi/v1/ticker/24hr → lite tickers (null = unusable payload). */
@@ -82,7 +59,12 @@ export function parseBinance24h(json: unknown): BinanceTicker24h[] | null {
     if (typeof t?.symbol !== "string") continue;
     const quoteVolume = Number(t.quoteVolume);
     if (!Number.isFinite(quoteVolume)) continue;
-    out.push({ symbol: t.symbol, quoteVolume });
+    const lastPrice = Number(t.lastPrice);
+    out.push({
+      symbol: t.symbol,
+      quoteVolume,
+      ...(Number.isFinite(lastPrice) && lastPrice > 0 ? { lastPrice } : {}),
+    });
   }
   return out;
 }
@@ -156,10 +138,6 @@ const WRAPPED_BASES = new Set([
   "WBTC", "WETH", "STETH", "WSTETH", "WEETH", "CBBTC", "WBETH", "RETH",
 ]);
 
-/** CoinGecko trending includes micro-caps with washy volume (verified: rank
- *  4600s and null-rank fakes) — require a real market-cap rank inside this. */
-const CG_MAX_MCAP_RANK = 300;
-
 /** Binance multiplier prefixes for micro-priced perps, longest-first so
  *  1000000MOG doesn't half-strip. "1INCH" is a REAL base, so a bare "1" or
  *  "10" prefix must never be treated as a multiplier. */
@@ -190,36 +168,18 @@ const isDenylisted = (base: string) =>
   STABLECOIN_BASES.has(base) || WRAPPED_BASES.has(base);
 
 /**
- * Crypto candidates: CoinGecko trending first (novelty is the point of this
- * feature), then Binance futures ranked by 24h quote volume (a curated
- * high-volume list — CoinGecko's volume ranking is wash-trade polluted).
- * Either source may be null (failed fetch) — the other still produces.
+ * Crypto candidates: Binance futures ranked by 24h quote volume — where the
+ * money actually trades (CoinGecko trending chased attention and was the
+ * worst-performing journal cohort). The full ranking is returned; the
+ * shortlist window is applied in dedupeCandidates after admin rows drop out.
+ * Binance names nothing, so each candidate carries its per-unit last price for
+ * the wrong-coin check after Yahoo resolution.
  */
 export function rankCryptoCandidates(input: {
-  cgTrending: CgTrendingCoin[] | null;
   binance24h: BinanceTicker24h[] | null;
-  shortlist: number;
 }): RawCandidate[] {
   const out: RawCandidate[] = [];
   const seen = new Set<string>();
-
-  for (const coin of input.cgTrending ?? []) {
-    const base = coin.symbol.toUpperCase();
-    if (seen.has(base) || isDenylisted(base)) continue;
-    if (coin.marketCapRank == null || coin.marketCapRank > CG_MAX_MCAP_RANK) {
-      continue;
-    }
-    seen.add(base);
-    out.push({
-      market: "crypto",
-      query: base,
-      name: coin.name,
-      reason: "coingecko-trending",
-      rank: out.length,
-      ...(coin.priceUsd != null ? { sourcePriceUsd: coin.priceUsd } : {}),
-    });
-  }
-
   const byVolume = [...(input.binance24h ?? [])].sort(
     (a, b) => b.quoteVolume - a.quoteVolume,
   );
@@ -227,16 +187,21 @@ export function rankCryptoCandidates(input: {
     const base = binancePerpBase(ticker.symbol);
     if (!base || seen.has(base) || isDenylisted(base)) continue;
     seen.add(base);
+    // 1000PEPEUSDT quotes 1000 coins → divide back to a per-coin price.
+    const prefix = ticker.symbol.toUpperCase().slice(0, -4 - base.length);
+    const multiplier = prefix === "1M" ? 1e6 : Number(prefix) || 1;
     out.push({
       market: "crypto",
       query: base,
       name: null,
       reason: "binance-volume",
       rank: out.length,
+      ...(ticker.lastPrice != null
+        ? { sourcePriceUsd: ticker.lastPrice / multiplier }
+        : {}),
     });
   }
-
-  return out.slice(0, input.shortlist);
+  return out;
 }
 
 /* ── Stock candidate ranking ────────────────────────────────────────────── */
@@ -256,42 +221,31 @@ const screenerName = (q: YahooScreenerQuote) =>
   q.shortName ?? q.longName ?? null;
 
 /**
- * US candidates from Yahoo's predefined screeners: day_gainers first (the
- * "viral today" read), then most_actives (sustained volume). EQUITY only —
- * the lists mix in leveraged ETFs (SOXL and friends) that must not enter.
+ * US candidates from Yahoo's most_actives screener (sustained volume; the
+ * day_gainers "viral today" feed was the worst journal cohort and is retired).
+ * EQUITY only — the list mixes in leveraged ETFs (SOXL and friends).
  */
 export function rankUsCandidates(input: {
-  dayGainers: YahooScreenerQuote[] | null;
   mostActives: YahooScreenerQuote[] | null;
-  shortlist: number;
 }): RawCandidate[] {
   const out: RawCandidate[] = [];
   const seen = new Set<string>();
-
-  const take = (
-    quotes: YahooScreenerQuote[] | null,
-    reason: DiscoveryReason,
-  ) => {
-    for (const q of quotes ?? []) {
-      const symbol = q.symbol.toUpperCase();
-      if (seen.has(symbol)) continue;
-      if (q.quoteType !== "EQUITY") continue;
-      if ((q.marketCap ?? 0) < US_MIN_MARKET_CAP) continue;
-      if ((q.regularMarketPrice ?? 0) < US_MIN_PRICE) continue;
-      seen.add(symbol);
-      out.push({
-        market: "us-stock",
-        query: symbol,
-        name: screenerName(q),
-        reason,
-        rank: out.length,
-      });
-    }
-  };
-
-  take(input.dayGainers, "yahoo-day-gainers");
-  take(input.mostActives, "yahoo-most-actives");
-  return out.slice(0, input.shortlist);
+  for (const q of input.mostActives ?? []) {
+    const symbol = q.symbol.toUpperCase();
+    if (seen.has(symbol)) continue;
+    if (q.quoteType !== "EQUITY") continue;
+    if ((q.marketCap ?? 0) < US_MIN_MARKET_CAP) continue;
+    if ((q.regularMarketPrice ?? 0) < US_MIN_PRICE) continue;
+    seen.add(symbol);
+    out.push({
+      market: "us-stock",
+      query: symbol,
+      name: screenerName(q),
+      reason: "yahoo-most-actives",
+      rank: out.length,
+    });
+  }
+  return out;
 }
 
 /**
@@ -301,7 +255,6 @@ export function rankUsCandidates(input: {
  */
 export function rankIdCandidates(input: {
   mostActives: YahooScreenerQuote[] | null;
-  shortlist: number;
 }): RawCandidate[] {
   const seen = new Set<string>();
   const eligible = (input.mostActives ?? []).flatMap((q) => {
@@ -316,7 +269,6 @@ export function rankIdCandidates(input: {
 
   return eligible
     .sort((a, b) => b.turnover - a.turnover)
-    .slice(0, input.shortlist)
     .map(({ q, symbol }, rank) => ({
       market: "id-stock" as const,
       query: symbol,
@@ -401,24 +353,31 @@ function findExisting(
  * resolve+validate pipeline vs what just needs a timestamp refresh or a
  * reactivation. Admin rows are silently dropped — rediscovering an asset the
  * admin already manages is a no-op, and an admin-PAUSED asset must stay
- * paused. `toValidate` is capped at 2× the per-market cap: enough headroom
- * for validation attrition without fetching charts for a whole feed.
+ * paused. Only the top `shortlist` NON-admin candidates per market count —
+ * admin-owned majors (which top every volume feed) no longer eat the window.
+ * `toValidate` is capped at 2× the per-market cap: enough headroom for
+ * validation attrition without fetching charts for a whole feed.
  */
 export function dedupeCandidates(input: {
   raw: RawCandidate[];
   existing: ExistingAssetLite[];
   maxPerMarket: number;
+  shortlist: number;
 }): { toValidate: RawCandidate[]; refresh: string[]; reactivate: string[] } {
   const toValidate: RawCandidate[] = [];
   const refresh = new Set<string>();
   const reactivate = new Set<string>();
+  const windowPerMarket: Partial<Record<DiscoveryMarket, number>> = {};
   const perMarket: Partial<Record<DiscoveryMarket, number>> = {};
   const shortlistPerMarket = input.maxPerMarket * 2;
 
   for (const candidate of input.raw) {
     const row = findExisting(candidate, input.existing);
+    if (row && row.source !== "auto") continue; // admin-owned → never touched
+    const seen = windowPerMarket[candidate.market] ?? 0;
+    if (seen >= input.shortlist) continue;
+    windowPerMarket[candidate.market] = seen + 1;
     if (row) {
-      if (row.source !== "auto") continue; // admin-owned → never touched
       if (row.active) refresh.add(row.symbol);
       else reactivate.add(row.symbol);
       continue;

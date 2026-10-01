@@ -16,6 +16,7 @@ import {
   normalizeYahooCandles,
   resampleCandles,
   deriveCandleTrendState,
+  deriveTrendAnchors,
 } from "@/core/market/candles";
 
 function detectAssetType(symbol: string, instrumentType?: string): AssetType {
@@ -142,6 +143,7 @@ export function adaptYahooChart(
       timeframe: timeframeKey,
       higherTimeframeTrend: higherTimeframe.trend,
       higherTimeframeReady: higherTimeframe.ready,
+      ...deriveTrendAnchors(signalCandles, htfFactor),
     });
 
     if (outlook.signal !== "neutral" && executionCandle) {

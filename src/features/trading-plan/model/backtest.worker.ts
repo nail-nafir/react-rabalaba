@@ -16,7 +16,12 @@ self.onmessage = ({ data }: MessageEvent<BacktestRequest>) => {
   try {
     const { candles, assetType, timeframe } = data;
     self.postMessage({
-      metrics: runBacktest(candles, { assetType, timeframe }).metrics,
+      // Same exit model as the live journal (engine-v7 scale-out).
+      metrics: runBacktest(candles, {
+        assetType,
+        timeframe,
+        exitMode: "scaleOut",
+      }).metrics,
     } satisfies BacktestResponse);
   } catch (error) {
     self.postMessage({
