@@ -16,12 +16,12 @@ export default function NotFoundPage() {
   const { t } = useTranslation();
 
   return (
-    <Empty className="min-h-[80vh] border-0 px-4">
+    <Empty className="min-h-[80vh]">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <Binoculars aria-hidden="true" />
         </EmptyMedia>
-        <EmptyTitle className="text-3xl">{t("not_found.title")}</EmptyTitle>
+        <EmptyTitle>{t("not_found.title")}</EmptyTitle>
         <EmptyDescription>{t("not_found.description")}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>

@@ -1,14 +1,18 @@
 import { z } from "zod";
 import { recapWindow } from "../../../core/automation/period-summary";
-import { getCurrencyCode } from "../../../lib/country";
+import { COUNTRY_TO_CURRENCY, getCurrencyCode } from "../../../lib/country";
 import type { CalendarData, CalendarEvent, CalendarSource, EventImpact } from "../../../types/calendar";
 
 export const CALENDAR_SOURCES = {
-  bls: { name: "BLS", url: "https://www.bls.gov/schedule/" },
-  bea: { name: "BEA", url: "https://www.bea.gov/news/schedule/" },
   fed: { name: "Federal Reserve", url: "https://www.federalreserve.gov/newsevents/calendar.htm" },
   yahoo: { name: "Yahoo Finance", url: "https://finance.yahoo.com/calendar/economic/" },
 } as const;
+
+/** Major economies the calendar shows; the page's currency filter uses the same list. */
+export const CALENDAR_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "AUD", "CNY", "IDR"] as const;
+const CALENDAR_CURRENCY_SET = new Set<string>(CALENDAR_CURRENCIES);
+/** Yahoo country codes behind those currencies, so the calendar query skips the rest of the world. */
+export const CALENDAR_COUNTRIES = Object.keys(COUNTRY_TO_CURRENCY).filter((code) => CALENDAR_CURRENCY_SET.has(COUNTRY_TO_CURRENCY[code]));
 
 export const CALENDAR_FRESH_MS = 30 * 60_000;
 export const CALENDAR_MAX_AGE_MS = CALENDAR_FRESH_MS + 6 * 60 * 60_000;
@@ -16,6 +20,18 @@ const DAY_MS = 86_400_000;
 const WIB_CLOCK = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
+const DATE_FORMATS = new Map<string, Intl.DateTimeFormat>();
+
+/** Building an Intl formatter costs ~20µs; a month of events reuses one per zone and shape. */
+function dateFormat(timeZone: string, withTime: boolean): Intl.DateTimeFormat {
+  const key = `${timeZone}|${withTime}`;
+  if (!DATE_FORMATS.has(key)) {
+    DATE_FORMATS.set(key, new Intl.DateTimeFormat("en-CA", withTime
+      ? { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }
+      : { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }));
+  }
+  return DATE_FORMATS.get(key)!;
+}
 
 export function availableCalendarData(data: CalendarData, now: number): CalendarData {
   const sources = data.sources.map((source) => ({
@@ -28,9 +44,7 @@ export function availableCalendarData(data: CalendarData, now: number): Calendar
 }
 
 export function calendarDate(timestamp: number, timeZone = "Asia/Jakarta"): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(timestamp);
+  const parts = dateFormat(timeZone, false).formatToParts(timestamp);
   const value = (type: string) => parts.find((part) => part.type === type)!.value;
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
@@ -49,15 +63,18 @@ export function calendarWeekDates(today: string, offsetDays = 0): string[] {
   return Array.from({ length: 7 }, (_, i) => calendarDate(startMs + i * DAY_MS));
 }
 
+/** WIB dates a month view covers: the edge weeks too, so the ribbon's Sunday/next-month days stay usable. */
+export function calendarMonthWindow(month: string) {
+  const { startMs, endMs } = calendarMonthRange(month);
+  return { firstDate: calendarWeekDates(calendarDate(startMs))[0], lastDate: calendarWeekDates(calendarDate(endMs - 1))[6] };
+}
+
 /** Resolve a published wall-clock time with IANA DST rules, not a fixed ET offset. */
 export function zonedTimestamp(date: string, time: string, timeZone: string): number {
   z.iso.date().parse(date);
   if (!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(time)) throw new Error("Invalid release time");
   const wall = Date.parse(`${date}T${time}Z`);
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-  });
+  const formatter = dateFormat(timeZone, true);
   const wallAt = (timestamp: number) => {
     const p = Object.fromEntries(formatter.formatToParts(timestamp).map(({ type, value }) => [type, value]));
     return Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`);
@@ -77,8 +94,6 @@ export function releaseFamily(title: string): string | null {
   if (/\bjolts\b|job openings and labor turnover/i.test(title)) return "jolts";
   if (/^gdp\b|^gross domestic product/i.test(title)) return "gdp";
   if (/personal income|personal consum|personal spending|\bpce\b|^consumption, adjusted mm/i.test(title)) return "pce";
-  if (/^corporate profits/i.test(title)) return "corporate-profits";
-  if (/^U\.S\. International Transactions and Investment Position$|^current account\b/i.test(title)) return "international-transactions";
   if (/fomc.*minutes/i.test(title)) return "fomc-minutes";
   if (/fomc.*press conference/i.test(title)) return "fomc-press";
   if (/fomc.*meeting|fed funds (tgt|target)/i.test(title)) return "fomc";
@@ -104,18 +119,21 @@ function eventFor(source: CalendarSource, title: string, timestamp: number | nul
 }
 
 const valueSchema = z.union([z.string(), z.number()]).nullish();
-const yahooSchema = z.object({
+const yahooPageSchema = z.object({
   finance: z.object({
     error: z.null().optional(),
-    result: z.object({ economicEvents: z.array(z.object({
-      totalCount: z.number().int().nonnegative(),
-      records: z.array(z.object({
-        event: z.string().trim().min(1), countryCode: z.string().regex(/^[A-Z]{2}$/),
-        eventTime: z.number().int().positive().max(8.64e15), period: z.string().optional(),
-        actual: valueSchema, prior: valueSchema, description: z.string().optional(),
-      })),
-    })) }),
+    result: z.array(z.object({
+      documents: z.array(z.object({
+        columns: z.array(z.object({ id: z.string() })), rows: z.array(z.array(z.unknown())),
+      })).min(1),
+    })).min(1),
   }),
+});
+const yahooRowSchema = z.object({
+  econ_release: z.string().trim().min(1), country_code: z.string().regex(/^[A-Z]{2}$/),
+  startdatetime: z.iso.datetime(), period: z.string().nullish(),
+  after_release_actual: valueSchema, consensus_estimate: valueSchema, prior_release_actual: valueSchema,
+  description: z.string().trim().nullish(),
 });
 
 export function calendarValue(value: string | number | null | undefined): string | undefined {
@@ -123,91 +141,81 @@ export function calendarValue(value: string | number | null | undefined): string
   return !text || /^(N\/?A|—|-)$/i.test(text) ? undefined : text;
 }
 
-export function normalizeYahooCalendar(payload: unknown) {
-  const groups = yahooSchema.parse(payload).finance.result.economicEvents;
-  return {
-    partial: groups.some((group) => group.records.length < group.totalCount),
-    events: groups.flatMap((group) => group.records.map((record) => ({
-      ...eventFor("yahoo", record.event, record.eventTime),
-      id: `yahoo:${record.countryCode}:${record.event}:${record.period ?? ""}:${record.eventTime}`,
-      country: record.countryCode,
-      impact: impactFor(record.event, record.countryCode),
-      actual: calendarValue(record.actual), previous: calendarValue(record.prior),
-      description: record.description,
-    }))),
-  };
+/** One page of Yahoo's visualization API: column ids plus positional rows, as objects. */
+export function yahooCalendarRows(payload: unknown): Record<string, unknown>[] {
+  const { columns, rows } = yahooPageSchema.parse(payload).finance.result[0].documents[0];
+  return rows.map((row) => Object.fromEntries(columns.map((column, i) => [column.id, row[i]])));
 }
 
-export function normalizeBeaCalendar(payload: unknown): CalendarEvent[] {
-  const records = z.record(z.string(), z.unknown()).parse(payload);
-  const events: CalendarEvent[] = [];
-  for (const [title, value] of Object.entries(records)) {
-    if (title === "file_last_updated") continue;
-    const { release_dates } = z.object({ release_dates: z.array(z.iso.datetime({ offset: true })) }).parse(value);
-    for (const date of release_dates) events.push(eventFor("bea", title, Date.parse(date)));
-  }
-  if (!events.length) throw new Error("BEA schedule is empty");
-  return mergeCalendarEvents(events);
+/** Keeps the calendar currencies within the month view; rows from other countries are never validated. */
+export function normalizeYahooCalendar(rows: Record<string, unknown>[], month: string): CalendarEvent[] {
+  const { firstDate, lastDate } = calendarMonthWindow(month);
+  return rows
+    .filter((record) => CALENDAR_CURRENCY_SET.has(getCurrencyCode(String(record.country_code ?? ""))))
+    .map((record) => {
+      const row = yahooRowSchema.parse(record);
+      const timestamp = Date.parse(row.startdatetime);
+      return {
+        ...eventFor("yahoo", row.econ_release, timestamp),
+        id: `yahoo:${row.country_code}:${row.econ_release}:${row.period ?? ""}:${timestamp}`,
+        country: row.country_code,
+        impact: impactFor(row.econ_release, row.country_code),
+        actual: calendarValue(row.after_release_actual), forecast: calendarValue(row.consensus_estimate),
+        previous: calendarValue(row.prior_release_actual), description: row.description || undefined,
+      };
+    })
+    .filter((event) => event.date >= firstDate && event.date <= lastDate);
 }
 
-export function normalizeFedCalendar(payload: unknown): CalendarEvent[] {
-  const { events } = z.object({ events: z.array(z.record(z.string(), z.unknown())) }).parse(payload);
-  // The published Fed feed ends with an empty object; only FOMC rows are schedules we consume.
-  if (events.some((event) => Object.keys(event).length && typeof event.type !== "string")) throw new Error("Invalid Fed event");
-  const meetings = events.filter((event) => event.type === "FOMC");
-  if (!meetings.length) throw new Error("Fed schedule is empty");
-  return meetings.map((record) => {
-    const event = z.object({
-      title: z.string().trim().min(1), month: z.string(), days: z.string(), time: z.string().optional(),
-    }).parse(record);
-    const date = z.iso.date().parse(`${event.month}-${event.days.trim().padStart(2, "0")}`);
-    const clock = /^(\d{1,2}):(\d{2})\s*([ap])\.?m\.?(?:\s+E[DS]T)?$/i.exec(event.time?.trim() ?? "");
-    let timestamp: number | null = null;
-    if (clock) {
-      if (+clock[1] < 1 || +clock[1] > 12) throw new Error("Invalid Fed release time");
-      const hours = (+clock[1] % 12) + (clock[3].toLowerCase() === "p" ? 12 : 0);
-      timestamp = zonedTimestamp(date, `${String(hours).padStart(2, "0")}:${clock[2]}:00`, "America/New_York");
-    }
-    return eventFor("fed", event.title.trim(), timestamp, date);
-  });
+const FED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"' };
+
+/** Fed text fields are HTML-escaped snippets (`&lt;p&gt;…`); keep the plain text, one " · " per paragraph. */
+function fedText(html = ""): string {
+  return html
+    .replace(/&(?:#(\d+)|(\w+));/g, (entity, code: string | undefined, name: string) =>
+      code ? String.fromCodePoint(Number(code)) : FED_ENTITIES[name] ?? entity)
+    .split(/<\/p>|<br\s*\/?>/i)
+    .map((part) => part.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join(" · ");
 }
 
-export function normalizeBlsCalendar(ics: string): CalendarEvent[] {
-  if (!ics.includes("BEGIN:VCALENDAR") || !ics.includes("END:VCALENDAR")) throw new Error("Invalid BLS calendar");
-  const text = ics.replace(/\r?\n[ \t]/g, "");
-  const blocks = [...text.matchAll(/BEGIN:VEVENT\r?\n([\s\S]*?)END:VEVENT/g)];
-  if (!blocks.length || blocks.length !== (text.match(/BEGIN:VEVENT/g) ?? []).length) throw new Error("Incomplete BLS calendar");
-  const byId = new Map<string, { sequence: number; event: CalendarEvent | null }>();
-  for (const [, block] of blocks) {
-    const fields = new Map(block.trim().split(/\r?\n/).map((line) => {
-      const colon = line.indexOf(":");
-      return [line.slice(0, colon), line.slice(colon + 1)] as const;
-    }));
-    const unescape = (value: string) => value.replace(/\\([nN,;\\])/g, (_, char: string) => /n/i.test(char) ? "\n" : char);
-    const uid = fields.get("UID");
-    const title = unescape(fields.get("SUMMARY") ?? "").trim();
-    const sequence = Number(fields.get("SEQUENCE") ?? 0);
-    if (!uid || !Number.isFinite(sequence)) throw new Error("Invalid BLS event identity");
-    if ((byId.get(uid)?.sequence ?? -1) > sequence) continue;
-    if (fields.get("STATUS") === "CANCELLED") {
-      byId.set(uid, { sequence, event: null });
-      continue;
-    }
-    if (!title || fields.has("RRULE")) throw new Error("Unsupported BLS event");
-    const start = [...fields].find(([key]) => key === "DTSTART" || key.startsWith("DTSTART;"));
-    const match = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(start?.[1] ?? "");
-    if (!start || !match) throw new Error("Invalid BLS event date");
-    const date = z.iso.date().parse(`${match[1]}-${match[2]}-${match[3]}`);
-    let timestamp: number | null = null;
-    if (match[4]) {
-      const zone = /TZID="?([^;"\s]+)"?/.exec(start[0])?.[1];
-      // ponytail: only explicit ICS instants; floating times/recurrences need a full ICS parser if BLS adds them.
-      if (!match[7] && !zone) throw new Error("BLS release timezone missing");
-      timestamp = zonedTimestamp(date, `${match[4]}:${match[5]}:${match[6]}`, match[7] ? "UTC" : zone!);
-    }
-    byId.set(uid, { sequence, event: { ...eventFor("bls", title, timestamp, date), id: `bls:${uid}` } });
-  }
-  return [...byId.values()].flatMap(({ event }) => event ? [event] : []);
+const fedRowSchema = z.object({
+  type: z.string(), title: z.string().trim().min(1), month: z.string(), days: z.string(),
+  time: z.string().optional(), description: z.string().optional(), location: z.string().optional(),
+});
+
+/**
+ * Takes the raw body (the Fed feed starts with a UTF-8 BOM that JSON.parse rejects) and keeps every
+ * event published for the month view, one per listed day, as the Fed's own calendar shows them.
+ */
+export function normalizeFedCalendar(text: string, month: string): CalendarEvent[] {
+  const { firstDate, lastDate } = calendarMonthWindow(month);
+  // An ET date runs at most one day behind its WIB date.
+  const from = calendarDate(Date.parse(`${firstDate}T00:00:00+07:00`) - DAY_MS);
+  const { events } = z.object({ events: z.array(z.record(z.string(), z.unknown())) })
+    .parse(JSON.parse(text.replace(/^\uFEFF/, "")));
+  // A renamed type or an emptied feed must fail loudly, never pass as a quiet month.
+  if (!events.some((event) => event.type === "FOMC")) throw new Error("Fed schedule is empty");
+  return events
+    // Also drops undated rows: the trailing empty object and archive entries without a month.
+    .filter((event) => typeof event.month === "string" && event.month >= from.slice(0, 7) && event.month <= lastDate.slice(0, 7))
+    .flatMap((record) => {
+      const row = fedRowSchema.parse(record);
+      const title = fedText(row.title);
+      const description = [row.description, row.location].map(fedText).filter(Boolean).join(" · ");
+      const clock = /^(\d{1,2}):(\d{2})\s*([ap])\.?m\.?(?:\s+E[DS]T)?$/i.exec(row.time?.trim() ?? "");
+      if (clock && (+clock[1] < 1 || +clock[1] > 12)) throw new Error("Invalid Fed release time");
+      const time = clock && `${String((+clock[1] % 12) + (clock[3].toLowerCase() === "p" ? 12 : 0)).padStart(2, "0")}:${clock[2]}:00`;
+      return row.days.split(",").flatMap((day) => {
+        const date = z.iso.date().parse(`${row.month}-${day.trim().padStart(2, "0")}`);
+        if (date < from || date > lastDate) return [];
+        const event = eventFor("fed", title, time ? zonedTimestamp(date, time, "America/New_York") : null, date);
+        if (event.date < firstDate || event.date > lastDate) return [];
+        // The Fed rates nothing: statistical releases are routine, FOMC keeps its release-family impact.
+        return [{ ...event, impact: row.type === "Stat" ? "low" as const : event.impact, ...(description ? { description } : {}) }];
+      });
+    });
 }
 
 export function mergeCalendarEvents(events: CalendarEvent[]): CalendarEvent[] {

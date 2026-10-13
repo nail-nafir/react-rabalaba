@@ -1,7 +1,7 @@
 # TSD 01 — Tech Stack / Tech Stack
 
 > Status: Kanonis
-> Terverifikasi: 2026-09-16
+> Terverifikasi: 2026-10-10
 > Tanggal: 2026-09-16
 > Cakupan: Dependency, tooling, scripts, konfigurasi, target deploy
 
@@ -17,27 +17,29 @@
 ### Runtime Dan Framework
 | Kategori | Teknologi | Versi |
 |---|---|---|
-| UI framework | React | ^19.2.7 |
-| Build tool | Vite | ^8.1.5 |
-| Bahasa | TypeScript | ~6.0.3 |
-| Routing | react-router-dom | ^7.18.1 |
-| Server state | TanStack Query | ^5.101.2 |
-| Tabel | TanStack Table | ^8.21.3 |
-| Client state | Redux Toolkit | ^2.12.0 |
-| Backend | Supabase JS | ^2.110.7 |
-| Forms | Hook Form plus Zod | ^7.82.0 |
-| i18n | i18next plus React | ^26.3.6 |
-| Charts | Recharts | ^3.9.2 |
-| Primitives | Radix plus shadcn | ^1.6.4 |
-| Ikon | Lucide React | ^1.25.0 |
+| UI framework | React | ^19.3.0 |
+| Build tool | Vite | ^8.3.4 |
+| Bahasa | TypeScript | ^7.0.2 (`tsc`), API ^6.0.2 |
+| Routing | react-router-dom | ^7.18.4 |
+| Server state | TanStack Query | ^5.104.1 |
+| Tabel | TanStack Table | ^9.2.8 |
+| Client state | Redux Toolkit | ^2.13.0 |
+| Backend | Supabase JS | ^2.117.3 |
+| Forms | Hook Form plus Zod | ^7.89.0 |
+| i18n | i18next plus React | ^26.4.3 |
+| Charts | Recharts | ^3.10.1 |
+| Primitives | Radix plus shadcn | ^1.7.0 |
+| Ikon | Lucide React | ^1.55.0 |
 | Tanggal | date-fns plus picker | ^4.4.0 |
+
+- TypeScript 7 belum punya API, jadi `typescript` di-alias ke `@typescript/typescript6` untuk typescript-eslint dan test, sedangkan `tsc` memakai TS 7. Kembali ke satu entri begitu typescript-eslint mendukung TS 7.
 
 ### Dev Tooling
 | Tool | Versi | Peran |
 |---|---|---|
-| wrangler | ^4.112.0 | Pages dev dan deploy |
-| eslint | ^10.7.0 | Lint kode |
-| esbuild | 0.28.1 | Bundler edge function |
+| wrangler | ^4.149.0 | Pages dev dan deploy |
+| eslint | ^10.12.0 | Lint kode |
+| esbuild | 0.28.2 | Bundler edge function |
 
 ### Scripts
 | Script | Fungsi |
@@ -52,7 +54,7 @@
 | Berkas | Isi Kunci |
 |---|---|
 | `tsconfig › paths` | Alias `@` ke `./src` |
-| `vite-config › plugin` | React, tailwind, proxy Yahoo dev |
+| `vite-config › plugin` | React, tailwind, Pages Functions dev (`/api/yahoo/*`, `/api/calendar/[source]`) |
 | `wrangler-toml › name` | Aplikasi Pages react-rabalaba |
 | `.env-example › vars` | Hanya URL plus publishable key |
 | `trial-config › duration` | Trial konfigurabel via durasi trial |
@@ -85,27 +87,29 @@
 ### Runtime And Framework
 | Category | Technology | Version |
 |---|---|---|
-| UI framework | React | ^19.2.7 |
-| Build tool | Vite | ^8.1.5 |
-| Language | TypeScript | ~6.0.3 |
-| Routing | react-router-dom | ^7.18.1 |
-| Server state | TanStack Query | ^5.101.2 |
-| Table | TanStack Table | ^8.21.3 |
-| Client state | Redux Toolkit | ^2.12.0 |
-| Backend | Supabase JS | ^2.110.7 |
-| Forms | Hook Form plus Zod | ^7.82.0 |
-| i18n | i18next plus React | ^26.3.6 |
-| Charts | Recharts | ^3.9.2 |
-| Primitives | Radix plus shadcn | ^1.6.4 |
-| Icons | Lucide React | ^1.25.0 |
+| UI framework | React | ^19.3.0 |
+| Build tool | Vite | ^8.3.4 |
+| Language | TypeScript | ^7.0.2 (`tsc`), API ^6.0.2 |
+| Routing | react-router-dom | ^7.18.4 |
+| Server state | TanStack Query | ^5.104.1 |
+| Table | TanStack Table | ^9.2.8 |
+| Client state | Redux Toolkit | ^2.13.0 |
+| Backend | Supabase JS | ^2.117.3 |
+| Forms | Hook Form plus Zod | ^7.89.0 |
+| i18n | i18next plus React | ^26.4.3 |
+| Charts | Recharts | ^3.10.1 |
+| Primitives | Radix plus shadcn | ^1.7.0 |
+| Icons | Lucide React | ^1.55.0 |
 | Dates | date-fns plus picker | ^4.4.0 |
+
+- TypeScript 7 ships no API yet, so `typescript` is aliased to `@typescript/typescript6` for typescript-eslint and tests while `tsc` runs TS 7. Collapse back to one entry once typescript-eslint supports TS 7.
 
 ### Dev Tooling
 | Tool | Version | Role |
 |---|---|---|
-| wrangler | ^4.112.0 | Pages dev and deploy |
-| eslint | ^10.7.0 | Code lint |
-| esbuild | 0.28.1 | Edge bundler |
+| wrangler | ^4.149.0 | Pages dev and deploy |
+| eslint | ^10.12.0 | Code lint |
+| esbuild | 0.28.2 | Edge bundler |
 
 ### Scripts
 | Script | Purpose |
@@ -120,7 +124,7 @@
 | File | Key Content |
 |---|---|
 | `tsconfig › paths` | Alias `@` to `./src` |
-| `vite-config › plugin` | React, tailwind, Yahoo dev proxy |
+| `vite-config › plugin` | React, tailwind, Pages Functions dev (`/api/yahoo/*`, `/api/calendar/[source]`) |
 | `wrangler-toml › name` | Pages app react-rabalaba |
 | `.env-example › vars` | Only URL plus publishable key |
 | `trial-config › duration` | Trial configurable via trial duration |

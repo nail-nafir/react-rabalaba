@@ -1,15 +1,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
 } from "@tanstack/react-table";
 import {
   Eye,
   EyeOff,
+  RefreshCw,
 } from "lucide-react";
 import { RemoveCodeDialog } from "./remove-code-dialog";
 import { ValidatePasswordDialog } from "./validate-password-dialog";
@@ -37,6 +35,7 @@ import { SkeletonAccessCodeRow } from "@/components/shared/skeleton-card";
 import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import type { AccessCodeRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 
 /* ── Tiny helpers ────────────────────────────────────────────────────── */
@@ -90,7 +89,7 @@ export function AccessCodesTable() {
     {},
   );
 
-  const columns = useMemo<ColumnDef<AccessCodeRow>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, AccessCodeRow>[]>(
     () => [
       {
         accessorKey: "created_at",
@@ -255,12 +254,9 @@ export function AccessCodesTable() {
     [t, deleteAccessCode, revealedCodes],
   );
 
-  const table = useReactTable({
+  const table = useAppTable({
     data: accessCodes,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -294,7 +290,7 @@ export function AccessCodesTable() {
             ) : isErrorCodes && accessCodes.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-32 text-center">
-                  <Empty role="alert" className="min-h-32 border-0">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <AlertCircle aria-hidden="true" />
@@ -309,6 +305,7 @@ export function AccessCodesTable() {
                         size="lg"
                         onClick={() => void refetchCodes()}
                       >
+                        <RefreshCw data-icon="inline-start" />
                         {t("common.retry")}
                       </Button>
                     </EmptyContent>
@@ -321,7 +318,7 @@ export function AccessCodesTable() {
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <Empty className="min-h-32 border-0">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <Inbox aria-hidden="true" />
@@ -337,7 +334,7 @@ export function AccessCodesTable() {
             ) : (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,

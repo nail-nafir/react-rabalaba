@@ -6,7 +6,7 @@ export const userSchema = z.object({
     .string()
     .trim()
     .min(1, "admin.users_add_email_required")
-    .email("admin.users_add_invalid_email"),
+    .pipe(z.email("admin.users_add_invalid_email")),
   password: z.string(),
   tier: z.enum(["free", "trial", "premium"]),
   role: z.enum(["user", "admin", "owner"]),

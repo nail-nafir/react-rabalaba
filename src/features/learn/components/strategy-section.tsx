@@ -16,10 +16,12 @@ import { BADGE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
 import { PatternVisual } from "./pattern-visual";
 import { StrategyDetailDialog } from "./strategy-detail-dialog";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { TRADING_STRATEGIES } from "../data/strategy-data";
 import { BookOpen, Search, X } from "lucide-react";
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -32,6 +34,7 @@ export const StrategySection: React.FC = () => {
   const { t } = useTranslation();
   const [strategyFilter, setStrategyFilter] = useState<StrategyFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const strategyParam = useDialogParam("strategy");
 
   const strategyFilterOptions = [
     { value: "all" as const, label: t("learn.strategies_ui.filters.all") },
@@ -124,12 +127,15 @@ export const StrategySection: React.FC = () => {
 
       {/* Strategy Cards Grid */}
       {filteredStrategies.length === 0 ? (
-        <Empty className="min-h-48">
+        <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Search aria-hidden="true" />
             </EmptyMedia>
             <EmptyTitle>{t("learn.strategies_ui.empty")}</EmptyTitle>
+            <EmptyDescription>
+              {t("learn.strategies_ui.empty_desc")}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -202,6 +208,10 @@ export const StrategySection: React.FC = () => {
             <CardFooter>
               <StrategyDetailDialog
                 strategy={strategy}
+                open={strategyParam.value === strategy.id}
+                onOpenChange={(next) =>
+                  next ? strategyParam.open(strategy.id) : strategyParam.close()
+                }
                 trigger={
                   <Button
                     size="lg"

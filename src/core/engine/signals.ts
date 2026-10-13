@@ -75,7 +75,10 @@ const EMPTY_FIB_LEVELS = { 0.382: 0, 0.5: 0, 0.618: 0 };
  * The engine is a screener, not an execution system. It stays neutral when data
  * quality is poor because false precision is more dangerous than a missed setup.
  */
-export function computeSignal(input: SignalInput): Outlook {
+export function computeSignal(
+  input: SignalInput,
+  research?: { volumeScore: number; volumeReplacement: 0.5 | 1 },
+): Outlook {
   const {
     prices,
     volumes,
@@ -504,10 +507,20 @@ export function computeSignal(input: SignalInput): Outlook {
     volatility: clampUnit(volatilityRaw / CATEGORY_MAX_SCORE.volatility),
     volume: clampUnit(volumeRaw / CATEGORY_MAX_SCORE.volume),
   };
+  const hasResearchFlow =
+    research != null &&
+    Number.isFinite(research.volumeScore) &&
+    Math.abs(research.volumeScore) <= 1 &&
+    (research.volumeReplacement === 0.5 || research.volumeReplacement === 1);
+  if (hasResearchFlow) {
+    categoryScores.volume =
+      categoryScores.volume * (1 - research.volumeReplacement) +
+      research.volumeScore * research.volumeReplacement;
+  }
   let directionScore = combineDirectionScore(
     categoryScores,
     regime,
-    dataQuality.volumeReliable,
+    dataQuality.volumeReliable || hasResearchFlow,
   );
 
   // ─── Layer 2: Higher-timeframe confirmation ──────────────
@@ -595,7 +608,7 @@ export function computeSignal(input: SignalInput): Outlook {
   }
 
   // ─── Multi-timeframe trend gate (engine-v7) ──────────────
-  // Walk-forward validated: trade only on the side of every long-horizon
+  // Trade only on the side of every available long-horizon
   // anchor the window can support. ema200 falls back to the last close when
   // fewer than 200 candles exist, so a missing anchor never blocks.
   if (signal !== "neutral") {

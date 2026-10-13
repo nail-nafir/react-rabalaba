@@ -1,4 +1,12 @@
 {
+  "page_help": {
+    "label": "Information about {{title}}",
+    "terminal": "Market shows live signals per asset. Journal logs how the robot's trades ended.",
+    "calendar": "Fed and Yahoo Finance events use WIB (UTC+7). Event impact stays an estimate.",
+    "calculator": "Set capital and trading risk. Position size and risk reward show up fast.",
+    "learn": "Decode candles, charts, and strategies. Simulators and quizzes clarify setups.",
+    "subscription": "Check research plans and perks. Unlock access with payments or access codes."
+  },
   "analysis": {
     "trend": {
       "bullish": "Price is trading above EMA20 (${{ema20}}) and EMA50 (${{ema50}}) with both EMAs in bullish alignment. ADX at {{adx}} indicates {{adxStrength}} trend strength, and +DI ({{plusDI}}) is above -DI ({{minusDI}}). The trend structure supports upside continuation.{{readiness}}",
@@ -53,7 +61,7 @@
     "theme_system": "System",
     "cancel": "Cancel",
     "retry": "Retry",
-    "load_error_title": "Market data failed to sync",
+    "load_error_title": "Data failed to load",
     "load_error_description": "Network hiccup detected. Hit retry to fetch fresh data.",
     "back_to_home": "Back to Home",
     "favorite": "Favorites",
@@ -85,7 +93,6 @@
       "high": "High Risk"
     },
     "no": "No",
-    "analyze_symbol": "Analyze {{symbol}}",
     "actions": {
       "add": "Add",
       "save": "Save",
@@ -110,7 +117,8 @@
       "bullish": "Bullish",
       "bearish": "Bearish",
       "sideways": "Sideways"
-    }
+    },
+    "analyze_symbol": "Analyze {{symbol}}"
   },
   "toasts": {
     "access_code": {
@@ -412,15 +420,11 @@
     "add_ticker_chip_remove": "Remove {{symbol}}",
     "add_ticker_already_favorite_badge": "Favorited",
     "assets_found": "Assets",
-    "screener": "Asset Screener",
-    "data_unavailable": "Market data is taking a break",
-    "data_unavailable_desc": "The API is not responding right now. A quick connection check should sort it out.",
     "market_context": "Market Context",
     "market_context_unavailable": "Market context unavailable",
     "no_assets_found": "No assets found here",
     "no_assets_found_desc": "Try switching up the filters.",
     "data_offline": "Offline Connection",
-    "data_offline_desc": "Live market price updates unavailable.",
     "crypto": "Crypto",
     "id_equity": "ID Equity",
     "us_equity": "US Equity",
@@ -440,15 +444,18 @@
       "us_equity": "US equity pulse. High confidence up, low hesitation up.",
       "commodities": "Commodity market pulse. High demand up, low slowdown.",
       "forex": "Rupiah market pulse. High score currency, low pressure."
-    }
+    },
+    "screener": "Asset Screener",
+    "link_not_found": "The asset in this link isn't in this account's Market list."
   },
   "terminal": {
     "title": "Research Terminal",
-    "subtitle": "Multi asset analysis with real time data and accurate signals.",
     "access_dialog_no_access": "Don't have an access code?",
     "access_dialog_no_access_link": "Get access",
     "access_dialog_unlock_btn": "Unlock",
-    "access_dialog_code_required": "Access code is required"
+    "access_dialog_code_required": "Access code is required",
+    "subtitle_market": "Live signals for every covered asset, refreshed every candle.",
+    "subtitle_journal": "Signals the robot logged and how they ended, from entry to close."
   },
   "calendar": {
     "title": "Economic Calendar",
@@ -509,26 +516,17 @@
     "volatility_medium_title": "Moderate Volatility",
     "volatility_low_title": "Low Impact Event",
     "clear_date": "Clear date",
-    "sources_loading": "Checking release schedules and data sources…",
-    "sources_failed": "Calendar sources are unavailable. Try refreshing.",
-    "coverage_partial": "Coverage is incomplete. Some sources failed or limited their results; missing events may still be scheduled.",
+    "coverage_partial_title": "Schedule is incomplete",
+    "coverage_partial": "Coverage is incomplete because a source failed to load. Missing events may still be scheduled, so try refreshing.",
+    "coverage_stale_title": "Schedule has not been refreshed",
     "coverage_stale": "Showing an older saved schedule. Check the source links for recent changes.",
-    "coverage_ready": "Source schedules loaded. All available release times are shown in WIB.",
-    "source_status": {
-      "ok": "Available",
-      "partial": "Limited results",
-      "unavailable": "Unavailable",
-      "stale": "Older data"
-    },
-    "checked_at": "Checked {{time}}",
-    "schedule_only": "BLS, BEA, and the Fed provide official US schedules. Yahoo adds global events. — means the source does not provide a value; impact labels are app estimates.",
     "time_unannounced": "Time not announced",
     "value_unavailable": "Not provided by source",
     "no_loaded_events": "No loaded events match these filters",
     "catalyst_empty_desc": "No high-impact event with a known future release time matches the loaded data and active filters.",
     "source_link": "View source: {{source}}",
     "official_values": "This source provides publication schedules without actual values, consensus forecasts, or previous-period values.",
-    "yahoo_values": "Values appear only when supplied by Yahoo; this feed does not provide consensus forecasts.",
+    "yahoo_values": "Values appear only when supplied by Yahoo.",
     "reported_value": "Value reported by the source",
     "copy_failed": "Could not copy the event details. Try again."
   },
@@ -537,19 +535,13 @@
     "type": "Type",
     "price": "Price",
     "change": "Change",
-    "change_methodology": "Price change percentage over the last 24 hours.",
     "volume": "Volume",
     "trend": "Trend",
     "signal": "Signal",
-    "successrate": "Success Rate",
-    "successrate_methodology": "Winning trade ratio for this symbol. Breakeven trades are excluded.",
     "successrate_summary": "{{percent}}% successful: {{wins}} of {{total}} closed trades.",
     "successrate_sample": "{{wins}}/{{total}}",
     "successrate_new_data": "New Data",
     "successrate_new_data_description": "No closed trades for this symbol yet.",
-    "successrate_loading": "Loading success-rate data.",
-    "successrate_unavailable": "Unavailable",
-    "successrate_load_error": "Success-rate data could not be loaded. Refresh to try again.",
     "price_methodology": "Entry price and current or close.",
     "strength": "Strength",
     "page": "Page",
@@ -559,7 +551,6 @@
     "next_page": "Next page",
     "last_page": "Last page",
     "grade": "Grade",
-    "suppressed_hint": "Strong directional lean held to NEUTRAL by the no-trade filter (choppy / counter-trend market).",
     "added": "Added",
     "added_by": "Added By",
     "status": "Status",
@@ -571,7 +562,14 @@
     "code_type": "Code Type",
     "redeemed": "Redeemed",
     "last_access": "Last Access",
-    "disclaimer": "Risk Disclaimer"
+    "disclaimer": "Risk Disclaimer",
+    "change_methodology": "Price change percentage over the last 24 hours.",
+    "suppressed_hint": "Strong directional lean held to NEUTRAL by the no-trade filter (choppy or counter-trend market).",
+    "successrate": "Success Rate",
+    "successrate_methodology": "Winning trade ratio for this symbol. Breakeven trades are excluded.",
+    "successrate_loading": "Loading success-rate data.",
+    "successrate_unavailable": "Unavailable",
+    "successrate_load_error": "Success-rate data could not be loaded. Refresh to try again."
   },
   "footer": {
     "description": "Professional financial research terminal for multi asset analysis. Rule based signals with institutional grade data.",
@@ -591,25 +589,14 @@
     "platform": "Platform"
   },
   "dialog": {
-    "close_action": "Close",
     "market_loading_desc": "Preparation of market signal data is running in background",
-    "market_error_title": "Data failed to display",
-    "market_error_desc": "Asset actually exists but connection to data source is interrupted",
     "favorite_add_label": "Add to favorites",
     "favorite_remove_label": "Remove from favorites",
-    "not_enough_data": "Data is too thin to scan signal. Go check another asset.",
+    "not_enough_data": "Not enough data",
+    "not_enough_data_desc": "Too few candles are available to calculate yet. Try checking another asset.",
     "chart_restore": "Restore",
     "loading": "Loading the chart data to calculate transaction signals now",
     "trading_plan": "Trading Plan",
-    "no_setup": "No active position yet. Analysis is neutral.",
-    "signal_unavailable": "Unavailable",
-    "signal_pending_note": "No active trade is recorded in the journal. Entry requires an available next candle and fresh price data.",
-    "signal_blocked_note": "The previous trade is closed. Same side entries stay paused until neutral is confirmed. A valid opposite signal can open a new trade.",
-    "signal_unavailable_note": "The trade status or saved setup could not be verified. Reload to view recorded signals.",
-    "suppressed_badge": "Held",
-    "suppressed_note": "Grade {{tier}} direction is actually super solid but got filtered to neutral because {{reason}}. Signal is good but market has not given the green light for entry.",
-    "suppressed_reason_chop": "volatility is super dry now",
-    "suppressed_reason_countertrend": "big trend is disagreeing",
     "analysis": "Analysis",
     "indicators": "Technical Indicators",
     "chart_settings": "Chart Settings",
@@ -716,7 +703,8 @@
       "crowded_shorts": "Crowded shorts potential squeeze up"
     },
     "bt_loading": "Calculating historical performance…",
-    "bt_error": "Historical performance could not be calculated. Try again.",
+    "bt_error": "Backtest failed to run",
+    "bt_error_desc": "Historical performance for this asset could not be calculated. Hit retry to run it again.",
     "bt_expectancy": "Expectancy (Avg R)",
     "bt_profit_factor": "Profit Factor",
     "bt_max_drawdown": "Max Drawdown (R)",
@@ -756,7 +744,17 @@
       "signal": "RabaLaba · {{direction}} {{symbol}} setup is live. Check entry, targets, and risk first.\n{{url}}",
       "position_open": "RabaLaba · {{direction}} {{symbol}} is still active. Track targets, stop, and risk level.\n{{url}}",
       "position_closed": "RabaLaba · {{symbol}} trade wrapped: {{result}}. Review the result, hype can wait.\n{{url}}"
-    }
+    },
+    "no_setup": "No active position yet",
+    "no_setup_desc": "Analysis is neutral.",
+    "signal_unavailable": "Unavailable",
+    "signal_unavailable_note": "The trade status or saved setup could not be verified. Reload to view recorded signals.",
+    "signal_pending_note": "No active trade is recorded in the journal. Entry requires an available next candle and fresh price data.",
+    "signal_blocked_note": "The previous trade is closed. Same side entries stay paused until neutral is confirmed. A valid opposite signal can open a new trade.",
+    "suppressed_badge": "Held",
+    "suppressed_note": "Grade {{tier}} direction is actually super solid but got filtered to neutral because {{reason}}. Signal is good but market has not given the green light for entry.",
+    "suppressed_reason_chop": "volatility is super dry now",
+    "suppressed_reason_countertrend": "big trend is disagreeing"
   },
   "disclaimer": {
     "confirm": "Read and understood the risk disclosure",
@@ -765,8 +763,6 @@
     "load_error_description": "There was a problem loading the disclaimer. Try again before continuing."
   },
   "journal": {
-    "view_market": "Market",
-    "view_journal": "Journal",
     "open_position": "Open Position",
     "transactions": "Transactions",
     "no_history": "Closed positions will show up right here.",
@@ -796,6 +792,10 @@
     "close_price": "Close Price",
     "entry_marker": "ENTRY",
     "close_marker": "CLOSED",
+    "close_marker_sl": "SL",
+    "close_marker_sl_at": "SL {{level}}",
+    "close_marker_tp": "TP{{level}}",
+    "close_marker_reversal": "REVERSAL",
     "trade_detail": "Trade Detail",
     "filter_all_status": "All Statuses",
     "view_detail": "View Detail",
@@ -815,7 +815,9 @@
     "chart_outcome_distribution": "Trade Outcomes",
     "chart_asset_performance": "Performance by Category",
     "chart_no_closed_trades": "No closed trades yet",
+    "chart_no_closed_trades_desc": "The outcome split shows once the first trade of this period closes.",
     "chart_no_category_data": "No asset category data yet",
+    "chart_no_category_data_desc": "Performance by asset type shows once trades start closing.",
     "outcome_sl": "Stop Loss",
     "outcome_take_profit": "Take Profit",
     "outcome_initial_stop": "Stop Loss",
@@ -843,7 +845,10 @@
     "status_sl": "SL Reached",
     "status_reversed": "REVERSED Reached",
     "period_load_error_title": "Journal period could not be loaded",
-    "period_load_error_desc": "Check your connection and retry before opening journal statistics."
+    "period_load_error_desc": "Check your connection and retry before opening journal statistics.",
+    "view_market": "Market",
+    "view_journal": "Journal",
+    "link_not_found": "The trade in this link wasn't found, or it's for Premium accounts only."
   },
   "testimonials": {
     "badge": "Community Voice",
@@ -1409,7 +1414,8 @@
       "pro_tip": "Key Note",
       "search_placeholder": "Search indicators, structure, liquidity, or setups...",
       "clear_search": "Clear strategy search",
-      "empty": "No strategies match the current filters.",
+      "empty": "No strategies found",
+      "empty_desc": "Try another filter to see more strategies.",
       "results": "{{count}} strategies",
       "filters": {
         "all": "All strategies"
@@ -1424,7 +1430,8 @@
         "bearish": "Bearish / Down",
         "bilateral": "Neutral"
       },
-      "empty": "No trading patterns matched your search."
+      "empty": "No patterns found",
+      "empty_desc": "Try another keyword or switch the category and bias filters."
     },
     "quiz_ui": {
       "title": "Trading Simulation Quiz",
@@ -3591,11 +3598,6 @@
     "context_label": "Research context",
     "context_snapshot": "Snapshot time",
     "clear_context": "Remove context",
-    "context_pages": {
-      "calendar": "Calendar",
-      "calculator": "Calculator",
-      "learn": "Learn"
-    },
     "title": "RabaLaba Sensei",
     "description": "Fast market research copilot. Ready to breakdown setups.",
     "badge": "COPILOT AI",

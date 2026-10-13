@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,10 +73,10 @@ export function RiskDisclaimerDialog() {
   if (hasLoadError) {
     return (
       <Card className="mx-auto w-full sm:max-w-md border border-border text-foreground">
-        <Empty role="alert" className="border-0">
+        <Empty role="alert">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <AlertTriangle aria-hidden="true" />
+              <AlertCircle aria-hidden="true" />
             </EmptyMedia>
             <EmptyTitle>{t("disclaimer.load_error_title")}</EmptyTitle>
             <EmptyDescription>
@@ -91,6 +91,7 @@ export function RiskDisclaimerDialog() {
               onClick={() => void handleRetry()}
               aria-busy={retrying}
             >
+              <RefreshCw data-icon="inline-start" />
               {t("common.retry")}
             </Button>
           </EmptyContent>

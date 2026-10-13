@@ -784,3 +784,25 @@ test("trade outcome labels show realized result instead of active-stop internals
   assert.equal(tradeOutcomeLabel(t, "progressive_stop", 0, 3, "loss"), "SL");
   assert.equal(tradeOutcomeLabel(t, "final_take_profit", 3, 3, "profit"), "TP 3/3");
 });
+
+test("close marker names how the position left, so a v7 TP 2/3 stop reads SL TP1", async () => {
+  const { closeMarkerLabel } = await loadModule(OUTCOME);
+  const t = (key, values = {}) =>
+    ({
+      "journal.close_marker": "DITUTUP",
+      "journal.close_marker_sl": "SL",
+      "journal.close_marker_sl_at": `SL ${values.level}`,
+      "journal.close_marker_tp": `TP${values.level}`,
+      "journal.close_marker_reversal": "REVERSAL",
+      "journal.entry_marker": "ENTRY",
+    })[key];
+
+  // GMT18069-USD: TP1 + TP2 legs banked, the last 20% stopped at TP1.
+  assert.equal(closeMarkerLabel(t, "progressive_stop", 2), "SL TP1");
+  assert.equal(closeMarkerLabel(t, "progressive_stop", 3), "SL TP2");
+  assert.equal(closeMarkerLabel(t, "breakeven_stop", 1), "SL ENTRY");
+  assert.equal(closeMarkerLabel(t, "initial_stop", 0), "SL");
+  assert.equal(closeMarkerLabel(t, "final_take_profit", 3), "TP3");
+  assert.equal(closeMarkerLabel(t, "reversal", 1), "REVERSAL");
+  assert.equal(closeMarkerLabel(t, undefined, 0), "DITUTUP");
+});

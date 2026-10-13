@@ -1,10 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
@@ -59,7 +55,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useTablePagination } from "@/hooks/use-table-pagination";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { Separator } from "@/components/ui/separator";
 import {
   Empty,
@@ -89,7 +87,6 @@ import {
 } from "@/constants";
 import type { AssetFilterType } from "@/types/asset";
 import { cn } from "@/lib/utils";
-import { TradeDetailDialog } from "./trade-detail-dialog";
 import { buildLiveProgressByTradeId } from "../model/live-progress";
 
 const BADGE_CLASS = "font-bold tracking-wider uppercase text-[10px] rounded-md";
@@ -110,7 +107,7 @@ const CLOSED_ONLY_PNL: PnlFilter[] = [
   "reversal_loss",
 ];
 
-function SortIcon({ column }: { column: Column<FollowedTrade, unknown> }) {
+function SortIcon({ column }: { column: Column<DataTableFeatures, FollowedTrade, unknown> }) {
   const isSorted = column.getIsSorted();
   if (isSorted === "asc")
     return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
@@ -125,7 +122,7 @@ function SortButton({
   tooltip,
 }: {
   label: string;
-  column: Column<FollowedTrade, unknown>;
+  column: Column<DataTableFeatures, FollowedTrade, unknown>;
   tooltip?: string;
 }) {
   const btn = (
@@ -164,10 +161,7 @@ export function FollowHistoryTable({
 }: FollowHistoryTableProps) {
   "use no memo";
   const { t, i18n } = useTranslation();
-  const allTrades = useMemo(
-    () => [...openTrades, ...history],
-    [history, openTrades],
-  );
+  const { open: openTrade } = useDialogParam("trade");
   // Live prices for open ("running") trades so their P/L updates each refetch.
   // Kept in a ref so the (memoized) column defs read fresh prices WITHOUT being
   // recreated every render — that churn is what made recharts hang earlier.
@@ -305,7 +299,7 @@ export function FollowHistoryTable({
       ? pnlOptions.filter((opt) => opt.value === "all" || opt.value === "tp")
       : pnlOptions;
 
-  const columns = useMemo<ColumnDef<FollowedTrade>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, FollowedTrade>[]>(
     () => [
       {
         id: "date",
@@ -655,7 +649,7 @@ export function FollowHistoryTable({
       sorting,
     ]),
   );
-  const table = useReactTable({
+  const table = useAppTable({
     data: filtered,
     columns,
     state: { sorting, pagination },
@@ -663,9 +657,6 @@ export function FollowHistoryTable({
     autoResetPageIndex: false,
     getRowId: (row) => row.id,
     onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -682,7 +673,7 @@ export function FollowHistoryTable({
             disabled={isFetching}
             title={t("journal.refresh")}
             aria-label={t("journal.refresh")}
-            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+            className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted cursor-pointer"
           >
             <RefreshCw
               className={cn("h-4 w-4", isFetching && "animate-spin")}
@@ -786,7 +777,7 @@ export function FollowHistoryTable({
                   colSpan={columns.length}
                   className="h-48 text-center"
                 >
-                  <Empty className="min-h-48 border-0">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <Hourglass aria-hidden="true" />
@@ -800,35 +791,32 @@ export function FollowHistoryTable({
                 </TableCell>
               </TableRow>
             ) : (
+              // The detail dialog lives once in the journal page, keyed by
+              // ?trade=<id>, so a row only writes the URL.
               table.getRowModel().rows.map((row) => (
-                <TradeDetailDialog
+                <TableRow
                   key={row.id}
-                  trade={row.original}
-                  siblings={allTrades}
-                  trigger={
-                    <TableRow
-                      className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${t("journal.view_detail")} ${row.original.symbol}`}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          event.currentTarget.click();
-                        }
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  }
-                />
+                  className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${t("journal.view_detail")} ${row.original.symbol}`}
+                  onClick={() => openTrade(row.original.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openTrade(row.original.id);
+                    }
+                  }}
+                >
+                  {row.getAllCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
               ))
             )}
           </TableBody>

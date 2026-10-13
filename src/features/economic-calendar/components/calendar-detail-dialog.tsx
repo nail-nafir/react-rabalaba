@@ -175,12 +175,6 @@ export function CalendarDetailDialog({
 
         {/* Scrollable Content Body */}
         <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
-          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="w-fit font-medium text-foreground underline underline-offset-4">
-              {t("calendar.source_link", { source: CALENDAR_SOURCES[event.source].name })}
-            </a>
-            <p>{t(event.source === "yahoo" ? "calendar.yahoo_values" : "calendar.official_values")}</p>
-          </div>
           {/* Section: Historical Comparison */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -374,6 +368,15 @@ export function CalendarDetailDialog({
                 </Badge>
               ))}
             </div>
+          </div>
+
+          {/* Source note */}
+          <Separator />
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+            <a href={event.sourceUrl} target="_blank" rel="noopener noreferrer" className="w-fit font-medium text-foreground underline underline-offset-4">
+              {t("calendar.source_link", { source: CALENDAR_SOURCES[event.source].name })}
+            </a>
+            <p>{t(event.source === "yahoo" ? "calendar.yahoo_values" : "calendar.official_values")}</p>
           </div>
         </div>
 

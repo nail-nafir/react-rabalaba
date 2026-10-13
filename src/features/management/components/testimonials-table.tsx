@@ -2,9 +2,6 @@ import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
   type ColumnDef,
   type PaginationState,
 } from "@tanstack/react-table";
@@ -32,6 +29,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -424,7 +422,7 @@ export function TestimonialsTable() {
     pageSize: 10,
   });
 
-  const columns = useMemo<ColumnDef<TestimonialSubmissionRow>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, TestimonialSubmissionRow>[]>(
     () => [
       {
         accessorKey: "created_at",
@@ -559,13 +557,11 @@ export function TestimonialsTable() {
     [approve, deleteSubmission, featured, t],
   );
 
-  const table = useReactTable({
+  const table = useAppTable({
     data: submissions,
     columns,
     state: { pagination },
     onPaginationChange: setPagination,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -573,7 +569,7 @@ export function TestimonialsTable() {
       {/* Table Container */}
       <div className="rounded-md border overflow-hidden shadow-sm">
         {isError && submissions.length === 0 ? (
-          <Empty role="alert" className="min-h-56 border-0">
+          <Empty role="alert">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <AlertCircle aria-hidden="true" />
@@ -620,7 +616,7 @@ export function TestimonialsTable() {
                     colSpan={columns.length}
                     className="h-32 text-center"
                   >
-                    <Empty className="min-h-32 border-0">
+                    <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <MessageSquareQuote aria-hidden="true" />
@@ -636,7 +632,7 @@ export function TestimonialsTable() {
               ) : (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,

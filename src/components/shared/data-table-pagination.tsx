@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Table as TanStackTable } from "@tanstack/react-table";
+import type { ReactTable, RowData } from "@tanstack/react-table";
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,15 +10,16 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 
-type DataTablePaginationProps<TData> = {
-  table: TanStackTable<TData>;
+type DataTablePaginationProps<TData extends RowData> = {
+  table: ReactTable<DataTableFeatures, TData>;
   className?: string;
   hideWhenSinglePage?: boolean;
 };
 
-export function DataTablePagination<TData>({
+export function DataTablePagination<TData extends RowData>({
   table,
   className,
   hideWhenSinglePage = false,
@@ -27,7 +28,7 @@ export function DataTablePagination<TData>({
   const pageInputId = useId();
   const pageCount = table.getPageCount();
   const currentPage =
-    pageCount > 0 ? table.getState().pagination.pageIndex + 1 : 0;
+    pageCount > 0 ? table.state.pagination.pageIndex + 1 : 0;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");

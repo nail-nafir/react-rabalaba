@@ -100,6 +100,7 @@ import {
   type ChatStreamErrorCode,
 } from "@/features/chat/chat-stream";
 import { visibleContextCount } from "@/features/chat/context-overflow";
+import { inlineBadge } from "@/features/chat/inline-badge";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   formatResearchTimestamp,
@@ -497,18 +498,13 @@ function createChatMarkdownComponents(
     code: ({ children, className }) => {
       if (className) return <code className={className}>{children}</code>;
       const value = markdownText(children).trim();
-      const normalized = value.replace(/^\$/, "").toUpperCase();
-      const isTicker = symbols.has(normalized);
-      const isStatus =
-        /^(LONG|SHORT|BUY|SELL|TP\d*|SL|TIER [A-D]|BULLISH|BEARISH|OVERBOUGHT|OVERSOLD|SUPPORT|RESISTANCE)$/i.test(
-          value,
-        );
-      if (isTicker || isStatus) {
-        const tone = /^(SHORT|SELL|BEARISH|SL|RESISTANCE)$/i.test(value)
+      const badge = inlineBadge(value, symbols);
+      if (badge) {
+        const tone = badge.tone === "negative"
           ? "border-rose-500/30 bg-rose-500/10 text-rose-500"
-          : /OVERBOUGHT|OVERSOLD/i.test(value)
+          : badge.tone === "warning"
             ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
-            : /^(LONG|BUY|BULLISH|TP\d*)$/i.test(value)
+            : badge.tone === "positive"
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
               : "border-primary/30 bg-primary/10 text-primary";
         return (
@@ -516,7 +512,7 @@ function createChatMarkdownComponents(
             variant="outline"
             className={cn("mx-0.5 align-baseline font-mono text-[0.9em]", tone)}
           >
-            {children}
+            {badge.label}
           </Badge>
         );
       }
@@ -556,7 +552,7 @@ function createChatMarkdownComponents(
   return flatComponents;
 }
 
-function AssistantMarkdown({
+export function AssistantMarkdown({
   content,
   terminalContext,
   marketContexts,
@@ -906,9 +902,6 @@ function ChatSession({
               terminalContext: hiddenContextKeys.has("terminal")
                 ? null
                 : message.terminalContext,
-              pageContext: hiddenContextKeys.has("page")
-                ? null
-                : message.pageContext,
               marketContexts: (message.marketContexts ?? [])
                 .filter(
                   (context) =>
@@ -990,7 +983,7 @@ function ChatSession({
         role: "user" as const,
         content,
         terminalContext: sessionContext,
-        pageContext: sessionPageContext,
+        pageContext,
         marketContexts: sessionMarketContexts,
       },
     ];
@@ -1029,7 +1022,7 @@ function ChatSession({
     setCopiedId(null);
     setHiddenContextKeys(new Set());
     setPromptTemplateConfig(randomPromptTemplates());
-    dispatch(uiActions.clearResearchContext());
+    dispatch(uiActions.setResearchContext(null));
     inputRef.current?.focus();
   }
 
@@ -1060,23 +1053,17 @@ function ChatSession({
     inputRef.current?.focus();
   }
 
-  function clearContext(kind: "terminal" | "page" | "market", symbol?: string) {
+  function clearContext(kind: "terminal" | "market", symbol?: string) {
     setHiddenContextKeys((current) =>
       new Set(current).add(kind === "market" ? `market:${symbol}` : kind),
     );
     if (kind === "terminal") dispatch(uiActions.setResearchContext(null));
-    if (kind === "page") dispatch(uiActions.setPageResearchContext(null));
   }
 
   const latestUserMessage = messages.findLast(
     (message) => message.role === "user",
   );
-  const sessionContext =
-    terminalContext ??
-    (hiddenContextKeys.has("terminal")
-      ? null
-      : (latestUserMessage?.terminalContext ?? null));
-  const sessionPageContext = hiddenContextKeys.has("page") ? null : pageContext;
+  const sessionContext = terminalContext;
   const sessionMarketContexts = (
     latestUserMessage?.marketContexts ?? []
   ).filter((context) => !hiddenContextKeys.has(`market:${context.symbol}`));
@@ -1107,14 +1094,6 @@ function ChatSession({
         sessionContext.quoteTime ?? sessionContext.capturedAt,
       )
     : "";
-  const pageContextSummary = sessionPageContext
-    ? sessionPageContext.kind === "calendar"
-      ? `${t("chat.context_pages.calendar")} · ${sessionPageContext.events.length}`
-      : sessionPageContext.kind === "calculator"
-        ? `${t("chat.context_pages.calculator")} · ${sessionPageContext.direction.toUpperCase()} ${sessionPageContext.currency}`
-        : `${t("chat.context_pages.learn")} · ${sessionPageContext.activeTab}`
-    : "";
-
   const contextItems: ContextBadgeItem[] = [
     ...(sessionContext
       ? [
@@ -1124,15 +1103,6 @@ function ChatSession({
               .filter(Boolean)
               .join(" · "),
             remove: () => clearContext("terminal"),
-          },
-        ]
-      : []),
-    ...(sessionPageContext
-      ? [
-          {
-            key: "page",
-            label: pageContextSummary,
-            remove: () => clearContext("page"),
           },
         ]
       : []),
@@ -1524,9 +1494,10 @@ export function ResearchCopilot() {
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       setManualOpen(nextOpen);
+      if (nextOpen) dispatch(uiActions.setResearchContext(null));
       if (!nextOpen) setDismissedRequestId(researchCopilotRequestId);
     },
-    [researchCopilotRequestId],
+    [dispatch, researchCopilotRequestId],
   );
 
   useEffect(() => {
@@ -1682,7 +1653,7 @@ export function ResearchCopilot() {
                 sessionStore={chatSessionStore}
               />
             ) : (
-              <Empty className="h-full px-6">
+              <Empty className="h-full">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <BotIcon aria-hidden="true" />
@@ -1694,7 +1665,10 @@ export function ResearchCopilot() {
                 </EmptyHeader>
                 <EmptyContent>
                   <Button asChild size="lg">
-                    <Link to={loginPath}>{t("common.actions.login")}</Link>
+                    <Link to={loginPath}>
+                      <LogInIcon data-icon="inline-start" />
+                      {t("common.actions.login")}
+                    </Link>
                   </Button>
                 </EmptyContent>
               </Empty>

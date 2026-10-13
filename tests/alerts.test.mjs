@@ -184,7 +184,7 @@ test("alerts preserve exact protected-stop and reversal outcomes", async () => {
   assert.equal(alertCount, 3);
   assert.ok(msg.includes("↳ REVERSED PROFIT: `@1.59` `(+8.4%)`"));
   assert.ok(msg.includes("↳ SEMPAT: `TP2`"));
-  assert.ok(msg.includes("↳ BE: `@100` `(+0%)`"));
+  assert.ok(msg.includes("↳ BE: `@100` `(0%)`"));
   assert.ok(msg.includes("↳ TP 1/3: `@110` `(+10%)`"));
 });
 
@@ -199,7 +199,7 @@ test("formatAlertBatchesForDiscord renders signal + outcome sections", async () 
   assert.ok(msg.includes("📢 HASIL:"));
   assert.ok(
     msg.includes(
-      "🟢 **BTC-USD** • LONG • A\n↳ ENTRY: `@65.000`\n↳ TP1: `@67.000` `(+3.1%)`\n↳ SL: `@63.000` `(-3.1%)`",
+      "🟢 **BTC-USD** • LONG • A\n↳ ENTRY: `@65,000`\n↳ TP1: `@67,000` `(+3.1%)`\n↳ SL: `@63,000` `(-3.1%)`",
     ),
   );
   // Each outcome carries the realized P&L line then a DURATION line.
@@ -222,6 +222,24 @@ test("formatAlertBatchesForDiscord renders signal + outcome sections", async () 
   assert.ok(msg.includes("━━━")); // divider rule
 
   assert.deepEqual(formatAlertBatchesForDiscord([]), []);
+});
+
+test("prices read like the terminal: en-US grouping, never a double dot", async () => {
+  const { formatAlertBatchesForDiscord } = await loadModule(ALERTS);
+  const [{ content: msg }] = formatAlertBatchesForDiscord([
+    {
+      kind: "new_long",
+      symbol: "BTC-USD",
+      entry: 84762.79,
+      stopLoss: 83000,
+      takeProfits: [86000.5],
+    },
+  ]);
+  assert.ok(
+    msg.includes(
+      "↳ ENTRY: `@84,762.79`\n↳ TP1: `@86,000.50` `(+1.5%)`\n↳ SL: `@83,000` `(-2.1%)`",
+    ),
+  );
 });
 
 test("formatAlertBatchesForDiscord keeps every alert once without truncation", async () => {

@@ -29,7 +29,7 @@ Dua jenis file dengan peran berbeda:
 | `functions/.env` | Env lokal untuk `functions serve` saja (gitignored). |
 | `config.toml` | Config function (`verify_jwt = false`, handler auth). |
 
-### Migrasi (urutan = urutan nama file, 38 file)
+### Migrasi (urutan = urutan nama file, 39 file)
 
 Urutan wajib karena ada ketergantungan (contoh `profiles` dibuat di migrasi awal, `is_admin()` menyusul, fitur lanjutan memakai keduanya).
 
@@ -61,6 +61,7 @@ Urutan wajib karena ada ketergantungan (contoh `profiles` dibuat di migrasi awal
 | 36 | `20260829100120_progressive_exit_v4` | Exit progressive plus `exit_reason` exact |
 | 37 | `20260830095557_exclude_breakeven_from_public_win_rate` | Impas keluar denominator publik |
 | 38 | `20260901000001_engine_v5_signal_episodes` | `journal_signal_states` episodes |
+| 39 | `20260930000001_scale_out_public_win_rate` | Win rate publik memblend partial TP v7 |
 
 ## 🇮🇩 Recovery Dari Nol
 
@@ -184,7 +185,7 @@ Two file kinds with separate roles:
 | `functions/.env` | Local env for `functions serve` only (gitignored). |
 | `config.toml` | Function config (`verify_jwt = false`, handler auth). |
 
-### Migrations (order = filename order, 38 files)
+### Migrations (order = filename order, 39 files)
 
 Order stays mandatory through dependencies (example `profiles` created early, `is_admin()` follows, later features use both).
 
@@ -216,6 +217,7 @@ Order stays mandatory through dependencies (example `profiles` created early, `i
 | 36 | `20260829100120_progressive_exit_v4` | Progressive exit plus exact `exit_reason` |
 | 37 | `20260830095557_exclude_breakeven_from_public_win_rate` | Breakeven out of public denominator |
 | 38 | `20260901000001_engine_v5_signal_episodes` | `journal_signal_states` episodes |
+| 39 | `20260930000001_scale_out_public_win_rate` | Public win rate blends v7 partial TPs |
 
 ## 🇺🇸 Rebuild From Scratch
 

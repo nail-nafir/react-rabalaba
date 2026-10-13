@@ -44,7 +44,8 @@ export function LifecycleBadge({
 interface TpProgressProps {
   /** TP levels touched (0..total). */
   reached: number;
-  /** TP levels secured by the realized close price. */
+  /** TP levels secured: reached by the close price, or banked as engine-v7
+   *  scale-out legs (see `deriveFollowProgress`). */
   secured: number;
   total: number;
   exitReason?: ExitReason;
@@ -104,8 +105,10 @@ export function TpProgress({
       );
     }
 
+    // "Sempat TPn" only adds news when the peak beat what was secured; v7
+    // banks every touched TP, so its stops never repeat the main label.
     const hasJourney =
-      showJourney && reached > 0 && exitReason !== "final_take_profit";
+      showJourney && reached > secured && exitReason !== "final_take_profit";
     return (
       <>
         <Badge

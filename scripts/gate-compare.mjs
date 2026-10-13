@@ -1,434 +1,229 @@
-/**
- * Engine-v6 research gate. Read-only: one 730d/1h fetch per symbol, a rolling
- * 60-day signal window, chronological development folds, then a locked final
- * holdout. No candidate changes production config.
- *
- * Usage: npm run gate:compare [assetsPerClass]
- */
+/** Read-only v7 research: development selects one candidate before opening holdout. */
 import { createServer } from "vite";
+import { parseArgs } from "node:util";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { aggregate, windowTrades, compare, selectCandidate, cohortReport } from "./research-metrics.mjs";
+import { ASSET_CLASSES, readJournal, journalTrades, journalAuditReport, readJson, writeJson, fetchChart, excursions, reconstructJournalEntries, digest, claimHoldout } from "./research-data.mjs";
 
-const requestedPerClass = Number(process.argv[2]);
-const PER_CLASS = requestedPerClass > 0 ? requestedPerClass : Infinity;
-const RANGE = "730d";
-const INTERVAL = "1h";
-const LOOKBACK_SECONDS = 60 * 24 * 60 * 60;
-const FETCH_TIMEOUT_MS = 20_000;
-const COUNTER_TREND_RESEARCH_MIN = 60;
-const DEVELOPMENT_FOLDS = [
-  [0.4, 0.55],
-  [0.55, 0.7],
-  [0.7, 0.85],
-];
-const HOLDOUT = [0.85, 1];
-const PROXY =
-  process.env.YAHOO_PROXY_BASE ??
-  "https://rabalaba.pages.dev/api/yahoo/v8/finance/chart";
-const chartCache = new Map();
+const CANDIDATES = ["setup-room", "extension", "flow-filter", "flow-score-50", "flow-score-100"];
+const DAY = 86400;
 
-async function fetchChart(symbol) {
-  if (!chartCache.has(symbol)) {
-    chartCache.set(
-      symbol,
-      (async () => {
-        const url = `${PROXY}/${encodeURIComponent(symbol)}?range=${RANGE}&interval=${INTERVAL}&includePrePost=false`;
-        const res = await fetch(url, {
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        });
-        if (!res.ok) return null;
-        const json = await res.json().catch(() => null);
-        const result = json?.chart?.result?.[0];
-        return result?.timestamp && result?.indicators?.quote?.[0]
-          ? result
-          : null;
-      })(),
-    );
-  }
-  return chartCache.get(symbol);
-}
-
-function aggregate(input) {
-  const trades = [...input].sort((a, b) => a.exitTimestamp - b.exitTimestamp);
-  let wins = 0;
-  let grossProfit = 0;
-  let grossLoss = 0;
-  let totalR = 0;
-  let equity = 0;
-  let peak = 0;
-  let maxDrawdownR = 0;
-  for (const trade of trades) {
-    if (trade.r > 0) {
-      wins++;
-      grossProfit += trade.r;
-    } else {
-      grossLoss += Math.abs(trade.r);
-    }
-    totalR += trade.r;
-    equity += trade.r;
-    peak = Math.max(peak, equity);
-    maxDrawdownR = Math.max(maxDrawdownR, peak - equity);
-  }
-  return {
-    trades: trades.length,
-    winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
-    profitFactor:
-      grossLoss > 0
-        ? grossProfit / grossLoss
-        : grossProfit > 0
-          ? Infinity
-          : 0,
-    expectancy: trades.length > 0 ? totalR / trades.length : 0,
-    maxDrawdownR,
+export function dateBounds(from, to) {
+  const parse = (date) => {
+    const timestamp = Date.parse(`${date}T00:00:00Z`) / 1000;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(timestamp) || new Date(timestamp * 1000).toISOString().slice(0, 10) !== date) throw new Error("Dates must be valid YYYY-MM-DD (UTC)");
+    return timestamp;
   };
+  const start = parse(from), end = parse(to);
+  if (end <= start || end > Date.now() / 1000) throw new Error("Choose a completed historical date range");
+  const holdoutStart = start + Math.floor((end - start) / DAY * 0.75) * DAY;
+  const development = Array.from({ length: 3 }, (_, i) => [
+    start + Math.floor((holdoutStart - start) / DAY * i / 3) * DAY,
+    start + Math.floor((holdoutStart - start) / DAY * (i + 1) / 3) * DAY,
+  ]);
+  return { start, end, holdoutStart, development };
 }
 
-function row(label, metrics) {
-  const pf =
-    metrics.profitFactor === Infinity ? "∞" : metrics.profitFactor.toFixed(2);
-  return `${label.padEnd(16)} trades ${String(metrics.trades).padStart(5)}  win ${metrics.winRate.toFixed(1).padStart(5)}%  PF ${pf.padStart(5)}  exp ${metrics.expectancy.toFixed(3).padStart(7)}R  DD ${metrics.maxDrawdownR.toFixed(2).padStart(7)}R`;
-}
-
-function passesMetrics(candidate, baseline) {
-  return (
-    candidate.profitFactor >= 1.1 &&
-    candidate.expectancy >= 0.05 &&
-    candidate.winRate >= baseline.winRate + 2 &&
-    candidate.maxDrawdownR <= baseline.maxDrawdownR &&
-    candidate.trades >= baseline.trades * 0.5
-  );
-}
-
-function oneWeekSeries(candles) {
-  const week = 7 * 24 * 60 * 60;
-  let reference = 0;
-  return candles.map((candle, index) => {
-    const cutoff = candle.timestamp - week;
-    while (
-      reference + 1 < index &&
-      candles[reference + 1].timestamp <= cutoff
-    ) {
-      reference++;
-    }
-    const old = candles[reference]?.close;
-    return {
-      timestamp: candle.timestamp,
-      level: candle.close,
-      oneWeekChangePercent:
-        old > 0 ? ((candle.close - old) / old) * 100 : undefined,
-    };
-  });
-}
-
-function latestAt(series, timestamp) {
-  let low = 0;
-  let high = series.length - 1;
-  let found;
-  while (low <= high) {
-    const mid = (low + high) >> 1;
-    if (series[mid].timestamp <= timestamp) {
-      found = series[mid];
-      low = mid + 1;
-    } else {
-      high = mid - 1;
+async function sourceHash() {
+  const files = [];
+  for (const dir of ["src/core", "src/constants", "src/types", "scripts"]) {
+    for (const file of await readdir(dir, { recursive: true })) {
+      if (/\.(ts|mjs)$/.test(file)) files.push(join(dir, file));
     }
   }
-  return found;
+  return digest(await Promise.all(files.sort().map(async (file) => `${file}\n${await readFile(file, "utf8")}`)));
 }
 
-function emptyBuckets(names) {
-  return Object.fromEntries(names.map((name) => [name, []]));
-}
-
-async function main() {
-  const server = await createServer({
-    appType: "custom",
-    configFile: "vite.config.ts",
-    logLevel: "silent",
-    server: { middlewareMode: true, watch: null },
-  });
-
+export async function main(args = process.argv.slice(2)) {
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
+    out: { type: "string", default: "research.local/run" }, from: { type: "string" }, to: { type: "string" },
+    "per-class": { type: "string" }, journal: { type: "string" }, flow: { type: "string" },
+    "journal-cache": { type: "string" }, "development-only": { type: "boolean", default: false },
+    "journal-only": { type: "boolean", default: false },
+  } });
+  const perClass = Number(values["per-class"] ?? positionals[0] ?? Infinity);
+  if (!(perClass > 0) || (perClass !== Infinity && !Number.isInteger(perClass))) throw new Error("per-class must be a positive integer");
+  const out = resolve(values.out);
+  await mkdir(out, { recursive: true });
+  // A directory is an immutable study, not a place to overwrite an inspected holdout.
+  const to = values.to ?? new Date().toISOString().slice(0, 10);
+  const from = values.from ?? new Date(Date.parse(to) - 360 * DAY * 1000).toISOString().slice(0, 10);
+  const bounds = dateBounds(from, to);
+  const protocol = {
+    engine: "engine-v7", from, to, ...bounds, perClass: Number.isFinite(perClass) ? perClass : "all",
+    candidates: CANDIDATES, baseline: { exitMode: "scaleOut", signalEpisodes: true, window: "60 observed exchange dates (crypto: UTC dates)" },
+    thresholds: { winRateDeltaPP: 2, expectancyDeltaR: 0.05, minProfitFactor: 1.1, minRetention: 0.5 },
+    sourceHash: await sourceHash(), createdAt: new Date().toISOString(),
+    mode: values["journal-only"] ? "journal-audit" : "historical-experiments",
+  };
+  await writeJson(join(out, "protocol.json"), protocol, true);
+  const server = await createServer({ appType: "custom", configFile: "vite.config.ts", logLevel: "silent", server: { middlewareMode: true, watch: null } });
   try {
-    const load = (path) => server.ssrLoadModule(path);
-    const { buildDecisionSeries, replayDecisionSeries } = await load(
-      "/src/core/engine/backtest.ts",
-    );
-    const { fightsBenchmark } = await load(
-      "/src/core/engine/benchmark-derate.ts",
-    );
-    const { deriveCryptoRiskState } = await load(
-      "/src/core/engine/crypto-context.ts",
-    );
-    const { deriveIdxRiskState } = await load(
-      "/src/core/engine/idx-context.ts",
-    );
-    const { deriveUsRiskState } = await load(
-      "/src/core/engine/us-context.ts",
-    );
-    const { normalizeYahooCandles } = await load(
-      "/src/core/market/candles.ts",
-    );
-    const { CRYPTO_CONTEXT, IDX_CONTEXT, US_CONTEXT } = await load(
-      "/src/constants/signals.ts",
-    );
-    const {
-      DEFAULT_CRYPTO_TICKERS,
-      DEFAULT_US_STOCK_TICKERS,
-      DEFAULT_ID_STOCK_TICKERS,
-    } = await load("/src/constants/assets.ts");
-
-    const normalize = (raw) =>
-      normalizeYahooCandles(raw.indicators.quote[0], raw.timestamp, {
-        requirePhysical: true,
-        requireTimestamps: true,
-      });
-    const loadCandles = async (symbol) => {
-      const raw = await fetchChart(symbol);
-      return raw ? normalize(raw) : [];
-    };
-
-    const contextSymbols = {
-      btc: "BTC-USD",
-      ihsg: "^JKSE",
-      usdIdr: "USDIDR=X",
-      spx: "^GSPC",
-      vix: "^VIX",
-      dxy: "DX-Y.NYB",
-    };
-    const contextCandles = Object.fromEntries(
-      await Promise.all(
-        Object.entries(contextSymbols).map(async ([key, symbol]) => [
-          key,
-          await loadCandles(symbol),
-        ]),
-      ),
-    );
-    for (const [key, candles] of Object.entries(contextCandles)) {
-      if (candles.length === 0) throw new Error(`context fetch failed: ${key}`);
-    }
-
-    const decisionOptions = {
-      timeframe: "swing",
-      lookbackSeconds: LOOKBACK_SECONDS,
-    };
-    const btcDecisions = buildDecisionSeries(contextCandles.btc, {
-      ...decisionOptions,
-      assetType: "crypto",
-    });
-    const ihsgDecisions = buildDecisionSeries(contextCandles.ihsg, {
-      ...decisionOptions,
-      assetType: "id-stock",
-    });
-    const spxDecisions = buildDecisionSeries(contextCandles.spx, {
-      ...decisionOptions,
-      assetType: "us-stock",
-    });
-    const usdIdr = oneWeekSeries(contextCandles.usdIdr);
-    const vix = oneWeekSeries(contextCandles.vix);
-    const dxy = oneWeekSeries(contextCandles.dxy);
-    const riskSeries = {
-      crypto: btcDecisions.map((decision) => ({
-        timestamp: decision.timestamp,
-        riskState: deriveCryptoRiskState(decision.outlook.directionScore),
-      })),
-      "id-stock": ihsgDecisions.map((decision) => ({
-        timestamp: decision.timestamp,
-        riskState: deriveIdxRiskState(
-          decision.outlook.directionScore,
-          latestAt(usdIdr, decision.timestamp)?.oneWeekChangePercent,
-        ),
-      })),
-      "us-stock": spxDecisions.map((decision) => {
-        const vixPoint = latestAt(vix, decision.timestamp);
-        const dxyPoint = latestAt(dxy, decision.timestamp);
-        return {
-          timestamp: decision.timestamp,
-          riskState: deriveUsRiskState(decision.outlook.directionScore, {
-            vixLevel: vixPoint?.level,
-            vix1wChangePercent: vixPoint?.oneWeekChangePercent,
-            dxy1wChangePercent: dxyPoint?.oneWeekChangePercent,
-          }),
-        };
-      }),
-    };
-    process.stdout.write("· BTC/IHSG/USDIDR/SPX/VIX/DXY context ready\n");
-
-    const derate = {
-      crypto: CRYPTO_CONTEXT.COUNTER_MARKET_DERATE,
-      "id-stock": IDX_CONTEXT.COUNTER_MARKET_DERATE,
-      "us-stock": US_CONTEXT.COUNTER_MARKET_DERATE,
-    };
-    const contextAllowed = (assetClass, decision, symbol) => {
-      if (assetClass === "crypto" && /^BTC[-/]?USD/i.test(symbol)) return true;
-      const risk = latestAt(riskSeries[assetClass], decision.timestamp)?.riskState;
-      if (!risk || !fightsBenchmark(decision.outlook.signal, risk)) return true;
-      return (
-        Math.round(decision.outlook.strength * derate[assetClass]) >=
-        COUNTER_TREND_RESEARCH_MIN
-      );
-    };
-    const mtfAllowed = (decision) => {
-      const data = decision.research;
-      if (!data?.ema2001h || !data.ema50Daily) return false;
-      const emas = [data.ema2001h, data.ema50Daily];
-      if (data.ema2004h) emas.push(data.ema2004h);
-      return decision.outlook.signal === "long"
-        ? emas.every((ema) => data.close >= ema)
-        : emas.every((ema) => data.close <= ema);
-    };
-    const twoClosed = (decision) =>
-      decision.outlook.signal !== "neutral" &&
-      decision.previousSignal === decision.outlook.signal;
-
-    const candidates = {
-      baseline: { exitMode: "progressive", filter: () => true },
-      context: { exitMode: "progressive", filter: contextAllowed },
-      mtf: {
-        exitMode: "progressive",
-        filter: (_assetClass, decision) => mtfAllowed(decision),
-      },
-      "two-closed": {
-        exitMode: "progressive",
-        filter: (_assetClass, decision) => twoClosed(decision),
-      },
-      "scale-out": { exitMode: "scaleOut", filter: () => true },
-      secured: { exitMode: "secured", filter: () => true },
-      "tp1-1r": { exitMode: "tp1-1r", filter: () => true },
-    };
-    const names = Object.keys(candidates);
-    const universe = [
-      ...DEFAULT_CRYPTO_TICKERS.slice(0, PER_CLASS).map((symbol) => [
-        "crypto",
-        symbol,
-      ]),
-      ...DEFAULT_US_STOCK_TICKERS.slice(0, PER_CLASS).map((symbol) => [
-        "us-stock",
-        symbol,
-      ]),
-      ...DEFAULT_ID_STOCK_TICKERS.slice(0, PER_CLASS).map((symbol) => [
-        "id-stock",
-        symbol,
-      ]),
-    ];
-    const windows = [
-      ...DEVELOPMENT_FOLDS.map((bounds, index) => ({
-        name: `dev-${index + 1}`,
-        bounds,
-        locked: false,
-      })),
-      { name: "holdout", bounds: HOLDOUT, locked: true },
-    ];
-    const results = Object.fromEntries(
-      windows.map((window) => [
-        window.name,
-        {
-          all: emptyBuckets(names),
-          byClass: {
-            crypto: emptyBuckets(names),
-            "us-stock": emptyBuckets(names),
-            "id-stock": emptyBuckets(names),
-          },
-        },
-      ]),
-    );
-
-    for (const [assetClass, symbol] of universe) {
-      const candles = await loadCandles(symbol);
-      if (candles.length < 300) {
-        process.stdout.write(`  skip ${symbol} (${candles.length} bars)\n`);
-        continue;
+    const load = (file) => server.ssrLoadModule(file);
+    const [{ buildDecisionSeries, replayDecisionSeries }, { normalizeYahooCandles, closedCandlesForSignal },
+      { passesEntryExperiment, cryptoFlow, entryDiagnostics, sessionStartIndices }, { rowToFollowedTrade }, { computePnl, ENTRY_BAR_TOLERANCE_MS },
+      { BACKTEST_COSTS, ENGINE_VERSION }, assets, { yahooToBinancePerp }, { adaptYahooChart }] = await Promise.all([
+      load("/src/core/engine/backtest.ts"), load("/src/core/market/candles.ts"), load("/src/core/engine/research.ts"),
+      load("/src/core/trade/journal-mapper.ts"), load("/src/core/trade/follow-trade-model.ts"), load("/src/constants/signals.ts"),
+      load("/src/constants/assets.ts"), load("/src/services/api/binance.ts"), load("/src/services/adapters/yahoo-adapter.ts"),
+    ]);
+    if (ENGINE_VERSION !== protocol.engine) throw new Error("Research baseline must be reviewed for the current engine version");
+    let journal;
+    try { journal = values["journal-cache"] ? await readJson(values["journal-cache"]) : await readJournal(values.journal); }
+    catch (error) { journal = { source: "unavailable", reason: error.message, rows: [], assets: [] }; }
+    const actual = journalTrades(journal.rows, { rowToFollowedTrade, computePnl, costs: BACKTEST_COSTS, entryBarToleranceMs: ENTRY_BAR_TOLERANCE_MS });
+    await writeJson(join(out, "journal-source.json"), journal, true);
+    if (values["journal-only"]) {
+      const errors = [];
+      const symbols = [...new Set(actual.trades.filter((t) => t.engineVersion === ENGINE_VERSION).map((t) => t.symbol))].sort();
+      for (const [index, symbol] of symbols.entries()) {
+        console.log(`[${index + 1}/${symbols.length}] journal ${symbol}`);
+        try {
+          let raw;
+          try { raw = await fetchChart(symbol, join(out, "charts")); }
+          catch (error) {
+            errors.push({ symbol, error: error.message, fallback: "60d; incomplete entry history stays unavailable" });
+            raw = await fetchChart(symbol, join(out, "charts"), "60d");
+          }
+          const candles = normalizeYahooCandles(raw.indicators.quote[0], raw.timestamp, { requirePhysical: true, requireTimestamps: true });
+          reconstructJournalEntries(actual.trades.filter((t) => t.symbol === symbol), raw, candles, { sessionStartIndices, adaptYahooChart, entryDiagnostics });
+        } catch (error) { errors.push({ symbol, error: error.message }); }
       }
-      const decisions = buildDecisionSeries(candles, {
-        ...decisionOptions,
-        assetType: assetClass,
-        includeResearchFeatures: true,
-      });
-      const replayByName = Object.fromEntries(
-        Object.entries(candidates).map(([name, candidate]) => [
-          name,
-          replayDecisionSeries(candles, decisions, {
-            assetType: assetClass,
-            exitMode: candidate.exitMode,
-            entryFilter: ({ decision }) =>
-              candidate.filter(assetClass, decision, symbol),
-          }).trades,
-        ]),
-      );
-      for (const window of windows) {
-        const [startFraction, endFraction] = window.bounds;
-        const start = candles[Math.floor(candles.length * startFraction)].timestamp;
-        const end =
-          endFraction >= 1
-            ? Infinity
-            : candles[Math.floor(candles.length * endFraction)].timestamp;
-        for (const name of names) {
-          const trades = replayByName[name].filter(
-            (trade) =>
-              trade.decisionTimestamp >= start && trade.decisionTimestamp < end,
-          );
-          results[window.name].all[name].push(...trades);
-          results[window.name].byClass[assetClass][name].push(...trades);
+      const report = journalAuditReport(journal, actual);
+      await writeJson(join(out, "journal-audit.json"), { ...report, errors }, true);
+      console.log(JSON.stringify({ versions: report.versions, diagnostics: report.diagnostics, dataFailures: errors.length }, null, 2));
+      return { out, mode: "journal-audit" };
+    }
+    const universe = [];
+    const defaults = { crypto: assets.DEFAULT_CRYPTO_TICKERS, "us-stock": assets.DEFAULT_US_STOCK_TICKERS, "id-stock": assets.DEFAULT_ID_STOCK_TICKERS, commodity: assets.DEFAULT_COMMODITY_TICKERS, forex: assets.DEFAULT_FOREX_TICKERS };
+    for (const assetType of ASSET_CLASSES) {
+      const configured = (journal.assets ?? []).filter((a) => a.asset_type === assetType).map((a) => a.symbol);
+      const symbols = configured.length ? [...defaults[assetType].filter((s) => configured.includes(s)), ...configured] : defaults[assetType];
+      for (const symbol of [...new Set(symbols)].slice(0, perClass)) universe.push({ symbol, assetType });
+    }
+    await writeJson(join(out, "universe.json"), universe, true);
+    const snapshots = values.flow ? await readJson(values.flow) : [];
+    if (!Array.isArray(snapshots)) throw new Error("Flow JSON must contain an array of timestamped snapshots");
+    const history = [], coverage = [], errors = [];
+    const all = Object.fromEntries(["baseline", ...CANDIDATES].map((name) => [name, []]));
+    let selectedCoverageComplete = true;
+
+    const flowProvider = (symbol) => {
+      const samples = snapshots.filter((s) => s.symbol === symbol).sort((a, b) => a.availableAt - b.availableAt);
+      const contract = yahooToBinancePerp(symbol);
+      return (at) => {
+        let low = 0, high = samples.length;
+        while (low < high) { const middle = (low + high) >>> 1; if (samples[middle].availableAt <= at) low = middle + 1; else high = middle; }
+        return low && contract ? cryptoFlow(samples[low - 1], symbol, contract, at) : null;
+      };
+    };
+    const optionsFor = ({ symbol, assetType, sessionTimeZone = "UTC" }, replacement) => ({
+      assetType, timeframe: "swing", includeResearchFeatures: true, lookbackSessions: 60, sessionTimeZone,
+      ...(assetType === "crypto" ? { researchFlow: flowProvider(symbol) } : {}),
+      ...(replacement ? { volumeReplacement: replacement } : {}),
+    });
+    const replay = (item, candles, decisions, name) => replayDecisionSeries(candles, decisions, {
+      assetType: item.assetType, exitMode: "scaleOut", signalEpisodes: true,
+      ...(CANDIDATES.slice(0, 3).includes(name) ? {
+        entryFilter: ({ outlook, plan, decision }) => passesEntryExperiment(name, outlook, plan, decision.research?.flow),
+      } : {}),
+    }).trades.map((trade) => ({
+      ...trade, ...item, engineVersion: ENGINE_VERSION, decisionClosedAt: trade.decisionTimestamp + 3600,
+      diagnostics: { ...trade.research, ...excursions(trade, candles), publicationLagSeconds: null },
+    }));
+
+    for (const [index, item] of universe.entries()) {
+      console.log(`[${index + 1}/${universe.length}] ${item.symbol}`);
+      try {
+        const raw = await fetchChart(item.symbol, join(out, "charts"));
+        item.sessionTimeZone = raw.meta.exchangeTimezoneName ?? "UTC";
+        const allCandles = normalizeYahooCandles(raw.indicators.quote[0], raw.timestamp, { requirePhysical: true, requireTimestamps: true });
+        const candles = closedCandlesForSignal(allCandles, { interval: "1h", nowSeconds: bounds.end });
+        const developmentCandles = candles.filter((c) => c.timestamp + 3600 <= bounds.holdoutStart);
+        const baseline = buildDecisionSeries(developmentCandles, optionsFor(item));
+        const hasFlow = baseline.some((d) => d.research.flow);
+        const scored50 = hasFlow ? buildDecisionSeries(developmentCandles, optionsFor(item, 0.5)) : baseline;
+        const scored100 = hasFlow ? buildDecisionSeries(developmentCandles, optionsFor(item, 1)) : baseline;
+        const inDevelopment = baseline.filter((d) => d.research.decisionClosedAt >= bounds.start);
+        const completeHistory = baseline.some((d) => d.research.decisionClosedAt <= bounds.start && d.research.candleCount >= 120);
+        if (!completeHistory) selectedCoverageComplete = false;
+        const flowDecisions = inDevelopment.filter((d) => d.research.flow).length;
+        const row = { ...item, candles: candles.length, completeHistory, decisions: inDevelopment.length, flowDecisions, dataHash: digest(raw) };
+        coverage.push(row);
+        for (const name of Object.keys(all)) {
+          const decisions = name === "flow-score-50" ? scored50 : name === "flow-score-100" ? scored100 : baseline;
+          all[name].push(...replay(item, developmentCandles, decisions, name));
         }
+        history.push({ ...item, candles });
+        reconstructJournalEntries(actual.trades.filter((t) => t.symbol === item.symbol), raw, allCandles, { sessionStartIndices, adaptYahooChart, entryDiagnostics });
+        // Check the shared adapter using the exact source payload; no fetched quote enters research decisions.
+        const recent = await fetchChart(item.symbol, join(out, "charts"), "60d");
+        const recentCandles = closedCandlesForSignal(normalizeYahooCandles(recent.indicators.quote[0], recent.timestamp, { requirePhysical: true }), { interval: "1h", regularSessionEnd: recent.meta.currentTradingPeriod?.regular?.end });
+        const sentinel = { ...recentCandles.at(-1), timestamp: recentCandles.at(-1).timestamp + 3600 };
+        const last = buildDecisionSeries([...recentCandles, sentinel], { assetType: item.assetType }).at(-1);
+        row.adapterParity = JSON.stringify(last?.outlook) === JSON.stringify(adaptYahooChart(recent)?.outlook);
+        if (!row.adapterParity) selectedCoverageComplete = false;
+      } catch (error) { errors.push({ ...item, error: error.message }); selectedCoverageComplete = false; }
+    }
+    const slices = (trades) => bounds.development.flatMap(([start, end]) => windowTrades(trades, start, end));
+    const baseline = slices(all.baseline);
+    const development = {};
+    for (const name of CANDIDATES) {
+      const candidate = slices(all[name]);
+      const result = compare(candidate, baseline, bounds.start, bounds.holdoutStart, ASSET_CLASSES);
+      result.folds = bounds.development.map(([start, end]) => ({ start, end, baseline: aggregate(windowTrades(all.baseline, start, end)), candidate: aggregate(windowTrades(all[name], start, end)) }));
+      result.gross = aggregate(candidate, { gross: true });
+      result.cohorts = cohortReport(candidate).cohorts;
+      const stable = result.folds.every((fold) => fold.candidate.trades && fold.candidate.winRate >= fold.baseline.winRate && fold.candidate.expectancy >= fold.baseline.expectancy);
+      const missingFlow = name.startsWith("flow") && coverage.some((row) => ["crypto", "us-stock", "id-stock"].includes(row.assetType) && row.flowDecisions === 0);
+      if (!selectedCoverageComplete || missingFlow) { result.status = "unproven"; result.dataLimitation = missingFlow ? "Required asset flow history unavailable" : "Incomplete price history or adapter parity"; }
+      else if (!stable && result.status === "passed") result.status = "failed";
+      development[name] = result;
+    }
+    const selected = selectCandidate(development);
+    const selection = { candidate: selected, sourceHash: protocol.sourceHash, dataHash: digest(coverage), start: bounds.holdoutStart, end: bounds.end, chosenBeforeHoldout: true };
+    await writeJson(join(out, "development.json"), { baseline: cohortReport(baseline), candidates: development, coverage, errors }, true);
+    await writeJson(join(out, "selection.json"), selection, true);
+    let holdout = { status: "unopened", reason: selected ? "Development-only run" : "No proven development candidate" };
+    if (selected && !values["development-only"]) {
+      await mkdir("research.local", { recursive: true });
+      await claimHoldout(resolve("research.local/holdouts.json"), selection);
+      const held = { baseline: [], candidate: [] };
+      for (const item of history) {
+        const base = buildDecisionSeries(item.candles, optionsFor(item));
+        const replacement = selected === "flow-score-50" ? 0.5 : selected === "flow-score-100" ? 1 : null;
+        const variant = replacement ? buildDecisionSeries(item.candles, optionsFor(item, replacement)) : base;
+        held.baseline.push(...windowTrades(replay(item, item.candles, base, "baseline"), bounds.holdoutStart, bounds.end));
+        held.candidate.push(...windowTrades(replay(item, item.candles, variant, selected), bounds.holdoutStart, bounds.end));
       }
-      process.stdout.write(
-        `  ${symbol.padEnd(14)} ${String(candles.length).padStart(5)} bars / ${String(decisions.length).padStart(5)} decisions\n`,
-      );
+      holdout = compare(held.candidate, held.baseline, bounds.holdoutStart, bounds.end, ASSET_CLASSES);
+      await writeJson(join(out, "holdout-trades.json"), held, true);
     }
-
-    const qualified = Object.fromEntries(
-      names.filter((name) => name !== "baseline").map((name) => [name, true]),
-    );
-    for (const window of windows.filter((item) => !item.locked)) {
-      const bucket = results[window.name];
-      const baseline = aggregate(bucket.all.baseline);
-      console.log(`\n=== ${window.name} (${RANGE}/${INTERVAL}, rolling 60d) ===`);
-      console.log(row("baseline", baseline));
-      for (const name of Object.keys(qualified)) {
-        const metrics = aggregate(bucket.all[name]);
-        const classesNonNegative = Object.values(bucket.byClass).every(
-          (classBucket) => aggregate(classBucket[name]).expectancy >= 0,
-        );
-        const passed = passesMetrics(metrics, baseline) && classesNonNegative;
-        qualified[name] &&= passed;
-        console.log(`${row(name, metrics)}  ${passed ? "PASS" : "FAIL"}`);
-      }
-    }
-
-    const holdout = results.holdout;
-    const holdoutBaseline = aggregate(holdout.all.baseline);
-    console.log("\n=== locked final holdout ===");
-    console.log(row("baseline", holdoutBaseline));
-    const finalists = [];
-    for (const name of Object.keys(qualified)) {
-      const metrics = aggregate(holdout.all[name]);
-      const classesNonNegative = Object.values(holdout.byClass).every(
-        (classBucket) => aggregate(classBucket[name]).expectancy >= 0,
-      );
-      const passed =
-        qualified[name] &&
-        passesMetrics(metrics, holdoutBaseline) &&
-        classesNonNegative;
-      if (passed) finalists.push(name);
-      console.log(
-        `${row(name, metrics)}  ${qualified[name] ? (passed ? "PASS" : "FAIL") : "NOT QUALIFIED"}`,
-      );
-    }
-    for (const [assetClass, bucket] of Object.entries(holdout.byClass)) {
-      console.log(`\n[${assetClass} holdout]`);
-      console.log(row("baseline", aggregate(bucket.baseline)));
-      for (const name of Object.keys(qualified)) {
-        console.log(row(name, aggregate(bucket[name])));
-      }
-    }
-    console.log(
-      finalists.length > 0
-        ? `\nengine-v6 candidates: ${finalists.join(", ")}`
-        : "\nengine-v6 candidates: none; remain on engine-v5",
-    );
-  } finally {
-    await server.close();
-  }
+    const actualReport = journalAuditReport(journal, actual);
+    await writeJson(join(out, "journal-audit.json"), actualReport, true);
+    await writeJson(join(out, "development-trades.json"), all, true);
+    await writeJson(join(out, "holdout.json"), holdout, true);
+    const candidateConfig = { productionEnabled: false, candidate: selected, stage: holdout.status === "passed" ? "forward-comparison-required" : "unproven", engineVersion: ENGINE_VERSION, protocolHash: digest(protocol) };
+    await writeJson(join(out, "candidate.json"), candidateConfig, true);
+    const summary = [
+      "# Engine research report", "", `Baseline: ${ENGINE_VERSION}, scale-out 50/30/20, signal episodes. Window: ${from} to ${to} (UTC).`,
+      `Journal: ${journal.source}; ${actual.trades.length} valid completed trades, ${actual.rejected.length} rejected.`,
+      `Universe: ${universe.length} symbols across all five classes; ${errors.length} data failures.`, "",
+      "| Candidate | Status | Net WR | Net R/trade | 2x cost R/trade |", "|---|---|---:|---:|---:|",
+      `| baseline | reference | ${aggregate(baseline).winRate.toFixed(2)}% | ${aggregate(baseline).expectancy.toFixed(3)} | ${aggregate(baseline, { costMultiplier: 2 }).expectancy.toFixed(3)} |`,
+      ...Object.entries(development).map(([name, result]) => `| ${name} | ${result.status} | ${result.normal.candidate.winRate.toFixed(2)}% | ${result.normal.candidate.expectancy.toFixed(3)} | ${result.stressed.candidate.expectancy.toFixed(3)} |`), "",
+      `Selected: ${selected ?? "none"}. Holdout: ${holdout.status}. Production stays unchanged.`, "",
+      "Limits: current-universe survivorship; historical Yahoo revisions; OHLC cannot recover intrabar ordering; excursions are upper bounds; equal-risk basket DD is not account DD. Estimated costs exclude borrow, taxes and funding. Session windows approximate historical Yahoo payloads. Cron feed delay, schedule and reversals are not exactly reproduced by next-open execution. Missing original entry snapshots/flow remain unavailable. No forward result exists yet.",
+      "", "See journal-audit.json for actual results by engine version, class, direction, regime, grade and exit reason; development.json for paired weekly bootstrap, folds, coverage and normal/double-cost comparisons.", "",
+    ].join("\n");
+    await writeFile(join(out, "report.md"), summary);
+    console.log(summary);
+    return { out, selected, holdout: holdout.status };
+  } finally { await server.close(); }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => { console.error(error.message); process.exitCode = 1; });
+}

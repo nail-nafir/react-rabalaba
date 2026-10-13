@@ -1,10 +1,10 @@
 export type EventImpact = 'high' | 'medium' | 'low';
 export type EventAssetRelevance = 'stocks' | 'crypto' | 'commodities';
-export type CalendarSource = 'bls' | 'bea' | 'fed' | 'yahoo';
+export type CalendarSource = 'fed' | 'yahoo';
 
 export interface CalendarSourceState {
   source: CalendarSource;
-  status: 'ok' | 'partial' | 'unavailable';
+  status: 'ok' | 'unavailable';
   stale: boolean;
   checkedAt: number | null;
 }
@@ -12,11 +12,6 @@ export interface CalendarSourceState {
 export interface CalendarData {
   events: CalendarEvent[];
   sources: CalendarSourceState[];
-}
-
-export interface CalendarSourceResponse {
-  events: CalendarEvent[];
-  checkedAt: number;
 }
 
 export interface CalendarEvent {

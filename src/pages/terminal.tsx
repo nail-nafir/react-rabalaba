@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useDisclaimer } from "@/features/auth/hooks/use-disclaimer";
+import { PageHelp } from "@/components/shared/page-help";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 import {
@@ -34,7 +35,7 @@ function JournalAccessState({ resolving }: { resolving: boolean }) {
         aria-busy="true"
         aria-hidden="true"
       >
-        <CardContent className="flex min-h-72 flex-col items-center justify-center gap-5 p-6">
+        <CardContent className="flex min-h-56 flex-col items-center justify-center gap-5 p-6">
           <Skeleton className="size-14 rounded-xl" />
           <div className="flex w-full max-w-md flex-col items-center gap-2">
             <Skeleton className="h-6 w-48" />
@@ -50,7 +51,7 @@ function JournalAccessState({ resolving }: { resolving: boolean }) {
   return (
     <Card className="border border-border">
       <CardContent className="p-0">
-        <Empty className="min-h-72 border-0">
+        <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <LockKeyhole aria-hidden="true" />
@@ -63,11 +64,7 @@ function JournalAccessState({ resolving }: { resolving: boolean }) {
           <EmptyContent>
             <LicenseAccessDialog
               trigger={
-                <Button
-                  type="button"
-                  size="lg"
-                  className="font-bold text-xs"
-                >
+                <Button type="button" size="lg">
                   <Key data-icon="inline-start" />
                   {t("terminal.access_dialog_unlock_btn")}
                 </Button>
@@ -130,11 +127,23 @@ export default function TerminalPage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6">
         <div className="flex flex-row items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold uppercase tracking-tight text-foreground">
-              {t("terminal.title")}
-            </h1>
+            <div className="flex w-fit max-w-full items-start gap-2">
+              <h1 className="min-w-0 text-3xl font-bold uppercase tracking-tight text-foreground">
+                {t("terminal.title")}
+              </h1>
+              <PageHelp
+                title={t("terminal.title")}
+                description={t("page_help.terminal")}
+              />
+            </div>
+            {/* The subtitle names what this tab is, so Pasar and Jurnal never
+                read as two copies of the same list. */}
             <p className="mt-1 text-sm text-muted-foreground">
-              {t("terminal.subtitle")}
+              {t(
+                activeView === "journal"
+                  ? "terminal.subtitle_journal"
+                  : "terminal.subtitle_market",
+              )}
             </p>
           </div>
 

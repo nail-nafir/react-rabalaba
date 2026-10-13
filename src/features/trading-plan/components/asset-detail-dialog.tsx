@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useMemo, useRef, useState } from "react";
 import { formatPrice } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { useFavorites } from "@/features/market/hooks/use-favorites";
@@ -31,7 +31,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Card,
@@ -86,10 +85,9 @@ import {
   Loader2,
   Star,
   Share2,
-  RotateCw,
+  RefreshCw,
   ArrowUp,
   ArrowDown,
-  CloudOff,
 } from "lucide-react";
 import type { JournalSignalStateRow } from "@/types/journal";
 
@@ -126,25 +124,26 @@ function AssetDetailErrorContent({
   const { t } = useTranslation();
 
   return (
-    <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto border border-border text-foreground">
+    // The grid, gap, padding and scroll its own DialogContent used to give it.
+    <div className="grid min-h-0 gap-4 overflow-y-auto p-4">
       <DialogHeader>
         <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-          {t("dialog.market_error_title")}
+          {t("common.load_error_title")}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
-          {t("dialog.market_error_desc")}
+          {t("common.load_error_description")}
         </DialogDescription>
       </DialogHeader>
 
-      <Empty role="alert" className="min-h-56 border-0">
+      <Empty role="alert">
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <CloudOff aria-hidden="true" />
+            <AlertCircle aria-hidden="true" />
           </EmptyMedia>
-          <EmptyTitle>{t("dialog.market_error_title")}</EmptyTitle>
-          <EmptyDescription>{t("dialog.market_error_desc")}</EmptyDescription>
+          <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
+          <EmptyDescription>{t("common.load_error_description")}</EmptyDescription>
         </EmptyHeader>
-        <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+        <EmptyContent>
           <Button
             type="button"
             size="lg"
@@ -152,47 +151,55 @@ function AssetDetailErrorContent({
             disabled={isRetrying}
             aria-busy={isRetrying}
           >
-            <RotateCw data-icon="inline-start" />
+            <RefreshCw data-icon="inline-start" />
             {t("common.retry")}
           </Button>
-          <DialogClose asChild>
-            <Button type="button" size="lg" variant="secondary">
-              {t("dialog.close_action")}
-            </Button>
-          </DialogClose>
         </EmptyContent>
       </Empty>
-    </DialogContent>
+    </div>
   );
 }
 
 interface AssetDetailDialogProps {
-  symbol: string;
+  /** Last opened symbol, kept while the dialog animates out. */
+  symbol?: string;
   signalState?: JournalSignalStateRow;
   signalStateAvailable: boolean;
   signalStateFetching: boolean;
-  trigger: ReactElement;
+  /** Driven by `/terminal/market?symbol=<SYMBOL>` (see `useDialogParam`). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * Root and Content stay mounted so Radix can play the exit animation; the body
+ * (queries, chart) renders inside Content, so a closed dialog fetches nothing.
+ */
 export function AssetDetailDialog({
+  open,
+  onOpenChange,
   symbol,
-  signalState,
-  signalStateAvailable,
-  signalStateFetching,
-  trigger,
+  ...content
 }: AssetDetailDialogProps) {
-  const [open, setOpen] = useState(false);
+  // Sensei only gets this asset through its button, never on open.
+  const handingOffToSensei = useRef(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      {open && (
-        <AssetDetailDialogContent
-          symbol={symbol}
-          signalState={signalState}
-          signalStateAvailable={signalStateAvailable}
-          signalStateFetching={signalStateFetching}
-        />
-      )}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
+        onCloseAutoFocus={(event) => {
+          if (handingOffToSensei.current) event.preventDefault();
+          handingOffToSensei.current = false;
+        }}
+      >
+        {symbol && (
+          <AssetDetailDialogContent
+            symbol={symbol}
+            handingOffToSenseiRef={handingOffToSensei}
+            {...content}
+          />
+        )}
+      </DialogContent>
     </Dialog>
   );
 }
@@ -202,7 +209,11 @@ function AssetDetailDialogContent({
   signalState,
   signalStateAvailable,
   signalStateFetching,
-}: Omit<AssetDetailDialogProps, "trigger">) {
+  handingOffToSenseiRef,
+}: Omit<AssetDetailDialogProps, "open" | "onOpenChange" | "symbol"> & {
+  symbol: string;
+  handingOffToSenseiRef: { current: boolean };
+}) {
   const { t, i18n } = useTranslation();
   const dispatch = useAppDispatch();
   const { hasAccess } = usePremiumAccess();
@@ -341,12 +352,6 @@ function AssetDetailDialogContent({
     usContext,
   ]);
 
-  useEffect(() => {
-    if (researchContext) {
-      dispatch(uiActions.setResearchContext(researchContext));
-    }
-  }, [dispatch, researchContext]);
-
   const { isSharing, shareSetup } = useShareSetup();
   const [showEma20, setShowEma20] = useState(true);
   const [showEma50, setShowEma50] = useState(true);
@@ -374,6 +379,7 @@ function AssetDetailDialogContent({
 
   const handleAskSensei = () => {
     if (researchContext) {
+      handingOffToSenseiRef.current = true;
       dispatch(uiActions.openResearchCopilot(researchContext));
     }
   };
@@ -388,7 +394,7 @@ function AssetDetailDialogContent({
   }
 
   return (
-    <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
+    <>
       <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
         <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           {querySymbol}
@@ -465,6 +471,7 @@ function AssetDetailDialogContent({
                     toast.success(t("toasts.market.favorite_added"));
                   }
                 }}
+                aria-pressed={isStarred}
                 aria-label={t(
                   isStarred
                     ? "dialog.favorite_remove_label"
@@ -477,6 +484,7 @@ function AssetDetailDialogContent({
                 )}
               >
                 <Star
+                  aria-hidden="true"
                   className={cn(
                     "h-3.5 w-3.5 transition-all duration-200",
                     isStarred
@@ -495,7 +503,10 @@ function AssetDetailDialogContent({
                     aria-label={t("dialog.favorite_add_label")}
                     title={t("dialog.favorite_add_label")}
                   >
-                    <Star className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <Star
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 text-muted-foreground/60"
+                    />
                   </Button>
                 }
               />
@@ -548,8 +559,12 @@ function AssetDetailDialogContent({
 
       <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
         {chartLoading ? (
-          <div className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
+          // Loading lives here, not in the top bar: the dialog opened in place.
+          <div
+            role="status"
+            className="flex items-center justify-center py-20 gap-2 text-sm text-muted-foreground"
+          >
+            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
             {t("dialog.loading")}
           </div>
         ) : outlook ? (
@@ -626,7 +641,7 @@ function AssetDetailDialogContent({
               {/* Custom SVG candlestick visual trade setup */}
               {outlook.signal === "neutral" || !tradingPlan || !asset ? (
                 signalStatus === "unavailable" ? (
-                  <Empty role="alert" className="min-h-40 border-0 p-2">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <AlertCircle aria-hidden="true" />
@@ -653,13 +668,13 @@ function AssetDetailDialogContent({
                           ]);
                         }}
                       >
-                        <RotateCw data-icon="inline-start" />
+                        <RefreshCw data-icon="inline-start" />
                         {t("common.retry")}
                       </Button>
                     </EmptyContent>
                   </Empty>
                 ) : signalStatus === "pending" || signalStatus === "blocked" ? (
-                  <Empty className="min-h-40 border-0 p-2">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <Target aria-hidden="true" />
@@ -690,12 +705,13 @@ function AssetDetailDialogContent({
                     </CardContent>
                   </Card>
                 ) : (
-                  <Empty className="min-h-40 border-0 p-2">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <Target aria-hidden="true" />
                       </EmptyMedia>
                       <EmptyTitle>{t("dialog.no_setup")}</EmptyTitle>
+                      <EmptyDescription>{t("dialog.no_setup_desc")}</EmptyDescription>
                     </EmptyHeader>
                   </Empty>
                 )
@@ -768,12 +784,15 @@ function AssetDetailDialogContent({
                 </Card>
               ) : backtestError ? (
                 <Card className="border border-border bg-muted/50">
-                  <Empty role="alert" className="min-h-40 border-0 p-4">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <AlertCircle aria-hidden="true" />
                       </EmptyMedia>
                       <EmptyTitle>{t("dialog.bt_error")}</EmptyTitle>
+                      <EmptyDescription>
+                        {t("dialog.bt_error_desc")}
+                      </EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
                       <Button
@@ -782,7 +801,7 @@ function AssetDetailDialogContent({
                         disabled={backtestFetching}
                         aria-busy={backtestFetching}
                       >
-                        <RotateCw data-icon="inline-start" />
+                        <RefreshCw data-icon="inline-start" />
                         {t("common.retry")}
                       </Button>
                     </EmptyContent>
@@ -1275,7 +1294,7 @@ function AssetDetailDialogContent({
                   </Card>
                 ) : smartMoneyUnavailable && asset?.assetType === "crypto" ? (
                   <Card className="border border-border bg-muted/50">
-                    <Empty role="alert" className="min-h-40 border-0 p-4">
+                    <Empty role="alert">
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <AlertCircle aria-hidden="true" />
@@ -1292,7 +1311,7 @@ function AssetDetailDialogContent({
                           disabled={isRetryingSmartMoney}
                           aria-busy={isRetryingSmartMoney}
                         >
-                          <RotateCw data-icon="inline-start" />
+                          <RefreshCw data-icon="inline-start" />
                           {t("dialog.sm_retry")}
                         </Button>
                       </EmptyContent>
@@ -1612,17 +1631,20 @@ function AssetDetailDialogContent({
             </div>
           </>
         ) : (
-          <Empty className="min-h-56 border-0">
+          <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Target aria-hidden="true" />
               </EmptyMedia>
               <EmptyTitle>{t("dialog.not_enough_data")}</EmptyTitle>
+              <EmptyDescription>
+                {t("dialog.not_enough_data_desc")}
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
       </div>
-    </DialogContent>
+    </>
   );
 }
 

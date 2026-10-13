@@ -47,4 +47,11 @@ export default defineConfig([
       'react-hooks/set-state-in-effect': 'off',
     },
   },
+  {
+    files: ['src/features/follow-trade/components/follow-history-table.tsx'],
+    rules: {
+      // Latest-value refs let the memoized columns read live prices without being rebuilt.
+      'react-hooks/refs': 'off',
+    },
+  },
 ])

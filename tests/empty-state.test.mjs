@@ -54,3 +54,57 @@ test("empty states use the shadcn primitive and locales stay balanced", () => {
   );
   assert.deepEqual(shape(en), shape(id), "EN/ID locale structures differ");
 });
+
+test("every empty state follows the shared recipe", () => {
+  // The Sensei welcome is a left aligned intro with prompt cards, and the
+  // compact Sentimen Pasar error must fit its card. Everything else matches.
+  const exceptions = [/chat\.empty_title/, /market\.data_offline/];
+  const allowedClasses = new Set([
+    "min-h-72",
+    "min-h-[80vh]",
+    "h-full",
+    "md:col-span-3",
+  ]);
+  const blocks = sourceFiles(srcRoot)
+    .filter((file) => !file.includes(join("components", "ui")))
+    .flatMap((file) =>
+      [...readFileSync(file, "utf8").matchAll(/<Empty(?=[\s>])[\s\S]*?<\/Empty>/g)].map(
+        ([block]) => ({ file, block }),
+      ),
+    )
+    .filter(({ block }) => !exceptions.some((pattern) => pattern.test(block)));
+
+  assert.ok(blocks.length > 40, `only ${blocks.length} empty states found`);
+  for (const { file, block } of blocks) {
+    const where = `${file}: ${block.slice(0, 90)}`;
+    const openTag = block.match(/^<Empty[^>]*>/)[0];
+    const classes = openTag.match(/className="([^"]*)"/)?.[1].split(/\s+/) ?? [];
+    for (const token of classes.filter(Boolean)) {
+      assert.ok(allowedClasses.has(token), `${where} overrides ${token}`);
+      // The taller box only reserves a journal chart's height.
+      if (token === "min-h-72") {
+        assert.match(file, /journal-dashboard\.tsx$/, `${where} min-h-72`);
+      }
+    }
+    assert.doesNotMatch(
+      block,
+      /<Empty(?:Header|Media|Title|Description|Content)\b[^>]*className=/,
+      `${where} restyles a primitive`,
+    );
+    const media = block.match(/<EmptyMedia variant="icon">([\s\S]*?)<\/EmptyMedia>/)?.[1];
+    assert.ok(media, `${where} needs an icon header`);
+    assert.doesNotMatch(media, /className=/, `${where} resizes its icon`);
+    assert.match(block, /<EmptyTitle>/, `${where} needs a title`);
+    assert.match(block, /<EmptyDescription>/, `${where} needs a description`);
+    if (/role="alert"/.test(openTag)) {
+      assert.match(media, /<AlertCircle aria-hidden="true" \/>/, `${where} error icon`);
+    }
+    const content = block.match(/<EmptyContent>([\s\S]*?)<\/EmptyContent>/)?.[1] ?? "";
+    for (const [action] of content.matchAll(/<(Button|Link)\b[\s\S]*?<\/\1>/g)) {
+      assert.match(action, /data-icon="inline-start"/, `${where} action without icon`);
+      if (action.includes("common.retry")) {
+        assert.match(action, /<RefreshCw data-icon="inline-start" \/>/, `${where} retry icon`);
+      }
+    }
+  }
+});

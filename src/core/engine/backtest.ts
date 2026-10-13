@@ -1,4 +1,4 @@
-import type { AssetType, SignalDirection, SignalTier } from "@/types/asset";
+import type { AssetType, SignalDirection, SignalTier, TradingPlan } from "@/types/asset";
 import type { MarketRegime } from "@/types/market";
 import { computeSignal } from "./signals";
 import type { Outlook } from "@/types/engine";
@@ -8,10 +8,10 @@ import {
   deriveCandleTrendState,
   deriveTrendAnchors,
   resampleCandles,
-  resampleCandlesToDaily,
+  intervalSeconds,
 } from "@/core/market/candles";
 import type { NormalizedYahooCandle } from "@/core/market/candles";
-import { calculateEMASeries } from "./indicators";
+import { equityFlow, flowAtDecision, entryDiagnostics, sessionStartIndices, type ResearchFlow } from "./research";
 import {
   TIMEFRAME_PRESETS,
   HIGHER_TIMEFRAME_FACTOR,
@@ -65,6 +65,7 @@ export interface BacktestTrade {
   regime: MarketRegime;
   /** Signal tier at entry — enables per-tier calibration. */
   tier: SignalTier;
+  research?: ReturnType<typeof entryDiagnostics>;
 }
 
 export interface RegimeStat {
@@ -97,6 +98,10 @@ export interface SignalDecision {
     ema2001h?: number;
     ema2004h?: number;
     ema50Daily?: number;
+    decisionClosedAt: number;
+    windowStart: number;
+    candleCount: number;
+    flow: ResearchFlow | null;
   };
 }
 
@@ -105,6 +110,8 @@ export interface BacktestEntryFilterArgs {
   barIndex: number;
   timestamp: number;
   decision: SignalDecision;
+  /** Only the executable open and the already-known plan, never future high/low. */
+  plan: TradingPlan;
 }
 
 export interface BacktestOptions {
@@ -115,8 +122,14 @@ export interface BacktestOptions {
   costMultiplier?: number;
   /** Bound signal inputs to the same rolling history available in production. */
   lookbackSeconds?: number;
+  /** Yahoo equity 60d contains trading sessions, not 60 calendar days. */
+  lookbackSessions?: number;
+  /** Yahoo groups its range by exchange date; FX may start the prior UTC day. */
+  sessionTimeZone?: string;
   /** Derive research-only 1H/4H/daily EMA fields from the same candle payload. */
   includeResearchFeatures?: boolean;
+  researchFlow?: (decisionClosedAt: number) => ResearchFlow | null;
+  volumeReplacement?: 0.5 | 1;
   /** v5 default: a closed direction cannot re-enter before neutral/opposite. */
   signalEpisodes?: boolean;
   entryFilter?: (args: BacktestEntryFilterArgs) => boolean;
@@ -152,6 +165,7 @@ interface OpenTrade {
   weightedExit: number;
   /** fee + slippage per side, as a fraction of price. */
   costRate: number;
+  research?: ReturnType<typeof entryDiagnostics>;
 }
 
 const EMPTY_REGIME_STAT: RegimeStat = { trades: 0, winRate: 0, expectancy: 0 };
@@ -276,6 +290,7 @@ function stepBar(
     return null;
   }
 
+  const previousLeg = trade.nextLeg;
   while (trade.nextLeg < trade.legs.length) {
     const leg = trade.legs[trade.nextLeg];
     const tpHit =
@@ -307,6 +322,11 @@ function stepBar(
     }
   }
 
+  if (exitMode === "scaleOut" && trade.nextLeg > previousLeg &&
+    (trade.direction === "long" ? bar.close <= trade.stop : bar.close >= trade.stop)) {
+    closeRemaining(trade, trade.stop);
+    return trade.stop === trade.entryPrice ? "breakeven_stop" : "progressive_stop";
+  }
   return null;
 }
 
@@ -331,6 +351,7 @@ function finalize(
     r: trade.realizedR,
     regime: trade.regime,
     tier: trade.tier,
+    ...(trade.research ? { research: trade.research } : {}),
   };
 }
 
@@ -345,39 +366,38 @@ export function buildDecisionSeries(
     | "assetType"
     | "timeframe"
     | "lookbackSeconds"
+    | "lookbackSessions"
+    | "sessionTimeZone"
     | "includeResearchFeatures"
+    | "researchFlow"
+    | "volumeReplacement"
   > = {},
 ): SignalDecision[] {
   const {
     assetType,
     timeframe = "swing",
     lookbackSeconds,
+    lookbackSessions,
+    sessionTimeZone = "UTC",
     includeResearchFeatures = false,
+    researchFlow,
+    volumeReplacement,
   } = options;
   const warmup = TIMEFRAME_PRESETS[timeframe].signalProfile.minCandles;
-  const htfCandles = includeResearchFeatures
-    ? resampleCandles(candles, HIGHER_TIMEFRAME_FACTOR[timeframe], {
-        includeTrailingPartial: false,
-      })
-    : [];
-  const dailyCandles = includeResearchFeatures
-    ? resampleCandlesToDaily(candles)
-    : [];
-  const htfEma200 = calculateEMASeries(
-    htfCandles.map((candle) => candle.close),
-    200,
-  );
-  const dailyEma50 = calculateEMASeries(
-    dailyCandles.map((candle) => candle.close),
-    50,
-  );
-  let htfIndex = -1;
-  let dailyIndex = -1;
+  if (lookbackSessions != null && (!Number.isInteger(lookbackSessions) || lookbackSessions < 1 || lookbackSeconds != null)) {
+    throw new Error("Choose one positive history window: sessions or seconds");
+  }
+  const sessionStarts = lookbackSessions == null ? [] : sessionStartIndices(candles, sessionTimeZone);
+  let sessionIndex = 0;
   let windowStart = 0;
   let previousSignal: SignalDirection = "neutral";
   const decisions: SignalDecision[] = [];
 
   for (let i = warmup; i < candles.length - 1; i++) {
+    if (lookbackSessions != null) {
+      while (sessionIndex + 1 < sessionStarts.length && sessionStarts[sessionIndex + 1] <= i) sessionIndex++;
+      windowStart = sessionStarts[Math.max(0, sessionIndex - lookbackSessions + 1)];
+    }
     if (lookbackSeconds != null) {
       const cutoff = candles[i].timestamp - lookbackSeconds;
       while (
@@ -395,14 +415,19 @@ export function buildDecisionSeries(
         includeTrailingPartial: false,
       }),
     );
+    const anchors = deriveTrendAnchors(decisionCandles, HIGHER_TIMEFRAME_FACTOR[timeframe]);
+    const decisionClosedAt = candles[i].timestamp + (intervalSeconds(TIMEFRAME_PRESETS[timeframe].interval) ?? 3600);
+    const flow = includeResearchFeatures || volumeReplacement != null
+      ? flowAtDecision(researchFlow ? researchFlow(decisionClosedAt) : equityFlow(decisionCandles, assetType), decisionClosedAt)
+      : null;
     const outlook = computeSignal({
       ...series,
       assetType,
       timeframe,
       higherTimeframeTrend: higherTimeframe.trend,
       higherTimeframeReady: higherTimeframe.ready,
-      ...deriveTrendAnchors(decisionCandles, HIGHER_TIMEFRAME_FACTOR[timeframe]),
-    });
+      ...anchors,
+    }, flow && volumeReplacement != null ? { volumeScore: flow.score, volumeReplacement } : undefined);
     const decision: SignalDecision = {
       barIndex: i,
       timestamp: candles[i].timestamp,
@@ -410,26 +435,18 @@ export function buildDecisionSeries(
       previousSignal,
     };
     if (includeResearchFeatures) {
-      while (
-        htfIndex + 1 < htfCandles.length &&
-        htfCandles[htfIndex + 1].timestamp <= candles[i].timestamp
-      ) {
-        htfIndex += 1;
-      }
-      while (
-        dailyIndex + 1 < dailyCandles.length &&
-        dailyCandles[dailyIndex + 1].timestamp <= candles[i].timestamp
-      ) {
-        dailyIndex += 1;
-      }
       decision.research = {
         close: candles[i].close,
         ema2001h:
           decisionCandles.length >= 200
             ? outlook.indicators.ema200
             : undefined,
-        ema2004h: htfIndex >= 199 ? htfEma200[htfIndex] : undefined,
-        ema50Daily: dailyIndex >= 49 ? dailyEma50[dailyIndex] : undefined,
+        ema2004h: anchors.higherTimeframeEma200,
+        ema50Daily: anchors.dailyEma50,
+        decisionClosedAt,
+        windowStart: decisionCandles[0].timestamp,
+        candleCount: decisionCandles.length,
+        flow,
       };
     }
     decisions.push(decision);
@@ -492,21 +509,14 @@ export function replayDecisionSeries(
     if (
       !open &&
       outlook.signal !== "neutral" &&
-      (!signalEpisodes || blockedSignal !== outlook.signal) &&
-      (!entryFilter ||
-        entryFilter({
-          outlook,
-          barIndex: i,
-          timestamp: candles[i].timestamp,
-          decision,
-        }))
+      (!signalEpisodes || blockedSignal !== outlook.signal)
     ) {
       const plan = computeTradingPlan(
         outlook,
         nextBar.open,
         assetType ?? "us-stock",
       );
-      if (plan) {
+      if (plan && (!entryFilter || entryFilter({ outlook, barIndex: i, timestamp: candles[i].timestamp, decision, plan }))) {
         const risk = Math.abs(nextBar.open - plan.stopLoss);
         if (risk <= 0) continue;
         const allTps = [
@@ -562,6 +572,7 @@ export function replayDecisionSeries(
           grossRealizedR: 0,
           weightedExit: 0,
           costRate,
+          ...(decision.research ? { research: entryDiagnostics(outlook, plan) } : {}),
         };
       }
     }

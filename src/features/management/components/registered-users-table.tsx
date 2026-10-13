@@ -1,14 +1,11 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
   type Column,
+  type RowData,
 } from "@tanstack/react-table";
 import {
   Plus,
@@ -19,6 +16,7 @@ import {
   ArrowDown,
   Trash2,
   Pencil,
+  RefreshCw,
 } from "lucide-react";
 import { AdminUserDialog } from "./admin-user-dialog";
 import { useAuth } from "@/features/auth/hooks/use-auth";
@@ -65,6 +63,7 @@ import {
 import { useAdminUsers } from "@/features/management/hooks/use-admin-users";
 import type { AdminUserRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -73,7 +72,7 @@ import { toast } from "sonner";
 type TierFilter = "all" | "premium" | "trial" | "free";
 type RoleFilter = "all" | "member" | "admin" | "owner";
 
-function SortIcon<T>({ column }: { column: Column<T, unknown> }) {
+function SortIcon<T extends RowData>({ column }: { column: Column<DataTableFeatures, T, unknown> }) {
   const isSorted = column.getIsSorted();
   if (isSorted === "asc")
     return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
@@ -82,12 +81,12 @@ function SortIcon<T>({ column }: { column: Column<T, unknown> }) {
   return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />;
 }
 
-function SortButton<T>({
+function SortButton<T extends RowData>({
   label,
   column,
 }: {
   label: string;
-  column: Column<T, unknown>;
+  column: Column<DataTableFeatures, T, unknown>;
 }) {
   return (
     <Button
@@ -269,7 +268,7 @@ export function RegisteredUsersTable() {
     });
   }, [users, tierFilter, roleFilter, search]);
 
-  const columns = useMemo<ColumnDef<AdminUserRow>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, AdminUserRow>[]>(
     () => [
       {
         accessorKey: "created_at",
@@ -456,15 +455,11 @@ export function RegisteredUsersTable() {
     [t, deleteUser, currentUserEmail],
   );
 
-  const table = useReactTable({
+  const table = useAppTable({
     data: filtered,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -561,7 +556,7 @@ export function RegisteredUsersTable() {
               ) : isErrorUsers && users.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={columns.length} className="h-40 text-center">
-                    <Empty role="alert" className="min-h-40 border-0">
+                    <Empty role="alert">
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <AlertCircle aria-hidden="true" />
@@ -576,6 +571,7 @@ export function RegisteredUsersTable() {
                           size="lg"
                           onClick={() => void refetchUsers()}
                         >
+                          <RefreshCw data-icon="inline-start" />
                           {t("common.retry")}
                         </Button>
                       </EmptyContent>
@@ -588,7 +584,7 @@ export function RegisteredUsersTable() {
                     colSpan={columns.length}
                     className="h-40 text-center"
                   >
-                    <Empty className="min-h-40 border-0">
+                    <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <Inbox aria-hidden="true" />
@@ -606,7 +602,7 @@ export function RegisteredUsersTable() {
               ) : (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,

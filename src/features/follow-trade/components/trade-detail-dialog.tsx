@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMarketData } from "@/services/queries/use-market-data";
 import { usePeriodCandles } from "@/services/queries/use-period-candles";
@@ -12,7 +12,10 @@ import {
   fitTradeWindowCandles,
 } from "@/features/follow-trade/model/trade-chart-window";
 import { LifecycleBadge, TpProgress } from "./follow-status";
-import { tradeOutcomeLabel } from "@/features/follow-trade/model/follow-outcome";
+import {
+  closeMarkerLabel,
+  tradeOutcomeLabel,
+} from "@/features/follow-trade/model/follow-outcome";
 import {
   formatPrice,
   formatRatio,
@@ -39,7 +42,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -50,6 +52,7 @@ import {
   Loader2,
   Share2,
   Target,
+  RefreshCw,
 } from "lucide-react";
 import {
   Empty,
@@ -68,8 +71,11 @@ import type { ChartMarker } from "@/features/trading-plan/model/trade-setup-mode
 const EMPTY_SIBLINGS: FollowedTrade[] = [];
 
 export interface TradeDetailDialogProps {
-  trade: FollowedTrade;
-  trigger: ReactElement;
+  /** Last opened trade, kept while the dialog animates out. */
+  trade?: FollowedTrade;
+  /** Driven by `/terminal/journal?trade=<id>` (see `useDialogParam`). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   /**
    * Same-batch trade list used to derive a stable, human-readable per-symbol
    * sequence number for the dialog header (e.g. "#3" = 3rd SOL-USD trade by
@@ -99,16 +105,33 @@ function buildPlanFromTrade(trade: FollowedTrade): TradingPlan {
   };
 }
 
+/**
+ * Root and Content stay mounted so Radix can play the exit animation; the body
+ * (candles, chart) renders inside Content, so a closed dialog fetches nothing.
+ */
 export function TradeDetailDialog({
   trade,
-  trigger,
   siblings = EMPTY_SIBLINGS,
+  open,
+  onOpenChange,
 }: TradeDetailDialogProps) {
-  const [open, setOpen] = useState(false);
+  const handingOffToSensei = useRef(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      {open && <TradeDetailReadyDialog trade={trade} siblings={siblings} />}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden"
+        onCloseAutoFocus={(event) => {
+          if (handingOffToSensei.current) event.preventDefault();
+          handingOffToSensei.current = false;
+        }}
+      >
+        {trade && (
+          <TradeDetailReadyDialog
+            trade={trade}
+            siblings={siblings}
+            handingOffToSenseiRef={handingOffToSensei}
+          />
+        )}
+      </DialogContent>
     </Dialog>
   );
 }
@@ -116,8 +139,10 @@ export function TradeDetailDialog({
 function TradeDetailReadyDialog({
   trade,
   siblings = EMPTY_SIBLINGS,
+  handingOffToSenseiRef,
 }: Pick<TradeDetailDialogProps, "siblings"> & {
   trade: FollowedTrade;
+  handingOffToSenseiRef: { current: boolean };
 }) {
   const { t, i18n } = useTranslation();
   const dispatch = useAppDispatch();
@@ -209,8 +234,15 @@ function TradeDetailReadyDialog({
     return computePnl(trade, displayPrice);
   }, [trade, displayPrice]);
 
+  // Running protection is replayed live; closed rows use their persisted exit.
+  const progress = useMemo(
+    () => deriveFollowProgress(trade, livePrice, candles),
+    [candles, livePrice, trade],
+  );
+
   // Entry/close annotations for the chart: always show entry; add the close
-  // marker only when the trade is closed, colored by realized outcome.
+  // marker only when the trade is closed, colored by realized outcome and
+  // labeled by how the position left (e.g. "SL TP1" after a v7 TP2).
   // Candle timestamps are in SECONDS (Yahoo), but followedAt/closedAt are ms
   // (Date.now()), so convert to seconds to keep the marker on the same axis.
   const markers = useMemo<ChartMarker[]>(() => {
@@ -230,10 +262,11 @@ function TradeDetailReadyDialog({
         timestamp: toSec(trade.closedAt),
         price: trade.closePrice,
         outcome,
+        label: closeMarkerLabel(t, progress.exitReason, progress.tpReached),
       });
     }
     return list;
-  }, [trade, isClosed]);
+  }, [trade, isClosed, progress, t]);
 
   const pnlTone = pnl.r > 0 ? "profit" : pnl.r < 0 ? "loss" : "flat";
   const pnlColor =
@@ -243,11 +276,6 @@ function TradeDetailReadyDialog({
         ? PALETTE.negative
         : PALETTE.neutral;
   const sign = (v: number) => (v >= 0 ? "+" : "");
-  // Running protection is replayed live; closed rows use their persisted exit.
-  const progress = useMemo(
-    () => deriveFollowProgress(trade, livePrice, candles),
-    [candles, livePrice, trade],
-  );
 
   const researchContext = useMemo<TerminalResearchContext>(
     () =>
@@ -273,11 +301,8 @@ function TradeDetailReadyDialog({
     ],
   );
 
-  useEffect(() => {
-    dispatch(uiActions.setResearchContext(researchContext));
-  }, [dispatch, researchContext]);
-
   const handleAskSensei = () => {
+    handingOffToSenseiRef.current = true;
     dispatch(uiActions.openResearchCopilot(researchContext));
   };
 
@@ -343,7 +368,7 @@ function TradeDetailReadyDialog({
     ? t("journal.trade_detail")
     : t("journal.open_position");
   return (
-    <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
+    <>
       <DialogHeader className="shrink-0 bg-popover p-4 pb-0">
         <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           {trade.symbol}
@@ -531,12 +556,16 @@ function TradeDetailReadyDialog({
           </div>
 
           {chartLoading ? (
-            <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+            // Loading lives here, not in the top bar: the dialog opened in place.
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground"
+            >
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
               {t("dialog.loading")}
             </div>
           ) : chartError && candles.length === 0 ? (
-            <Empty role="alert" className="min-h-64 border-0">
+            <Empty role="alert">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <AlertCircle aria-hidden="true" />
@@ -555,6 +584,7 @@ function TradeDetailReadyDialog({
                   disabled={chartFetching || !retryChart}
                   aria-busy={chartFetching}
                 >
+                  <RefreshCw data-icon="inline-start" />
                   {t("common.retry")}
                 </Button>
               </EmptyContent>
@@ -577,17 +607,20 @@ function TradeDetailReadyDialog({
               showGrid={showGrid}
             />
           ) : (
-            <Empty className="min-h-64 border-0">
+            <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Target aria-hidden="true" />
                 </EmptyMedia>
                 <EmptyTitle>{t("dialog.not_enough_data")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("dialog.not_enough_data_desc")}
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
         </div>
       </div>
-    </DialogContent>
+    </>
   );
 }

@@ -12,6 +12,7 @@ import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 
 const EMPTY_TRADES: FollowedTrade[] = [];
+const TRADE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface JournalTradesResult {
   trades: FollowedTrade[];
@@ -130,4 +131,26 @@ export function useJournalTrades({
     error: query.error,
     refetch: query.refetch,
   };
+}
+
+/** One trade behind a shared /terminal/journal?trade=<id> link that lies
+ *  outside the loaded period. Only the premium-gated Jurnal tab calls it; RLS
+ *  still decides visibility, and a bad id resolves to null instead of querying. */
+export function useJournalTrade(id: string | null) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["journal-trade", id, user?.id ?? null],
+    enabled: id !== null,
+    queryFn: async (): Promise<FollowedTrade | null> => {
+      if (!TRADE_ID.test(id!)) return null;
+      const { data, error } = await supabase
+        .from("journal_trades")
+        .select("*")
+        .eq("id", id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? rowToFollowedTrade(data as JournalTradeRow) : null;
+    },
+    staleTime: 60_000,
+  });
 }

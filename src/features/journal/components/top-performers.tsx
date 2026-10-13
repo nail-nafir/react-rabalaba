@@ -17,22 +17,29 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { TradeDetailDialog } from "@/features/follow-trade/components/trade-detail-dialog";
+import { useDialogParam } from "@/hooks/use-dialog-param";
+import {
+  journalWindow,
+  type JournalChartTimeframe,
+} from "@/features/journal/model/journal-performance";
 
 interface TopPerformersProps {
   history: FollowedTrade[];
+  /** Start of the active journal period; tabs never reach before it. */
+  periodStartMs: number | null;
   isLoading: boolean;
 }
 
 export function TopPerformers({
   history,
+  periodStartMs,
   isLoading,
 }: TopPerformersProps) {
   const { t } = useTranslation();
-  type TopPerformerPeriod = "1D" | "1W" | "1M" | "ALL";
+  const { open: openTrade } = useDialogParam("trade");
 
   // Default to 1D (1 hari).
-  const [period, setPeriod] = useState<TopPerformerPeriod>("1D");
+  const [period, setPeriod] = useState<JournalChartTimeframe>("1D");
 
   const periodOptions = [
     { value: "1D" as const, label: t("journal.timeframe_1d") },
@@ -41,38 +48,10 @@ export function TopPerformers({
     { value: "ALL" as const, label: t("journal.timeframe_all") },
   ];
   const { gainers, losers, allProfitStats, allLossStats } = useMemo(() => {
-    const now = new Date();
-    const d = new Date(now);
-    d.setHours(0, 0, 0, 0);
-
-    let periodStart: number;
-    switch (period) {
-      case "1D": {
-        periodStart = d.getTime();
-        break;
-      }
-      case "1W": {
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        d.setDate(diff);
-        periodStart = d.getTime();
-        break;
-      }
-      case "1M": {
-        d.setDate(d.getDate() - 29);
-        periodStart = d.getTime();
-        break;
-      }
-      case "ALL":
-      default: {
-        periodStart = 0;
-        break;
-      }
-    }
-
-    // Filter closed trades in the selected period
+    // Same windows as Statistik Jurnal: today, this week, this month, all, from the period start.
+    const { dataStartMs } = journalWindow(period, periodStartMs);
     const filteredTrades = history.filter(
-      (t) => t.status !== "open" && (t.closedAt ?? t.followedAt) >= periodStart,
+      (t) => t.status !== "open" && (t.closedAt ?? t.followedAt) >= dataStartMs,
     );
 
     // Compute P/L for each trade
@@ -112,7 +91,7 @@ export function TopPerformers({
       allProfitStats,
       allLossStats,
     };
-  }, [history, period]);
+  }, [history, period, periodStartMs]);
 
   const gainerStats = useMemo(() => {
     if (gainers.length === 0) return null;
@@ -135,7 +114,7 @@ export function TopPerformers({
     if (items.length === 0) {
       if (isGainer) {
         return (
-          <Empty className="min-h-40 border-0 p-4">
+          <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Shield aria-hidden="true" />
@@ -155,7 +134,7 @@ export function TopPerformers({
               ? "journal.empty_losers_desc_weekly"
               : "journal.empty_losers_desc_monthly";
         return (
-          <Empty className="min-h-40 border-0 p-4">
+          <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Sparkles aria-hidden="true" />
@@ -180,15 +159,12 @@ export function TopPerformers({
               className="border border-border bg-muted/50 py-0 transition-colors duration-200 group hover:bg-muted/80 hover:shadow-xs"
             >
               <CardContent className="p-0">
-                <TradeDetailDialog
-                  trade={trade}
-                  siblings={history}
-                  trigger={
-                    <button
-                      type="button"
-                      aria-label={`${t("journal.view_detail")} ${trade.symbol}`}
-                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
+                <button
+                  type="button"
+                  onClick={() => openTrade(trade.id)}
+                  aria-label={`${t("journal.view_detail")} ${trade.symbol}`}
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
                   <div className="flex min-w-0 items-center gap-3">
                     <Badge
                       variant="outline"
@@ -244,9 +220,7 @@ export function TopPerformers({
                       {formatDateNumeric(dateSecs)}
                     </div>
                   </div>
-                    </button>
-                  }
-                />
+                </button>
               </CardContent>
             </Card>
           );
@@ -350,7 +324,9 @@ export function TopPerformers({
                             : "0.00%"}
                         </span>
                         <span className="text-[9px] text-muted-foreground">
-                          {t("journal.from_n_data", { count: gainerStats?.count ?? 0 })}
+                          {t("journal.from_n_data", {
+                            count: gainerStats?.count ?? 0,
+                          })}
                         </span>
                       </>
                     )}
@@ -370,7 +346,9 @@ export function TopPerformers({
                           : "0.00%"}
                       </span>
                       <span className="text-[9px] text-muted-foreground leading-none">
-                        {t("journal.from_n_data", { count: allProfitStats.count })}
+                        {t("journal.from_n_data", {
+                          count: allProfitStats.count,
+                        })}
                       </span>
                     </>
                   )}
@@ -409,7 +387,9 @@ export function TopPerformers({
                             : "0.00%"}
                         </span>
                         <span className="text-[9px] text-muted-foreground">
-                          {t("journal.from_n_data", { count: loserStats?.count ?? 0 })}
+                          {t("journal.from_n_data", {
+                            count: loserStats?.count ?? 0,
+                          })}
                         </span>
                       </>
                     )}
@@ -429,7 +409,9 @@ export function TopPerformers({
                           : "0.00%"}
                       </span>
                       <span className="text-[9px] text-muted-foreground leading-none">
-                        {t("journal.from_n_data", { count: allLossStats.count })}
+                        {t("journal.from_n_data", {
+                          count: allLossStats.count,
+                        })}
                       </span>
                     </>
                   )}

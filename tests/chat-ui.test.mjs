@@ -91,6 +91,25 @@ test("Sensei loading copy has three localized messages ending in five periods", 
   }
 });
 
+test("Sensei attaches dialog assets explicitly and keeps page snapshots outside the badge list", () => {
+  assert.match(tradeDialog, /handleAskSensei = \(\) => \{\s*handingOffToSensei(?:Ref)?\.current = true;\s*dispatch\(uiActions\.openResearchCopilot\(researchContext\)\)/);
+  assert.match(tradeDialog, /onCloseAutoFocus=\{\(event\) => \{\s*if \(handingOffToSensei\.current\) event\.preventDefault\(\)/);
+  assert.doesNotMatch(tradeDialog, /setResearchContext|useEffect/);
+  assert.match(assetDialog, /if \(researchContext\) \{\s*handingOffToSensei(?:Ref)?\.current = true;\s*dispatch\(uiActions\.openResearchCopilot\(researchContext\)\)/);
+  assert.match(assetDialog, /onCloseAutoFocus=\{\(event\) => \{\s*if \(handingOffToSensei\.current\) event\.preventDefault\(\)/);
+  assert.doesNotMatch(assetDialog, /\bsetResearchContext|useEffect/);
+  assert.match(widget, /const sessionContext = terminalContext;/);
+  assert.doesNotMatch(widget, /latestUserMessage\?\.terminalContext/);
+  const submit = widget.slice(widget.indexOf("function handleSubmit"), widget.indexOf("function handleKeyDown"));
+  assert.match(submit, /terminalContext: sessionContext,\s*pageContext,\s*marketContexts: sessionMarketContexts/);
+  const badges = widget.slice(widget.indexOf("const contextItems:"), widget.indexOf("return (", widget.indexOf("const contextItems:")));
+  assert.match(badges, /key: "terminal"/);
+  assert.match(badges, /sessionMarketContexts\.map/);
+  assert.doesNotMatch(badges, /pageContext|key: "page"/);
+  assert.doesNotMatch(widget, /hiddenContextKeys\.has\("page"\)/);
+  for (const locale of [id.chat, en.chat]) assert.equal(Object.hasOwn(locale, "context_pages"), false);
+});
+
 test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.equal(
     existsSync(join(root, "src/components/shared/empty-state.tsx")),
@@ -209,7 +228,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "overflow trigger keeps a 44px mobile target and compact desktop target",
   );
   assert.match(widget, /remove: \(\) => clearContext\("terminal"\)/);
-  assert.match(widget, /remove: \(\) => clearContext\("page"\)/);
+  assert.doesNotMatch(widget, /context_pages|pageContextSummary|clearContext\("page"\)/);
   assert.match(widget, /remove: \(\) => clearContext\("market", context\.symbol\)/);
   assert.match(
     widget,
@@ -229,7 +248,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.match(
     assetDialog,
-    /<DialogContent className="sm:max-w-2xl/,
+    /className="sm:max-w-2xl/,
     "Asset detail dialog is the width source of truth",
   );
   assert.match(
@@ -239,7 +258,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   );
   assert.match(
     assetDialog,
-    /<DialogContent className="sm:max-w-2xl max-h-\[85vh\]/,
+    /className="sm:max-w-2xl max-h-\[85vh\]/,
     "Asset detail dialog is the height source of truth",
   );
   assert.match(
@@ -704,8 +723,10 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.doesNotMatch(
     openChange,
     /clearResearchContext/,
-    "closing the panel must preserve the current chat context",
+    "the global launcher must clear only the asset context, preserving page snapshots",
   );
+  assert.match(openChange, /if \(nextOpen\) dispatch\(uiActions\.setResearchContext\(null\)\)/);
+  assert.doesNotMatch(openChange, /setMessages|setDraft|setPageResearchContext/);
   const newChatStart = widget.indexOf("function newChat() {");
   const newChatEnd = widget.indexOf("function retryFrom", newChatStart);
   const newChat = widget.slice(newChatStart, newChatEnd);
@@ -716,7 +737,8 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
   assert.match(newChat, /setFailedUserId\(null\)/);
   assert.match(newChat, /setCopiedId\(null\)/);
   assert.match(newChat, /setPromptTemplateConfig\(randomPromptTemplates\(\)\)/);
-  assert.match(newChat, /dispatch\(uiActions\.clearResearchContext\(\)\)/);
+  assert.match(newChat, /dispatch\(uiActions\.setResearchContext\(null\)\)/);
+  assert.doesNotMatch(newChat, /clearResearchContext|setPageResearchContext/);
   assert.match(widget, /\{messages\.length > 0 \|\| contextItems\.length > 0 \? \(/);
   assert.match(widget, /onClick=\{newChat\}/);
   const requestAssistantStart = widget.indexOf(
@@ -797,7 +819,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     "three visible templates must map to three unique accent groups",
   );
   assert.match(assetDialog, /buildAssetResearchContext/);
-  assert.match(assetDialog, /setResearchContext/);
+  assert.doesNotMatch(assetDialog, /\bsetResearchContext/);
   assert.match(assetDialog, /openResearchCopilot/);
   assert.match(assetDialog, /chat\.ask_sensei/);
   assert.match(
@@ -814,7 +836,7 @@ test("chat copy, locale parity, and widget primitives stay consistent", () => {
     /chat\.ask_sensei[\s\S]*?<span className="hidden sm:inline">/,
   );
   assert.match(tradeDialog, /buildTradeResearchContext/);
-  assert.match(tradeDialog, /setResearchContext/);
+  assert.doesNotMatch(tradeDialog, /setResearchContext/);
   assert.match(tradeDialog, /openResearchCopilot/);
   assert.match(tradeDialog, /chat\.ask_sensei/);
   assert.match(

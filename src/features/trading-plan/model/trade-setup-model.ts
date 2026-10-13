@@ -50,12 +50,14 @@ export interface TradeSetupModel {
 /** A point-in-time annotation (entry / close) plotted on the candle chart. */
 export interface ChartMarker {
   kind: "entry" | "close";
-  /** Event time in ms (e.g. followedAt / closedAt). */
+  /** Event time in SECONDS, the candles' axis (followedAt / closedAt ÷ 1000). */
   timestamp: number;
   /** Price at which the marker is drawn (entryPrice / closePrice). */
   price: number;
   /** Close markers are colored by realized outcome; entry stays neutral. */
   outcome?: "profit" | "loss" | "flat";
+  /** Pill text when it says more than "ENTRY"/"CLOSED", e.g. "SL TP1". */
+  label?: string;
 }
 
 /** A chart marker resolved to a concrete candle index within the view window. */

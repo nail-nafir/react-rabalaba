@@ -434,7 +434,7 @@ export default function AdminSystemPage() {
   const renderUserGrowthChart = (isFullscreen = false) => {
     if (isErrorUsers && users.length === 0) {
       return (
-        <Empty role="alert" className="min-h-60 border-0">
+        <Empty role="alert">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <AlertCircle aria-hidden="true" />
@@ -456,7 +456,7 @@ export default function AdminSystemPage() {
 
     if (registrationChartData.length === 0) {
       return (
-        <Empty className="min-h-60 border-0">
+        <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Users aria-hidden="true" />
@@ -851,7 +851,7 @@ export default function AdminSystemPage() {
           </div>
           <div className="flex-1 w-full bg-card border border-border rounded-xl p-6 flex flex-col justify-center min-h-0">
             {tradesError && signalDailyData.length === 0 ? (
-              <Empty role="alert" className="min-h-60 border-0">
+              <Empty role="alert">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <AlertCircle aria-hidden="true" />
@@ -869,7 +869,7 @@ export default function AdminSystemPage() {
                 </EmptyContent>
               </Empty>
             ) : signalDailyData.length === 0 ? (
-              <Empty className="min-h-60 border-0">
+              <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <Radio aria-hidden="true" />
@@ -1042,7 +1042,7 @@ export default function AdminSystemPage() {
           </CardHeader>
           <CardContent className="pt-2">
             {tradesError && signalDailyData.length === 0 ? (
-              <Empty role="alert" className="min-h-64 border-0">
+              <Empty role="alert">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <AlertCircle aria-hidden="true" />
@@ -1060,7 +1060,7 @@ export default function AdminSystemPage() {
                 </EmptyContent>
               </Empty>
             ) : signalDailyData.length === 0 ? (
-              <Empty className="min-h-64 border-0">
+              <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <Radio aria-hidden="true" />

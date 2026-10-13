@@ -20,11 +20,16 @@ import type { TradingStrategy } from "../types/learn";
 export interface StrategyDetailDialogProps {
   strategy: TradingStrategy;
   trigger: ReactElement;
+  /** Driven by `/learn?tab=strategies&strategy=<id>` (see `useDialogParam`). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export const StrategyDetailDialog: React.FC<StrategyDetailDialogProps> = ({
   strategy,
   trigger,
+  open,
+  onOpenChange,
 }) => {
   const { t } = useTranslation();
   const strategyKey = `learn.strategies.items.${strategy.id}`;
@@ -54,7 +59,7 @@ export const StrategyDetailDialog: React.FC<StrategyDetailDialogProps> = ({
   })();
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header styled identically to pattern detail dialog */}

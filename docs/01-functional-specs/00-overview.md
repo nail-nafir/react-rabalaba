@@ -41,8 +41,9 @@ Router memakai createBrowserRouter dengan lazy page. Guard premium bersifat soft
 | Rute | Komponen | Penjagaan |
 |---|---|---|
 | / | LandingPage | Publik |
-| /terminal, /terminal/market | TerminalPage market | Publik |
-| /terminal/journal | TerminalPage journal | Soft ke market plus dialog lisensi |
+| /terminal, /terminal/market | TerminalPage tab Pasar; `?symbol=<SYMBOL>` membuka dialog aset | Publik |
+| /terminal/journal | TerminalPage tab Jurnal; `?trade=<id>` membuka dialog trade | Premium; non premium melihat kartu Premium Terkunci plus dialog lisensi |
+| /learn | Edukasi; `?tab=patterns\|strategies\|quiz`, `&pattern=<id>` atau `&strategy=<id>` membuka dialognya | Publik |
 | /calendar | CalendarPage | Publik |
 | /subscription | SubscriptionPage | Publik |
 | /invite/:code | InvitePage | Klaim saat auth |
@@ -64,6 +65,26 @@ Delapan fitur membentuk alur riset sampai jurnal. Diagram kanonis tersimpan di T
 | 6 Auth entitlement | FSD 06 | Login OAuth, tier server-truth, redeem, invite, disclaimer |
 | 7 Admin console | FSD 07 | Akun, aset, kode, invite, plan, payment, disclaimer, statistik |
 | 8 Testimoni | FSD 08 | Satu per akun, moderasi, enam slot landing |
+
+### Bantuan pada judul halaman
+
+Lima menu utama (Terminal, Kalender, Kalkulator, Edukasi, Langganan) memiliki ikon info di samping judul besar halaman, di luar `<h1>`. Komponen bersama `PageHelp` memakai Button dan satu Tooltip yang tersedia, dengan copy ID/EN pada `page_help`. Hover, fokus, klik/tap, dan Enter/Space membuka bubble yang sama. Style mengikuti tooltip footer sentimen pasar: teks 12px, lebar maksimal 220px, `leading-relaxed`, warna, padding, radius, dan panah bawaan. Posisi atas dan tengah menyesuaikan collision dengan jarak viewport 16px. Delay mengikuti provider global. Escape, blur, dan interaksi di luar menutup bubble. Fokus terlihat dan reduced motion didukung. Isi bantuan hanya satu paragraf ringkas tanpa detail sumber atau kontrol interaktif. Copy memakai bahasa santai tanpa dash, semicolon, atau kata ganti orang. Setiap deskripsi memiliki dua kalimat dan maksimal 80 karakter; selisih panjang seluruh deskripsi lima halaman dalam ID/EN maksimal 10%. Target sekitar tiga baris pada ukuran font normal, tanpa tinggi tetap, pemotongan teks, atau `line-clamp`. Teks dapat membungkus lebih panjang saat font diperbesar. Judul dapat membungkus di layar kecil. Bantuan Terminal mengikuti ringkasan pasar dan jurnal yang tampil, dan bantuan Langganan tidak menyimpan harga atau masa aktivasi secara statis. Tooltip widget lainnya tetap menggunakan copy yang ada.
+
+### Konteks dan gaya bahasa Sensei
+
+Membuka atau menutup dialog transaksi tidak memasang konteks aset. Tombol bot pada dialog mengirim snapshot setup secara eksplisit dan menutup dialog sebelum membuka Sensei. Pembukaan melalui launcher global atau `Shift+/` melepas konteks dialog aktif sambil mempertahankan riwayat dan draft. Pesan baru tidak mengambil snapshot aset dari pesan terdahulu; chart dan retry pesan lama tetap memakai snapshot pesan tersebut. Lookup aset yang ditanya lewat chat tetap menghasilkan badge aset, dengan disclosure multi aset `+N` dan style komponen yang sama.
+
+Kalender, Kalkulator, dan Edukasi tetap mengirim snapshot halaman aktif sebagai data untuk bot tanpa badge halaman. `Chat baru` menghapus riwayat, draft, dan konteks aset serta hasil lookup, tetapi mempertahankan snapshot halaman aktif. API dan kontrak konteks tidak berubah. Panduan produk dalam system prompt menjelaskan fungsi halaman utama, akses akun, favorit, pembayaran, dan kode akses tanpa mengarang harga, hak akses, atau data akun dinamis.
+
+Bahasa Indonesia Sensei memakai suara Gen Z Jaksel dengan roasting pedas adaptif, slang, ketawa singkat, dan ungkapan Islami ketika sesuai situasi, tanpa kuota atau asumsi agama pengguna. Humor hanya menyasar keputusan trading yang disebut pengguna, bukan menyimpulkan FOMO, kepemilikan, atau kerugian pribadi dari Jurnal riset otomatis. Permintaan serius, ketidaknyamanan terhadap nada, serta kerugian yang membuat pengguna tertekan mendapat respons tenang tanpa roasting, ketawa, atau seruan religius. Jawaban langsung ke inti dan panjangnya mengikuti kebutuhan, tanpa urutan bagian wajib atau pengulangan sapaan, lelucon, disclaimer umum, dan tawaran lanjutan. Contoh definisi, FOMO, kalkulasi, kerugian, dan tindak lanjut menjadi panduan, bukan skrip. Seluruh balasan mengikuti bahasa pesan pengguna terbaru, termasuk judul dan label menu; contoh Indonesia tidak mengubah balasan English menjadi Indonesia. Ketepatan fakta dan risiko tetap utama, tanpa emoji, dash dalam prosa, atau semicolon. Gaya model dinilai melalui percakapan nyata; test dengan mock hanya memverifikasi prompt dan alur data.
+
+Prompt mengarahkan balasan biasa ke maksimal 80 kata, dengan pengecualian untuk permintaan detail, langkah bertahap, atau analisis beberapa bagian. Ini arahan model, bukan pemotongan teks di aplikasi. Definisi memakai prosa tanpa level harga rekaan. Penjelasan risiko membedakan rencana stop dari harga eksekusi yang tidak dijamin, serta likuidasi sebagian/penuh sesuai instrumen dan mode margin.
+
+Inline Markdown menandai data inti yang relevan sebagai `Badge` existing: ticker dari konteks, status sinyal/tier, Entry, TP, Stop loss, Risk reward, dan angka risiko. Label dan nilai dapat menyatu dalam satu badge ringkas. Renderer merapikan alias yang dikenal seperti `stop_loss`, `entry_price`, `take_profit_1`, dan `risk_reward_ratio`, serta separator label/nilai dan semicolon penutup. Ticker dikenali terlebih dahulu; tanda minus, pemisah angka, mata uang, persen, dan titik dua rasio tetap utuh. TP/SL dan status memakai warna semantik existing, metrik lainnya warna netral existing. Konsep, lelucon, dan kalimat tetap prosa atau penekanan biasa. Normalisasi hanya pada tampilan badge, tidak mengubah pesan asli, payload tool, chart JSON, link, atau blok kode.
+
+Model dan temperature `0.4` tetap. Perubahan prompt dan renderer dirilis bersama melalui Cloudflare Pages beserta `/api/chat`, tanpa migrasi database, profil personalisasi tersimpan, atau deployment Supabase Edge Function.
+
+Kepatuhan gaya model tetap perlu dievaluasi terpisah dari renderer. [Hasil validasi persona dan badge](../03-testing/05-sensei-persona-validation.md) mencatat pemeriksaan kode/browser serta batas kualitas respons model asli.
 
 ## 🇮🇩 Glosarium
 
@@ -137,8 +158,9 @@ Router uses createBrowserRouter with lazy pages. Premium guard remains soft; adm
 | Route | Component | Guard |
 |---|---|---|
 | / | LandingPage | Public |
-| /terminal, /terminal/market | TerminalPage market | Public |
-| /terminal/journal | TerminalPage journal | Soft to market plus license dialog |
+| /terminal, /terminal/market | TerminalPage Market tab; `?symbol=<SYMBOL>` opens the asset dialog | Public |
+| /terminal/journal | TerminalPage Journal tab; `?trade=<id>` opens the trade dialog | Premium; non-premium sees the Premium Locked card plus license dialog |
+| /learn | Learn; `?tab=patterns\|strategies\|quiz`, `&pattern=<id>` or `&strategy=<id>` opens its dialog | Public |
 | /calendar | CalendarPage | Public |
 | /subscription | SubscriptionPage | Public |
 | /invite/:code | InvitePage | Claim during auth |
@@ -160,6 +182,26 @@ Eight features form research-to-journal flow. Canonical diagrams live in TSD sig
 | 6 Auth entitlement | FSD 06 | OAuth login, server-truth tier, redeem, invite, disclaimer |
 | 7 Admin console | FSD 07 | Accounts, assets, codes, invites, plans, payments, disclaimer, stats |
 | 8 Testimonials | FSD 08 | One per account, moderation, six landing slots |
+
+### Help beside page titles
+
+The five main-menu pages (Terminal, Calendar, Calculator, Education, Subscription) have an info icon beside the main heading, outside `<h1>`. Shared `PageHelp` uses the existing Button and one Tooltip with ID/EN copy in `page_help`. Hover, focus, click/tap and Enter/Space open the same bubble. Styling matches the market sentiment footer tooltip: 12px text, a maximum width of 220px, `leading-relaxed`, and default colors, padding, radius and arrow. Top/center placement handles collisions with 16px viewport clearance. Delay follows the global provider. Escape, blur and outside interaction dismiss the bubble. Focus stays visible and reduced motion is supported. Help contains only one short paragraph without source details or interactive controls. Copy is casual and contains no dashes, semicolons or personal pronouns. Each description has two sentences and at most 80 characters; the length difference across all five pages in ID/EN is at most 10%. The target is about three lines at normal font sizes, without fixed heights, truncation or `line-clamp`. Text can wrap onto more lines at larger font sizes. Headings can wrap on small screens. Terminal help describes the displayed market summary and journal, and Subscription help does not hardcode prices or activation durations. Other widget tooltips keep their existing copy.
+
+### Sensei context and conversational voice
+
+Opening or closing a trade dialog does not attach an asset context. Its bot button explicitly hands off the setup snapshot and closes the dialog before opening Sensei. Opening through the global launcher or `Shift+/` releases the active dialog context while preserving history and drafts. New messages do not reuse asset snapshots from earlier messages; historical charts and retries keep their original message snapshots. Assets requested through chat still produce lookup badges, retaining the multi asset `+N` disclosure and existing component styling.
+
+Calendar, Calculator, and Learn still supply the active page snapshot to the bot without page badges. `New chat` clears history, drafts, asset context, and lookup results while preserving the active page snapshot. The API and context contracts stay the same. The system prompt's product guide explains the main pages, account access, favorites, payments, and access codes without inventing dynamic prices, permissions, or account data.
+
+Sensei's Indonesian voice uses casual Jakarta and Gen Z phrasing with adaptive sharp roasting, slang, brief laughter, and Islamic expressions when appropriate, without quotas or assumptions about the user's faith. Humor targets only trading decisions the user describes, never presumed FOMO, holdings, or personal losses from the automatic research Journal. Requests for a serious tone, discomfort with the voice, and distress about losses receive calm replies without roasting, laughter, or religious exclamations. Answers address the question directly with an appropriate length, no mandatory section order, and no repeated greetings, jokes, generic disclaimers, or follow-up offers. Definition, FOMO, calculation, loss, and follow-up examples guide delivery rather than prescribe a script. The entire reply follows the latest user's language, including headings and menu labels; Indonesian examples do not turn English replies into Indonesian. Accurate evidence and risk explanations remain the priority, without emojis, dash punctuation in prose, or semicolons. Model voice is evaluated through real conversations; mocked tests verify only the prompt and data flow.
+
+The prompt targets at most 80 words for ordinary replies, with exceptions for requested detail, step-by-step guides, or substantial multi-part analysis. This guides the model rather than truncating application output. Definitions use prose without invented price levels. Risk explanations distinguish the planned stop from a non-guaranteed execution price, and partial/full liquidation depending on the instrument and margin mode.
+
+Inline Markdown highlights relevant core data using the existing `Badge`: context-backed tickers, signal status/tier, Entry, TP, Stop loss, Risk reward, and numerical risk. A label and value can share one compact badge. The renderer normalizes known aliases such as `stop_loss`, `entry_price`, `take_profit_1`, and `risk_reward_ratio`, plus label/value separators and trailing semicolons. Ticker recognition takes priority; negative signs, numeric separators, currencies, percentages, and ratio colons stay intact. TP/SL and statuses retain existing semantic colors, with existing neutral colors for other metrics. Concepts, jokes, and sentences remain prose or ordinary emphasis. Normalization affects badge display only, not original messages, tool payloads, chart JSON, links, or fenced code.
+
+The model and temperature `0.4` stay unchanged. Release the prompt and renderer together through Cloudflare Pages including `/api/chat`, without a database migration, stored personalization profile, or Supabase Edge Function deployment.
+
+Model voice compliance requires evaluation separate from the renderer. The [persona and badge validation report](../03-testing/05-sensei-persona-validation.md) records code/browser checks and remaining limitations in actual model responses.
 
 ## 🇺🇸 Glossary
 

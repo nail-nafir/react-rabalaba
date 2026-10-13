@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
+import { PageHelp } from "@/components/shared/page-help";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -14,6 +16,7 @@ import { useAppDispatch } from "@/store/hooks";
 import { uiActions } from "@/store/slices/ui-slice";
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -27,7 +30,18 @@ export const LearnContent: React.FC = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
 
-  const [activeTab, setActiveTab] = useState<LearnTab>("patterns");
+  // /learn?tab=…; a bare ?strategy=<id> link still lands on its tab.
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get("tab");
+  const activeTab: LearnTab =
+    tabParam === "strategies" || tabParam === "quiz"
+      ? tabParam
+      : tabParam === null && params.has("strategy")
+        ? "strategies"
+        : "patterns";
+  // A new tab drops any open pattern/strategy dialog from the URL.
+  const setActiveTab = (tab: LearnTab) =>
+    setParams({ tab }, { preventScrollReset: true });
   const [patternCategory, setPatternCategory] =
     useState<PatternCategory>("all");
   const [biasFilter, setBiasFilter] = useState<BiasFilter>("all");
@@ -134,9 +148,12 @@ export const LearnContent: React.FC = () => {
       {/* Page Header & Navigation Tabs (space-between) */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold uppercase tracking-tight text-foreground">
-            {t("learn.title")}
-          </h1>
+          <div className="flex w-fit max-w-full items-start gap-2">
+            <h1 className="min-w-0 text-3xl font-bold uppercase tracking-tight text-foreground">
+              {t("learn.title")}
+            </h1>
+            <PageHelp title={t("learn.title")} description={t("page_help.learn")} />
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("learn.subtitle")}
           </p>
@@ -225,12 +242,15 @@ export const LearnContent: React.FC = () => {
 
           {/* Pattern Cards */}
           {filteredPatterns.length === 0 ? (
-            <Empty className="min-h-48">
+            <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Search aria-hidden="true" />
                 </EmptyMedia>
                 <EmptyTitle>{t("learn.cheatsheet.empty")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("learn.cheatsheet.empty_desc")}
+                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (

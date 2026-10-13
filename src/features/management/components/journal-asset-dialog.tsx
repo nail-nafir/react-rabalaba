@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactElement } from "react";
-import { Search, SearchX, X } from "lucide-react";
+import { Search, SearchX, X, AlertCircle, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,10 +187,10 @@ export function JournalAssetDialog({ trigger }: JournalAssetDialogProps) {
             {canSuggest && (
               <div className="absolute top-full right-0 left-0 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover shadow-2xl animate-in fade-in slide-in-from-top-1 z-50">
                 {searchError && (!suggestions || suggestions.length === 0) ? (
-                  <Empty role="alert" className="min-h-40 rounded-none border-0 p-4">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
-                        <SearchX aria-hidden="true" />
+                        <AlertCircle aria-hidden="true" />
                       </EmptyMedia>
                       <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
                       <EmptyDescription>
@@ -204,6 +204,7 @@ export function JournalAssetDialog({ trigger }: JournalAssetDialogProps) {
                         disabled={searchFetching}
                         aria-busy={searchFetching}
                       >
+                        <RefreshCw data-icon="inline-start" />
                         {t("common.retry")}
                       </Button>
                     </EmptyContent>
@@ -250,7 +251,7 @@ export function JournalAssetDialog({ trigger }: JournalAssetDialogProps) {
                     );
                   })
                 ) : (
-                  <Empty className="min-h-40 rounded-none border-0 p-4">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <SearchX aria-hidden="true" />

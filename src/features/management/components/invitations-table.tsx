@@ -2,18 +2,15 @@
  * Admin list for invitations — mint, copy the shareable /invite/:code link,
  * and revoke/un-revoke. Reads via the admin RPCs in
  * 20260625000003_invitations.sql. Terminal-style data table (columnDef +
- * useReactTable + skeleton loading) — same visual language as the access-codes table.
+ * useTable + skeleton loading) — same visual language as the access-codes table.
  */
 import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { Copy, Power, Play, Pause, Trash2 } from "lucide-react";
+import { Copy, Power, Play, Pause, Trash2, RefreshCw } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -51,6 +48,7 @@ import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { useAdminInvitations } from "@/features/management/hooks/use-admin-invitations";
 import type { InvitationRow } from "@/services/supabase/database.types";
 import { formatDateNumeric, formatClock } from "@/lib/formatters";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -285,7 +283,7 @@ export function InvitationsTable() {
     toast.success(t("toasts.invitation.link_copied"));
   };
 
-  const columns = useMemo<ColumnDef<InvitationRow>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, InvitationRow>[]>(
     () => [
       {
         accessorKey: "code",
@@ -417,12 +415,9 @@ export function InvitationsTable() {
     [t, revokeInvitation, deleteInvitation, origin],
   );
 
-  const table = useReactTable({
+  const table = useAppTable({
     data: invitations,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -456,7 +451,7 @@ export function InvitationsTable() {
             ) : isError && invitations.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-32 text-center">
-                  <Empty role="alert" className="min-h-32 border-0">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <AlertCircle aria-hidden="true" />
@@ -471,6 +466,7 @@ export function InvitationsTable() {
                         size="lg"
                         onClick={() => void refetch()}
                       >
+                        <RefreshCw data-icon="inline-start" />
                         {t("common.retry")}
                       </Button>
                     </EmptyContent>
@@ -483,7 +479,7 @@ export function InvitationsTable() {
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <Empty className="min-h-32 border-0">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <Inbox aria-hidden="true" />
@@ -499,7 +495,7 @@ export function InvitationsTable() {
             ) : (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,

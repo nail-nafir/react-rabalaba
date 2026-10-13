@@ -1,3 +1,4 @@
+import { recapWindow } from "@/core/automation/period-summary";
 import {
   computePnl,
   type FollowedTrade,
@@ -11,14 +12,21 @@ export type BenchmarkChartData = Partial<
   Record<BenchmarkDataKey, YahooChartResult | null | undefined>
 >;
 
+/** Values are null outside the data span: before the journal period or not reached yet. */
 export interface JournalPerformancePoint {
   date: string;
-  dayPct: number;
   dayPctWin: number | null;
   dayPctLoss: number | null;
-  cumPct: number;
+  cumPct: number | null;
   btcPct: number | null;
   goldPct: number | null;
+}
+
+/** Chart axis [startMs, endMs) of a tab; data is drawn from dataStartMs until now. */
+export interface JournalWindow {
+  startMs: number;
+  endMs: number;
+  dataStartMs: number;
 }
 
 export interface AssetTypePercent {
@@ -26,27 +34,37 @@ export interface AssetTypePercent {
   pct: number;
 }
 
-const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+/** WIB is a fixed UTC+7, so bucket keys need no Intl. */
+const WIB_OFFSET_MS = 7 * HOUR_MS;
 const BENCHMARK_KEYS = ["btcPct", "goldPct"] as const;
+const CALENDAR_PERIODS = { "1D": "daily", "1W": "weekly", "1M": "monthly" } as const;
 
-const dayKey = (ms: number) => {
-  const date = new Date(ms);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-
-function datesBetween(startDate: Date, endDate: Date): string[] {
-  const dates: string[] = [];
-  const current = new Date(startDate);
-  const end = new Date(endDate);
-  current.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  while (current <= end) {
-    dates.push(dayKey(current.getTime()));
-    current.setDate(current.getDate() + 1);
+/**
+ * The WIB calendar window behind a tab: today, the Monday-start week or the
+ * month. Data never starts before the journal period, so a week that began last
+ * month is drawn from the 1st. ALL runs from the period start until now; before
+ * the period is known (trades load after it) it is an empty span ending now.
+ */
+export function journalWindow(
+  timeframe: JournalChartTimeframe,
+  periodStartMs: number | null,
+  nowMs = Date.now(),
+): JournalWindow {
+  if (timeframe === "ALL") {
+    const startMs = periodStartMs ?? nowMs;
+    return { startMs, endMs: nowMs, dataStartMs: startMs };
   }
-  return dates;
+  const { startMs, endMs } = recapWindow(CALENDAR_PERIODS[timeframe], nowMs);
+  return { startMs, endMs, dataStartMs: Math.max(startMs, periodStartMs ?? startMs) };
 }
+
+/** "HH:00" on the day view, "YYYY-MM-DD" otherwise, both in WIB. */
+const bucketKey = (ms: number, hourly: boolean) => {
+  const wib = new Date(ms + WIB_OFFSET_MS).toISOString();
+  return hourly ? `${wib.slice(11, 13)}:00` : wib.slice(0, 10);
+};
 
 function dailyRangeForSpan(
   oldestTradeMs: number,
@@ -65,81 +83,57 @@ function dailyRangeForSpan(
 
 export function benchmarkQueryWindow(
   timeframe: JournalChartTimeframe,
-  oldestTradeMs: number,
+  axisStartMs: number,
   nowMs = Date.now(),
 ): { range: string; interval: string } {
   if (timeframe === "1D") return { range: "2d", interval: "30m" };
   if (timeframe === "ALL") {
     return {
-      range: dailyRangeForSpan(oldestTradeMs, nowMs),
+      range: dailyRangeForSpan(axisStartMs, nowMs),
       interval: "1d",
     };
   }
   return { range: "1mo", interval: "1d" };
 }
 
-function benchmarkReturnsForDates(
+/** % change from the first close inside the data span; null wherever the journal draws nothing. */
+function benchmarkReturns(
   result: YahooChartResult | null | undefined,
-  dates: string[],
-  timeframe: JournalChartTimeframe,
+  points: Omit<JournalPerformancePoint, BenchmarkDataKey>[],
+  hourly: boolean,
   nowMs: number,
-): Map<string, number | null> {
+): (number | null)[] {
   const close = result?.indicators.quote[0]?.close ?? [];
+  const today = bucketKey(nowMs, false);
   const prices = new Map<string, number>();
-
   result?.timestamp.forEach((timestamp, index) => {
     const price = close[index];
     if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) {
       return;
     }
-    const date = new Date(timestamp * 1000);
-    if (timeframe === "1D" && dayKey(date.getTime()) !== dayKey(nowMs)) {
-      return;
-    }
-    const bucket =
-      timeframe === "1D"
-        ? `${String(date.getHours()).padStart(2, "0")}:00`
-        : dayKey(date.getTime());
-    prices.set(bucket, price);
+    const ms = timestamp * 1000;
+    // The 1D query spans two days and hour keys repeat, so only today's candles count.
+    if (hourly && bucketKey(ms, false) !== today) return;
+    prices.set(bucketKey(ms, hourly), price);
   });
 
-  const returns = new Map<string, number | null>();
+  const returns: (number | null)[] = [];
   let baseline: number | null = null;
   let latest: number | null = null;
-
-  for (const date of dates) {
+  for (const { date, cumPct } of points) {
+    if (cumPct === null) {
+      returns.push(null);
+      continue;
+    }
     latest = prices.get(date) ?? latest;
     baseline ??= latest;
-    returns.set(
-      date,
+    returns.push(
       baseline !== null && latest !== null
         ? ((latest - baseline) / baseline) * 100
         : null,
     );
   }
-
   return returns;
-}
-
-function withBenchmarkReturns(
-  points: Omit<JournalPerformancePoint, BenchmarkDataKey>[],
-  timeframe: JournalChartTimeframe,
-  benchmarkData: BenchmarkChartData,
-  nowMs: number,
-): JournalPerformancePoint[] {
-  const dates = points.map(({ date }) => date);
-  const returns = Object.fromEntries(
-    BENCHMARK_KEYS.map((key) => [
-      key,
-      benchmarkReturnsForDates(benchmarkData[key], dates, timeframe, nowMs),
-    ]),
-  ) as Record<BenchmarkDataKey, Map<string, number | null>>;
-
-  return points.map((point) => ({
-    ...point,
-    btcPct: returns.btcPct.get(point.date) ?? null,
-    goldPct: returns.goldPct.get(point.date) ?? null,
-  }));
 }
 
 /** Arithmetic sum of direction-aware trade returns, matching the legacy chart. */
@@ -162,97 +156,57 @@ export function buildAssetTypePercentSeries(
 export function buildJournalPerformanceSeries({
   history,
   timeframe,
-  oldestTradeMs,
+  span,
   nowMs = Date.now(),
   benchmarkData = {},
 }: {
   history: FollowedTrade[];
   timeframe: JournalChartTimeframe;
-  oldestTradeMs: number;
+  span: JournalWindow;
   nowMs?: number;
   benchmarkData?: BenchmarkChartData;
 }): JournalPerformancePoint[] {
-  const now = new Date(nowMs);
-
-  if (timeframe === "1D") {
-    const hours = Array.from(
-      { length: 24 },
-      (_, hour) => `${String(hour).padStart(2, "0")}:00`,
-    );
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const startMs = startOfToday.getTime();
-    const pctByHour = new Map<string, number>();
-
-    for (const trade of history) {
-      if (
-        trade.status === "open" ||
-        !trade.closedAt ||
-        trade.closedAt < startMs
-      ) {
-        continue;
-      }
-      const hour = `${String(new Date(trade.closedAt).getHours()).padStart(2, "0")}:00`;
-      const { pct } = computePnl(trade, trade.closePrice ?? trade.entryPrice);
-      pctByHour.set(hour, (pctByHour.get(hour) ?? 0) + pct);
-    }
-
-    let cumulative = 0;
-
-    const points = hours.map((date) => {
-      const dayPct = pctByHour.get(date) ?? 0;
-      cumulative += dayPct;
-      return {
-        date,
-        dayPct,
-        dayPctWin: dayPct >= 0 ? dayPct : null,
-        dayPctLoss: dayPct < 0 ? dayPct : null,
-        cumPct: cumulative,
-      };
-    });
-
-    return withBenchmarkReturns(points, timeframe, benchmarkData, nowMs);
-  }
-
-  const start = new Date(now);
-  let end = now;
-  if (timeframe === "1W") {
-    const day = now.getDay();
-    start.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    start.setHours(0, 0, 0, 0);
-    end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-  } else if (timeframe === "1M") {
-    start.setDate(now.getDate() - 29);
-  } else if (history.length > 0) {
-    start.setTime(oldestTradeMs);
-  } else {
-    start.setDate(now.getDate() - 29);
-  }
-
-  const dates = datesBetween(start, end);
-  const pctByDate = new Map<string, number>();
+  const hourly = timeframe === "1D";
+  const step = hourly ? HOUR_MS : DAY_MS;
+  const pctByBucket = new Map<string, number>();
   for (const trade of history) {
-    if (trade.status === "open") continue;
+    const closedMs = trade.closedAt ?? trade.followedAt;
+    if (trade.status === "open" || closedMs < span.dataStartMs) continue;
+    const key = bucketKey(closedMs, hourly);
     const { pct } = computePnl(trade, trade.closePrice ?? trade.entryPrice);
-    const date = dayKey(trade.closedAt ?? trade.followedAt);
-    pctByDate.set(date, (pctByDate.get(date) ?? 0) + pct);
+    pctByBucket.set(key, (pctByBucket.get(key) ?? 0) + pct);
   }
 
+  const points: Omit<JournalPerformancePoint, BenchmarkDataKey>[] = [];
   let cumulative = 0;
-
-  const points = dates.map((date) => {
-    const dayPct = pctByDate.get(date) ?? 0;
+  // Buckets start on WIB midnight, so ALL (opened by a possibly mid-day reset) keys like every tab.
+  for (
+    let ms = span.startMs - ((span.startMs + WIB_OFFSET_MS) % DAY_MS);
+    ms < span.endMs;
+    ms += step
+  ) {
+    const date = bucketKey(ms, hourly);
+    // Before the journal period or not reached yet: the axis stays empty there.
+    if (ms + step <= span.dataStartMs || ms > nowMs) {
+      points.push({ date, dayPctWin: null, dayPctLoss: null, cumPct: null });
+      continue;
+    }
+    const dayPct = pctByBucket.get(date) ?? 0;
     cumulative += dayPct;
-    return {
+    points.push({
       date,
-      dayPct,
       dayPctWin: dayPct >= 0 ? dayPct : null,
       dayPctLoss: dayPct < 0 ? dayPct : null,
       cumPct: cumulative,
-    };
-  });
+    });
+  }
 
-  return withBenchmarkReturns(points, timeframe, benchmarkData, nowMs);
+  const [btcPct, goldPct] = BENCHMARK_KEYS.map((key) =>
+    benchmarkReturns(benchmarkData[key], points, hourly, nowMs),
+  );
+  return points.map((point, i) => ({
+    ...point,
+    btcPct: btcPct[i],
+    goldPct: goldPct[i],
+  }));
 }

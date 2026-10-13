@@ -381,7 +381,8 @@ export function buildShareCardSvg(
               ? C.emerald
               : C.muted;
       const word = (
-        m.kind === "entry" ? t("journal.entry_marker") : t("journal.close_marker")
+        m.label ??
+        (m.kind === "entry" ? t("journal.entry_marker") : t("journal.close_marker"))
       ).toUpperCase();
       const bw = word.length * 9 + 16;
       const pill = (bx: number, cy: number) =>

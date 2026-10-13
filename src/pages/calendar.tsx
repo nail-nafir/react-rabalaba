@@ -8,7 +8,7 @@ import {
 } from "@/lib/country";
 import { CountryFlag } from "@/components/shared/country-flag";
 import {
-  CALENDAR_SOURCES, availableCalendarData, calendarDate, calendarTime,
+  CALENDAR_CURRENCIES, CALENDAR_SOURCES, availableCalendarData, calendarDate,
   calendarWeekDates, filterCalendarEvents, nextCalendarCatalyst,
 } from "@/features/economic-calendar/model/calendar";
 import { IMPACT_LEVELS } from "@/constants/calendar";
@@ -21,6 +21,7 @@ import {
   RotateCcw,
   Search,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { useEconomicCalendar } from "@/services/queries/use-calendar-data";
 import {
@@ -39,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarDetailDialog } from "@/features/economic-calendar/components/calendar-detail-dialog";
 import { Separator } from "@/components/ui/separator";
 import { FilterGroup } from "@/components/shared/filter-group";
+import { PageHelp } from "@/components/shared/page-help";
 import { BADGE } from "@/constants/taxonomy/palette";
 import { useAppDispatch } from "@/store/hooks";
 import { uiActions } from "@/store/slices/ui-slice";
@@ -93,12 +95,14 @@ export default function CalendarPage() {
   const currentWeek = useMemo(() => calendarWeekDates(todayStr), [todayStr]);
   const selectedDate = timeHorizon === "today" ? todayStr : timeHorizon === "tomorrow" ? tomorrowStr : customDate;
   const month = (selectedDate ?? todayStr).slice(0, 7);
-  const { data, isLoading, isError, refetch, isRefetching } = useEconomicCalendar(month);
+  const { data, isLoading, isError, isFetched, isFetching, refetch } = useEconomicCalendar(month);
   const freshnessMinute = Math.floor(now / 60_000);
   const { sources, events: allEvents } = useMemo(() => availableCalendarData(data ?? EMPTY_CALENDAR, freshnessMinute * 60_000), [data, freshnessMinute]);
-  const failed = isError || (sources.length > 0 && sources.every((source) => source.status === "unavailable"));
+  // Retrying without cached data resets isError, but the failure panel must stay visible.
+  const loadFailed = isError || (!data && isFetched);
+  const failed = allEvents.length === 0 && (loadFailed || (sources.length > 0 && sources.every((source) => source.status === "unavailable")));
   const incomplete = sources.some((source) => source.status !== "ok");
-  const stale = sources.some((source) => source.stale);
+  const stale = loadFailed || sources.some((source) => source.stale);
   const matchingEvents = useMemo(() => filterCalendarEvents(allEvents, {
     currency: selectedCurrency, impact: impactFilter, asset: assetFilter, search: searchQuery,
   }), [allEvents, selectedCurrency, impactFilter, assetFilter, searchQuery]);
@@ -173,13 +177,7 @@ export default function CalendarPage() {
   const currencyOptions = useMemo(
     () => [
       { value: "ALL", label: t("calendar.all_currencies") },
-      { value: "USD", label: "USD" },
-      { value: "EUR", label: "EUR" },
-      { value: "GBP", label: "GBP" },
-      { value: "JPY", label: "JPY" },
-      { value: "AUD", label: "AUD" },
-      { value: "CNY", label: "CNY" },
-      { value: "IDR", label: "IDR" },
+      ...CALENDAR_CURRENCIES.map((code) => ({ value: code, label: code })),
     ],
     [t],
   );
@@ -268,34 +266,60 @@ export default function CalendarPage() {
     <div className="w-full bg-background py-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-bold uppercase tracking-tight text-foreground">
+        <div className="min-w-0">
+          <div className="flex w-fit max-w-full items-start gap-2">
+            <h1 className="min-w-0 text-3xl font-bold uppercase tracking-tight text-foreground">
               {t("calendar.title")}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("calendar.subtitle")}
-            </p>
+            <PageHelp
+              title={t("calendar.title")}
+              description={t("page_help.calendar")}
+            />
           </div>
-
-        </div>
-
-        <div role="status" className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs">
-          <p className="font-medium">{t(isLoading ? "calendar.sources_loading" : failed ? "calendar.sources_failed" : incomplete ? "calendar.coverage_partial" : stale ? "calendar.coverage_stale" : "calendar.coverage_ready")}</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground">
-            {sources.map((source) => (
-              <span key={source.source}>
-                <a href={CALENDAR_SOURCES[source.source].url} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">{CALENDAR_SOURCES[source.source].name}</a>
-                {" · "}{t(`calendar.source_status.${source.status}`)}{source.stale && source.status !== "unavailable" ? ` · ${t("calendar.source_status.stale")}` : ""}
-                {source.checkedAt !== null && <span className="block">{t("calendar.checked_at", { time: `${calendarDate(source.checkedAt)} ${calendarTime(source.checkedAt)}` })}</span>}
-              </span>
-            ))}
-          </div>
-          <p className="text-muted-foreground">{t("calendar.schedule_only")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("calendar.subtitle")}
+          </p>
         </div>
 
         <Separator />
 
+        {(failed || incomplete || stale) && (
+          <Card className="border border-border">
+            <Empty role={failed ? "alert" : "status"}>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <AlertCircle aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {t(failed ? "common.load_error_title" : incomplete ? "calendar.coverage_partial_title" : "calendar.coverage_stale_title")}
+                </EmptyTitle>
+                <EmptyDescription>
+                  {failed ? t("common.load_error_description") : (
+                    <>
+                      {incomplete && <p>{t("calendar.coverage_partial")}</p>}
+                      {stale && <p>{t("calendar.coverage_stale")}</p>}
+                    </>
+                  )}
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button
+                  type="button"
+                  size="lg"
+                  onClick={() => void refetch()}
+                  disabled={isFetching}
+                  aria-busy={isFetching}
+                >
+                  <RefreshCw data-icon="inline-start" />
+                  {t("common.retry")}
+                </Button>
+              </EmptyContent>
+            </Empty>
+          </Card>
+        )}
+
+        {!failed && (
+          <>
         {/* SECTION 1: NEXT MAJOR CATALYST */}
         <section className="flex flex-col gap-3">
           {/* Header: Title */}
@@ -489,16 +513,16 @@ export default function CalendarPage() {
             </Card>
           ) : (
             <Card className="border border-border">
-              <Empty className="min-h-0 flex-row justify-between rounded-none border-0 p-4 text-left sm:p-5">
-                <EmptyHeader className="items-start text-left">
+              <Empty>
+                <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <CalendarDays aria-hidden="true" />
                   </EmptyMedia>
-                  <EmptyTitle className="text-sm sm:text-base">
-                  {t(failed ? "common.load_error_title" : "calendar.no_upcoming_catalyst")}
+                  <EmptyTitle>
+                    {t("calendar.no_upcoming_catalyst")}
                   </EmptyTitle>
                   <EmptyDescription>
-                  {t(incomplete || failed ? "calendar.coverage_partial" : "calendar.catalyst_empty_desc")}
+                    {t("calendar.catalyst_empty_desc")}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -707,26 +731,28 @@ export default function CalendarPage() {
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
                 {t("calendar.agenda")}
               </h2>
-              <Button
-                variant="link"
-                size="icon"
-                onClick={() => refetch()}
-                disabled={isLoading || isRefetching}
-                title={t("journal.refresh")}
-                aria-label={t("journal.refresh")}
-                className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
-              >
-                <RefreshCw
-                  className={cn(
-                    "h-4 w-4",
-                    (isLoading || isRefetching) && "animate-spin",
-                  )}
-                />
-              </Button>
+              {!(incomplete || stale) && (
+                <Button
+                  variant="link"
+                  size="icon"
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  title={t("journal.refresh")}
+                  aria-label={t("journal.refresh")}
+                  className="h-7 w-7 text-muted-foreground transition-colors flex items-center justify-center hover:text-primary hover:bg-muted"
+                >
+                  <RefreshCw
+                    className={cn(
+                      "h-4 w-4",
+                      isFetching && "animate-spin",
+                    )}
+                  />
+                </Button>
+              )}
             </div>
 
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 shrink-0">
-              {isLoading || isRefetching ? (
+              {isFetching ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
                 <span>
@@ -856,41 +882,16 @@ export default function CalendarPage() {
                 </div>
               </div>
             </div>
-          ) : failed ? (
-            <Card className="border border-border">
-              <Empty role="alert" className="min-h-56 border-0">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <RefreshCw aria-hidden="true" />
-                  </EmptyMedia>
-                  <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
-                  <EmptyDescription>
-                    {t("common.load_error_description")}
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  <Button
-                    size="lg"
-                    onClick={() => void refetch()}
-                    disabled={isRefetching}
-                    aria-busy={isRefetching}
-                  >
-                    <RefreshCw data-icon="inline-start" />
-                    {t("common.retry")}
-                  </Button>
-                </EmptyContent>
-              </Empty>
-            </Card>
           ) : Object.keys(groupedEvents).length === 0 ? (
             <Card className="border border-border">
-              <Empty className="min-h-56 border-0">
+              <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <CalendarDays aria-hidden="true" />
                   </EmptyMedia>
                   <EmptyTitle>{t(incomplete ? "calendar.no_loaded_events" : "calendar.no_events")}</EmptyTitle>
                   <EmptyDescription>
-                    {t(incomplete ? "calendar.coverage_partial" : "calendar.no_events_desc")}
+                    {t("calendar.no_events_desc")}
                   </EmptyDescription>
                 </EmptyHeader>
                 {hasActiveFilters && (
@@ -1040,6 +1041,8 @@ export default function CalendarPage() {
             </div>
           )}
         </section>
+          </>
+        )}
       </div>
     </div>
   );

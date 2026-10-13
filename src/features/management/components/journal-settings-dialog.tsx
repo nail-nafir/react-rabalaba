@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AlertCircle, CalendarRange, Radar, Zap, FileText } from "lucide-react";
+import { AlertCircle, CalendarRange, Radar, Zap, FileText, RefreshCw } from "lucide-react";
 import { ActionButtonContent } from "@/components/shared/action-button-content";
 import { toast } from "sonner";
 import { formatAgo, getTimeBadgeClassName } from "../model/admin-utils";
@@ -516,7 +516,7 @@ export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
             setIsSaving={setIsSaving}
           />
         ) : (
-          <Empty role="alert" className="min-h-56 border-0">
+          <Empty role="alert">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <AlertCircle aria-hidden="true" />
@@ -528,6 +528,7 @@ export function JournalSettingsDialog({ trigger }: JournalSettingsDialogProps) {
             </EmptyHeader>
             <EmptyContent>
               <Button size="lg" onClick={() => void refetch()}>
+                <RefreshCw data-icon="inline-start" />
                 {t("common.retry")}
               </Button>
             </EmptyContent>

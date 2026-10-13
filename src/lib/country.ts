@@ -38,20 +38,15 @@ export function getCountryName(countryCode: string, lang = "id"): string {
   }
 }
 
-const COUNTRY_TO_CURRENCY: Record<string, string> = {
+/** The 21 euro area members (Bulgaria joined on 1 Jan 2026) plus the EU aggregate. */
+const EURO_AREA = [
+  "EU", "AT", "BE", "BG", "CY", "DE", "EE", "ES", "FI", "FR", "GR",
+  "HR", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
+];
+
+export const COUNTRY_TO_CURRENCY: Record<string, string> = {
   US: "USD",
-  EU: "EUR",
-  DE: "EUR",
-  FR: "EUR",
-  IT: "EUR",
-  ES: "EUR",
-  NL: "EUR",
-  BE: "EUR",
-  AT: "EUR",
-  IE: "EUR",
-  FI: "EUR",
-  PT: "EUR",
-  GR: "EUR",
+  ...Object.fromEntries(EURO_AREA.map((code) => [code, "EUR"])),
   GB: "GBP",
   UK: "GBP",
   JP: "JPY",

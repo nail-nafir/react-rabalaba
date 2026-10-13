@@ -1,19 +1,16 @@
 /**
  * Admin list for subscription_plans — add / edit / toggle-active / delete. Drives
  * the public /subscription page. Terminal-style data table (columnDef +
- * useReactTable + skeleton loading) — same visual language as the
+ * useTable + skeleton loading) — same visual language as the
  * registered-users / journal-assets / access-codes tables.
  */
 import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { Plus, Pencil, Trash2, Power, Play, Pause } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Play, Pause, RefreshCw } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -50,6 +47,7 @@ import { SkeletonSubscriptionPlanRow } from "@/components/shared/skeleton-card";
 import { useSubscriptionPlans } from "@/features/management/hooks/use-subscription-plans";
 import { pickLocale } from "@/lib/localized";
 import type { SubscriptionPlanRow } from "@/services/supabase/database.types";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SubscriptionPlanDialog } from "./subscription-plan-dialog";
@@ -260,7 +258,7 @@ export function SubscriptionPlansTable() {
     toggleActive,
     removePlan,
   } = useSubscriptionPlans();
-  const columns = useMemo<ColumnDef<SubscriptionPlanRow>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, SubscriptionPlanRow>[]>(
     () => [
       {
         accessorKey: "name",
@@ -383,12 +381,9 @@ export function SubscriptionPlansTable() {
     [t, lang, toggleActive, removePlan],
   );
 
-  const table = useReactTable({
+  const table = useAppTable({
     data: plans,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -446,7 +441,7 @@ export function SubscriptionPlansTable() {
             ) : isError && plans.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-32 text-center">
-                  <Empty role="alert" className="min-h-32 border-0">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <AlertCircle aria-hidden="true" />
@@ -461,6 +456,7 @@ export function SubscriptionPlansTable() {
                         size="lg"
                         onClick={() => void refetch()}
                       >
+                        <RefreshCw data-icon="inline-start" />
                         {t("common.retry")}
                       </Button>
                     </EmptyContent>
@@ -473,7 +469,7 @@ export function SubscriptionPlansTable() {
                   colSpan={columns.length}
                   className="h-32 text-center"
                 >
-                  <Empty className="min-h-32 border-0">
+                  <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <Inbox aria-hidden="true" />
@@ -489,7 +485,7 @@ export function SubscriptionPlansTable() {
             ) : (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getAllCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,

@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react';
-import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { RefreshCw, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -41,10 +41,10 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <Translation>
           {(t) => (
-            <Empty role="alert" className="min-h-[80vh] border-0 px-4">
+            <Empty role="alert" className="min-h-[80vh]">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <AlertTriangle aria-hidden="true" />
+                  <AlertCircle aria-hidden="true" />
                 </EmptyMedia>
                 <EmptyTitle>{t('error_boundary.title')}</EmptyTitle>
                 <EmptyDescription>{t('error_boundary.description')}</EmptyDescription>
@@ -81,7 +81,6 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Button
                   type="button"
                   size="lg"
-                  className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
                   onClick={() => {
                     this.setState({
                       hasError: false,
@@ -91,7 +90,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     window.location.reload();
                   }}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw data-icon="inline-start" />
                   {t('error_boundary.action')}
                 </Button>
               </EmptyContent>

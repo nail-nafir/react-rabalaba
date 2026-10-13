@@ -200,6 +200,7 @@ test("chat offers both tools with streaming and thinking disabled", async () => 
   assert.equal(authRequest.init.headers.Authorization, "Bearer test-token");
   assert.equal(inference.model, "@cf/google/gemma-4-26b-a4b-it");
   assert.equal(inference.input.stream, true);
+  assert.equal(inference.input.temperature, 0.4);
   assert.equal(inference.input.tool_choice, "auto");
   assert.deepEqual(
     inference.input.tools.map((tool) => tool.function.name),
@@ -208,7 +209,10 @@ test("chat offers both tools with streaming and thinking disabled", async () => 
   assert.equal(inference.input.messages[0].role, "system");
   for (const section of [
     "## Role and scope",
+    "## RabaLaba product guide",
     "## Personalization",
+    "## Tone examples",
+    "## Response language",
     "## Data and evidence",
     "## Response format",
     "## Trading boundaries",
@@ -220,16 +224,45 @@ test("chat offers both tools with streaming and thinking disabled", async () => 
     inference.input.messages[0].content,
     /Scope is limited to market and trading research/,
   );
-  assert.match(
-    inference.input.messages[0].content,
-    /relaxed and contemporary, with a casual Jakarta or Gen-Z feel/,
-  );
-  assert.match(
-    inference.input.messages[0].content,
-    /Never use them as a required opener or filler/,
-  );
-  assert.match(inference.input.messages[0].content, /Answer short questions briefly/);
-  assert.match(inference.input.messages[0].content, /Lightly tease impulsive trading decisions or FOMO/);
+  const systemPrompt = inference.input.messages[0].content;
+  for (const [rule, pattern] of [
+    ["casual Indonesian voice", /gaya teman trading Gen Z\/Jaksel/],
+    ["optional slang and humor", /Tidak ada kuota slang, sapaan, umpatan, atau ketawa/],
+    ["natural nicknames", /cok, cuk, bre, bro/],
+    ["laughter", /WKWKWK atau HAHAHA/],
+    ["religious expressions without assumptions", /Astagfirullah.*Alhamdulillah.*MasyaAllah.*tanpa asumsi agama pengguna/],
+    ["short conversational default", /biasanya satu sampai empat kalimat/],
+    ["default length with a detail exception", /at most 80 words by default.*Use more only when the user requests detail/],
+    ["dynamic structure", /Tidak ada urutan bagian wajib/],
+    ["no repeated explanations", /tanpa mengulang isi yang sama/],
+    ["follow-ups only answer the new point", /Jawab poin baru pada tindak lanjut tanpa mengulang penjelasan awal/],
+    ["roast only stated behavior", /kebiasaan yang benar-benar disebut pengguna/],
+    ["no inferred personal Journal trades", /Jangan menganggap pengguna FOMO, punya posisi, atau rugi dari Jurnal riset otomatis/],
+    ["Journal cannot diagnose emotions", /Never recommend the app's Journal for recording personal trades, emotions/],
+    ["calm tone for serious or distressed users", /Jika pengguna minta serius, tidak nyaman.*tertekan karena kerugian/],
+    ["no jokes in distress", /Jangan roasting, ketawa, atau memakai seruan religius pada kondisi itu/],
+    ["readable badge labels", /Use readable labels, never raw field names such as stop_loss/],
+    ["one badge includes the value", /label AND value inside the SAME pair of backticks/],
+    ["no hypothetical level badges", /Only use those level badges for supplied setup data or validated tool results/],
+    ["no unsolicited charts", /Do not add a chart to a text-only summary unless the user asks/],
+    ["no profit guarantees", /Discipline or favorable risk reward alone cannot guarantee profit/],
+    ["risk reward alone does not establish an edge", /expectancy also depends on win rate and costs/],
+    ["stop fill uncertainty", /Gaps and slippage can make the fill worse/],
+    ["liquidation is not always a full loss", /liquidation loses the entire margin/],
+    ["validated calculations", /First call calculate_trading_metrics with those inputs/],
+    ["definitions do not fabricate setups", /For a plain definition.*without badges or invented entry\/SL\/TP prices/],
+    ["only relevant core badges", /Highlight only the core data relevant to this reply/],
+    ["English stays English", /Answer an English message entirely in English/],
+    ["examples do not set language", /The product guide, snapshots, and tone examples do not select the response language/],
+  ]) assert.match(systemPrompt, pattern, rule);
+  const examples = [...systemPrompt.matchAll(/(?:Answer|answer): "([^"]+)"$/gm)].map((match) => match[1]);
+  assert.equal(examples.length, 5);
+  for (const example of examples) assert.doesNotMatch(example, /[\p{Dash_Punctuation}\u2212;\p{Extended_Pictographic}]/u);
+  for (const page of ["Terminal", "Calendar", "Calculator", "Learn", "Subscription"]) {
+    assert.ok(inference.input.messages[0].content.includes(`- ${page} `), page);
+  }
+  assert.match(inference.input.messages[0].content, /without requiring a visible context badge/);
+  assert.match(inference.input.messages[0].content, /an asset discussed earlier is not automatically the active asset or a fresh snapshot/);
   assert.match(inference.input.messages[0].content, /Do not use emojis or emoticons/);
   assert.match(inference.input.messages[0].content, /Avoid dash punctuation and semicolons/);
   assert.doesNotMatch(inference.input.messages[0].content, /Always begin with WKWKWK/);
@@ -251,7 +284,7 @@ test("chat offers both tools with streaming and thinking disabled", async () => 
   );
   assert.match(
     inference.input.messages[0].content,
-    /Use headings, tables, lists, scenarios, or a compact text diagram only when they help the user understand the answer/,
+    /paragraf, daftar, tabel, heading, atau skenario hanya jika membantu/,
   );
   assert.doesNotMatch(
     inference.input.messages[0].content,
@@ -399,6 +432,10 @@ test("explicit calculation requests use one validated tool call then stream the 
   assert.equal(calls[0].input.chat_template_kwargs.enable_thinking, false);
   assert.equal(calls[0].input.tools[0].function.name, "calculate_trading_metrics");
   assert.equal(calls[1].input.stream, true);
+  assert.equal(calls[1].input.temperature, 0.4);
+  assert.equal(calls[1].input.messages[0].content, calls[0].input.messages[0].content);
+  assert.match(calls[1].input.messages[0].content, /Jika pengguna minta serius/);
+  assert.match(calls[1].input.messages[0].content, /Stop loss 95\.000/);
   assert.equal(calls[1].input.messages.at(-2).tool_calls[0].id, "call_metrics_1");
   assert.equal(calls[1].input.messages.at(-1).tool_call_id, "call_metrics_1");
   assert.match(calls[1].input.messages.at(-1).content, /"riskRewardRatio":3/);
@@ -1158,6 +1195,52 @@ test("chat sends all selected contexts independently of their badge visibility",
   await streamChat([{ id: "user", role: "user", content: "Compare", terminalContext: terminalContext(), marketContexts: contexts }], "test-token", () => {}, new AbortController().signal);
   assert.equal(payload.terminalContext.symbol, "BTC-USD");
   assert.deepEqual(payload.marketContexts, contexts);
+});
+
+test("global reopening and new chat preserve page data without reviving historical asset snapshots", async () => {
+  const { default: reducer, uiActions } = await loadModule("/src/store/slices/ui-slice.ts");
+  const { streamChat } = await loadModule("/src/features/chat/chat-stream.ts");
+  const snapshot = terminalContext();
+  const pages = [
+    { kind: "calendar", selectedDate: null, filters: { impact: "all", currency: "all", asset: "all", timeHorizon: "this_week", search: "" }, events: [] },
+    { kind: "calculator", currency: "USD", direction: "long", entry: 100, stopLoss: 95, target: 115, riskPercent: 1, riskRewardRatio: 3, stopPercentDistance: 5, targetPercentDistance: 15, breakevenWinrate: 25, isValid: true },
+    { kind: "learn", activeTab: "patterns", category: "all", bias: "all", search: "", topics: ["Hammer"] },
+  ];
+  let payload;
+  globalThis.fetch = async (_url, init) => {
+    payload = JSON.parse(init.body);
+    return new Response(stream('data: {"response":"OK"}\n\ndata: [DONE]\n\n'));
+  };
+  for (const pageContext of pages) {
+    let state = reducer(undefined, { type: "init" });
+    state = reducer(state, uiActions.setPageResearchContext(pageContext));
+    state = reducer(state, uiActions.openResearchCopilot(snapshot));
+    assert.deepEqual(state.activeResearchContext, snapshot);
+    assert.equal(state.researchSessionId, 1);
+    assert.equal(state.researchCopilotRequestId, 1);
+    const history = [
+      { id: "old-user", role: "user", content: "Review BTC", terminalContext: snapshot, pageContext },
+      { id: "old-answer", role: "assistant", content: "Check the setup risk.", terminalContext: snapshot, pageContext },
+    ];
+    state = reducer(state, uiActions.setResearchContext(null));
+    assert.equal(state.activeResearchContext, null);
+    assert.deepEqual(state.activePageContext, pageContext);
+    assert.equal(state.researchSessionId, 1, "the global launcher must not reset the session");
+    const turn = { id: "new-user", role: "user", content: "Explain this page", terminalContext: state.activeResearchContext, pageContext: state.activePageContext, marketContexts: [] };
+    await streamChat([...history, turn], "test-token", () => {}, new AbortController().signal);
+    assert.equal(Object.hasOwn(payload, "terminalContext"), false, pageContext.kind);
+    assert.deepEqual(payload.pageContext, pageContext);
+    assert.equal(payload.messages.length, 3, "history survives reopening");
+    assert.ok(payload.messages.every((message) => !Object.hasOwn(message, "terminalContext")));
+    await streamChat(history.slice(0, 1), "test-token", () => {}, new AbortController().signal);
+    assert.deepEqual(payload.terminalContext, snapshot, "retry uses the original turn snapshot");
+    assert.deepEqual(history[1].terminalContext, snapshot, "historical charts keep their snapshot");
+    await streamChat([turn], "test-token", () => {}, new AbortController().signal);
+    assert.equal(payload.messages.length, 1, "new chat starts with fresh history");
+    assert.equal(Object.hasOwn(payload, "terminalContext"), false);
+    assert.equal(Object.hasOwn(payload, "marketContexts"), false);
+    assert.deepEqual(payload.pageContext, pageContext, "new chat retains the current page snapshot");
+  }
 });
 
 test("context overflow reserves +N only when needed and never hides the primary context", async () => {

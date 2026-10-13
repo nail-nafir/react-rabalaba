@@ -43,9 +43,13 @@ test("every application overlay root has a matching Trigger", () => {
       ? count(/<Tooltip\s+formatter=\{/g)
       : 0;
     const externallyTriggeredRoots = primitive === "AlertDialog" ? 1 : 0;
+    // The terminal's trade and asset dialogs open from the URL
+    // (?trade= / ?symbol=), so rows and links write the URL instead of
+    // wrapping a Trigger; focus still returns to the clicked row.
+    const urlDrivenRoots = primitive === "Dialog" ? 2 : 0;
     assert.equal(
       triggers,
-      roots - externallyTriggeredRoots - nonPrimitiveRoots,
+      roots - externallyTriggeredRoots - nonPrimitiveRoots - urlDrivenRoots,
       `${primitive}: ${roots} roots, ${triggers} triggers`,
     );
   }
@@ -83,16 +87,23 @@ test("controlled visibility supports local async and on-demand detail dialogs", 
   );
   assert.equal(
     primitiveTags.Dialog.filter((tag) => /\bopen=/.test(tag)).length,
-    16, // 14 mutation workflows + market/journal content mounted only while open.
+    18, // 14 mutation workflows + URL-driven trade, asset, pattern and strategy detail.
   );
   for (const primitive of [
     "Sheet",
     "Select",
     "DropdownMenu",
-    "Tooltip",
   ]) {
     for (const tag of primitiveTags[primitive]) {
       assert.doesNotMatch(tag, /\bopen=/, tag);
+    }
+  }
+  for (const file of sources) {
+    const tooltips = file.source.match(/<Tooltip(?=[\s>])[\s\S]*?>/g) ?? [];
+    for (const tag of tooltips) {
+      if (file.path === "components/shared/page-help.tsx") {
+        assert.match(tag, /\bopen=/, "Page help opens the same tooltip on click or tap");
+      } else assert.doesNotMatch(tag, /\bopen=/, `${file.path}: ${tag}`);
     }
   }
 });
@@ -259,4 +270,39 @@ test("overlay composition has no shared or imperative close workarounds", () => 
     assert.match(file.source, /\bpendingSymbols\b/);
     assert.match(file.source, /<Dialog open=\{open\}/);
   }
+});
+
+test("overlay fades stay on the compositor and URL detail dialogs animate out", () => {
+  // tw-animate-css animates filter: blur() in enter/exit, which Chrome won't
+  // composite; index.css redefines both without it.
+  const css = readFileSync(resolve(ROOT, "index.css"), "utf8");
+  for (const name of ["enter", "exit"]) {
+    const keyframes = css.match(
+      new RegExp(`@keyframes ${name}\\s*\\{[\\s\\S]*?\\}\\s*\\}`),
+    )?.[0];
+    assert.ok(keyframes, name);
+    assert.doesNotMatch(keyframes, /filter/, name);
+  }
+
+  // Root stays mounted with `open` from the URL; Radix unmounts the body only
+  // after the exit animation.
+  const read = (path) => sources.find((file) => file.path === path).source;
+  for (const path of [
+    "features/market/components/asset-signal-table.tsx",
+    "features/journal/components/journal-terminal-content.tsx",
+  ]) {
+    assert.doesNotMatch(read(path), /&&\s*\(\s*<(?:Asset|Trade)DetailDialog\b/, path);
+  }
+  for (const path of [
+    "features/trading-plan/components/asset-detail-dialog.tsx",
+    "features/follow-trade/components/trade-detail-dialog.tsx",
+  ]) {
+    assert.doesNotMatch(read(path), /\{open && </, path);
+  }
+
+  // Stable cards keep the memoized Sparklines from replaying on every navigation.
+  assert.match(
+    read("features/market/components/market-summary-row.tsx"),
+    /const cards = useMemo\(/,
+  );
 });

@@ -1,10 +1,6 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
@@ -22,6 +18,7 @@ import {
   Play,
   Pause,
   Settings,
+  RefreshCw,
 } from "lucide-react";
 import {
   Table,
@@ -70,6 +67,7 @@ import { ASSET_TYPE_OPTIONS } from "@/constants";
 import type { AssetFilterType, UnifiedAsset } from "@/types/asset";
 import { formatDateNumeric, formatClock, formatPrice } from "@/lib/formatters";
 import { PercentageChange } from "@/components/shared/percentage-change";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { cn } from "@/lib/utils";
 import { JournalAssetDialog } from "./journal-asset-dialog";
 import { JournalSettingsDialog } from "./journal-settings-dialog";
@@ -79,7 +77,7 @@ import { toast } from "sonner";
 type StatusFilter = "all" | "active" | "inactive";
 type SourceFilter = "all" | "admin" | "auto";
 
-function SortIcon({ column }: { column: Column<JournalAssetRow, unknown> }) {
+function SortIcon({ column }: { column: Column<DataTableFeatures, JournalAssetRow, unknown> }) {
   const isSorted = column.getIsSorted();
   if (isSorted === "asc")
     return <ArrowUp className="h-3.5 w-3.5 text-primary" />;
@@ -93,7 +91,7 @@ function SortButton({
   column,
 }: {
   label: string;
-  column: Column<JournalAssetRow, unknown>;
+  column: Column<DataTableFeatures, JournalAssetRow, unknown>;
 }) {
   return (
     <Button
@@ -405,7 +403,7 @@ export function JournalAssetsTable() {
     { value: "auto", label: t("admin.source_auto") },
   ];
 
-  const columns = useMemo<ColumnDef<JournalAssetRow>[]>(
+  const columns = useMemo<ColumnDef<DataTableFeatures, JournalAssetRow>[]>(
     () => [
       {
         accessorKey: "created_at",
@@ -589,15 +587,11 @@ export function JournalAssetsTable() {
     [t, toggleActive, removeAsset, marketDataMap, userMap],
   );
 
-  const table = useReactTable({
+  const table = useAppTable({
     data: filtered,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
@@ -721,7 +715,7 @@ export function JournalAssetsTable() {
               ) : isError && assets.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={columns.length} className="h-40 text-center">
-                    <Empty role="alert" className="min-h-40 border-0">
+                    <Empty role="alert">
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <AlertCircle aria-hidden="true" />
@@ -736,6 +730,7 @@ export function JournalAssetsTable() {
                           size="lg"
                           onClick={() => void refetch()}
                         >
+                          <RefreshCw data-icon="inline-start" />
                           {t("common.retry")}
                         </Button>
                       </EmptyContent>
@@ -748,7 +743,7 @@ export function JournalAssetsTable() {
                     colSpan={columns.length}
                     className="h-40 text-center"
                   >
-                    <Empty className="min-h-40 border-0">
+                    <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <Inbox aria-hidden="true" />
@@ -768,7 +763,7 @@ export function JournalAssetsTable() {
               ) : (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,

@@ -3,7 +3,7 @@ import { useEffect, useState, type MouseEvent, type ReactElement } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Star } from "lucide-react";
+import { AlertCircle, Star, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -264,7 +264,7 @@ function UserTestimonialDialogContent({
           </div>
         </div>
       ) : isError && !submission ? (
-        <Empty role="alert" className="min-h-56 border-0">
+        <Empty role="alert">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <AlertCircle aria-hidden="true" />
@@ -276,6 +276,7 @@ function UserTestimonialDialogContent({
           </EmptyHeader>
           <EmptyContent>
             <Button size="lg" onClick={() => void refetch()}>
+              <RefreshCw data-icon="inline-start" />
               {t("common.retry")}
             </Button>
           </EmptyContent>

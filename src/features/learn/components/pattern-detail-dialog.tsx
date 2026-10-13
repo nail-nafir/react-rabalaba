@@ -20,11 +20,16 @@ import type { CandlestickPattern, ChartPattern } from "../types/learn";
 export interface PatternDetailDialogProps {
   pattern: CandlestickPattern | ChartPattern;
   trigger: ReactElement;
+  /** Driven by `/learn?tab=patterns&pattern=<id>` (see `useDialogParam`). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export const PatternDetailDialog: React.FC<PatternDetailDialogProps> = ({
   pattern,
   trigger,
+  open,
+  onOpenChange,
 }) => {
   const { t } = useTranslation();
 
@@ -60,7 +65,7 @@ export const PatternDetailDialog: React.FC<PatternDetailDialogProps> = ({
   const rulesList = Array.isArray(rules) ? (rules as string[]) : [];
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header styled identically to terminal detail dialogs */}

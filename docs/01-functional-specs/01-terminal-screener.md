@@ -1,6 +1,6 @@
 # FSD 01 — Terminal Screener dan Detail Aset / Terminal Screener and Asset Detail
 
-> Status: Aktif / Active | Terverifikasi / Verified: Ya / Yes | Tanggal / Date: 2026-09-16 | Cakupan / Scope: Market Pulse, Tabel Sinyal, Dialog Detail, Chart Setup, Share Card
+> Status: Aktif / Active | Terverifikasi / Verified: Ya / Yes | Tanggal / Date: 2026-10-05 | Cakupan / Scope: Market Pulse, Tabel Sinyal, Dialog Detail, Chart Setup, Share Card, Deep Link
 
 [Bahasa Indonesia](#bagian-id) · [English](#english-part)
 
@@ -11,6 +11,8 @@
 Halaman /terminal menampilkan lima kartu Market Pulse di atas, lalu tabel screener multi-aset di bawah. Tabel memuat sinyal, strength, grade, success-rate, dan sparkline. Alur sat-set dari pulse sampai dialog detail terasa cepat.
 
 Klik baris aset membuka Asset Detail Dialog berisi chart candlestick plus rencana trading plus evidence. Tombol Share membangun kartu PNG bermerek. Universe premium memakai DB single-source dengan cron.
+
+Sejak 2026-10-05 /terminal punya dua tab lagi: Pasar (`/terminal`, `/terminal/market`) dan Jurnal (`/terminal/journal`, FSD 04). Market Pulse hanya ada di tab Pasar, dan subjudul halaman berganti untuk menjelaskan tab aktif. Perpindahan antar halaman memakai switch Pasar/Jurnal. Tabel Pasar hanya menampilkan badge sinyal; kedua dialog tidak memiliki CTA lintas terminal. Pasar tidak mengambil trade Jurnal untuk navigasi.
 
 Episode aktif dengan setup valid menerbitkan LONG/SHORT. Kandidat belum tercatat berlabel Netral. Status gagal verifikasi berlabel Tidak Tersedia plus aksi coba lagi.
 
@@ -46,7 +48,7 @@ Success-rate memakai agregat all-time per simbol via RPC publik. Denominator han
 
 Skeleton 10 baris menanti universe, aset, benchmark, dan episode saat initial load. Refresh background mempertahankan baris plus pagination plus indikator. Favorit tersimpan walau API aset gagal. Episode dan jurnal dipoll 60 detik, lalu dibaca ulang saat mount dan focus.
 
-Seluruh baris berfungsi sebagai DialogTrigger via klik, Enter, atau Space. Simbol menjadi ID baris stabil. Filter, search, atau sort kembali ke halaman pertama. Hasil menyusut membatasi indeks halaman. Radix menangani fokus, Escape, dan pengembalian fokus.
+Klik, Enter, atau Space pada baris menulis `?symbol=<SYMBOL>` ke URL lewat `use-dialog-param.ts › useDialogParam`; satu dialog di tabel membaca URL itu, jadi tautan bisa dibagikan dan tombol Back browser menutup dialog. Tautan dengan simbol di luar universe akun memunculkan toast lalu param dihapus. Loading bar atas hanya untuk pindah halaman; status memuat dialog tampil di dalam dialog (`role="status"`). Simbol menjadi ID baris stabil. Filter, search, atau sort kembali ke halaman pertama. Hasil menyusut membatasi indeks halaman. Radix menangani fokus, Escape, dan pengembalian fokus.
 
 ## 🇮🇩 Dialog Detail Aset
 
@@ -103,6 +105,8 @@ The /terminal page shows five Market Pulse cards on top, then multi-asset screen
 
 Asset-row click opens Asset Detail Dialog with candlestick chart plus trade plan plus evidence. Share button builds branded PNG card. Premium universe uses DB single-source with cron.
 
+Since 2026-10-05 /terminal has two tabs again: Market (`/terminal`, `/terminal/market`) and Journal (`/terminal/journal`, FSD 04). Market Pulse lives only in the Market tab, and the page subtitle changes to explain the active tab. Navigation between pages uses the Market/Journal switch. Market rows show only the signal badge; neither dialog has a cross-terminal CTA. Market does not fetch Journal trades for navigation.
+
 Active episodes with valid setups publish LONG/SHORT. Unrecorded candidates show Neutral. Failed verification shows Unavailable plus retry action.
 
 ## 🇺🇸 Market Pulse
@@ -137,7 +141,7 @@ Success-rate uses all-time per-symbol aggregates via public RPC. Denominator hol
 
 Ten skeleton rows await universe, assets, benchmarks, plus episodes at initial load. Background refresh retains rows plus pagination plus indicator. Saved favorites persist when asset API fails. Episodes plus journal poll at 60 seconds, then reload at mount plus focus.
 
-Entire rows act as DialogTrigger via click, Enter, or Space. Symbol serves as stable row ID. Filter, search, or sort returns to first page. Shrinking results clamp page index. Radix handles focus, Escape, plus focus restoration.
+Click, Enter, or Space on a row writes `?symbol=<SYMBOL>` to the URL through `use-dialog-param.ts › useDialogParam`; one dialog in the table reads it, so the link can be shared and the browser Back button closes the dialog. A link with a symbol outside the account's universe shows a toast and drops the param. The top loading bar is for page changes only; the dialog's loading status shows inside the dialog (`role="status"`). Symbol serves as stable row ID. Filter, search, or sort returns to first page. Shrinking results clamp page index. Radix handles focus, Escape, plus focus restoration.
 
 ## 🇺🇸 Asset Detail Dialog
 

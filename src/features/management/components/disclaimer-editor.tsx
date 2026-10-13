@@ -344,7 +344,7 @@ export function DisclaimerEditor() {
   }
   if (!clauses) {
     return (
-      <Empty role="alert" className="min-h-56 border-0">
+      <Empty role="alert">
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <AlertCircle aria-hidden="true" />

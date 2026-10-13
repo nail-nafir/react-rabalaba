@@ -40,7 +40,7 @@ export interface JournalAlert {
   fromTpLevel?: number;
   /** Scale-out legs banked (engine-v7+); drives the PARTIAL line. */
   partialLegs?: number;
-  /** TP levels secured by the realized close price. */
+  /** TP levels secured at the close, by the dashboard badge's rule. */
   securedTpLevel?: number;
   /** Total TP levels the plan had. */
   tpTotal?: number;
@@ -153,13 +153,15 @@ export interface DiscordAlertBatch {
 export const DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━";
 
 /** Signed P&L like " (+120%)", " (-15%)", " (+0.28%)" — precision scales with
- *  magnitude, trailing zeros dropped. Empty when there's no value. */
+ *  magnitude, trailing zeros dropped, and a value that rounds to zero reads
+ *  " (0%)" (never "+0%" or "-0%"). Empty when there's no value. */
 function pctSuffix(pct?: number): string {
   if (pct == null || !Number.isFinite(pct)) return "";
   const abs = Math.abs(pct);
   const digits = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
   const v = abs.toLocaleString("en-US", { maximumFractionDigits: digits });
-  return ` \`(${pct >= 0 ? "+" : "-"}${v}%)\``;
+  const sign = v === "0" ? "" : pct > 0 ? "+" : "-";
+  return ` \`(${sign}${v}%)\``;
 }
 
 /** Price tag " @`<num>`" (omitted when there's no price). The layout puts the
@@ -487,11 +489,10 @@ export function formatDailySummaryForDiscord(
 }
 
 /**
- * Price formatting for the alert lines. Shows prices "as-is" without dropping
- * trailing-zero decimals: whole numbers stay clean (65713), prices ≥ 1 keep a
- * fixed 2 decimals (145.20, 28.40), and sub-1 alts scale to enough significant
- * decimals (0.006467) without padding extra zeros. No thousands separators —
- * they read awkwardly inside the inline-code spans.
+ * Price formatting for the alert lines, en-US like the terminal: whole numbers
+ * grouped (65,713), prices ≥ 1 keep a fixed 2 decimals (84,762.79, 145.20),
+ * and sub-1 alts scale to enough significant decimals (0.006467) without
+ * padding extra zeros.
  */
 function formatNum(n: number): string {
   if (!Number.isFinite(n)) return "—";
@@ -516,5 +517,5 @@ function formatNum(n: number): string {
       });
     }
   }
-  return formatted.replace(/,/g, ".");
+  return formatted;
 }

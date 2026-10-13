@@ -43,4 +43,5 @@ supabase/.temp
 .wrangler/state/
 
 # AI Agents
-.agent
+.agents
+.claude

@@ -1,13 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
+  type Column,
 } from "@tanstack/react-table";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import {
@@ -93,9 +91,10 @@ import {
   type TerminalAsset,
 } from "@/core/automation/signal-episode";
 import { formatPrice, formatVolume } from "@/lib/formatters";
-import type { Column } from "@tanstack/react-table";
 import { SignalAssetDialog } from "./signal-asset-dialog";
 import { AssetDetailDialog } from "@/features/trading-plan/components/asset-detail-dialog";
+import { useDialogParam } from "@/hooks/use-dialog-param";
+import { useAppTable, type DataTableFeatures } from "@/hooks/use-app-table";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
 
 import { FilterGroup } from "@/components/shared/filter-group";
@@ -106,7 +105,7 @@ const COMPACT_SIGNAL_BADGE_CLASSNAME =
 function SortIcon<TData extends UnifiedAsset>({
   column,
 }: {
-  column: Column<TData, unknown>;
+  column: Column<DataTableFeatures, TData, unknown>;
 }) {
   const isSorted = column.getIsSorted();
   if (isSorted === "asc")
@@ -224,7 +223,6 @@ export function AssetSignalTable() {
       universe.refetch(),
       refetchFavorites(),
       queryClient.invalidateQueries({ queryKey: ["asset-data"] }),
-      queryClient.invalidateQueries({ queryKey: ["journal-trades"] }),
       queryClient.invalidateQueries({
         queryKey: PUBLIC_JOURNAL_SUCCESS_RATES_QUERY_KEY,
       }),
@@ -366,7 +364,26 @@ export function AssetSignalTable() {
     signalFilter,
   ]);
 
-  const columns = useMemo<ColumnDef<TerminalAsset>[]>(
+  // /terminal/market?symbol=<SYMBOL>: one dialog for row clicks and shared URLs.
+  const { value: symbolParam, open: openSymbol, close: closeSymbol } =
+    useDialogParam("symbol");
+  const linkedAsset = symbolParam
+    ? enrichedAssets.find((asset) => asset.symbol === symbolParam.toUpperCase())
+    : undefined;
+  // Keep the last asset on screen while the dialog plays its exit animation.
+  const [shownAsset, setShownAsset] = useState(linkedAsset);
+  if (linkedAsset && linkedAsset !== shownAsset) setShownAsset(linkedAsset);
+  const linkMissing =
+    symbolParam !== null && !isLoading && !hasMarketDataError && !linkedAsset;
+  useEffect(() => {
+    if (!linkMissing) return;
+    // Outside this account's universe, or not a ticker at all: say so. The id
+    // keeps a re-run before the URL updates from stacking a second toast.
+    toast(t("market.link_not_found"), { id: "market-link-not-found" });
+    closeSymbol();
+  }, [linkMissing, closeSymbol, t]);
+
+  const columns = useMemo<ColumnDef<DataTableFeatures, TerminalAsset>[]>(
     () => [
       {
         accessorKey: "symbol",
@@ -598,7 +615,7 @@ export function AssetSignalTable() {
       {
         id: "signal",
         accessorFn: (row) => row.signalStatus,
-        sortingFn: (a, b) => compareTerminalSignal(a.original, b.original),
+        sortFn: (a, b) => compareTerminalSignal(a.original, b.original),
         // A string accessor would start ascending; the header cycle is ↓ → ↑ → off.
         sortDescFirst: true,
         header: ({ column }) => (
@@ -656,7 +673,12 @@ export function AssetSignalTable() {
         enableSorting: false,
       },
     ],
-    [successRateBySymbol, successRatesError, successRatesPending, t],
+    [
+      successRateBySymbol,
+      successRatesError,
+      successRatesPending,
+      t,
+    ],
   );
 
   const { pagination, onPaginationChange } = useTablePagination(
@@ -669,7 +691,7 @@ export function AssetSignalTable() {
       sorting,
     ]),
   );
-  const table = useReactTable({
+  const table = useAppTable({
     data: filteredData,
     columns,
     state: { sorting, pagination },
@@ -677,9 +699,6 @@ export function AssetSignalTable() {
     autoResetPageIndex: false,
     getRowId: (row) => row.symbol,
     onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -904,14 +923,14 @@ export function AssetSignalTable() {
                   colSpan={columns.length}
                   className="h-64 text-center"
                 >
-                  <Empty role="alert" className="min-h-64 border-0">
+                  <Empty role="alert">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <AlertCircle aria-hidden="true" />
                       </EmptyMedia>
-                      <EmptyTitle>{t("market.data_unavailable")}</EmptyTitle>
+                      <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
                       <EmptyDescription>
-                        {t("market.data_unavailable_desc")}
+                        {t("common.load_error_description")}
                       </EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
@@ -935,7 +954,7 @@ export function AssetSignalTable() {
                   className="h-64 text-center"
                 >
                   {showFavorites && favoriteSymbols.length === 0 ? (
-                    <Empty className="min-h-64 border-0">
+                    <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <Star aria-hidden="true" />
@@ -947,7 +966,7 @@ export function AssetSignalTable() {
                       </EmptyHeader>
                     </Empty>
                   ) : (
-                    <Empty className="min-h-64 border-0">
+                    <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant="icon">
                           <Search aria-hidden="true" />
@@ -963,43 +982,28 @@ export function AssetSignalTable() {
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <AssetDetailDialog
+                <TableRow
                   key={row.id}
-                  symbol={row.original.symbol}
-                  signalStateAvailable={signalStatesAvailable}
-                  signalStateFetching={signalStatesFetching}
-                  signalState={signalStates.get(
-                    signalEpisodeKey(
-                      row.original.symbol,
-                      row.original.timeframe,
-                    ),
-                  )}
-                  trigger={
-                    <TableRow
-                      className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={t("common.analyze_symbol", {
-                        symbol: row.original.symbol,
-                      })}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          event.currentTarget.click();
-                        }
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  }
-                />
+                  className="cursor-pointer hover:bg-muted/50 active:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t("common.analyze_symbol", {
+                    symbol: row.original.symbol,
+                  })}
+                  onClick={() => openSymbol(row.original.symbol)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openSymbol(row.original.symbol);
+                    }
+                  }}
+                >
+                  {row.getAllCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
               ))
             )}
           </TableBody>
@@ -1007,6 +1011,23 @@ export function AssetSignalTable() {
       </div>
 
       {!isLoading && <DataTablePagination table={table} />}
+
+      <AssetDetailDialog
+        symbol={shownAsset?.symbol}
+        signalState={
+          shownAsset
+            ? signalStates.get(
+                signalEpisodeKey(shownAsset.symbol, shownAsset.timeframe),
+              )
+            : undefined
+        }
+        signalStateAvailable={signalStatesAvailable}
+        signalStateFetching={signalStatesFetching}
+        open={linkedAsset !== undefined}
+        onOpenChange={(open) => {
+          if (!open) closeSymbol();
+        }}
+      />
     </div>
   );
 }

@@ -9,6 +9,8 @@ import {
   LogIn,
   UserPlus,
   ArrowRight,
+  RefreshCw,
+  BarChart3,
 } from "lucide-react";
 import {
   Empty,
@@ -137,10 +139,7 @@ export default function InvitePage() {
     return (
       <Shell>
         <CardContent className="p-0">
-          <Empty
-            role={claimError ? "alert" : undefined}
-            className="min-h-64 border-0"
-          >
+          <Empty role={claimError ? "alert" : undefined}>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 {claimError ? (
@@ -163,10 +162,8 @@ export default function InvitePage() {
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button
-                size="lg"
-                onClick={() => navigate("/terminal")}
-              >
+              <Button size="lg" onClick={() => navigate("/terminal")}>
+                <BarChart3 data-icon="inline-start" />
                 {t("invite.go_terminal")}
               </Button>
             </EmptyContent>
@@ -181,7 +178,7 @@ export default function InvitePage() {
     return (
       <Shell>
         <CardContent className="p-0">
-          <Empty role="alert" className="min-h-64 border-0">
+          <Empty role="alert">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <AlertCircle aria-hidden="true" />
@@ -198,6 +195,7 @@ export default function InvitePage() {
                 disabled={isPeeking}
                 aria-busy={isPeeking}
               >
+                <RefreshCw data-icon="inline-start" />
                 {t("common.retry")}
               </Button>
             </EmptyContent>
@@ -212,7 +210,7 @@ export default function InvitePage() {
     return (
       <Shell>
         <CardContent className="p-0">
-          <Empty className="min-h-64 border-0">
+          <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <XCircle aria-hidden="true" />
@@ -224,7 +222,10 @@ export default function InvitePage() {
             </EmptyHeader>
             <EmptyContent>
               <Button asChild size="lg">
-                <Link to="/terminal">{t("invite.go_terminal")}</Link>
+                <Link to="/terminal">
+                  <BarChart3 data-icon="inline-start" />
+                  {t("invite.go_terminal")}
+                </Link>
               </Button>
             </EmptyContent>
           </Empty>

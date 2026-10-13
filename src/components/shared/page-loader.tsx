@@ -39,7 +39,8 @@ export function PageLoader({ trigger = false }: PageLoaderProps) {
     };
   }, [trigger, setPageLoading]);
 
-  // VISUAL MODE: Handle pulse on URL change
+  // VISUAL MODE: pulse on page change. Query-only changes (?symbol=, ?trade=,
+  // ?tab=) open dialogs or switch tabs in place, so they never pulse.
   useEffect(() => {
     if (trigger) return;
 
@@ -50,7 +51,7 @@ export function PageLoader({ trigger = false }: PageLoaderProps) {
 
     const timer = requestAnimationFrame(startProgress);
     return () => cancelAnimationFrame(timer);
-  }, [location.pathname, location.search, trigger]);
+  }, [location.pathname, trigger]);
 
   // VISUAL MODE: Progress animation logic
   useEffect(() => {

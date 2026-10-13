@@ -98,6 +98,7 @@ test("closed market and journal dialogs do not mount detail queries or analysis"
     "/src/features/follow-trade/components/trade-detail-dialog.tsx",
   );
   // No query/auth providers: rendering a detail child here would throw.
+  // Both open from the URL (?symbol= / ?trade=); closed renders nothing.
   for (const [component, props] of [
     [
       AssetDetailDialog,
@@ -112,15 +113,11 @@ test("closed market and journal dialogs do not mount detail queries or analysis"
     const html = renderToString(
       React.createElement(component, {
         ...props,
-        trigger: React.createElement(
-          "tr",
-          { role: "button", tabIndex: 0 },
-          React.createElement("td", null, "Analyze"),
-        ),
+        open: false,
+        onOpenChange() {},
       }),
     );
-    assert.match(html, /data-state="closed"/);
-    assert.doesNotMatch(html, /role="dialog"/);
+    assert.equal(html, "");
   }
 });
 

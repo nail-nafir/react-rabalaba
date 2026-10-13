@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { MessageSquareQuote, RefreshCw, Star } from "lucide-react";
+import { MessageSquareQuote, RefreshCw, Star, AlertCircle } from "lucide-react";
 import Autoplay from "embla-carousel-autoplay";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -166,17 +166,17 @@ export function TestimonialSection() {
           </div>
         ) : isError && testimonials.length === 0 ? (
           <Card className="mx-auto w-full max-w-2xl">
-            <Empty role="alert" className="border-0">
+            <Empty role="alert">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <RefreshCw aria-hidden="true" />
+                  <AlertCircle aria-hidden="true" />
                 </EmptyMedia>
                 <EmptyTitle>{t("testimonials.load_error_title")}</EmptyTitle>
                 <EmptyDescription>
                   {t("testimonials.load_error_description")}
                 </EmptyDescription>
               </EmptyHeader>
-              <EmptyContent className="flex-row flex-wrap justify-center gap-2">
+              <EmptyContent>
                 <Button size="lg" onClick={() => void refetch()}>
                   <RefreshCw data-icon="inline-start" />
                   {t("common.retry")}
@@ -187,7 +187,7 @@ export function TestimonialSection() {
           </Card>
         ) : testimonials.length === 0 ? (
           <Card className="mx-auto w-full max-w-2xl">
-            <Empty className="border-0">
+            <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <MessageSquareQuote aria-hidden="true" />

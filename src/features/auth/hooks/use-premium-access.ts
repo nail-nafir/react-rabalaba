@@ -89,7 +89,7 @@ export function usePremiumAccess() {
       // of trusting the minute-long display cache, and never consume a code for
       // an account that the server currently marks as blocked.
       try {
-        const currentProfile = await queryClient.fetchQuery({
+        const currentProfile = await queryClient.query({
           queryKey: ["profile", userId],
           queryFn: () => fetchProfile(userId),
           staleTime: 0,

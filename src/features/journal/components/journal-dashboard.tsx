@@ -11,7 +11,8 @@ import {
   YAxis,
   PieChart,
   Pie,
-  Cell,
+  Rectangle,
+  type BarShapeProps,
 } from "recharts";
 import {
   buildTrackerStats,
@@ -35,6 +36,7 @@ import {
   benchmarkQueryWindow,
   buildAssetTypePercentSeries,
   buildJournalPerformanceSeries,
+  journalWindow,
   type BenchmarkDataKey,
   type JournalChartTimeframe,
 } from "@/features/journal/model/journal-performance";
@@ -79,6 +81,18 @@ const BENCHMARKS = [
   dash: string;
 }[];
 
+// Bar `shape` renderer (replaces the deprecated `Cell`). Module-level for the
+// same stable-identity reason as CHART_MARGIN.
+function pnlBar(props: BarShapeProps) {
+  const pct: number = props.payload.pct;
+  return (
+    <Rectangle
+      {...props}
+      fill={pct === 0 ? "var(--color-zinc-500)" : pct > 0 ? POS : NEG}
+    />
+  );
+}
+
 function ChartCard({
   title,
   methodology,
@@ -121,28 +135,21 @@ const formatPercentTick = (value: number) => {
 interface JournalDashboardProps {
   history: FollowedTrade[];
   openTrades: FollowedTrade[];
+  /** Start of the active journal period; tabs never reach before it. */
+  periodStartMs: number | null;
   isLoading: boolean;
 }
 
 export function JournalDashboard({
   history,
   openTrades,
+  periodStartMs,
   isLoading,
 }: JournalDashboardProps) {
   const { t } = useTranslation();
   const openCount = openTrades.length;
   // Default to 1D (1 hari).
   const [timeframe, setTimeframe] = useState<JournalChartTimeframe>("1D");
-
-  // Timestamp of the earliest trade defines the "ALL" journal span.
-  const oldestTradeMs = useMemo(() => {
-    const now = new Date().getTime();
-    if (history.length === 0) return now;
-    return history.reduce(
-      (oldest, t) => Math.min(oldest, t.closedAt ?? t.followedAt),
-      now,
-    );
-  }, [history]);
 
   const timeframeOptions = useMemo(
     () =>
@@ -167,41 +174,16 @@ export function JournalDashboard({
     [t],
   );
 
-  const filteredHistory = useMemo(() => {
-    const today = new Date();
-    const d = new Date(today);
-    d.setHours(0, 0, 0, 0);
-    let start = 0;
-
-    switch (timeframe) {
-      case "1D": {
-        start = d.getTime();
-        break;
-      }
-      case "1W": {
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        d.setDate(diff);
-        start = d.getTime();
-        break;
-      }
-      case "1M": {
-        d.setDate(d.getDate() - 29);
-        start = d.getTime();
-        break;
-      }
-      case "ALL":
-      default: {
-        start = history.length > 0 ? oldestTradeMs : 0;
-        break;
-      }
-    }
-
-    return history.filter((t) => {
-      const time = t.closedAt ?? t.followedAt;
-      return time >= start;
-    });
-  }, [history, timeframe, oldestTradeMs]);
+  // One window feeds every card: the chart axis, the stats, the outcome donut and the categories.
+  const { span, filteredHistory } = useMemo(() => {
+    const span = journalWindow(timeframe, periodStartMs);
+    return {
+      span,
+      filteredHistory: history.filter(
+        (t) => (t.closedAt ?? t.followedAt) >= span.dataStartMs,
+      ),
+    };
+  }, [history, timeframe, periodStartMs]);
 
   const stats = useMemo(
     () => buildTrackerStats(filteredHistory, openCount),
@@ -209,8 +191,8 @@ export function JournalDashboard({
   );
 
   const benchmarkWindow = useMemo(
-    () => benchmarkQueryWindow(timeframe, oldestTradeMs),
-    [timeframe, oldestTradeMs],
+    () => benchmarkQueryWindow(timeframe, span.startMs),
+    [timeframe, span.startMs],
   );
   const benchmarkQueries = useQueries({
     queries: BENCHMARKS.map(({ symbol }) => ({
@@ -236,15 +218,15 @@ export function JournalDashboard({
   const computedChartData = useMemo(
     () =>
       buildJournalPerformanceSeries({
-        history,
+        history: filteredHistory,
         timeframe,
-        oldestTradeMs,
+        span,
         benchmarkData: {
           btcPct: btcBenchmark,
           goldPct: goldBenchmark,
         },
       }),
-    [history, timeframe, oldestTradeMs, btcBenchmark, goldBenchmark],
+    [filteredHistory, timeframe, span, btcBenchmark, goldBenchmark],
   );
   const assetTypePerformance = useMemo(
     () =>
@@ -319,8 +301,13 @@ export function JournalDashboard({
     return data;
   }, [filteredHistory, t]);
 
+  // Pie slices paint from `fill`, so reversal slices carry their hatch pattern
+  // here; the legend keeps reading the base color from `outcomeData`.
   const pieData = useMemo(
-    () => outcomeData.filter((d) => d.value > 0),
+    () =>
+      outcomeData
+        .filter((d) => d.value > 0)
+        .map((d) => (d.patternId ? { ...d, fill: `url(#${d.patternId})` } : d)),
     [outcomeData],
   );
 
@@ -329,7 +316,8 @@ export function JournalDashboard({
   }, [outcomeData]);
 
   const equityLegendItems = useMemo(() => {
-    const lastData = computedChartData[computedChartData.length - 1];
+    // The axis runs to the end of the day/week/month; the legend reports the latest drawn point.
+    const lastData = computedChartData.findLast(({ cumPct }) => cumPct !== null);
     const total = stats.closed;
     const winPct = total > 0 ? (stats.winLoss.wins / total) * 100 : 0;
     const lossPct = total > 0 ? (stats.winLoss.losses / total) * 100 : 0;
@@ -583,6 +571,8 @@ export function JournalDashboard({
                             (item) =>
                               item.value !== null && item.value !== undefined,
                           );
+                          // Empty buckets (before the period, not reached yet) get no tooltip.
+                          if (filteredPayload.length === 0) return null;
                           return (
                             <ChartTooltipContent
                               active={active}
@@ -744,12 +734,15 @@ export function JournalDashboard({
           <ChartCard title={t("journal.chart_outcome_distribution")}>
             <div className="relative mt-2 flex min-h-72 flex-1 items-center justify-center">
               {pieData.length === 0 ? (
-                <Empty className="min-h-72 border-0">
+                <Empty className="min-h-72">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <BarChart3 aria-hidden="true" />
                     </EmptyMedia>
                     <EmptyTitle>{t("journal.chart_no_closed_trades")}</EmptyTitle>
+                    <EmptyDescription>
+                      {t("journal.chart_no_closed_trades_desc")}
+                    </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               ) : (
@@ -824,18 +817,7 @@ export function JournalDashboard({
                           outerRadius="85%"
                           dataKey="value"
                           strokeWidth={0}
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                entry.patternId
-                                  ? `url(#${entry.patternId})`
-                                  : entry.fill
-                              }
-                            />
-                          ))}
-                        </Pie>
+                        />
                         <ChartTooltip
                           cursor={false}
                           content={
@@ -901,12 +883,15 @@ export function JournalDashboard({
           <ChartCard title={t("journal.chart_asset_performance")}>
             <div className="flex min-h-72 flex-1 items-center justify-center mt-2">
               {assetTypePerformance.length === 0 ? (
-                <Empty className="min-h-72 border-0">
+                <Empty className="min-h-72">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <BarChart3 aria-hidden="true" />
                     </EmptyMedia>
                     <EmptyTitle>{t("journal.chart_no_category_data")}</EmptyTitle>
+                    <EmptyDescription>
+                      {t("journal.chart_no_category_data_desc")}
+                    </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               ) : (
@@ -954,7 +939,7 @@ export function JournalDashboard({
                                 className="min-w-40"
                                 labelFormatter={(l) =>
                                   (
-                                    t(`common.asset_types.${l.replaceAll("-", "_")}`, l) as string
+                                    t(`common.asset_types.${String(l).replaceAll("-", "_")}`, String(l)) as string
                                   ).toUpperCase()
                                 }
                                 formatter={(value) => {
@@ -997,17 +982,7 @@ export function JournalDashboard({
                             );
                           }}
                         />
-                        <Bar dataKey="pct" radius={4}>
-                          {assetTypePerformance.map((entry, index) => {
-                            const fill =
-                              entry.pct === 0
-                                ? "var(--color-zinc-500)"
-                                : entry.pct > 0
-                                  ? POS
-                                  : NEG;
-                            return <Cell key={`cell-${index}`} fill={fill} />;
-                          })}
-                        </Bar>
+                        <Bar dataKey="pct" radius={4} shape={pnlBar} />
                       </ComposedChart>
                     </ChartContainer>
                   </div>

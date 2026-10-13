@@ -11,7 +11,7 @@
 
 ### Ringkasan
 - Proxy merupakan tier JSON caching di Pages Functions. Desain sat-set.
-- Engine yang sama melayani Yahoo, Binance, CoinGecko, dan kalender resmi AS.
+- Engine yang sama melayani Yahoo, Binance, CoinGecko, dan kalender Fed serta Yahoo.
 - Browser direct untuk global dan derivatives, cron via proxy.
 
 ### Engine Cache
@@ -42,7 +42,7 @@ flowchart TD
 | `coingecko › proxy` | Host demo plus fresh 1800s | Dipakai cron trending |
 | `binance › proxy` | Futures plus fresh 300-1800s | Dipakai cron ticker |
 | `yahoo › proxy` | Chart plus quote plus search | Crumb untuk quoteSummary |
-| `calendar/[source]` | BLS/BEA/Fed; fresh 1800s + stale 21600s | GET allowlist, validasi sebelum cache; BLS masih 403 di Cloudflare, rilis ditahan |
+| `calendar/[source]` | Kalender Fed dan Yahoo per bulan; fresh 1800s + stale 21600s | Hanya GET `?month=YYYY-MM`, sumber lain 404; Fed: BOM dibuang sebelum parse; Yahoo: API visualization + crumb, rentang penuh dibelah waktu; validasi sebelum cache, cache per bulan |
 
 - Yahoo memakai auth crumb dan cookie dengan refresh saat 401.
 - CoinGecko menyuntik demo key dari server tanpa ekspos browser.
@@ -80,7 +80,7 @@ flowchart TD
 
 ### Overview
 - Proxy is a JSON caching tier on Pages Functions. Design deep-dive.
-- The same engine serves Yahoo, Binance, CoinGecko and official US calendars.
+- The same engine serves Yahoo, Binance, CoinGecko and the Fed and Yahoo calendars.
 - Browser stays direct for global and derivatives, cron via proxy.
 
 ### Cache Engine
@@ -111,7 +111,7 @@ flowchart TD
 | `coingecko › proxy` | Demo host plus fresh 1800s | Used by trending cron |
 | `binance › proxy` | Futures plus fresh 300-1800s | Used by ticker cron |
 | `yahoo › proxy` | Chart plus quote plus search | Crumb for quoteSummary |
-| `calendar/[source]` | BLS/BEA/Fed; fresh 1800s + stale 21600s | GET allowlist, validate before caching; BLS returns 403 in Cloudflare, rollout held |
+| `calendar/[source]` | Fed and Yahoo calendars per month; fresh 1800s + stale 21600s | GET `?month=YYYY-MM` only, other sources 404; Fed: BOM stripped before parsing; Yahoo: visualization API + crumb, full answers split in time; validate before caching, cached per month |
 
 - Yahoo uses crumb and cookie auth with refresh on 401.
 - CoinGecko injects server demo key without browser exposure.

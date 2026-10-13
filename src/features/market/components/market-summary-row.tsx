@@ -15,14 +15,14 @@ import { useMarketContexts } from "@/services/queries/use-market-context";
 import { cn } from "@/lib/utils";
 import {
   Loader2,
-  RotateCw,
   Coins,
   Building2,
   Globe,
   Gem,
   DollarSign,
-  AlertTriangle,
   Info,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { memo, useMemo } from "react";
 import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
@@ -322,6 +322,19 @@ export function MarketSummaryRow() {
     refetch: refetchMarketContexts,
   } = useMarketContexts();
 
+  // Stable cards keep each Sparkline's `values` identity, so its memo holds and
+  // Recharts doesn't replay the draw on unrelated renders (every dialog toggle).
+  const cards = useMemo(() => {
+    const find = (symbol: string) => assets?.find((a) => a.symbol === symbol);
+    return [
+      mapCryptoCard(cryptoContext, find("BTC-USD"), find("ETH-USD")),
+      mapIdEquityCard(idxContext, find("^JKSE"), find("USDIDR=X")),
+      mapUsEquityCard(usContext, find("^GSPC"), find("^VIX"), find("DX-Y.NYB")),
+      mapCommoditiesCard(find("GC=F"), usContext, find("^VIX"), find("DX-Y.NYB")),
+      mapForexCard(find("USDIDR=X"), usContext, find("^VIX"), find("DX-Y.NYB")),
+    ];
+  }, [assets, cryptoContext, idxContext, usContext]);
+
   const isLoading =
     assetsLoading ||
     cryptoContextLoading ||
@@ -362,48 +375,6 @@ export function MarketSummaryRow() {
     );
   }
 
-  // Map each card
-  const cryptoCard = mapCryptoCard(
-    cryptoContext,
-    assets?.find((a) => a.symbol === "BTC-USD"),
-    assets?.find((a) => a.symbol === "ETH-USD"),
-  );
-
-  const idEquityCard = mapIdEquityCard(
-    idxContext,
-    assets?.find((a) => a.symbol === "^JKSE"),
-    assets?.find((a) => a.symbol === "USDIDR=X"),
-  );
-
-  const usEquityCard = mapUsEquityCard(
-    usContext,
-    assets?.find((a) => a.symbol === "^GSPC"),
-    assets?.find((a) => a.symbol === "^VIX"),
-    assets?.find((a) => a.symbol === "DX-Y.NYB"),
-  );
-
-  const commoditiesCard = mapCommoditiesCard(
-    assets?.find((a) => a.symbol === "GC=F"),
-    usContext,
-    assets?.find((a) => a.symbol === "^VIX"),
-    assets?.find((a) => a.symbol === "DX-Y.NYB"),
-  );
-
-  const forexCard = mapForexCard(
-    assets?.find((a) => a.symbol === "USDIDR=X"),
-    usContext,
-    assets?.find((a) => a.symbol === "^VIX"),
-    assets?.find((a) => a.symbol === "DX-Y.NYB"),
-  );
-
-  const cards = [
-    cryptoCard,
-    idEquityCard,
-    usEquityCard,
-    commoditiesCard,
-    forexCard,
-  ];
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -428,14 +399,14 @@ export function MarketSummaryRow() {
 
       <div className="w-full">
         {showErrorState ? (
-          <Empty role="alert" className="min-h-56 rounded-xl">
+          <Empty role="alert">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <AlertTriangle aria-hidden="true" />
+                <AlertCircle aria-hidden="true" />
               </EmptyMedia>
-              <EmptyTitle>{t("market.data_unavailable")}</EmptyTitle>
+              <EmptyTitle>{t("common.load_error_title")}</EmptyTitle>
               <EmptyDescription>
-                {t("market.data_unavailable_desc")}
+                {t("common.load_error_description")}
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
@@ -447,13 +418,13 @@ export function MarketSummaryRow() {
                   void refetchMarketContexts();
                 }}
               >
-                <RotateCw data-icon="inline-start" />
+                <RefreshCw data-icon="inline-start" />
                 {t("common.retry")}
               </Button>
             </EmptyContent>
           </Empty>
         ) : showNoAssetsState ? (
-          <Empty className="min-h-56 rounded-xl">
+          <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Info aria-hidden="true" />
@@ -491,17 +462,16 @@ export function MarketSummaryRow() {
                     </CardAction>
                   </CardHeader>
 
-                  <CardContent className="flex flex-col gap-3 px-4 pt-0">
+                  <CardContent className="flex flex-1 flex-col gap-3 px-4 pt-0">
                     {card.status === "error" ? (
-                      <Empty role="alert" className="min-h-36 border-0 p-2">
+                      // Compact on purpose: it must fit the normal card's
+                      // content height, or the whole grid row stretches.
+                      <Empty role="alert" className="min-h-0 p-0">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
-                            <AlertTriangle aria-hidden="true" />
+                            <AlertCircle aria-hidden="true" />
                           </EmptyMedia>
                           <EmptyTitle>{t("market.data_offline")}</EmptyTitle>
-                          <EmptyDescription>
-                            {t("market.data_offline_desc")}
-                          </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
                     ) : (

@@ -15,6 +15,7 @@ import {
   Terminal,
   AlertCircle,
   Inbox,
+  RefreshCw,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { usePremiumAccess } from "@/features/auth/hooks/use-premium-access";
@@ -35,6 +36,7 @@ import { useSubscriptionPlans } from "@/features/management/hooks/use-subscripti
 import { pickLocale } from "@/lib/localized";
 import { UserPaymentDialog } from "@/features/market/components/user-payment-dialog";
 import { LicenseAccessDialog } from "@/components/shared/license-access-dialog";
+import { PageHelp } from "@/components/shared/page-help";
 import {
   Empty,
   EmptyContent,
@@ -82,9 +84,12 @@ export default function SubscriptionPage() {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-              {t("subscription.title")}
-            </h1>
+            <div className="flex w-fit max-w-full items-start gap-2">
+              <h1 className="min-w-0 text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
+                {t("subscription.title")}
+              </h1>
+              <PageHelp title={t("subscription.title")} description={t("page_help.subscription")} />
+            </div>
             <p className="text-sm text-muted-foreground">
               {t("subscription.subtitle")}
             </p>
@@ -102,7 +107,7 @@ export default function SubscriptionPage() {
                   <PlanSkeleton key={i} highlighted={i === 1} />
                 ))
               ) : isError && activePlans.length === 0 ? (
-                <Empty role="alert" className="min-h-64 md:col-span-3">
+                <Empty role="alert" className="md:col-span-3">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <AlertCircle aria-hidden="true" />
@@ -119,12 +124,13 @@ export default function SubscriptionPage() {
                       disabled={isFetching}
                       aria-busy={isFetching}
                     >
+                      <RefreshCw data-icon="inline-start" />
                       {t("common.retry")}
                     </Button>
                   </EmptyContent>
                 </Empty>
               ) : activePlans.length === 0 ? (
-                <Empty className="min-h-64 md:col-span-3">
+                <Empty className="md:col-span-3">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <Inbox aria-hidden="true" />

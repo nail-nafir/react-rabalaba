@@ -424,7 +424,8 @@ export interface FollowProgress {
   lifecycle: LifecycleStatus;
   /** TP levels touched (0..tpTotal); live-tracked for running trades. */
   tpReached: number;
-  /** TP levels still secured by the realized close price. */
+  /** TP levels secured at the close: reached by the close price, or banked
+   *  as engine-v7 scale-out legs, whichever is higher. */
   tpSecured: number;
   tpTotal: number;
   /** Closed via a price stop (initial, entry, or progressive). */

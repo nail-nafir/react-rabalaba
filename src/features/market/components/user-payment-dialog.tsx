@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Copy, Inbox } from "lucide-react";
+import { AlertCircle, Copy, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,7 +73,7 @@ export function UserPaymentDialog({ trigger }: UserPaymentDialogProps) {
                 <Spinner className="h-5 w-5 text-muted-foreground" />
               </div>
             ) : isError && active.length === 0 ? (
-              <Empty role="alert" className="min-h-40 rounded-xl border-0">
+              <Empty role="alert">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <AlertCircle aria-hidden="true" />
@@ -90,12 +90,13 @@ export function UserPaymentDialog({ trigger }: UserPaymentDialogProps) {
                     disabled={isFetching}
                     aria-busy={isFetching}
                   >
+                    <RefreshCw data-icon="inline-start" />
                     {t("common.retry")}
                   </Button>
                 </EmptyContent>
               </Empty>
             ) : active.length === 0 ? (
-              <Empty className="min-h-40 rounded-xl border-0">
+              <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <Inbox aria-hidden="true" />

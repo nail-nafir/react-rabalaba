@@ -14,6 +14,7 @@ import { BADGE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
 import { PatternVisual } from "./pattern-visual";
 import { PatternDetailDialog } from "./pattern-detail-dialog";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { StrengthBar } from "@/components/charts/strength-bar";
 import { BookOpen } from "lucide-react";
 import type { CandlestickPattern, ChartPattern } from "../types/learn";
@@ -27,6 +28,7 @@ const COMPACT_SIGNAL_BADGE_CLASSNAME =
 
 export const PatternCard: React.FC<PatternCardProps> = ({ pattern }) => {
   const { t } = useTranslation();
+  const patternParam = useDialogParam("pattern");
 
   const isBullish = pattern.bias === "bullish";
   const isBearish = pattern.bias === "bearish";
@@ -129,6 +131,10 @@ export const PatternCard: React.FC<PatternCardProps> = ({ pattern }) => {
       <CardFooter>
         <PatternDetailDialog
           pattern={pattern}
+          open={patternParam.value === pattern.id}
+          onOpenChange={(next) =>
+            next ? patternParam.open(pattern.id) : patternParam.close()
+          }
           trigger={
             <Button
               size="lg"

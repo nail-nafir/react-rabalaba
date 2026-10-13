@@ -1440,7 +1440,7 @@ export function TradeSetupChart({
                         : "text-muted-foreground";
                 const arrowH = 7;
                 const arrowHalf = 5;
-                const word = m.kind === "entry" ? t("journal.entry_marker") : t("journal.close_marker");
+                const word = m.label ?? (m.kind === "entry" ? t("journal.entry_marker") : t("journal.close_marker"));
                 // Keep the marker badge clean: just the action word, no date /
                 // price cells (those read off the axis + level badges already).
                 const cells: PillCell[] = [{ text: word, emphasis: true }];

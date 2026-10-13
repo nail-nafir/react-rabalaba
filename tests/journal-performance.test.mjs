@@ -168,7 +168,7 @@ test("asset categories sum direction-aware closed-trade percentages", async () =
 });
 
 test("journal performance sums direction-aware closed-trade percentages", async () => {
-  const { buildJournalPerformanceSeries } = await loadModule();
+  const { buildJournalPerformanceSeries, journalWindow } = await loadModule();
   const aug1 = Date.UTC(2026, 7, 1);
   const aug2 = Date.UTC(2026, 7, 2);
   const aug3 = Date.UTC(2026, 7, 3);
@@ -199,11 +199,10 @@ test("journal performance sums direction-aware closed-trade percentages", async 
       }),
     ],
     timeframe: "ALL",
-    oldestTradeMs: aug1,
+    span: journalWindow("ALL", aug1, aug4),
     nowMs: aug4,
   });
 
-  assert.deepEqual(result.map(({ dayPct }) => dayPct), [0, 10, 10, -20]);
   assert.deepEqual(result.map(({ cumPct }) => cumPct), [0, 10, 20, 0]);
   assert.equal(result[2].dayPctWin, 10);
   assert.equal(result[2].dayPctLoss, null);
@@ -212,7 +211,7 @@ test("journal performance sums direction-aware closed-trade percentages", async 
 });
 
 test("BTC and Gold benchmarks normalize from their first available close", async () => {
-  const { buildJournalPerformanceSeries } = await loadModule();
+  const { buildJournalPerformanceSeries, journalWindow } = await loadModule();
   const aug1 = Date.UTC(2026, 7, 1, 12);
   const aug2 = Date.UTC(2026, 7, 2, 12);
   const aug3 = Date.UTC(2026, 7, 3, 12);
@@ -227,7 +226,7 @@ test("BTC and Gold benchmarks normalize from their first available close", async
       }),
     ],
     timeframe: "ALL",
-    oldestTradeMs: aug1,
+    span: journalWindow("ALL", aug1, aug4),
     nowMs: aug4,
     benchmarkData: {
       btcPct: yahooChart([
@@ -264,25 +263,100 @@ test("benchmark query windows match each journal timeframe", async () => {
 });
 
 test("1D benchmark ignores the previous day returned by the 2d query", async () => {
-  const { buildJournalPerformanceSeries } = await loadModule();
-  const yesterday = Date.UTC(2026, 7, 28, 18);
-  const now = Date.UTC(2026, 7, 29, 12);
+  const { buildJournalPerformanceSeries, journalWindow } = await loadModule();
+  // WIB = UTC+7: yesterday 05:00, today 08:00 and now (today 12:00).
+  const yesterday = Date.UTC(2026, 7, 27, 22);
+  const now = Date.UTC(2026, 7, 29, 5);
   const result = buildJournalPerformanceSeries({
     history: [],
     timeframe: "1D",
-    oldestTradeMs: now,
+    span: journalWindow("1D", Date.UTC(2026, 6, 31, 17), now),
     nowMs: now,
     benchmarkData: {
       btcPct: yahooChart([
         { at: yesterday, close: 100 },
-        { at: Date.UTC(2026, 7, 29, 8), close: 110 },
+        { at: Date.UTC(2026, 7, 29, 1), close: 110 },
       ]),
     },
   });
 
-  assert.equal(result[7].btcPct, null);
+  assert.equal(result.length, 24);
+  assert.equal(result[5].btcPct, null);
   assert.equal(result[8].btcPct, 0);
-  assert.equal(result[18].btcPct, 0);
+  assert.equal(result[12].btcPct, 0);
+  assert.equal(result[13].btcPct, null);
+  assert.equal(result[13].cumPct, null);
+});
+
+// Saturday 3 Oct 2026 09:03 WIB, journal period opened on 1 Oct (a Thursday).
+const OCT3_NOW = Date.UTC(2026, 9, 3, 2, 3);
+const OCT1_WIB = Date.UTC(2026, 8, 30, 17);
+const wib = (month, day, hour = 0) => Date.UTC(2026, month, day, hour - 7);
+
+test("tabs are WIB calendar windows that never reach before the journal period", async () => {
+  const { journalWindow } = await loadModule();
+
+  assert.deepEqual(journalWindow("1D", OCT1_WIB, OCT3_NOW), {
+    startMs: wib(9, 3),
+    endMs: wib(9, 4),
+    dataStartMs: wib(9, 3),
+  });
+  assert.deepEqual(journalWindow("1W", OCT1_WIB, OCT3_NOW), {
+    startMs: wib(8, 28),
+    endMs: wib(9, 5),
+    dataStartMs: OCT1_WIB,
+  });
+  assert.deepEqual(journalWindow("1M", OCT1_WIB, OCT3_NOW), {
+    startMs: OCT1_WIB,
+    endMs: wib(10, 1),
+    dataStartMs: OCT1_WIB,
+  });
+  assert.deepEqual(journalWindow("ALL", OCT1_WIB, OCT3_NOW), {
+    startMs: OCT1_WIB,
+    endMs: OCT3_NOW,
+    dataStartMs: OCT1_WIB,
+  });
+  // Before the period resolves (no trades loaded yet): empty ALL span, calendar tabs unclipped.
+  assert.equal(journalWindow("ALL", null, OCT3_NOW).startMs, OCT3_NOW);
+  assert.equal(journalWindow("1W", null, OCT3_NOW).dataStartMs, wib(8, 28));
+});
+
+test("week and month charts fill from the period start and leave days not reached yet empty", async () => {
+  const { buildJournalPerformanceSeries, journalWindow } = await loadModule();
+  const history = [
+    closedTrade({ id: "oct1", assetType: "crypto", closePrice: 110, followedAt: wib(9, 1, 10) }),
+    closedTrade({ id: "oct2", assetType: "crypto", closePrice: 95, followedAt: wib(9, 2, 15) }),
+    closedTrade({ id: "oct3", assetType: "crypto", closePrice: 102, followedAt: wib(9, 3, 8) }),
+  ];
+  const benchmarkData = {
+    btcPct: yahooChart([
+      { at: Date.UTC(2026, 8, 28), close: 80 },
+      { at: Date.UTC(2026, 9, 1), close: 100 },
+      { at: Date.UTC(2026, 9, 2), close: 110 },
+      { at: Date.UTC(2026, 9, 3), close: 95 },
+    ]),
+  };
+  const series = (timeframe) => buildJournalPerformanceSeries({
+    history,
+    timeframe,
+    span: journalWindow(timeframe, OCT1_WIB, OCT3_NOW),
+    nowMs: OCT3_NOW,
+    benchmarkData,
+  });
+
+  const week = series("1W");
+  assert.deepEqual(week.map(({ date }) => date), [
+    "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",
+  ]);
+  assert.deepEqual(week.map(({ cumPct }) => cumPct), [null, null, null, 10, 5, 7, null]);
+  assert.deepEqual(week.map(({ btcPct }) => btcPct), [null, null, null, 0, 10, -5, null]);
+  assert.deepEqual(week.map(({ dayPctLoss }) => dayPctLoss), [null, null, null, null, -5, null, null]);
+
+  const month = series("1M");
+  assert.equal(month.length, 31);
+  assert.equal(month[0].date, "2026-10-01");
+  assert.deepEqual(month.slice(0, 4).map(({ cumPct }) => cumPct), [10, 5, 7, null]);
+  assert.ok(month.slice(3).every(({ cumPct, dayPctWin, btcPct }) => cumPct === null && dayPctWin === null && btcPct === null));
 });
 
 test("journal charts keep automatic animation and every asset category tick", () => {

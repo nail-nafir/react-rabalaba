@@ -40,7 +40,7 @@ npm run lint           # eslint
 | `npm run deploy:auto-journal` | build:edge + deploy `auto-journal` |
 | `npm run deploy:daily-summary` | build:edge + deploy `daily-summary` |
 | `npm run deploy:asset-discovery` | build:edge + deploy `asset-discovery` |
-| `npm run gate:compare` | riset filter entry hipotetis; jurnal production tetap parity dengan screener |
+| `npm run gate:compare` | [audit Jurnal dan eksperimen entry/flow v7](docs/03-testing/03-engine-research.md); produksi tetap nonaktif untuk opsi riset |
 
 > Deploy lengkap: [`docs/02-technical-specs/07-deployment.md`](docs/02-technical-specs/07-deployment.md).
 
