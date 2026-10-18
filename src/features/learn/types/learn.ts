@@ -1,16 +1,21 @@
+import { BADGE, type BadgeColor } from '@/constants/taxonomy/palette';
+
 export type PatternBias = 'bullish' | 'bearish' | 'neutral' | 'bilateral';
 
-export type PatternCategory =
-  | 'candlestick_single'
-  | 'candlestick_dual'
-  | 'candlestick_multi'
-  | 'chart_reversal'
-  | 'chart_continuation'
-  | 'indicator'
-  | 'smc'
-  | 'risk';
-
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export const BIAS_COLORS: Record<PatternBias, BadgeColor> = {
+  bullish: BADGE.positive,
+  bearish: BADGE.negative,
+  neutral: BADGE.neutral,
+  bilateral: BADGE.warning,
+};
+
+export const DIFFICULTY_COLORS: Record<DifficultyLevel, BadgeColor> = {
+  beginner: BADGE.positive,
+  intermediate: BADGE.warning,
+  advanced: BADGE.negative,
+};
 
 export interface CandlestickPattern {
   id: string;
@@ -18,8 +23,6 @@ export interface CandlestickPattern {
   category: 'candlestick_single' | 'candlestick_dual' | 'candlestick_multi';
   bias: PatternBias;
   difficulty: DifficultyLevel;
-  winRate: number; // percentage e.g. 72
-  reliability: number; // 1 to 5
   svgType: string;
 }
 
@@ -28,8 +31,6 @@ export interface ChartPattern {
   category: 'chart_reversal' | 'chart_continuation';
   bias: PatternBias;
   difficulty: DifficultyLevel;
-  winRate: number;
-  reliability: number;
   svgType: string;
 }
 
@@ -51,27 +52,4 @@ export interface QuizQuestion {
   difficulty: DifficultyLevel;
   svgType: string;
   options: QuizOption[];
-}
-
-export interface RiskCalculationInputs {
-  accountBalance: number;
-  riskPercentage: number;
-  entryPrice: number;
-  stopLossPrice: number;
-  targetPrice: number;
-  assetType: 'crypto' | 'stock' | 'forex';
-}
-
-export interface RiskCalculationResults {
-  riskAmount: number;
-  perUnitRisk: number;
-  riskPercentDistance: number;
-  positionSizeUnits: number;
-  positionTotalValue: number;
-  rewardAmount: number;
-  perUnitReward: number;
-  rewardPercentDistance: number;
-  riskRewardRatio: number;
-  isLong: boolean;
-  isValid: boolean;
 }

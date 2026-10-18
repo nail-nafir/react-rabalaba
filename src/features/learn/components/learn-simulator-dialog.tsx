@@ -1,4 +1,4 @@
-import React, { useState, type ReactElement } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -19,12 +19,10 @@ export type SimulatorMode = "candlestick" | "chart";
 
 export interface LearnSimulatorDialogProps {
   defaultMode?: SimulatorMode;
-  trigger?: ReactElement;
 }
 
 export const LearnSimulatorDialog: React.FC<LearnSimulatorDialogProps> = ({
   defaultMode = "candlestick",
-  trigger,
 }) => {
   const { t } = useTranslation();
 
@@ -44,22 +42,18 @@ export const LearnSimulatorDialog: React.FC<LearnSimulatorDialogProps> = ({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        {trigger ? (
-          trigger
-        ) : (
-          <Button
-            size="lg"
-            className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">
-              {t("learn.simulator_dialog.trigger")}
-            </span>
-            <span className="sm:hidden">
-              {t("learn.simulator_dialog.trigger_short")}
-            </span>
-          </Button>
-        )}
+        <Button
+          size="lg"
+          className="font-bold transition-all text-xs cursor-pointer items-center gap-1.5 tracking-tight"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">
+            {t("learn.simulator_dialog.trigger")}
+          </span>
+          <span className="sm:hidden">
+            {t("learn.simulator_dialog.trigger_short")}
+          </span>
+        </Button>
       </DialogTrigger>
       <DialogContent className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] sm:max-w-312 max-h-[85vh] border border-border text-foreground flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header styled identically to pattern detail dialog */}
@@ -88,9 +82,9 @@ export const LearnSimulatorDialog: React.FC<LearnSimulatorDialogProps> = ({
         {/* Scrollable Content Body */}
         <div className="flex-1 min-h-0 flex flex-col space-y-6 p-4 overflow-y-auto">
           {mode === "candlestick" ? (
-            <CandlestickSimulator isDialog />
+            <CandlestickSimulator />
           ) : (
-            <ChartPatternSimulator isDialog />
+            <ChartPatternSimulator />
           )}
         </div>
       </DialogContent>

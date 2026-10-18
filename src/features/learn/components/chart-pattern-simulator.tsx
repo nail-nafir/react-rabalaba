@@ -1,23 +1,20 @@
 import React, { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import { LineChart } from "lucide-react";
+import { DashedGrid } from "./pattern-visual";
 
 interface ChartPatternPreset {
   id: string;
   bias: "bullish" | "bearish";
   defaultHeight: number;
   defaultNeckline: number;
+  /** Breakout-entry stop beyond the neckline, in pattern heights, following
+   *  each pattern's own stop rule (e.g. beyond the right shoulder or the peaks). */
+  stopDepth: number;
 }
 
 const PRESETS: ChartPatternPreset[] = [
@@ -26,108 +23,116 @@ const PRESETS: ChartPatternPreset[] = [
     bias: "bearish",
     defaultHeight: 25,
     defaultNeckline: 100,
+    stopDepth: 0.55,
   },
   {
     id: "inverse_head_and_shoulders",
     bias: "bullish",
     defaultHeight: 25,
     defaultNeckline: 100,
+    stopDepth: 0.55,
   },
   {
     id: "double_top",
     bias: "bearish",
     defaultHeight: 20,
     defaultNeckline: 100,
+    stopDepth: 1.05,
   },
   {
     id: "double_bottom",
     bias: "bullish",
     defaultHeight: 20,
     defaultNeckline: 100,
+    stopDepth: 1.05,
   },
   {
     id: "bull_flag",
     bias: "bullish",
     defaultHeight: 30,
     defaultNeckline: 100,
+    stopDepth: 0.35,
   },
   {
     id: "ascending_triangle",
     bias: "bullish",
     defaultHeight: 22,
     defaultNeckline: 100,
+    stopDepth: 0.3,
   },
   {
     id: "bear_flag",
     bias: "bearish",
     defaultHeight: 30,
     defaultNeckline: 100,
+    stopDepth: 0.35,
   },
   {
     id: "bull_pennant",
     bias: "bullish",
     defaultHeight: 26,
     defaultNeckline: 100,
+    stopDepth: 0.25,
   },
   {
     id: "bear_pennant",
     bias: "bearish",
     defaultHeight: 26,
     defaultNeckline: 100,
+    stopDepth: 0.25,
   },
   {
     id: "descending_triangle",
     bias: "bearish",
     defaultHeight: 22,
     defaultNeckline: 100,
+    stopDepth: 0.3,
   },
   {
     id: "falling_wedge",
     bias: "bullish",
     defaultHeight: 24,
     defaultNeckline: 100,
+    stopDepth: 0.4,
   },
   {
     id: "rising_wedge",
     bias: "bearish",
     defaultHeight: 24,
     defaultNeckline: 100,
+    stopDepth: 0.4,
   },
   {
     id: "triple_top",
     bias: "bearish",
     defaultHeight: 20,
     defaultNeckline: 100,
+    stopDepth: 1.05,
   },
   {
     id: "triple_bottom",
     bias: "bullish",
     defaultHeight: 20,
     defaultNeckline: 100,
+    stopDepth: 1.05,
   },
   {
     id: "cup_and_handle",
     bias: "bullish",
     defaultHeight: 24,
     defaultNeckline: 100,
+    stopDepth: 0.35,
   },
   {
     id: "inverse_cup_and_handle",
     bias: "bearish",
     defaultHeight: 24,
     defaultNeckline: 100,
+    stopDepth: 0.35,
   },
 ];
 
-interface ChartPatternSimulatorProps {
-  isDialog?: boolean;
-  className?: string;
-}
-
-export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
-  isDialog = false,
-  className,
-}) => {
+export const ChartPatternSimulator: React.FC = () => {
   const { t } = useTranslation();
   const green = PALETTE.positive.fill;
   const red = PALETTE.negative.fill;
@@ -164,7 +169,6 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
   // Live Math calculations
   const stats = useMemo(() => {
     const isBull = currentPreset.bias === "bullish";
-    const isBear = currentPreset.bias === "bearish";
 
     const targetPrice = isBull
       ? necklinePrice + patternHeight
@@ -176,18 +180,18 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
     if (isBull) {
       if (entryMode === "breakout") {
         entryPrice = necklinePrice + patternHeight * 0.08;
-        stopLossPrice = necklinePrice - patternHeight * 0.35;
+        stopLossPrice = necklinePrice - patternHeight * currentPreset.stopDepth;
       } else {
-        // Retest
+        // Retest: stop just beyond the retest swing
         entryPrice = necklinePrice + patternHeight * 0.02;
         stopLossPrice = necklinePrice - patternHeight * 0.2;
       }
     } else {
       if (entryMode === "breakout") {
         entryPrice = necklinePrice - patternHeight * 0.08;
-        stopLossPrice = necklinePrice + patternHeight * 0.35;
+        stopLossPrice = necklinePrice + patternHeight * currentPreset.stopDepth;
       } else {
-        // Retest
+        // Retest: stop just beyond the retest swing
         entryPrice = necklinePrice - patternHeight * 0.02;
         stopLossPrice = necklinePrice + patternHeight * 0.2;
       }
@@ -215,12 +219,8 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
 
     return {
       isBull,
-      isBear,
       targetPrice,
-      entryPrice,
       stopLossPrice,
-      riskDistance,
-      rewardDistance,
       riskRewardRatio,
       targetPercent,
       stopPercent,
@@ -245,36 +245,26 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
     };
   }, [patternHeight, necklinePrice, stats.isBull]);
 
-  const content = (
+  return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Live Geometry Canvas (SVG) */}
         <Card className="lg:col-span-5 h-full relative border border-border bg-muted/50 flex flex-col items-center justify-between p-4 overflow-hidden">
           {/* Header with Preset Selector */}
-          {isDialog && (
-            <div className="relative z-10 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
-              <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
-                {t("learn.chart_simulator.select_preset")}
-              </span>
-              <FilterGroup
-                value={selectedPresetId}
-                options={presetOptions}
-                onChange={handlePresetSelect}
-                variant="select"
-                className="w-full sm:w-48 shrink-0"
-              />
-            </div>
-          )}
-
-          {/* Standard dashed technical grid lines */}
-          <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
-          >
-            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+          <div className="relative z-10 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
+              {t("learn.chart_simulator.select_preset")}
+            </span>
+            <FilterGroup
+              value={selectedPresetId}
+              options={presetOptions}
+              onChange={handlePresetSelect}
+              variant="select"
+              className="w-full sm:w-48 shrink-0"
+            />
           </div>
+
+          <DashedGrid />
 
           <div className="relative z-10 flex-1 w-full flex items-center justify-center min-h-55">
             <svg viewBox="0 -10 320 220" className="w-full h-full max-w-85">
@@ -282,10 +272,11 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
               {selectedPresetId === "head_and_shoulders" &&
                 (() => {
                   const yNeckline = svgMetrics.baseNecklineY;
-                  const yHead = Math.max(15, yNeckline - svgMetrics.hPx * 1.25);
+                  // Head height equals the measured move (H); shoulders keep the old 0.52 ratio.
+                  const yHead = Math.max(15, yNeckline - svgMetrics.hPx);
                   const yShoulder = Math.max(
                     30,
-                    yNeckline - svgMetrics.hPx * 0.65,
+                    yNeckline - svgMetrics.hPx * 0.52,
                   );
                   const yTP = Math.min(188, yNeckline + svgMetrics.hPx);
 
@@ -414,13 +405,10 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
               {selectedPresetId === "inverse_head_and_shoulders" &&
                 (() => {
                   const yNeckline = svgMetrics.baseNecklineY;
-                  const yHead = Math.min(
-                    185,
-                    yNeckline + svgMetrics.hPx * 1.25,
-                  );
+                  const yHead = Math.min(185, yNeckline + svgMetrics.hPx);
                   const yShoulder = Math.min(
                     165,
-                    yNeckline + svgMetrics.hPx * 0.65,
+                    yNeckline + svgMetrics.hPx * 0.52,
                   );
                   const yTP = Math.max(15, yNeckline - svgMetrics.hPx);
 
@@ -1333,38 +1321,5 @@ export const ChartPatternSimulator: React.FC<ChartPatternSimulatorProps> = ({
         </div>
       </div>
     </div>
-  );
-
-  if (isDialog) {
-    return <div className={className}>{content}</div>;
-  }
-
-  return (
-    <Card className={cn("border border-border", className)}>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <LineChart className={cn("h-4 w-4", PALETTE.positive.text)} />
-              <CardTitle className="text-lg font-bold uppercase tracking-tight text-foreground">
-                {t("learn.chart_simulator.title")}
-              </CardTitle>
-            </div>
-            <CardDescription className="text-xs text-muted-foreground">
-              {t("learn.chart_simulator.description")}
-            </CardDescription>
-          </div>
-
-          <FilterGroup
-            value={selectedPresetId}
-            options={presetOptions}
-            onChange={handlePresetSelect}
-            variant="select"
-            className="w-full sm:w-64"
-          />
-        </div>
-      </CardHeader>
-      <CardContent>{content}</CardContent>
-    </Card>
   );
 };

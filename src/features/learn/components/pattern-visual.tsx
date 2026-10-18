@@ -1,6 +1,22 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { PALETTE } from "@/constants/taxonomy/palette";
+import { cn } from "@/lib/utils";
+
+/** Dashed technical grid lines drawn behind a visual (cards pass a lighter variant). */
+export const DashedGrid: React.FC<{ className?: string }> = ({ className }) => (
+  <div
+    aria-hidden
+    className={cn(
+      "absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8",
+      className,
+    )}
+  >
+    <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+    <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+    <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+  </div>
+);
 
 interface PatternVisualProps {
   type: string;
@@ -113,6 +129,91 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
           />
           <text x="200" y="131" fill={red} fontSize="8" fontWeight="bold">
             {t("learn.visual.stop_loss")}
+          </text>
+        </svg>
+      );
+
+    case "hanging_man":
+      return (
+        <svg viewBox="0 0 280 140" className={className}>
+          <rect width="240" height="140" fill="transparent" />
+
+          {/* Uptrend context candles */}
+          <line
+            x1="45"
+            y1="75"
+            x2="45"
+            y2="115"
+            stroke={green}
+            strokeWidth="1.5"
+          />
+          <rect x="39" y="80" width="12" height="24" fill={green} rx="1" />
+
+          <line
+            x1="75"
+            y1="45"
+            x2="75"
+            y2="85"
+            stroke={green}
+            strokeWidth="1.5"
+          />
+          <rect x="69" y="50" width="12" height="26" fill={green} rx="1" />
+
+          {/* Hanging Man: small body at the top, long lower shadow */}
+          <line
+            x1="115"
+            y1="20"
+            x2="115"
+            y2="24"
+            stroke={red}
+            strokeWidth="1.5"
+          />
+          <rect x="107" y="24" width="16" height="12" fill={red} rx="1.5" />
+          <line
+            x1="115"
+            y1="36"
+            x2="115"
+            y2="80"
+            stroke={red}
+            strokeWidth="2"
+          />
+
+          {/* Next candle closes below the Hanging Man low */}
+          <line
+            x1="155"
+            y1="34"
+            x2="155"
+            y2="98"
+            stroke={red}
+            strokeWidth="1.5"
+          />
+          <rect x="149" y="38" width="12" height="50" fill={red} rx="1" />
+
+          {/* Annotations */}
+          <line
+            x1="105"
+            y1="20"
+            x2="195"
+            y2="20"
+            stroke={red}
+            strokeWidth="1"
+            strokeDasharray="2 2"
+          />
+          <text x="200" y="23" fill={red} fontSize="8" fontWeight="bold">
+            {t("learn.visual.stop_loss")}
+          </text>
+
+          <line
+            x1="105"
+            y1="80"
+            x2="195"
+            y2="80"
+            stroke={primary}
+            strokeWidth="1"
+            strokeDasharray="2 2"
+          />
+          <text x="200" y="83" fill={primary} fontSize="8" fontWeight="bold">
+            {t("learn.visual.sell_entry")}
           </text>
         </svg>
       );
@@ -707,47 +808,61 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
       );
 
     case "tweezer":
+    case "tweezer_top": {
+      const isTop = type === "tweezer_top";
+      const level = isTop ? 35 : 105;
+      const tone = isTop ? red : green;
       return (
         <svg viewBox="0 0 280 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
-          {/* Candle 1 (Red) */}
+          {/* Candle 1 (prior trend) */}
           <line
             x1="90"
             y1="35"
             x2="90"
             y2="105"
-            stroke={red}
+            stroke={isTop ? green : red}
             strokeWidth="1.5"
           />
-          <rect x="82" y="42" width="16" height="38" fill={red} rx="1.5" />
+          <rect
+            x="82"
+            y={isTop ? 60 : 42}
+            width="16"
+            height="38"
+            fill={isTop ? green : red}
+            rx="1.5"
+          />
 
-          {/* Candle 2 (Green with identical low) */}
+          {/* Candle 2 (rejection at the identical extreme) */}
           <line
             x1="125"
-            y1="45"
+            y1={isTop ? 35 : 45}
             x2="125"
-            y2="105"
-            stroke={green}
+            y2={isTop ? 95 : 105}
+            stroke={tone}
             strokeWidth="1.5"
           />
-          <rect x="117" y="52" width="16" height="36" fill={green} rx="1.5" />
+          <rect x="117" y="52" width="16" height="36" fill={tone} rx="1.5" />
 
-          {/* Matching Bottom Line */}
+          {/* Matching extreme line */}
           <line
             x1="70"
-            y1="105"
+            y1={level}
             x2="185"
-            y2="105"
-            stroke={green}
+            y2={level}
+            stroke={tone}
             strokeWidth="2"
           />
-          <circle cx="90" cy="105" r="3" fill={green} />
-          <circle cx="125" cy="105" r="3" fill={green} />
-          <text x="190" y="108" fill={green} fontSize="8" fontWeight="bold">
-            {t("learn.visual.equal_lows")}
+          <circle cx="90" cy={level} r="3" fill={tone} />
+          <circle cx="125" cy={level} r="3" fill={tone} />
+          <text x="190" y={level + 3} fill={tone} fontSize="8" fontWeight="bold">
+            {isTop
+              ? t("learn.visual.equal_highs")
+              : t("learn.visual.equal_lows")}
           </text>
         </svg>
       );
+    }
 
     case "piercing_line":
       return (
@@ -872,7 +987,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
           />
           <rect
             x="108"
-            y="58"
+            y={isDragonfly ? 58 : 79}
             width="24"
             height="3"
             fill={isDragonfly ? green : red}
@@ -1023,7 +1138,8 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
         <svg viewBox="0 0 240 140" className={className}>
           <rect width="240" height="140" fill="transparent" />
           <rect x="55" y="30" width="18" height="55" fill={green} rx="1.5" />
-          <rect x="105" y="55" width="12" height="12" fill={muted} rx="1.5" />
+          {/* Star sits above the first candle's close */}
+          <rect x="105" y="16" width="12" height="12" fill={muted} rx="1.5" />
           <rect x="150" y="58" width="18" height="58" fill={red} rx="1.5" />
           <line
             x1="64"
@@ -1035,9 +1151,9 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
           />
           <line
             x1="111"
-            y1="45"
+            y1="8"
             x2="111"
-            y2="75"
+            y2="34"
             stroke={muted}
             strokeWidth="1.5"
           />
@@ -1404,7 +1520,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
             fontWeight="bold"
             textAnchor="middle"
           >
-            {t("learn.visual.cup")}
+            {isInverse ? t("learn.visual.inverse_cup") : t("learn.visual.cup")}
           </text>
           <text
             x="175"
@@ -1749,7 +1865,7 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
             fontWeight="bold"
             textAnchor="middle"
           >
-            {t("learn.visual.breakout")}
+            {isTop ? t("learn.visual.breakdown") : t("learn.visual.breakout")}
           </text>
         </svg>
       );
@@ -1853,19 +1969,24 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
         <svg viewBox="0 0 260 140" className={className}>
           <rect width="260" height="140" fill="transparent" />
           <path
-            d={isBull ? "M 25 120 L 78 30" : "M 25 20 L 78 112"}
+            d={isBull ? "M 25 120 L 90 30" : "M 25 20 L 90 110"}
             fill="none"
             stroke={isBull ? green : red}
             strokeWidth="2.5"
           />
+          {/* Compact pennant: gives back only a small part of the pole */}
           <path
-            d="M 78 30 L 160 70 L 78 112 Z"
+            d={
+              isBull
+                ? "M 90 30 L 145 46 L 90 62 Z"
+                : "M 90 110 L 145 94 L 90 78 Z"
+            }
             fill="none"
             stroke={primary}
             strokeWidth="2"
           />
           <path
-            d={isBull ? "M 160 70 L 235 25" : "M 160 70 L 235 120"}
+            d={isBull ? "M 145 46 L 235 12" : "M 145 94 L 235 128"}
             fill="none"
             stroke={isBull ? green : red}
             strokeWidth="2.5"
@@ -3078,6 +3199,242 @@ export const PatternVisual: React.FC<PatternVisualProps> = ({
           </text>
           <text x="176" y="73" fill={primary} fontSize="8" fontWeight="bold">
             BOS
+          </text>
+        </svg>
+      );
+
+    case "scale_out_strategy":
+      return (
+        <svg viewBox="0 0 280 140" className={className}>
+          <rect width="280" height="140" fill="transparent" />
+          {/* Target ladder: TP1 2R, TP2 3R, TP3 4R (1R = 20px) */}
+          {[20, 40, 60].map((y) => (
+            <line
+              key={y}
+              x1="25"
+              y1={y}
+              x2="185"
+              y2={y}
+              stroke={green}
+              strokeWidth="1"
+              strokeDasharray="3 3"
+            />
+          ))}
+          <line
+            x1="25"
+            y1="100"
+            x2="185"
+            y2="100"
+            stroke={primary}
+            strokeWidth="1.5"
+          />
+          <line
+            x1="25"
+            y1="120"
+            x2="185"
+            y2="120"
+            stroke={red}
+            strokeWidth="1.5"
+          />
+          <text x="190" y="23" fill={green} fontSize="8" fontWeight="bold">
+            {t("learn.visual.tp3_close")}
+          </text>
+          <text x="190" y="43" fill={green} fontSize="8" fontWeight="bold">
+            {t("learn.visual.tp2_close")}
+          </text>
+          <text x="190" y="63" fill={green} fontSize="8" fontWeight="bold">
+            {t("learn.visual.tp1_close")}
+          </text>
+          <text x="190" y="103" fill={primary} fontSize="8" fontWeight="bold">
+            {t("learn.visual.entry")}
+          </text>
+          <text x="190" y="123" fill={red} fontSize="8" fontWeight="bold">
+            {t("learn.visual.stop")}
+          </text>
+
+          {/* Price path hitting each target */}
+          <path
+            d="M 25 100 L 55 84 L 75 92 L 105 60 L 122 70 L 145 40 L 160 48 L 180 20"
+            fill="none"
+            stroke={green}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="105" cy="60" r="3.5" fill={green} />
+          <circle cx="145" cy="40" r="3.5" fill={green} />
+          <circle cx="180" cy="20" r="3.5" fill={green} />
+
+          {/* Stop ladder: initial, then entry after TP1, then TP1 after TP2 */}
+          <path
+            d="M 25 120 L 105 120 L 105 100 L 145 100 L 145 60 L 185 60"
+            fill="none"
+            stroke={warning}
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+          <text x="108" y="113" fill={warning} fontSize="7" fontWeight="bold">
+            {t("learn.visual.breakeven")}
+          </text>
+        </svg>
+      );
+
+    case "adx_strategy":
+      return (
+        <svg viewBox="0 0 260 140" className={className}>
+          <rect width="260" height="140" fill="transparent" />
+          {/* ADX scale: y = 120 - ADX * 2 */}
+          <rect
+            x="22"
+            y="20"
+            width="214"
+            height="50"
+            fill={green}
+            fillOpacity="0.08"
+          />
+          <rect
+            x="22"
+            y="80"
+            width="214"
+            height="40"
+            fill={red}
+            fillOpacity="0.08"
+          />
+          <line
+            x1="22"
+            y1="70"
+            x2="236"
+            y2="70"
+            stroke={green}
+            strokeWidth="1"
+            strokeDasharray="3 3"
+          />
+          <line
+            x1="22"
+            y1="80"
+            x2="236"
+            y2="80"
+            stroke={red}
+            strokeWidth="1"
+            strokeDasharray="3 3"
+          />
+          <text x="240" y="73" fill={green} fontSize="8" fontWeight="bold">
+            25
+          </text>
+          <text x="240" y="83" fill={red} fontSize="8" fontWeight="bold">
+            20
+          </text>
+          <path
+            d="M 25 92 L 55 88 L 85 91 L 110 78 L 135 62 L 160 50 L 185 46 L 210 56 L 232 64"
+            fill="none"
+            stroke={primary}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <text x="186" y="40" fill={primary} fontSize="8" fontWeight="bold">
+            ADX
+          </text>
+          <text x="28" y="34" fill={green} fontSize="8" fontWeight="bold">
+            {t("learn.visual.trend")}
+          </text>
+          <text x="28" y="114" fill={red} fontSize="8" fontWeight="bold">
+            {t("learn.visual.choppy")}
+          </text>
+        </svg>
+      );
+
+    case "expectancy_strategy": {
+      // 10 trades: 4 wins of +2R, 6 losses of -1R (1R = 20px) = +0.2R each.
+      const results = [2, -1, -1, 2, -1, -1, 2, -1, 2, -1];
+      return (
+        <svg viewBox="0 0 260 140" className={className}>
+          <rect width="260" height="140" fill="transparent" />
+          <line
+            x1="22"
+            y1="75"
+            x2="236"
+            y2="75"
+            stroke={muted}
+            strokeWidth="1"
+          />
+          {results.map((r, i) => (
+            <rect
+              key={i}
+              x={30 + i * 20}
+              y={r > 0 ? 75 - r * 20 : 75}
+              width="12"
+              height={Math.abs(r) * 20}
+              fill={r > 0 ? green : red}
+              rx="1.5"
+            />
+          ))}
+          <line
+            x1="22"
+            y1="71"
+            x2="236"
+            y2="71"
+            stroke={primary}
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+          <text x="30" y="27" fill={green} fontSize="8" fontWeight="bold">
+            {t("learn.visual.win_2r")}
+          </text>
+          <text x="30" y="110" fill={red} fontSize="8" fontWeight="bold">
+            {t("learn.visual.loss_1r")}
+          </text>
+          <text
+            x="130"
+            y="128"
+            fill={primary}
+            fontSize="8"
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            {t("learn.visual.expectancy")}
+          </text>
+        </svg>
+      );
+    }
+
+    case "trading_cost_strategy":
+      return (
+        <svg viewBox="0 0 260 140" className={className}>
+          <rect width="260" height="140" fill="transparent" />
+          {/* Each bar is 1R (200px); red is the round trip cost share */}
+          <text x="30" y="32" fill={red} fontSize="8" fontWeight="bold">
+            {t("learn.visual.cost_tight")}
+          </text>
+          <rect
+            x="30"
+            y="40"
+            width="200"
+            height="14"
+            fill={muted}
+            fillOpacity="0.25"
+            rx="2"
+          />
+          <rect x="30" y="40" width="40" height="14" fill={red} rx="2" />
+          <text x="234" y="51" fill={muted} fontSize="8" fontWeight="bold">
+            1R
+          </text>
+
+          <text x="30" y="87" fill={green} fontSize="8" fontWeight="bold">
+            {t("learn.visual.cost_wide")}
+          </text>
+          <rect
+            x="30"
+            y="95"
+            width="200"
+            height="14"
+            fill={muted}
+            fillOpacity="0.25"
+            rx="2"
+          />
+          <rect x="30" y="95" width="10" height="14" fill={red} rx="2" />
+          <text x="234" y="106" fill={muted} fontSize="8" fontWeight="bold">
+            1R
           </text>
         </svg>
       );

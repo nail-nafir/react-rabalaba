@@ -50,6 +50,7 @@ Dokumentasi memakai 5 folder bernomor dengan peran tetap. Indeks ini menjadi pin
 | `02-technical-specs/06-engine-internals.md` | Detail export signals/indicators/contexts/enrichment/backtest dan formula |
 | `02-technical-specs/07-deployment.md` | Build edge, deploy, schedule cron, env vars |
 | `02-technical-specs/08-signal-flow-diagrams.md` | Diagram mermaid flowchart, activity, sequence alur sinyal end-to-end |
+| `02-technical-specs/09-application-flow.md` | Low-Level Design per halaman: halaman → file → service → penyimpanan, plus cron |
 
 #### Testing
 
@@ -138,6 +139,7 @@ The documentation uses 5 numbered folders with fixed roles. The index serves as 
 | `02-technical-specs/06-engine-internals.md` | Export details for signals/indicators/contexts/enrichment/backtest plus formulas |
 | `02-technical-specs/07-deployment.md` | Edge build, deploy, cron schedule, env vars |
 | `02-technical-specs/08-signal-flow-diagrams.md` | Mermaid flowchart, activity, and sequence diagrams for the end-to-end signal flow |
+| `02-technical-specs/09-application-flow.md` | Per-page Low-Level Design: page → file → service → storage, plus cron |
 
 #### Testing
 

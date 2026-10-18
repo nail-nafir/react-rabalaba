@@ -220,6 +220,7 @@ export const LearnContent: React.FC = () => {
                 {searchQuery && (
                   <button
                     type="button"
+                    aria-label={t("learn.cheatsheet.clear_search")}
                     onClick={() => setSearchQuery("")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >

@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import type { QuizQuestion } from "../types/learn";
-import { PatternVisual } from "./pattern-visual";
+import { DIFFICULTY_COLORS, type QuizQuestion } from "../types/learn";
+import { DashedGrid, PatternVisual } from "./pattern-visual";
 import { QUIZ_QUESTIONS } from "../data/quiz-data";
 import {
   CheckCircle2,
@@ -189,18 +189,7 @@ const QuizSessionContent: React.FC = () => {
     };
   })();
 
-  const diffBadge = (() => {
-    switch (currentQ.difficulty) {
-      case "beginner":
-        return BADGE.positive;
-      case "intermediate":
-        return BADGE.warning;
-      case "advanced":
-        return BADGE.negative;
-      default:
-        return BADGE.neutral;
-    }
-  })();
+  const diffBadge = DIFFICULTY_COLORS[currentQ.difficulty];
 
   const accuracyMetricBadge = (() => {
     if (scorePercentage >= 80) {
@@ -597,18 +586,8 @@ const QuizSessionContent: React.FC = () => {
                     ? `${qKey}.options.${ans.selectedOptionId}`
                     : null;
 
-                  const questionDiffBadge = (() => {
-                    switch (ans.question.difficulty) {
-                      case "beginner":
-                        return BADGE.positive;
-                      case "intermediate":
-                        return BADGE.warning;
-                      case "advanced":
-                        return BADGE.negative;
-                      default:
-                        return BADGE.neutral;
-                    }
-                  })();
+                  const questionDiffBadge =
+                    DIFFICULTY_COLORS[ans.question.difficulty];
 
                   return (
                     <Card
@@ -749,15 +728,7 @@ const QuizSessionContent: React.FC = () => {
             <div className="space-y-4">
               {/* Technical Chart Arena with Dashed Guidelines */}
               <Card className="relative border border-border bg-muted/50 flex flex-col items-center justify-center overflow-hidden">
-                {/* Standard dashed technical grid lines */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
-                >
-                  <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                  <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                  <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                </div>
+                <DashedGrid />
 
                 <CardContent className="relative z-10 flex flex-col items-center justify-center w-full">
                   <PatternVisual

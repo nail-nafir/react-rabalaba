@@ -13,9 +13,9 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import { PatternVisual } from "./pattern-visual";
+import { DashedGrid, PatternVisual } from "./pattern-visual";
 import { BarChart3, CheckCircle2, Target } from "lucide-react";
-import type { TradingStrategy } from "../types/learn";
+import { DIFFICULTY_COLORS, type TradingStrategy } from "../types/learn";
 
 export interface StrategyDetailDialogProps {
   strategy: TradingStrategy;
@@ -45,18 +45,7 @@ export const StrategyDetailDialog: React.FC<StrategyDetailDialogProps> = ({
   });
   const checklistList = Array.isArray(checklist) ? (checklist as string[]) : [];
 
-  const diffBadge = (() => {
-    switch (strategy.difficulty) {
-      case "beginner":
-        return BADGE.positive;
-      case "intermediate":
-        return BADGE.warning;
-      case "advanced":
-        return BADGE.negative;
-      default:
-        return BADGE.neutral;
-    }
-  })();
+  const diffBadge = DIFFICULTY_COLORS[strategy.difficulty];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,15 +103,7 @@ export const StrategyDetailDialog: React.FC<StrategyDetailDialogProps> = ({
               </h3>
             </div>
             <Card className="relative border border-border bg-muted/50 flex flex-col items-center justify-center overflow-hidden">
-              {/* Standard dashed technical grid lines */}
-              <div
-                aria-hidden
-                className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
-              >
-                <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-              </div>
+              <DashedGrid />
 
               <CardContent className="relative z-10 flex flex-col items-center justify-center w-full">
                 <PatternVisual

@@ -1,17 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterGroup } from "@/components/shared/filter-group";
 import { BADGE, PALETTE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import { Sparkles } from "lucide-react";
+import { DashedGrid } from "./pattern-visual";
 
 interface Preset {
   id: string;
@@ -94,15 +88,7 @@ const PRESETS: Preset[] = [
   },
 ];
 
-interface CandlestickSimulatorProps {
-  isDialog?: boolean;
-  className?: string;
-}
-
-export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
-  isDialog = false,
-  className,
-}) => {
+export const CandlestickSimulator: React.FC = () => {
   const { t } = useTranslation();
 
   const [selectedPresetId, setSelectedPresetId] = useState<string>("hammer");
@@ -158,7 +144,6 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
   const analysis = useMemo(() => {
     const isBullish = close > open;
     const isBearish = close < open;
-    const isDoji = Math.abs(close - open) <= 1;
 
     const totalRange = Math.max(1, high - low);
     const bodyHeight = Math.abs(close - open);
@@ -200,15 +185,17 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
       lowerShadow >= bodyHeight * 2 &&
       upperShadow <= bodyHeight * 0.4
     ) {
-      detectedKey = isBullish ? "bullish_hammer" : "bearish_hammer";
-      bias = isBullish ? "positive" : "warning";
+      // One candle cannot tell a Hammer (after a decline) from a Hanging Man
+      // (after an advance): location decides, not body color.
+      detectedKey = "hammer_shape";
+      bias = "warning";
       psychologyKey = "hammer";
     } else if (
       upperShadow >= bodyHeight * 2 &&
       lowerShadow <= bodyHeight * 0.4
     ) {
       detectedKey = "shooting_star";
-      bias = "negative";
+      bias = "warning";
       psychologyKey = "shooting_star";
     } else if (bodyPercent >= 85) {
       detectedKey = isBullish ? "bullish_marubozu" : "bearish_marubozu";
@@ -227,7 +214,6 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
     return {
       isBullish,
       isBearish,
-      isDoji,
       bodyHeight,
       upperShadow,
       lowerShadow,
@@ -259,36 +245,26 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
       : PALETTE.neutral.fill;
   const muted = PALETTE.neutral.fill;
 
-  const content = (
+  return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Visual SVG Candle Renderer */}
         <Card className="lg:col-span-5 h-full relative border border-border bg-muted/50 flex flex-col items-center justify-between p-4 overflow-hidden">
           {/* Header with Preset Selector */}
-          {isDialog && (
-            <div className="relative z-10 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
-              <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
-                {t("learn.candlestick_simulator.select_preset")}
-              </span>
-              <FilterGroup
-                value={selectedPresetId}
-                options={presetOptions}
-                onChange={handlePresetSelect}
-                variant="select"
-                className="w-full sm:w-48 shrink-0"
-              />
-            </div>
-          )}
-
-          {/* Standard dashed technical grid lines */}
-          <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none opacity-40 flex flex-col justify-around px-4 py-8"
-          >
-            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-            <div className="border-b border-dashed border-muted-foreground/30 w-full" />
+          <div className="relative z-10 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
+              {t("learn.candlestick_simulator.select_preset")}
+            </span>
+            <FilterGroup
+              value={selectedPresetId}
+              options={presetOptions}
+              onChange={handlePresetSelect}
+              variant="select"
+              className="w-full sm:w-48 shrink-0"
+            />
           </div>
+
+          <DashedGrid />
 
           <div className="relative z-10 flex-1 w-full flex items-center justify-center min-h-55">
             <svg viewBox="0 0 320 220" className="w-full h-full max-w-85">
@@ -658,38 +634,5 @@ export const CandlestickSimulator: React.FC<CandlestickSimulatorProps> = ({
         </div>
       </div>
     </div>
-  );
-
-  if (isDialog) {
-    return <div className={className}>{content}</div>;
-  }
-
-  return (
-    <Card className={cn("border border-border", className)}>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <CardTitle className="text-lg font-bold uppercase tracking-tight text-foreground">
-                {t("learn.candlestick_simulator.title")}
-              </CardTitle>
-            </div>
-            <CardDescription className="text-xs text-muted-foreground">
-              {t("learn.candlestick_simulator.description")}
-            </CardDescription>
-          </div>
-
-          <FilterGroup
-            value={selectedPresetId}
-            options={presetOptions}
-            onChange={handlePresetSelect}
-            variant="select"
-            className="w-full sm:w-64"
-          />
-        </div>
-      </CardHeader>
-      <CardContent>{content}</CardContent>
-    </Card>
   );
 };

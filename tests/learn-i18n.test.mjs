@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 const FEATURE = resolve("src/features/learn");
 const STRATEGY_DATA = resolve("src/features/learn/data/strategy-data.ts");
 const CHART_DATA = resolve("src/features/learn/data/chart-pattern-data.ts");
+const QUIZ_DATA = resolve("src/features/learn/data/quiz-data.ts");
 const PATTERN_VISUAL = resolve(
   "src/features/learn/components/pattern-visual.tsx",
 );
@@ -66,8 +67,29 @@ test("Learn locales stay complete and structurally identical", () => {
     assert.doesNotMatch(content, /""/, language);
     assert.equal(Object.keys(locale.patterns.candlestick).length, 24);
     assert.equal(Object.keys(locale.patterns.chart).length, 22);
-    assert.equal(Object.keys(locale.strategies.items).length, 24);
-    assert.equal(Object.keys(locale.quiz.questions).length, 30);
+    assert.equal(Object.keys(locale.strategies.items).length, 28);
+    assert.equal(Object.keys(locale.quiz.questions).length, 34);
+  }
+});
+
+test("Every quiz option id resolves to copy in both locales", () => {
+  const rows = [
+    ...readFileSync(QUIZ_DATA, "utf8").matchAll(
+      /id: "(quiz_(\d+))"[^}]*answer: "([a-d])"/g,
+    ),
+  ];
+  assert.equal(rows.length, 34);
+  for (const [language, locale] of Object.entries(locales)) {
+    for (const [, id, number] of rows) {
+      for (const letter of "abcd") {
+        const option = locale.quiz.questions[id]?.options?.[`q${number}_${letter}`];
+        assert.ok(option?.text, `${language}.${id}.q${number}_${letter}.text`);
+        assert.ok(
+          option?.explanation,
+          `${language}.${id}.q${number}_${letter}.explanation`,
+        );
+      }
+    }
   }
 });
 

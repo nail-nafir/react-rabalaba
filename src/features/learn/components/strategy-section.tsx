@@ -14,7 +14,7 @@ import { FilterGroup } from "@/components/shared/filter-group";
 import { Button } from "@/components/ui/button";
 import { BADGE } from "@/constants/taxonomy/palette";
 import { cn } from "@/lib/utils";
-import { PatternVisual } from "./pattern-visual";
+import { DashedGrid, PatternVisual } from "./pattern-visual";
 import { StrategyDetailDialog } from "./strategy-detail-dialog";
 import { useDialogParam } from "@/hooks/use-dialog-param";
 import { TRADING_STRATEGIES } from "../data/strategy-data";
@@ -144,6 +144,16 @@ export const StrategySection: React.FC = () => {
             <Card
               key={strategy.id}
               className="relative h-full flex flex-col cursor-pointer border border-border hover:bg-muted/50 hover:border-primary group"
+              onClick={(e) => {
+                // The card body opens the guide too; the button and the portaled dialog handle their own clicks.
+                if (
+                  e.target instanceof Element &&
+                  e.currentTarget.contains(e.target) &&
+                  !e.target.closest("button")
+                ) {
+                  strategyParam.open(strategy.id);
+                }
+              }}
             >
             {/* Header */}
             <CardHeader className="space-y-4 flex flex-col w-full">
@@ -186,15 +196,7 @@ export const StrategySection: React.FC = () => {
             <CardContent className="flex-1 w-full flex flex-col items-center space-y-6 pb-0">
               {/* Inner Card Box */}
               <Card className="relative overflow-hidden w-full transition-all duration-300 select-none border shadow-none bg-muted/50 border-border hover:bg-muted/60">
-                {/* Subtle dashed technical grid lines */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 pointer-events-none opacity-30 flex flex-col justify-around px-2 py-4"
-                >
-                  <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                  <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                  <div className="border-b border-dashed border-muted-foreground/30 w-full" />
-                </div>
+                <DashedGrid className="opacity-30 px-2 py-4" />
                 <CardContent className="relative z-10 flex flex-col items-center justify-center p-4 h-40">
                   <PatternVisual
                     type={strategy.svgType}
