@@ -45,3 +45,6 @@ supabase/.temp
 # AI Agents
 .agents
 .claude
+
+# Generated branding assets (logo concepts, prompts, zips)
+/output/
